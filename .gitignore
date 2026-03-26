@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+
+# Claude Code
+.claude/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code generated
+CLAUDE.md
+CLAUDE.local.md
+
+# OpenCode generated
+opencode.json
+
+# Agent SDS generated (local instructions)
+AGENTS.local.md
+
+# Lock files (pnpm is primary)
+package-lock.json
