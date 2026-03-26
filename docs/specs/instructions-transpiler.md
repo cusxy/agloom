@@ -8,6 +8,7 @@ type: spec
 status: implemented
 relates:
   - docs/specs/skills-transpiler.md
+  - docs/specs/agents-transpiler.md
   - docs/researches/agent-capabilities-map.md
   - docs/researches/existing-alternatives.md
 maps_to:
