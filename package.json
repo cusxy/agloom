@@ -23,7 +23,7 @@
     "dist"
   ],
   "bin": {
-    "agloom": "./dist/cli/index.js"
+    "agloom": "dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc",
