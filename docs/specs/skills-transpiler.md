@@ -9,6 +9,8 @@ status: implemented
 relates:
   - docs/specs/instructions-transpiler.md
   - docs/specs/agents-transpiler.md
+  - docs/specs/cli.md
+  - docs/specs/integration-tests.md
   - docs/researches/agent-capabilities-map.md
 maps_to:
   - src/skills-transpiler/
