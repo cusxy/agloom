@@ -11,7 +11,7 @@ relates:
   - docs/specs/agents-transpiler.md
   - docs/specs/cli.md
   - docs/specs/integration-tests.md
-  - docs/researches/agent-capabilities-map.md
+  - docs/researches/agent-capabilities-map/RESEARCH.md
 maps_to:
   - src/skills-transpiler/
 ---
@@ -284,7 +284,7 @@ YAML frontmatter + Markdown body.
 ### Правила генерации
 
 OpenCode нативно читает `.agents/skills/`
-(см. `docs/researches/agent-capabilities-map.md`, строка 647).
+(см. `docs/researches/agent-capabilities-map/agents/opencode.md` § C4. Навыки).
 Адаптер не генерирует файлов. Адаптер описан явно для консистентности
 архитектуры и обеспечения корректной работы при передаче `agentId: "opencode"`
 в конфигурацию транспилера.

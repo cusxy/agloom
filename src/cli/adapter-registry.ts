@@ -28,6 +28,8 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new ClaudeAdapter(),
     skills: new ClaudeSkillAdapter(),
     agents: new ClaudeAgentAdapter(),
+    targetRoot: ".claude",
+    targetFiles: ["CLAUDE.md"],
   },
   {
     id: "opencode",
@@ -35,5 +37,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new OpenCodeAdapter(),
     skills: new OpenCodeSkillAdapter(),
     agents: new OpenCodeAgentAdapter(),
+    targetRoot: ".opencode",
+    targetFiles: [],
   },
 ];

@@ -12,7 +12,7 @@ relates:
   - docs/specs/skills-transpiler.md
   - docs/specs/cli.md
   - docs/specs/integration-tests.md
-  - docs/researches/agent-capabilities-map.md
+  - docs/researches/agent-capabilities-map/RESEARCH.md
 maps_to:
   - src/agents-transpiler/
 ---

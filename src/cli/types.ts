@@ -19,12 +19,32 @@ export interface AdapterRegistryEntry {
   skills: SkillAdapter;
   /** Экземпляр адаптера для agents-transpiler. */
   agents: AgentAdapter;
+  /** Относительный путь к корневой директории agent-специфичных файлов. */
+  targetRoot: string;
+  /** Список относительных путей к файлам за пределами targetRoot, генерируемых транспилерами. */
+  targetFiles: string[];
+}
+
+/** Результат выполнения очистки. */
+export interface CleanOutcome {
+  /** Количество удалённых файлов. */
+  removedCount: number;
+  /** Сообщения об ошибках. */
+  errors: string[];
+}
+
+/** Результат выполнения импорта. */
+export interface InitOutcome {
+  /** Количество скопированных файлов. */
+  copiedCount: number;
+  /** Сообщения об ошибках. */
+  errors: string[];
 }
 
 /** Результат одного шага транспиляции. */
 export interface TranspilerStepOutcome {
   /** Отображаемое имя шага. */
-  name: "Instructions" | "Skills" | "Agents";
+  name: "Instructions" | "Skills" | "Agents" | "Overlay";
   /** Количество успешно записанных файлов. */
   writtenCount: number;
   /** Сообщения об ошибках (пустой массив при отсутствии). */
