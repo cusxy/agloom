@@ -1,8 +1,27 @@
 {
   "name": "agloom",
   "version": "0.1.0",
-  "private": true,
+  "description": "Transpile canonical agent configurations across AI coding assistants (Claude Code, OpenCode, and more)",
   "type": "module",
+  "license": "Apache-2.0",
+  "author": "Nikita Gorbunov <cusxies@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cusxy/agloom.git"
+  },
+  "homepage": "https://github.com/cusxy/agloom",
+  "bugs": {
+    "url": "https://github.com/cusxy/agloom/issues"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "agents",
+    "transpiler"
+  ],
+  "files": [
+    "dist"
+  ],
   "bin": {
     "agloom": "./dist/cli/index.js"
   },
