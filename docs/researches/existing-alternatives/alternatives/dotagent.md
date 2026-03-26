@@ -31,7 +31,7 @@ dotagent — CLI и библиотека (TypeScript, MIT), созданная J
 
 **C3. Покрытие агентов**: 14+ агентов (Copilot, Cursor, Cline, Windsurf,
 Zed, Codex, Aider, Claude, Gemini, Qodo, Junie, Roo, OpenCode). Все целевые
-агенты Agent SDS покрыты.
+агенты Agloom покрыты.
 
 **C4. Расширяемость**: программный API (`importAll`, `exportToAgent`,
 `exportAll`) позволяет интеграцию в другие инструменты. Формальной

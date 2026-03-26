@@ -32,7 +32,7 @@ maps_to:
   agent-специфичных файлов (например, `".claude"`, `".opencode"`).
 - `targetFiles` (array\<string>, обязательно) — список относительных путей к файлам
   за пределами `targetRoot`, которые генерируются транспилерами
-  (например, `["CLAUDE.md"]`).
+  (например, `["CLAUDE.md"]`, `["AGENTS.md"]`).
 
 ## Обновление реестра адаптеров
 
@@ -42,7 +42,7 @@ maps_to:
 | `id`         | `targetRoot`  | `targetFiles`   |
 | ------------ | ------------- | --------------- |
 | `"claude"`   | `".claude"`   | `["CLAUDE.md"]` |
-| `"opencode"` | `".opencode"` | `[]`            |
+| `"opencode"` | `".opencode"` | `["AGENTS.md"]` |
 
 ## Процедура Resolve Adapter
 
@@ -68,7 +68,7 @@ maps_to:
 **Расширения:**
 
 1a. Запись не найдена → отобразить сообщение
-`"Unknown adapter: {value}. Run 'agent-sds adapters' to see available adapters."`;
+`"Unknown adapter: {value}. Run 'agloom adapters' to see available adapters."`;
 exit code 1.
 
 **Результат:**

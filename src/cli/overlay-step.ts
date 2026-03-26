@@ -37,7 +37,7 @@ function discoverFiles(dir: string): string[] {
  * Выполняет шаг provider overlay.
  *
  * Шаги:
- * 1. Определить директорию-источник как <projectRoot>/.agents/overlays/<entry.id>/.
+ * 1. Определить директорию-источник как <projectRoot>/.agloom/overlays/<entry.id>/.
  * 2. Рекурсивно обнаружить все файлы в директории-источнике.
  * 3. Для каждого обнаруженного файла определить относительный путь
  *    файла внутри директории-источника.
@@ -69,7 +69,7 @@ export function runOverlayStep(
   let writtenCount = 0;
 
   // Шаг 1: определить директорию-источник
-  const sourceDir = path.join(projectRoot, ".agents", "overlays", entry.id);
+  const sourceDir = path.join(projectRoot, ".agloom", "overlays", entry.id);
 
   // Расширение 1a: директория-источник не существует
   if (!fs.existsSync(sourceDir)) {

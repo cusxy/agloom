@@ -17,7 +17,7 @@ describe("CLI", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-step-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-step-"));
     });
 
     afterEach(() => {
@@ -32,7 +32,7 @@ describe("CLI", () => {
     // Шаг 5: errors = writeResult.errors.map(e => e.message)
     // Шаг 6: сформировать TranspilerStepOutcome
     it("выполняет transpile() и writeResults(), возвращает TranspilerStepOutcome с корректными writtenCount и пустыми errors", () => {
-      fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "General instructions.");
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "General instructions.");
 
       const outcome: TranspilerStepOutcome = runTranspileStep({
         transpilerFactory: createInstructionsTranspiler,
@@ -42,7 +42,7 @@ describe("CLI", () => {
       });
 
       expect(outcome.name).toBe("Instructions");
-      expect(outcome.writtenCount).toBe(1); // AGENTS.md → CLAUDE.md
+      expect(outcome.writtenCount).toBe(1); // AGLOOM.md → CLAUDE.md
       expect(outcome.errors).toEqual([]);
 
       // Проверяем, что файл действительно записан (побочный эффект writeResults)
@@ -81,7 +81,7 @@ describe("CLI", () => {
     // и возвращает WriteResult с errors. Шаг транспиляции формирует errors из
     // writeResult.errors.map(e => e.message).
     it("формирует errors из writeResult.errors.map(e => e.message) при ошибках адаптера", () => {
-      fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "Content.");
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "Content.");
 
       const failingAdapter = {
         agentId: "broken",

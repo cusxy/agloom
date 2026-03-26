@@ -15,7 +15,7 @@ describe("SkillsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-skills-transpile-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-skills-transpile-"));
     });
 
     afterEach(() => {
@@ -25,7 +25,7 @@ describe("SkillsTranspiler", () => {
     // --- Happy path: шаги 1–3 — полный цикл транспиляции ---
     it("выполняет полный цикл: discover → adapter.transpile(SkillPackage[]) → собрать результаты", () => {
       // Arrange: создаём skill-пакет
-      const skillDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
       fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# My Skill");
 
@@ -47,19 +47,25 @@ describe("SkillsTranspiler", () => {
         ".claude/skills/my-skill/SKILL.md",
       );
       expect(claudeResult!.files[0].sourcePath).toBe(
-        ".agents/skills/my-skill/SKILL.md",
+        ".agloom/skills/my-skill/SKILL.md",
       );
       expect(claudeResult!.errors).toHaveLength(0);
 
       const opencodeResult = results.find((r) => r.agentId === "opencode");
       expect(opencodeResult).toBeDefined();
-      expect(opencodeResult!.files).toHaveLength(0);
+      expect(opencodeResult!.files).toHaveLength(1);
+      expect(opencodeResult!.files[0].relativePath).toBe(
+        ".opencode/skills/my-skill/SKILL.md",
+      );
+      expect(opencodeResult!.files[0].sourcePath).toBe(
+        ".agloom/skills/my-skill/SKILL.md",
+      );
       expect(opencodeResult!.errors).toHaveLength(0);
     });
 
     // --- Расширение 1a: нет skill-пакетов → пустой массив ---
     it("возвращает пустой массив SkillTranspileResult, если skill-пакетов не обнаружено", () => {
-      // tmpDir пуст — нет .agents/skills/
+      // tmpDir пуст — нет .agloom/skills/
 
       const transpiler = createSkillsTranspiler({
         projectRoot: tmpDir,
@@ -73,8 +79,8 @@ describe("SkillsTranspiler", () => {
 
     // --- Расширение 1b: discover() выбрасывает SkillDiscoverError → пробросить ---
     it("пробрасывает SkillDiscoverError к вызывающему коду, если discover() выбросил ошибку", () => {
-      // Создаём каталог .agents/skills/ без прав на чтение
-      const skillsDir = path.join(tmpDir, ".agents", "skills");
+      // Создаём каталог .agloom/skills/ без прав на чтение
+      const skillsDir = path.join(tmpDir, ".agloom", "skills");
       fs.mkdirSync(skillsDir, { recursive: true });
       // Создаём skill-пакет чтобы discover начал обработку
       const skillDir = path.join(skillsDir, "my-skill");
@@ -97,7 +103,7 @@ describe("SkillsTranspiler", () => {
     // --- Расширение 2a: адаптер выбрасывает исключение ---
     it("создаёт SkillTranspileResult с ошибкой при исключении адаптера и продолжает остальные", () => {
       // Arrange: создаём skill-пакет
-      const skillDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
       fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# My Skill");
 

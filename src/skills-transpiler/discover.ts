@@ -12,22 +12,22 @@ import type { SkillPackage } from "./types.js";
  * Обнаруживает все skill-пакеты в проекте.
  */
 export function discover(projectRoot: string): SkillPackage[] {
-  const skillsDir = path.join(projectRoot, ".agents", "skills");
+  const skillsDir = path.join(projectRoot, ".agloom", "skills");
 
-  // Шаг 1: проверить наличие каталога .agents/skills/
+  // Шаг 1: проверить наличие каталога .agloom/skills/
   // Расширение 1a: каталог не существует → пустой массив
   if (!fs.existsSync(skillsDir)) {
     return [];
   }
 
-  // Шаг 2: получить список прямых подкаталогов .agents/skills/
+  // Шаг 2: получить список прямых подкаталогов .agloom/skills/
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(skillsDir, { withFileTypes: true });
   } catch (err) {
-    // Расширение 2a: ошибка доступа к каталогу .agents/skills/
+    // Расширение 2a: ошибка доступа к каталогу .agloom/skills/
     throw new SkillDiscoverError(
-      `Failed to scan directory .agents/skills/: ${(err as Error).message}`,
+      `Failed to scan directory .agloom/skills/: ${(err as Error).message}`,
     );
   }
 
@@ -48,7 +48,7 @@ export function discover(projectRoot: string): SkillPackage[] {
     }
 
     // Шаг 4: рекурсивно получить список всех файлов в подкаталоге
-    const directoryPath = path.join(".agents", "skills", entry.name);
+    const directoryPath = path.join(".agloom", "skills", entry.name);
     const files = collectFiles(dirPath, directoryPath, projectRoot);
 
     // Шаг 5: сформировать SkillPackage

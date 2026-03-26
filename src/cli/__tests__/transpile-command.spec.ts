@@ -16,23 +16,23 @@ describe("CLI", () => {
     let originalExitCode: number | undefined;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-transpile-cmd-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-transpile-cmd-"));
       originalExitCode = process.exitCode;
 
       // Создаём канонические файлы для всех трёх транспилеров
-      // Instructions: AGENTS.md
-      fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "General instructions.");
+      // Instructions: AGLOOM.md
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "General instructions.");
 
-      // Skills: .agents/skills/my-skill/SKILL.md
-      const skillDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      // Skills: .agloom/skills/my-skill/SKILL.md
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
       fs.writeFileSync(
         path.join(skillDir, "SKILL.md"),
         "---\nname: my-skill\n---\nSkill content.",
       );
 
-      // Agents: .agents/agents/reviewer.md
-      const agentDir = path.join(tmpDir, ".agents", "agents");
+      // Agents: .agloom/agents/reviewer.md
+      const agentDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentDir, { recursive: true });
       fs.writeFileSync(
         path.join(agentDir, "reviewer.md"),
@@ -121,7 +121,7 @@ describe("CLI", () => {
     });
 
     // --- Расширение 2a: адаптер не найден в реестре ---
-    // "Unknown adapter: {value}. Run 'agent-sds adapters' to see available adapters."
+    // "Unknown adapter: {value}. Run 'agloom adapters' to see available adapters."
     // Процесс завершается с exit code 1.
     it('отображает "Unknown adapter" и завершается с exit code 1 при неизвестном adapterId', async () => {
       const { lastFrame, unmount } = render(
@@ -141,7 +141,7 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
       expect(output).toContain("nonexistent");
-      expect(output).toContain("agent-sds adapters");
+      expect(output).toContain("agloom adapters");
       expect(process.exitCode).toBe(1);
 
       unmount();
@@ -151,14 +151,14 @@ describe("CLI", () => {
     // Шаг с ошибками отображает ✗ и сообщение первой ошибки.
     // Exit code 1 при ошибках хотя бы одного шага.
     it("отображает ✗ и сообщение ошибки для неуспешного шага и завершается с exit code 1", async () => {
-      // Удаляем .agents/agents/ чтобы вызвать ошибку в agents transpiler
+      // Удаляем .agloom/agents/ чтобы вызвать ошибку в agents transpiler
       // Создаём файл вместо каталога для провоцирования ошибки
-      fs.rmSync(path.join(tmpDir, ".agents", "agents"), {
+      fs.rmSync(path.join(tmpDir, ".agloom", "agents"), {
         recursive: true,
         force: true,
       });
       // Создаём файл вместо каталога — agents transpiler discover() выбросит ошибку
-      fs.writeFileSync(path.join(tmpDir, ".agents", "agents"), "not a dir");
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "agents"), "not a dir");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -199,11 +199,11 @@ describe("CLI", () => {
     // (частично записанные файлы учитываются).
     it("вычисляет totalWritten как сумму writtenCount всех шагов, включая шаги с частичными ошибками", async () => {
       // Instructions и Skills успешны, Agents вызовет ошибку
-      fs.rmSync(path.join(tmpDir, ".agents", "agents"), {
+      fs.rmSync(path.join(tmpDir, ".agloom", "agents"), {
         recursive: true,
         force: true,
       });
-      fs.writeFileSync(path.join(tmpDir, ".agents", "agents"), "not a dir");
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "agents"), "not a dir");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -222,7 +222,7 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Instructions: 1 файл (AGENTS.md → CLAUDE.md)
+      // Instructions: 1 файл (AGLOOM.md → CLAUDE.md)
       // Skills: 1 файл (SKILL.md → .claude/skills/my-skill/SKILL.md)
       // Agents: 0 файлов (ошибка)
       // totalWritten = 1 + 1 + 0 = 2
@@ -240,7 +240,7 @@ describe("CLI", () => {
     // Порядок отображения: Instructions → Skills → Agents → Overlay.
     it("отображает шаг Overlay в TUI после Instructions, Skills и Agents", async () => {
       // Создаём overlay-файлы для адаптера claude
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(
         path.join(overlayDir, "overlay-file.txt"),
@@ -277,7 +277,7 @@ describe("CLI", () => {
     });
 
     // --- § Расширение команды transpile, вывод ---
-    // Если .agents/overlays/<adapterId>/ не существует: ✓ Overlay 0 files
+    // Если .agloom/overlays/<adapterId>/ не существует: ✓ Overlay 0 files
     it('отображает "Overlay 0 files" если директория overlays/<adapterId>/ не существует', async () => {
       // Не создаём overlays/claude/ — расширение 1a → writtenCount: 0
       const { lastFrame, unmount } = render(
@@ -312,7 +312,7 @@ describe("CLI", () => {
     // (Instructions, Skills, Agents, Overlay).
     it("вычисляет totalWritten как сумму writtenCount всех четырёх шагов включая Overlay", async () => {
       // Создаём overlay-файл
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "extra.txt"), "overlay data");
 
@@ -333,7 +333,7 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Instructions: 1 файл (AGENTS.md → CLAUDE.md)
+      // Instructions: 1 файл (AGLOOM.md → CLAUDE.md)
       // Skills: 1 файл (SKILL.md → .claude/skills/my-skill/SKILL.md)
       // Agents: 1 файл (reviewer.md → .claude/agents/reviewer.md)
       // Overlay: 1 файл (extra.txt → .claude/extra.txt)
@@ -349,7 +349,7 @@ describe("CLI", () => {
     it("завершается с exit code 1 при ошибке только в шаге overlay (остальные шаги успешны)", async () => {
       // Создаём overlay-файл, который невозможно скопировать:
       // целевой путь заблокирован каталогом
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "blocked.txt"), "data");
 
@@ -396,7 +396,7 @@ describe("CLI", () => {
     it("overlay-файл перезаписывает файл, созданный каноническим транспилером", async () => {
       // Skills transpiler создаёт .claude/skills/my-skill/SKILL.md
       // Overlay содержит файл с тем же относительным путём и другим содержимым
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       const overlaySkillDir = path.join(overlayDir, "skills", "my-skill");
       fs.mkdirSync(overlaySkillDir, { recursive: true });
       fs.writeFileSync(

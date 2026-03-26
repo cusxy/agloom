@@ -85,10 +85,10 @@ Error paths (ошибки доступа, невалидная конфигур�
 **Вход:**
 
 - `tmpDir` содержит:
-  - `AGENTS.md` с содержимым `"root instructions"`.
-  - `AGENTS.local.md` с содержимым `"local instructions"`.
-  - `src/module/AGENTS.md` с содержимым `"directory instructions"`.
-  - `src/module/AGENTS.local.md` с содержимым `"directory-local instructions"`.
+  - `AGLOOM.md` с содержимым `"root instructions"`.
+  - `AGLOOM.local.md` с содержимым `"local instructions"`.
+  - `src/module/AGLOOM.md` с содержимым `"directory instructions"`.
+  - `src/module/AGLOOM.local.md` с содержимым `"directory-local instructions"`.
 - Адаптеры: `[ClaudeAdapter]`.
 
 **Поведение:**
@@ -116,15 +116,16 @@ Error paths (ошибки доступа, невалидная конфигур�
 `"CLAUDE.local.md"`, `"src/module/CLAUDE.md"`,
 `"src/module/CLAUDE.local.md"`.
 
-### IT-INSTR-02: Pipeline с OpenCode адаптером (no-op)
+### IT-INSTR-02: Pipeline с OpenCode адаптером
 
-Проверяет, что OpenCode адаптер не создаёт файлов.
+Проверяет, что OpenCode адаптер генерирует `AGENTS.md`
+из канонического `AGLOOM.md`.
 
 **Вход:**
 
 - `tmpDir` содержит:
-  - `AGENTS.md` с содержимым `"root instructions"`.
-  - `AGENTS.local.md` с содержимым `"local instructions"`.
+  - `AGLOOM.md` с содержимым `"root instructions"`.
+  - `AGLOOM.local.md` с содержимым `"local instructions"`.
 - Адаптеры: `[OpenCodeAdapter]`.
 
 **Поведение:**
@@ -133,9 +134,10 @@ Error paths (ошибки доступа, невалидная конфигур�
 2. Вызвать `transpiler.transpile()`.
 3. Вызвать `transpiler.writeResults(results)`.
 4. Проверить, что `writeResult.errors` — пустой массив.
-5. Проверить, что `writeResult.written` — пустой массив.
-6. Проверить, что файл `CLAUDE.md` НЕ существует в `tmpDir`.
-7. Проверить, что файл `CLAUDE.local.md` НЕ существует в `tmpDir`.
+5. Прочитать файл `AGENTS.md` из `tmpDir`.
+6. Проверить, что содержимое файла `AGENTS.md` равно `"root instructions"`.
+7. Проверить, что файл `CLAUDE.md` НЕ существует в `tmpDir`.
+8. Проверить, что файл `CLAUDE.local.md` НЕ существует в `tmpDir`.
 
 **Расширения:**
 
@@ -143,8 +145,8 @@ Error paths (ошибки доступа, невалидная конфигур�
 
 **Результат:**
 
-`writeResult.written` — пустой массив; никакие agent-specific файлы
-не созданы на диске.
+`writeResult.written` содержит `"AGENTS.md"`;
+local и directory-level файлы не создаются (OpenCode их не поддерживает).
 
 ### IT-INSTR-03: Pipeline с обоими адаптерами одновременно
 
@@ -154,7 +156,7 @@ Error paths (ошибки доступа, невалидная конфигур�
 **Вход:**
 
 - `tmpDir` содержит:
-  - `AGENTS.md` с содержимым `"shared instructions"`.
+  - `AGLOOM.md` с содержимым `"shared instructions"`.
 - Адаптеры: `[ClaudeAdapter, OpenCodeAdapter]`.
 
 **Поведение:**
@@ -167,6 +169,8 @@ Error paths (ошибки доступа, невалидная конфигур�
 5. Проверить, что `writeResult.errors` — пустой массив.
 6. Прочитать файл `CLAUDE.md` из `tmpDir`.
 7. Проверить, что содержимое файла `CLAUDE.md` равно `"shared instructions"`.
+8. Прочитать файл `AGENTS.md` из `tmpDir`.
+9. Проверить, что содержимое файла `AGENTS.md` равно `"shared instructions"`.
 
 **Расширения:**
 
@@ -174,8 +178,7 @@ Error paths (ошибки доступа, невалидная конфигур�
 
 **Результат:**
 
-`writeResult.written` содержит `"CLAUDE.md"` (Claude адаптер создал файл);
-OpenCode адаптер не создал файлов.
+`writeResult.written` содержит `"CLAUDE.md"` и `"AGENTS.md"`.
 
 ### IT-INSTR-04: Pipeline при отсутствии канонических файлов
 
@@ -184,8 +187,8 @@ OpenCode адаптер не создал файлов.
 
 **Вход:**
 
-- `tmpDir` — пустая директория (без файлов `AGENTS.md`
-  и `AGENTS.local.md`).
+- `tmpDir` — пустая директория (без файлов `AGLOOM.md`
+  и `AGLOOM.local.md`).
 - Адаптеры: `[ClaudeAdapter]`.
 
 **Поведение:**
@@ -219,8 +222,8 @@ OpenCode адаптер не создал файлов.
 **Вход:**
 
 - `tmpDir` содержит:
-  - `.agents/skills/my-skill/SKILL.md` с содержимым `"---\nname: my-skill\n---\nSkill body"`.
-  - `.agents/skills/my-skill/helpers/util.ts` с содержимым `"export const x = 1;"`.
+  - `.agloom/skills/my-skill/SKILL.md` с содержимым `"---\nname: my-skill\n---\nSkill body"`.
+  - `.agloom/skills/my-skill/helpers/util.ts` с содержимым `"export const x = 1;"`.
 - Адаптеры: `[ClaudeSkillAdapter]`.
 
 **Поведение:**
@@ -231,10 +234,10 @@ OpenCode адаптер не создал файлов.
 4. Проверить, что `writeResult.errors` — пустой массив.
 5. Прочитать файл `.claude/skills/my-skill/SKILL.md` из `tmpDir`.
 6. Проверить, что содержимое файла `.claude/skills/my-skill/SKILL.md`
-   побайтово совпадает с содержимым `.agents/skills/my-skill/SKILL.md`.
+   побайтово совпадает с содержимым `.agloom/skills/my-skill/SKILL.md`.
 7. Прочитать файл `.claude/skills/my-skill/helpers/util.ts` из `tmpDir`.
 8. Проверить, что содержимое файла `.claude/skills/my-skill/helpers/util.ts`
-   побайтово совпадает с содержимым `.agents/skills/my-skill/helpers/util.ts`.
+   побайтово совпадает с содержимым `.agloom/skills/my-skill/helpers/util.ts`.
 
 **Расширения:**
 
@@ -252,8 +255,8 @@ OpenCode адаптер не создал файлов.
 **Вход:**
 
 - `tmpDir` содержит:
-  - `.agents/skills/alpha/SKILL.md` с содержимым `"alpha skill"`.
-  - `.agents/skills/beta/SKILL.md` с содержимым `"beta skill"`.
+  - `.agloom/skills/alpha/SKILL.md` с содержимым `"alpha skill"`.
+  - `.agloom/skills/beta/SKILL.md` с содержимым `"beta skill"`.
 - Адаптеры: `[ClaudeSkillAdapter]`.
 
 **Поведение:**
@@ -264,10 +267,10 @@ OpenCode адаптер не создал файлов.
 4. Проверить, что `writeResult.errors` — пустой массив.
 5. Прочитать файл `.claude/skills/alpha/SKILL.md` из `tmpDir`.
 6. Проверить, что содержимое файла `.claude/skills/alpha/SKILL.md`
-   побайтово совпадает с содержимым `.agents/skills/alpha/SKILL.md`.
+   побайтово совпадает с содержимым `.agloom/skills/alpha/SKILL.md`.
 7. Прочитать файл `.claude/skills/beta/SKILL.md` из `tmpDir`.
 8. Проверить, что содержимое файла `.claude/skills/beta/SKILL.md`
-   побайтово совпадает с содержимым `.agents/skills/beta/SKILL.md`.
+   побайтово совпадает с содержимым `.agloom/skills/beta/SKILL.md`.
 
 **Расширения:**
 
@@ -278,14 +281,15 @@ OpenCode адаптер не создал файлов.
 `writeResult.written` содержит `".claude/skills/alpha/SKILL.md"`
 и `".claude/skills/beta/SKILL.md"`.
 
-### IT-SKILL-03: Pipeline с OpenCode адаптером (no-op)
+### IT-SKILL-03: Pipeline с OpenCode адаптером
 
-Проверяет, что OpenCode адаптер не создаёт файлов для skills.
+Проверяет, что OpenCode адаптер генерирует файлы в `.opencode/skills/`
+из канонического `.agloom/skills/`.
 
 **Вход:**
 
 - `tmpDir` содержит:
-  - `.agents/skills/my-skill/SKILL.md` с содержимым `"skill content"`.
+  - `.agloom/skills/my-skill/SKILL.md` с содержимым `"skill content"`.
 - Адаптеры: `[OpenCodeSkillAdapter]`.
 
 **Поведение:**
@@ -294,8 +298,9 @@ OpenCode адаптер не создал файлов.
 2. Вызвать `transpiler.transpile()`.
 3. Вызвать `transpiler.writeResults(results)`.
 4. Проверить, что `writeResult.errors` — пустой массив.
-5. Проверить, что `writeResult.written` — пустой массив.
-6. Проверить, что каталог `.claude/skills/` НЕ существует в `tmpDir`.
+5. Прочитать файл `.opencode/skills/my-skill/SKILL.md` из `tmpDir`.
+6. Проверить, что содержимое файла `.opencode/skills/my-skill/SKILL.md`
+   побайтово совпадает с содержимым `.agloom/skills/my-skill/SKILL.md`.
 
 **Расширения:**
 
@@ -303,17 +308,16 @@ OpenCode адаптер не создал файлов.
 
 **Результат:**
 
-`writeResult.written` — пустой массив; никакие agent-specific файлы
-не созданы на диске.
+`writeResult.written` содержит `".opencode/skills/my-skill/SKILL.md"`.
 
-### IT-SKILL-04: Pipeline при отсутствии каталога .agents/skills/
+### IT-SKILL-04: Pipeline при отсутствии каталога .agloom/skills/
 
 Проверяет, что pipeline корректно завершается при отсутствии
-каталога `.agents/skills/`.
+каталога `.agloom/skills/`.
 
 **Вход:**
 
-- `tmpDir` — пустая директория (каталог `.agents/skills/`
+- `tmpDir` — пустая директория (каталог `.agloom/skills/`
   не существует).
 - Адаптеры: `[ClaudeSkillAdapter]`.
 
@@ -349,7 +353,7 @@ OpenCode адаптер не создал файлов.
 **Вход:**
 
 - `tmpDir` содержит:
-  - `.agents/agents/reviewer.md` со следующим содержимым:
+  - `.agloom/agents/reviewer.md` со следующим содержимым:
 
     ```
     ---
@@ -411,7 +415,7 @@ OpenCode адаптер не создал файлов.
 **Вход:**
 
 - `tmpDir` содержит:
-  - `.agents/agents/reviewer.md` — тот же файл, что в IT-AGENT-01.
+  - `.agloom/agents/reviewer.md` — тот же файл, что в IT-AGENT-01.
 - Адаптеры: `[OpenCodeAgentAdapter]`.
 
 **Поведение:**
@@ -447,7 +451,7 @@ OpenCode адаптер не создал файлов.
 **Вход:**
 
 - `tmpDir` содержит:
-  - `.agents/agents/reviewer.md` — тот же файл, что в IT-AGENT-01.
+  - `.agloom/agents/reviewer.md` — тот же файл, что в IT-AGENT-01.
 - Адаптеры: `[ClaudeAgentAdapter, OpenCodeAgentAdapter]`.
 
 **Поведение:**
@@ -478,13 +482,13 @@ OpenCode адаптер не создал файлов.
 
 ### IT-AGENT-04: Pipeline с несколькими определениями агентов
 
-Проверяет, что несколько `.md` файлов из `.agents/agents/`
+Проверяет, что несколько `.md` файлов из `.agloom/agents/`
 обрабатываются за один вызов.
 
 **Вход:**
 
 - `tmpDir` содержит:
-  - `.agents/agents/reviewer.md` со следующим содержимым:
+  - `.agloom/agents/reviewer.md` со следующим содержимым:
     ```
     ---
     name: reviewer
@@ -492,7 +496,7 @@ OpenCode адаптер не создал файлов.
     ---
     Reviewer instructions.
     ```
-  - `.agents/agents/coder.md` со следующим содержимым:
+  - `.agloom/agents/coder.md` со следующим содержимым:
     ```
     ---
     name: coder
@@ -522,14 +526,14 @@ OpenCode адаптер не создал файлов.
 `writeResult.written` содержит `".claude/agents/reviewer.md"`
 и `".claude/agents/coder.md"`.
 
-### IT-AGENT-05: Pipeline при отсутствии каталога .agents/agents/
+### IT-AGENT-05: Pipeline при отсутствии каталога .agloom/agents/
 
 Проверяет, что pipeline корректно завершается при отсутствии
-каталога `.agents/agents/`.
+каталога `.agloom/agents/`.
 
 **Вход:**
 
-- `tmpDir` — пустая директория (каталог `.agents/agents/`
+- `tmpDir` — пустая директория (каталог `.agloom/agents/`
   не существует).
 - Адаптеры: `[ClaudeAgentAdapter]`.
 
@@ -559,7 +563,7 @@ OpenCode адаптер не создал файлов.
 **Вход:**
 
 - `tmpDir` содержит:
-  - `.agents/agents/simple.md` со следующим содержимым:
+  - `.agloom/agents/simple.md` со следующим содержимым:
     ```
     ---
     name: simple

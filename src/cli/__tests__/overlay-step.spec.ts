@@ -32,12 +32,12 @@ describe("CLI", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-overlay-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-overlay-"));
     });
 
     afterEach(() => {
       // Восстанавливаем права перед очисткой (для теста 2a)
-      const overlayDir = path.join(tmpDir, ".agents", "overlays");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays");
       try {
         fs.chmodSync(overlayDir, 0o755);
       } catch {
@@ -47,7 +47,7 @@ describe("CLI", () => {
     });
 
     // --- Happy path: шаги 1-7 ---
-    // 1. Определить директорию-источник: <projectRoot>/.agents/overlays/<entry.id>/
+    // 1. Определить директорию-источник: <projectRoot>/.agloom/overlays/<entry.id>/
     // 2. Рекурсивно обнаружить все файлы в директории-источнике
     // 3. Определить относительный путь файла внутри директории-источника
     // 4. Определить целевой путь: <projectRoot>/<entry.targetRoot>/<относительный путь>
@@ -58,7 +58,7 @@ describe("CLI", () => {
       const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
 
       // Создаём overlay-файлы
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(
         path.join(overlayDir, "settings.json"),
@@ -91,7 +91,7 @@ describe("CLI", () => {
     it("сохраняет структуру вложенных подкаталогов при копировании", () => {
       const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
 
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       const nestedDir = path.join(overlayDir, "commands", "sub");
       fs.mkdirSync(nestedDir, { recursive: true });
       fs.writeFileSync(path.join(nestedDir, "deep-file.md"), "deep content");
@@ -121,7 +121,7 @@ describe("CLI", () => {
     it("копирует бинарные файлы побайтово без искажений", () => {
       const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
 
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
 
       // Бинарные данные с null bytes и произвольными байтами
@@ -148,7 +148,7 @@ describe("CLI", () => {
         id: "nonexistent",
         targetRoot: ".claude",
       });
-      // Не создаём директорию .agents/overlays/nonexistent/
+      // Не создаём директорию .agloom/overlays/nonexistent/
 
       const outcome = runOverlayStep({ entry, projectRoot: tmpDir });
 
@@ -169,7 +169,7 @@ describe("CLI", () => {
           targetRoot: ".claude",
         });
 
-        const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+        const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
         fs.mkdirSync(overlayDir, { recursive: true });
         fs.writeFileSync(path.join(overlayDir, "file.txt"), "content");
 
@@ -193,7 +193,7 @@ describe("CLI", () => {
     it("добавляет ошибку в errors и продолжает с оставшимися файлами при ошибке создания промежуточного каталога", () => {
       const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
 
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       // Файл в подкаталоге — потребует создания промежуточного каталога
       const subDir = path.join(overlayDir, "blocked-dir");
       fs.mkdirSync(subDir, { recursive: true });
@@ -230,7 +230,7 @@ describe("CLI", () => {
     it("добавляет ошибку в errors и продолжает с оставшимися файлами при ошибке копирования", () => {
       const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
 
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "fail-file.txt"), "will fail");
       fs.writeFileSync(path.join(overlayDir, "ok-file.txt"), "will succeed");

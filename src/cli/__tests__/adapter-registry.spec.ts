@@ -61,7 +61,7 @@ describe("CLI", () => {
       const opencode = adapterRegistry.find((e) => e.id === "opencode");
       expect(opencode).toBeDefined();
       expect(opencode!.targetRoot).toBe(".opencode");
-      expect(opencode!.targetFiles).toEqual([]);
+      expect(opencode!.targetFiles).toEqual(["AGENTS.md"]);
     });
   });
 });

@@ -29,7 +29,7 @@ LNAI — CLI-инструмент (TypeScript), определяющий кон�
 инструкциями.
 
 **C3. Покрытие агентов**: Claude Code, Codex CLI, Cursor, Gemini CLI, OpenCode,
-Windsurf, GitHub Copilot (7+ агентов). Все целевые агенты Agent SDS покрыты.
+Windsurf, GitHub Copilot (7+ агентов). Все целевые агенты Agloom покрыты.
 
 **C4. Расширяемость**: заявлена plugin-архитектура для добавления новых
 инструментов. Зрелость plugin API не установлена.

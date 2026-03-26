@@ -1,6 +1,6 @@
 ---
 type: research
-summary: Возможности OpenCode / KiloCode для Agent SDS
+summary: Возможности OpenCode / KiloCode для Agloom
 description: >
   Детальный анализ project-level конфигурации OpenCode и KiloCode CLI
   по критериям C1–C8. Часть исследования agent-capabilities-map.

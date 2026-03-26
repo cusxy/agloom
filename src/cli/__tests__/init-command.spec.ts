@@ -43,7 +43,7 @@ describe("CLI", () => {
     let originalExitCode: number | undefined;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-init-cmd-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-init-cmd-"));
       originalExitCode = process.exitCode;
     });
 
@@ -56,7 +56,7 @@ describe("CLI", () => {
     // --- Happy path: шаги 1–10 ---
     // 1. Распарсить аргументы --adapter и --force.
     // 2–3. Resolve Adapter (запись адаптера + projectRoot).
-    // 4. Определить целевую директорию .agents/overlays/<entry.id>/.
+    // 4. Определить целевую директорию .agloom/overlays/<entry.id>/.
     // 5. Проверить, что целевая директория не содержит файлов.
     // 6. Создать целевую директорию и промежуточные каталоги.
     // 7. Рекурсивно скопировать файлы из <projectRoot>/<entry.targetRoot>/.
@@ -96,15 +96,15 @@ describe("CLI", () => {
       // ✓ с количеством скопированных файлов и путём
       expect(output).toContain("✓");
       expect(output).toMatch(
-        /2\s+files copied to \.agents\/overlays\/claude\//,
+        /2\s+files copied to \.agloom\/overlays\/claude\//,
       );
       // "Done."
       expect(output).toContain("Done.");
       // § Exit codes: 0 — успех
       expect(process.exitCode).toBeUndefined();
 
-      // Побочный эффект: файлы скопированы в .agents/overlays/claude/
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      // Побочный эффект: файлы скопированы в .agloom/overlays/claude/
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       const overlaySettings = fs.readFileSync(
         path.join(overlayDir, "settings.json"),
         "utf-8",
@@ -150,7 +150,7 @@ describe("CLI", () => {
 
     // --- Resolve Adapter расширение 1a (через Команду init): неизвестный адаптер ---
     // Шаги 2–3 ссылаются на § Процедура Resolve Adapter (adapter-registry-ext.md).
-    // Расширение 1a: "Unknown adapter: {value}. Run 'agent-sds adapters' to see available adapters."
+    // Расширение 1a: "Unknown adapter: {value}. Run 'agloom adapters' to see available adapters."
     // Exit code 1.
     it('отображает "Unknown adapter" и завершается с exit code 1 при неизвестном adapterId', async () => {
       const { lastFrame, unmount } = render(
@@ -173,18 +173,18 @@ describe("CLI", () => {
 
       expect(output).toContain("Unknown adapter");
       expect(output).toContain("nonexistent");
-      expect(output).toContain("agent-sds adapters");
+      expect(output).toContain("agloom adapters");
       expect(process.exitCode).toBe(1);
 
       unmount();
     });
 
     // --- Расширение 5a: целевая директория содержит файлы, --force не указан ---
-    // → отобразить ".agents/overlays/{entry.id}/ already exists. Use --force to overwrite.";
+    // → отобразить ".agloom/overlays/{entry.id}/ already exists. Use --force to overwrite.";
     // exit code 1.
     it('отображает "already exists. Use --force to overwrite." и exit code 1, если целевая директория содержит файлы без --force', async () => {
       // Создаём существующие файлы в целевой директории overlays/claude/
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "existing.txt"), "existing");
 
@@ -212,7 +212,7 @@ describe("CLI", () => {
       const output = lastFrame()!;
 
       // Сообщение о необходимости --force
-      expect(output).toContain(".agents/overlays/claude/ already exists");
+      expect(output).toContain(".agloom/overlays/claude/ already exists");
       expect(output).toContain("--force");
       // Exit code 1
       expect(process.exitCode).toBe(1);
@@ -230,7 +230,7 @@ describe("CLI", () => {
     // --- Расширение 5b: --force указан → перезаписать существующие файлы ---
     it("при --force перезаписывает существующие файлы в целевой директории", async () => {
       // Существующие файлы в overlays/claude/
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "settings.json"), '{"old": true}');
 
@@ -285,8 +285,8 @@ describe("CLI", () => {
         fs.mkdirSync(claudeDir, { recursive: true });
         fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
 
-        // Создаём .agents/overlays/ read-only — init не сможет создать claude/ внутри
-        const overlaysDir = path.join(tmpDir, ".agents", "overlays");
+        // Создаём .agloom/overlays/ read-only — init не сможет создать claude/ внутри
+        const overlaysDir = path.join(tmpDir, ".agloom", "overlays");
         fs.mkdirSync(overlaysDir, { recursive: true });
         fs.chmodSync(overlaysDir, 0o555);
 
@@ -397,7 +397,7 @@ describe("CLI", () => {
         expect(process.exitCode).toBe(1);
 
         // Побочный эффект: ok-file.txt скопирован
-        const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+        const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
         expect(fs.existsSync(path.join(overlayDir, "ok-file.txt"))).toBe(true);
 
         unmount();
@@ -441,7 +441,7 @@ describe("CLI", () => {
       expect(process.exitCode).toBeUndefined();
 
       // Побочный эффект: структура каталогов сохранена в overlays/claude/
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       expect(
         fs.readFileSync(path.join(overlayDir, "root-file.txt"), "utf-8"),
       ).toBe("root");
@@ -463,7 +463,7 @@ describe("CLI", () => {
     // шаг 5 проходит, процесс продолжается к шагу 6 и далее.
     it("при существующей пустой целевой директории продолжает копирование без ошибки", async () => {
       // Создаём пустую целевую директорию
-      const overlayDir = path.join(tmpDir, ".agents", "overlays", "claude");
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
 
       // Создаём файлы в targetRoot (.claude/)
@@ -503,7 +503,7 @@ describe("CLI", () => {
     });
 
     // --- § Справка: init --help ---
-    // Команда ДОЛЖНА поддерживать agent-sds init --help.
+    // Команда ДОЛЖНА поддерживать agloom init --help.
     // Вывод содержит Usage, --adapter, --force, --help.
     it("отображает справку при вызове init --help", async () => {
       const { lastFrame, unmount } = render(
@@ -525,7 +525,7 @@ describe("CLI", () => {
       const output = lastFrame()!;
 
       // § Справка init --help: Usage, --adapter, --force, --help
-      expect(output).toContain("agent-sds init");
+      expect(output).toContain("agloom init");
       expect(output).toContain("--adapter");
       expect(output).toContain("--force");
       expect(output).toContain("--help");
@@ -533,10 +533,10 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- § Справка: init в agent-sds --help ---
-    // Команда init ДОЛЖНА быть добавлена в вывод agent-sds --help:
-    // "  init         Import existing agent configs into .agents/overlays/"
-    it('содержит "init" с описанием "Import existing agent configs into .agents/overlays/" в выводе --help', async () => {
+    // --- § Справка: init в agloom --help ---
+    // Команда init ДОЛЖНА быть добавлена в вывод agloom --help:
+    // "  init         Import existing agent configs into .agloom/overlays/"
+    it('содержит "init" с описанием "Import existing agent configs into .agloom/overlays/" в выводе --help', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["--help"],
@@ -557,7 +557,7 @@ describe("CLI", () => {
 
       expect(output).toContain("init");
       expect(output).toContain(
-        "Import existing agent configs into .agents/overlays/",
+        "Import existing agent configs into .agloom/overlays/",
       );
 
       unmount();

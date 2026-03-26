@@ -16,11 +16,11 @@ function makeCanonicalFile(
 describe("ClaudeAdapter", () => {
   describe("transpile", () => {
     // --- Happy path: шаги 1–4 — генерация для всех типов файлов ---
-    it('генерирует CLAUDE.md из AGENTS.md в корне проекта (тип "root")', () => {
+    it('генерирует CLAUDE.md из AGLOOM.md в корне проекта (тип "root")', () => {
       const adapter = new ClaudeAdapter();
 
       const files = adapter.transpile([
-        makeCanonicalFile("AGENTS.md", "root", "General instructions."),
+        makeCanonicalFile("AGLOOM.md", "root", "General instructions."),
       ]);
 
       expect(files).toHaveLength(1);
@@ -28,13 +28,13 @@ describe("ClaudeAdapter", () => {
       expect(files[0].content).toBe("General instructions.");
     });
 
-    // --- Трансформация: шаг 2 — замена AGENTS.md → CLAUDE.md для directory ---
-    it('генерирует CLAUDE.md в подпапке из AGENTS.md в подпапке (тип "directory")', () => {
+    // --- Трансформация: шаг 2 — замена AGLOOM.md → CLAUDE.md для directory ---
+    it('генерирует CLAUDE.md в подпапке из AGLOOM.md в подпапке (тип "directory")', () => {
       const adapter = new ClaudeAdapter();
 
       const files = adapter.transpile([
         makeCanonicalFile(
-          "src/module/AGENTS.md",
+          "src/module/AGLOOM.md",
           "directory",
           "Module instructions.",
         ),
@@ -45,12 +45,12 @@ describe("ClaudeAdapter", () => {
       expect(files[0].content).toBe("Module instructions.");
     });
 
-    // --- Трансформация: шаг 3 — замена AGENTS.local.md → CLAUDE.local.md для local ---
-    it('генерирует CLAUDE.local.md из AGENTS.local.md в корне (тип "local")', () => {
+    // --- Трансформация: шаг 3 — замена AGLOOM.local.md → CLAUDE.local.md для local ---
+    it('генерирует CLAUDE.local.md из AGLOOM.local.md в корне (тип "local")', () => {
       const adapter = new ClaudeAdapter();
 
       const files = adapter.transpile([
-        makeCanonicalFile("AGENTS.local.md", "local", "Personal settings."),
+        makeCanonicalFile("AGLOOM.local.md", "local", "Personal settings."),
       ]);
 
       expect(files).toHaveLength(1);
@@ -58,13 +58,13 @@ describe("ClaudeAdapter", () => {
       expect(files[0].content).toBe("Personal settings.");
     });
 
-    // --- Трансформация: шаг 3 — замена AGENTS.local.md → CLAUDE.local.md для directory-local ---
-    it('генерирует CLAUDE.local.md в подпапке из AGENTS.local.md в подпапке (тип "directory-local")', () => {
+    // --- Трансформация: шаг 3 — замена AGLOOM.local.md → CLAUDE.local.md для directory-local ---
+    it('генерирует CLAUDE.local.md в подпапке из AGLOOM.local.md в подпапке (тип "directory-local")', () => {
       const adapter = new ClaudeAdapter();
 
       const files = adapter.transpile([
         makeCanonicalFile(
-          "src/feature/AGENTS.local.md",
+          "src/feature/AGLOOM.local.md",
           "directory-local",
           "Feature local settings.",
         ),
@@ -80,11 +80,11 @@ describe("ClaudeAdapter", () => {
       const adapter = new ClaudeAdapter();
 
       const files = adapter.transpile([
-        makeCanonicalFile("AGENTS.md", "root", "Root."),
-        makeCanonicalFile("src/AGENTS.md", "directory", "Dir."),
-        makeCanonicalFile("AGENTS.local.md", "local", "Local."),
+        makeCanonicalFile("AGLOOM.md", "root", "Root."),
+        makeCanonicalFile("src/AGLOOM.md", "directory", "Dir."),
+        makeCanonicalFile("AGLOOM.local.md", "local", "Local."),
         makeCanonicalFile(
-          "src/AGENTS.local.md",
+          "src/AGLOOM.local.md",
           "directory-local",
           "Dir local.",
         ),
@@ -105,7 +105,7 @@ describe("ClaudeAdapter", () => {
         "# Instructions\n\nMultiline content with **markdown**.";
 
       const files = adapter.transpile([
-        makeCanonicalFile("AGENTS.md", "root", originalContent),
+        makeCanonicalFile("AGLOOM.md", "root", originalContent),
       ]);
 
       expect(files[0].content).toBe(originalContent);

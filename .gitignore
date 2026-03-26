@@ -5,8 +5,18 @@ node_modules/
 dist/
 out/
 
-# Claude Code
+# Claude Code generated
 .claude/
+CLAUDE.md
+CLAUDE.local.md
+
+# OpenCode generated
+.opencode/
+opencode.json
+AGENTS.md
+
+# Agloom generated (local instructions)
+AGLOOM.local.md
 
 # IDE
 .idea/
@@ -18,16 +28,6 @@ out/
 # OS
 .DS_Store
 Thumbs.db
-
-# Claude Code generated
-CLAUDE.md
-CLAUDE.local.md
-
-# OpenCode generated
-opencode.json
-
-# Agent SDS generated (local instructions)
-AGENTS.local.md
 
 # Lock files (pnpm is primary)
 package-lock.json

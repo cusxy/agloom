@@ -5,7 +5,7 @@
  * agentId: "opencode"
  *
  * Правила генерации:
- * - .agents/agents/<name>.md → .opencode/agents/<name>.md
+ * - .agloom/agents/<name>.md → .opencode/agents/<name>.md
  */
 
 import { transformContent } from "../transform-content.js";
@@ -25,9 +25,9 @@ export class OpenCodeAgentAdapter implements AgentAdapter {
       // Шаг 1: трансформация контента для agentId = "opencode"
       const content = transformContent(def.rawContent, "opencode");
 
-      // Шаг 2: замена префикса .agents/agents/ на .opencode/agents/
+      // Шаг 2: замена префикса .agloom/agents/ на .opencode/agents/
       const relativePath = def.relativePath.replace(
-        ".agents/agents/",
+        ".agloom/agents/",
         ".opencode/agents/",
       );
 

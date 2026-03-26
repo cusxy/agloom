@@ -38,6 +38,6 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     skills: new OpenCodeSkillAdapter(),
     agents: new OpenCodeAgentAdapter(),
     targetRoot: ".opencode",
-    targetFiles: [],
+    targetFiles: ["AGENTS.md"],
   },
 ];

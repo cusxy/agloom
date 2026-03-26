@@ -55,7 +55,7 @@ describe("CLI", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-clean-files-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-clean-files-"));
     });
 
     afterEach(() => {

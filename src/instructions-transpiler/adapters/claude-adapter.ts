@@ -5,10 +5,10 @@
  * agentId: "claude"
  *
  * Правила генерации:
- * - AGENTS.md (root)              → CLAUDE.md (root)
- * - AGENTS.md (directory)         → CLAUDE.md (same directory)
- * - AGENTS.local.md (root)        → CLAUDE.local.md (root)
- * - AGENTS.local.md (directory)   → CLAUDE.local.md (same directory)
+ * - AGLOOM.md (root)              → CLAUDE.md (root)
+ * - AGLOOM.md (directory)         → CLAUDE.md (same directory)
+ * - AGLOOM.local.md (root)        → CLAUDE.local.md (root)
+ * - AGLOOM.local.md (directory)   → CLAUDE.local.md (same directory)
  */
 
 import type { Adapter, CanonicalFile, OutputFile } from "../types.js";
@@ -32,14 +32,14 @@ export class ClaudeAdapter implements Adapter {
       // Шаг 2-3: заменить имя файла
       let relativePath: string;
       if (file.type === "local" || file.type === "directory-local") {
-        // Шаг 3: AGENTS.local.md → CLAUDE.local.md
+        // Шаг 3: AGLOOM.local.md → CLAUDE.local.md
         relativePath = file.relativePath.replace(
-          "AGENTS.local.md",
+          "AGLOOM.local.md",
           "CLAUDE.local.md",
         );
       } else {
-        // Шаг 2: AGENTS.md → CLAUDE.md (для root и directory)
-        relativePath = file.relativePath.replace("AGENTS.md", "CLAUDE.md");
+        // Шаг 2: AGLOOM.md → CLAUDE.md (для root и directory)
+        relativePath = file.relativePath.replace("AGLOOM.md", "CLAUDE.md");
       }
 
       // Шаг 4: сформировать OutputFile с file.content

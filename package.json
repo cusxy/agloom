@@ -1,10 +1,10 @@
 {
-  "name": "agent-sds",
+  "name": "agloom",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "agent-sds": "./dist/cli/index.js"
+    "agloom": "./dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc",

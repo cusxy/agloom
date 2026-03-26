@@ -17,7 +17,7 @@ describe("SkillsTranspiler", () => {
 
     beforeEach(() => {
       tmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "sds-skills-integration-"),
+        path.join(os.tmpdir(), "agl-skills-integration-"),
       );
     });
 
@@ -28,7 +28,7 @@ describe("SkillsTranspiler", () => {
     // --- IT-SKILL-01: Pipeline с Claude адаптером ---
     it("skill-пакеты обнаруживаются, транспилируются и копируются в целевой каталог Claude", () => {
       // Вход: создать каноническую структуру
-      const skillDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
       fs.writeFileSync(
         path.join(skillDir, "SKILL.md"),
@@ -86,8 +86,8 @@ describe("SkillsTranspiler", () => {
     // --- IT-SKILL-02: Pipeline с несколькими skill-пакетами ---
     it("несколько skill-пакетов обрабатываются за один вызов", () => {
       // Вход: создать два skill-пакета
-      const alphaDir = path.join(tmpDir, ".agents", "skills", "alpha");
-      const betaDir = path.join(tmpDir, ".agents", "skills", "beta");
+      const alphaDir = path.join(tmpDir, ".agloom", "skills", "alpha");
+      const betaDir = path.join(tmpDir, ".agloom", "skills", "beta");
       fs.mkdirSync(alphaDir, { recursive: true });
       fs.mkdirSync(betaDir, { recursive: true });
       fs.writeFileSync(path.join(alphaDir, "SKILL.md"), "alpha skill");
@@ -123,10 +123,10 @@ describe("SkillsTranspiler", () => {
       expect(writeResult.written).toContain(".claude/skills/beta/SKILL.md");
     });
 
-    // --- IT-SKILL-03: Pipeline с OpenCode адаптером (no-op) ---
-    it("OpenCode адаптер не создаёт файлов для skills", () => {
+    // --- IT-SKILL-03: Pipeline с OpenCode адаптером ---
+    it("OpenCode адаптер генерирует файлы в .opencode/skills/ из канонического .agloom/skills/", () => {
       // Вход: создать skill-пакет
-      const skillDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
       fs.writeFileSync(path.join(skillDir, "SKILL.md"), "skill content");
 
@@ -141,15 +141,19 @@ describe("SkillsTranspiler", () => {
       // Шаг 4: writeResult.errors — пустой массив
       expect(writeResult.errors).toHaveLength(0);
 
-      // Шаг 5: writeResult.written — пустой массив
-      expect(writeResult.written).toHaveLength(0);
+      // Шаг 5: .opencode/skills/my-skill/SKILL.md побайтово совпадает
+      const sourceContent = fs.readFileSync(path.join(skillDir, "SKILL.md"));
+      const targetContent = fs.readFileSync(
+        path.join(tmpDir, ".opencode", "skills", "my-skill", "SKILL.md"),
+      );
+      expect(targetContent.equals(sourceContent)).toBe(true);
 
-      // Шаг 6: каталог .claude/skills/ НЕ существует
-      expect(fs.existsSync(path.join(tmpDir, ".claude", "skills"))).toBe(false);
+      // Результат: writeResult.written содержит целевой файл
+      expect(writeResult.written).toContain(".opencode/skills/my-skill/SKILL.md");
     });
 
-    // --- IT-SKILL-04: Pipeline при отсутствии каталога .agents/skills/ ---
-    it("корректно завершается при отсутствии каталога .agents/skills/", () => {
+    // --- IT-SKILL-04: Pipeline при отсутствии каталога .agloom/skills/ ---
+    it("корректно завершается при отсутствии каталога .agloom/skills/", () => {
       // Вход: tmpDir — пустая директория
 
       // Поведение: шаги 1–2

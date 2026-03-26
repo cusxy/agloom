@@ -86,7 +86,7 @@ function HelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
       <Text>
-        agent-sds — CLI for transpiling canonical Agent SDS configurations into
+        agloom — CLI for transpiling canonical Agloom configurations into
         agent-specific files.
       </Text>
       <Text> </Text>
@@ -99,7 +99,7 @@ function HelpView(): React.ReactElement {
       </Text>
       <Text>
         {"  "}init {"        "}Import existing agent configs into
-        .agents/overlays/
+        .agloom/overlays/
       </Text>
       <Text>
         {"  "}adapters {"    "}List available adapters
@@ -119,7 +119,7 @@ function HelpView(): React.ReactElement {
 function TranspileHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agent-sds transpile --adapter &lt;adapterId&gt;</Text>
+      <Text>Usage: agloom transpile --adapter &lt;adapterId&gt;</Text>
       <Text> </Text>
       <Text>
         Transpile canonical configs for all transpilers using the specified
@@ -137,7 +137,7 @@ function TranspileHelpView(): React.ReactElement {
 function AdaptersHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agent-sds adapters</Text>
+      <Text>Usage: agloom adapters</Text>
       <Text> </Text>
       <Text>List all available adapters from the registry.</Text>
     </Box>
@@ -163,7 +163,7 @@ function AdaptersView(): React.ReactElement {
 function CleanHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agent-sds clean --adapter &lt;adapterId&gt;</Text>
+      <Text>Usage: agloom clean --adapter &lt;adapterId&gt;</Text>
       <Text> </Text>
       <Text>
         Remove generated agent-specific files for the specified adapter.
@@ -239,9 +239,9 @@ function CleanView({
 function InitHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agent-sds init --adapter &lt;adapterId&gt; [--force]</Text>
+      <Text>Usage: agloom init --adapter &lt;adapterId&gt; [--force]</Text>
       <Text> </Text>
-      <Text>Import existing agent configs into .agents/overlays/</Text>
+      <Text>Import existing agent configs into .agloom/overlays/</Text>
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
@@ -300,7 +300,7 @@ function InitView({
         <Text>
           {"  "}
           <Text color="green">✓</Text> {outcome.copiedCount} files copied to
-          .agents/overlays/{adapterId}/
+          .agloom/overlays/{adapterId}/
         </Text>
       )}
       <Text> </Text>
@@ -478,7 +478,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       process.exitCode = 1;
       return (
         <Text>
-          Error: --adapter is required. Usage: agent-sds init --adapter
+          Error: --adapter is required. Usage: agloom init --adapter
           &lt;adapterId&gt;
         </Text>
       );
@@ -490,7 +490,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       process.exitCode = 1;
       return (
         <Text>
-          Unknown adapter: {parsed.adapter}. Run &apos;agent-sds adapters&apos;
+          Unknown adapter: {parsed.adapter}. Run &apos;agloom adapters&apos;
           to see available adapters.
         </Text>
       );
@@ -512,7 +512,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       process.exitCode = 1;
       return (
         <Text>
-          Error: --adapter is required. Usage: agent-sds clean --adapter
+          Error: --adapter is required. Usage: agloom clean --adapter
           &lt;adapterId&gt;
         </Text>
       );
@@ -524,7 +524,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       process.exitCode = 1;
       return (
         <Text>
-          Unknown adapter: {parsed.adapter}. Run &apos;agent-sds adapters&apos;
+          Unknown adapter: {parsed.adapter}. Run &apos;agloom adapters&apos;
           to see available adapters.
         </Text>
       );
@@ -540,7 +540,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       process.exitCode = 1;
       return (
         <Text>
-          Error: --adapter is required. Usage: agent-sds transpile --adapter
+          Error: --adapter is required. Usage: agloom transpile --adapter
           &lt;adapterId&gt;
         </Text>
       );
@@ -552,7 +552,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       process.exitCode = 1;
       return (
         <Text>
-          Unknown adapter: {parsed.adapter}. Run &apos;agent-sds adapters&apos;
+          Unknown adapter: {parsed.adapter}. Run &apos;agloom adapters&apos;
           to see available adapters.
         </Text>
       );

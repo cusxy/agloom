@@ -1,8 +1,8 @@
 ---
-summary: Skills Transpiler — библиотека транспиляции skills из .agents/skills/ в agent-specific каталоги
+summary: Skills Transpiler — библиотека транспиляции skills из .agloom/skills/ в agent-specific каталоги
 description: >
   Библиотека для транспиляции skill-пакетов из канонического каталога
-  .agents/skills/ в agent-specific каталоги. Копирует директории целиком
+  .agloom/skills/ в agent-specific каталоги. Копирует директории целиком
   без валидации и трансформации содержимого. Расширяется через адаптеры.
 type: spec
 status: implemented
@@ -23,7 +23,7 @@ maps_to:
 в соответствии с [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
 Библиотека для транспиляции skill-пакетов из канонического каталога
-`.agents/skills/` в agent-specific каталоги. Канонический каталог является
+`.agloom/skills/` в agent-specific каталоги. Канонический каталог является
 единственным источником истины (single source of truth); agent-specific файлы —
 производные артефакты, генерируемые при каждом запуске транспиляции.
 
@@ -33,7 +33,7 @@ maps_to:
 
 ## Канонический формат
 
-Skill — директория (пакет) в `.agents/skills/<name>/`, содержащая файл
+Skill — директория (пакет) в `.agloom/skills/<name>/`, содержащая файл
 `SKILL.md` и произвольное количество вспомогательных файлов. Формат `SKILL.md`:
 YAML frontmatter + Markdown body.
 
@@ -53,9 +53,9 @@ YAML frontmatter + Markdown body.
 
 - `name` (string) — имя skill (имя директории).
 - `directoryPath` (string) — путь к директории skill относительно `projectRoot`
-  (например, `".agents/skills/my-skill"`).
+  (например, `".agloom/skills/my-skill"`).
 - `files` (array\<string>) — пути файлов пакета относительно `projectRoot`
-  (например, `[".agents/skills/my-skill/SKILL.md", ".agents/skills/my-skill/helpers/util.ts"]`).
+  (например, `[".agloom/skills/my-skill/SKILL.md", ".agloom/skills/my-skill/helpers/util.ts"]`).
 
 ### SkillOutputFile
 
@@ -143,8 +143,8 @@ YAML frontmatter + Markdown body.
 
 **Поведение:**
 
-1. Проверить наличие каталога `.agents/skills/` в `projectRoot`.
-2. Получить список прямых подкаталогов `.agents/skills/`.
+1. Проверить наличие каталога `.agloom/skills/` в `projectRoot`.
+2. Получить список прямых подкаталогов `.agloom/skills/`.
 3. Для каждого подкаталога проверить наличие файла `SKILL.md`.
 4. Для каждого подкаталога, содержащего `SKILL.md`, рекурсивно получить
    список всех файлов в подкаталоге.
@@ -152,11 +152,11 @@ YAML frontmatter + Markdown body.
 
 **Расширения:**
 
-1a. Каталог `.agents/skills/` не существует → вернуть пустой массив
+1a. Каталог `.agloom/skills/` не существует → вернуть пустой массив
 `SkillPackage[]` (не является ошибкой).
 
-2a. Ошибка доступа к каталогу `.agents/skills/` (EACCES) →
-`SkillDiscoverError("Failed to scan directory .agents/skills/: {причина}")`.
+2a. Ошибка доступа к каталогу `.agloom/skills/` (EACCES) →
+`SkillDiscoverError("Failed to scan directory .agloom/skills/: {причина}")`.
 
 3a. Подкаталог не содержит `SKILL.md` → пропустить подкаталог
 (не включать в результат, не является ошибкой).
@@ -244,11 +244,11 @@ YAML frontmatter + Markdown body.
 Для каждого обнаруженного skill-пакета адаптер генерирует соответствующие
 файлы по следующим правилам:
 
-| Исходный путь                        | Целевой путь                          | Условие |
-| ------------------------------------ | ------------------------------------- | ------- |
-| `.agents/skills/<name>/<любой файл>` | `.claude/skills/<name>/<тот же файл>` | Всегда  |
+| Исходный путь                         | Целевой путь                          | Условие |
+| ------------------------------------- | ------------------------------------- | ------- |
+| `.agloom/skills/<name>/<любой файл>` | `.claude/skills/<name>/<тот же файл>` | Всегда  |
 
-Адаптер копирует все файлы skill-пакета, заменяя префикс `.agents/skills/`
+Адаптер копирует все файлы skill-пакета, заменяя префикс `.agloom/skills/`
 на `.claude/skills/`. Структура вложенных каталогов внутри skill-пакета
 сохраняется.
 
@@ -264,7 +264,7 @@ YAML frontmatter + Markdown body.
 **Поведение:**
 
 1. Для каждого пакета из `packages` получить список файлов из `package.files`.
-2. Для каждого файла заменить префикс `.agents/skills/` на `.claude/skills/`
+2. Для каждого файла заменить префикс `.agloom/skills/` на `.claude/skills/`
    в пути, сформировав `relativePath`.
 3. Сформировать `SkillOutputFile` с вычисленным `relativePath` и исходным
    путём файла в качестве `sourcePath`.
@@ -283,15 +283,18 @@ YAML frontmatter + Markdown body.
 
 ### Правила генерации
 
-OpenCode нативно читает `.agents/skills/`
+OpenCode нативно читает `.opencode/skills/`
 (см. `docs/researches/agent-capabilities-map/agents/opencode.md` § C4. Навыки).
-Адаптер не генерирует файлов. Адаптер описан явно для консистентности
-архитектуры и обеспечения корректной работы при передаче `agentId: "opencode"`
-в конфигурацию транспилера.
+Адаптер генерирует файлы в `.opencode/skills/` из канонического каталога
+`.agloom/skills/` для обеспечения совместимости.
 
-| Исходный путь                        | Целевой путь        | Условие                                   |
-| ------------------------------------ | ------------------- | ----------------------------------------- |
-| `.agents/skills/<name>/<любой файл>` | _(не генерируется)_ | OpenCode читает `.agents/skills/` нативно |
+| Исходный путь                         | Целевой путь                             | Условие |
+| ------------------------------------- | ---------------------------------------- | ------- |
+| `.agloom/skills/<name>/<любой файл>` | `.opencode/skills/<name>/<тот же файл>` | Всегда  |
+
+Адаптер копирует все файлы skill-пакета, заменяя префикс `.agloom/skills/`
+на `.opencode/skills/`. Структура вложенных каталогов внутри skill-пакета
+сохраняется.
 
 ### transpile
 
@@ -304,8 +307,11 @@ OpenCode нативно читает `.agents/skills/`
 
 **Поведение:**
 
-1. Вернуть пустой массив (OpenCode читает `.agents/skills/` нативно;
-   адаптер не генерирует файлов).
+1. Для каждого пакета из `packages` получить список файлов из `package.files`.
+2. Для каждого файла заменить префикс `.agloom/skills/` на `.opencode/skills/`
+   в пути, сформировав `relativePath`.
+3. Сформировать `SkillOutputFile` с вычисленным `relativePath` и исходным
+   путём файла в качестве `sourcePath`.
 
 **Расширения:**
 
@@ -313,7 +319,7 @@ OpenCode нативно читает `.agents/skills/`
 
 **Результат:**
 
-`SkillOutputFile[]` (всегда пустой массив).
+`SkillOutputFile[]`.
 
 ## Запись результатов
 

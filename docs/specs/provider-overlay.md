@@ -2,7 +2,7 @@
 summary: Provider overlay — копирование agent-специфичных файлов из overlays/
 description: >
   Шаг provider overlay при транспиляции: копирование файлов из
-  .agents/overlays/<adapterId>/ в target-директорию адаптера
+  .agloom/overlays/<adapterId>/ в target-директорию адаптера
   без трансформации содержимого.
 type: spec
 status: implemented
@@ -27,11 +27,11 @@ Overlay позволяет пользователю размещать agent-с�
 
 ## Структура директории overlays/
 
-Директория `.agents/overlays/` содержит per-provider файлы,
+Директория `.agloom/overlays/` содержит per-provider файлы,
 организованные по идентификатору адаптера:
 
 ```text
-.agents/
+.agloom/
   overlays/
     claude/
       settings.json
@@ -41,7 +41,7 @@ Overlay позволяет пользователю размещать agent-с�
       opencode.json
 ```
 
-Файлы в `.agents/overlays/<adapterId>/` копируются
+Файлы в `.agloom/overlays/<adapterId>/` копируются
 в `<entry.targetRoot>/` при транспиляции.
 
 ## Расширение TranspilerStepOutcome
@@ -65,7 +65,7 @@ overlay-файлов в целевую директорию адаптера.
 **Поведение:**
 
 1. Определить директорию-источник как
-   `<projectRoot>/.agents/overlays/<entry.id>/`.
+   `<projectRoot>/.agloom/overlays/<entry.id>/`.
 2. Рекурсивно обнаружить все файлы в директории-источнике.
 3. Для каждого обнаруженного файла определить относительный путь
    файла внутри директории-источника.
@@ -134,7 +134,7 @@ Overlay-файлы копируются ПОСЛЕ всех транспилер
   ✓ Overlay       4 files
 ```
 
-Если `.agents/overlays/<adapterId>/` не существует:
+Если `.agloom/overlays/<adapterId>/` не существует:
 
 ```text
   ✓ Overlay       0 files

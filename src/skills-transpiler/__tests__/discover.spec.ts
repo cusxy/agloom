@@ -23,7 +23,7 @@ describe("SkillsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-skills-discover-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-skills-discover-"));
     });
 
     afterEach(() => {
@@ -31,13 +31,13 @@ describe("SkillsTranspiler", () => {
     });
 
     // --- Happy path: шаги 1–5 — обнаружение skill-пакетов ---
-    it("обнаруживает skill-пакеты: директории с SKILL.md в .agents/skills/", () => {
+    it("обнаруживает skill-пакеты: директории с SKILL.md в .agloom/skills/", () => {
       // Arrange: создаём два skill-пакета
-      const skill1Dir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const skill1Dir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skill1Dir, { recursive: true });
       fs.writeFileSync(path.join(skill1Dir, "SKILL.md"), "# My Skill");
 
-      const skill2Dir = path.join(tmpDir, ".agents", "skills", "another-skill");
+      const skill2Dir = path.join(tmpDir, ".agloom", "skills", "another-skill");
       fs.mkdirSync(skill2Dir, { recursive: true });
       fs.writeFileSync(path.join(skill2Dir, "SKILL.md"), "# Another Skill");
 
@@ -59,7 +59,7 @@ describe("SkillsTranspiler", () => {
 
     // --- Трансформация: шаг 2 — имя skill = имя директории ---
     it("использует имя директории как name skill-пакета", () => {
-      const skillDir = path.join(tmpDir, ".agents", "skills", "code-formatter");
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "code-formatter");
       fs.mkdirSync(skillDir, { recursive: true });
       fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# Formatter");
 
@@ -76,7 +76,7 @@ describe("SkillsTranspiler", () => {
 
     // --- Трансформация: шаг 2 — directoryPath относительно projectRoot ---
     it("формирует directoryPath относительно projectRoot", () => {
-      const skillDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
       fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# My Skill");
 
@@ -88,12 +88,12 @@ describe("SkillsTranspiler", () => {
       const packages = transpiler.discover();
 
       expect(packages).toHaveLength(1);
-      expect(packages[0].directoryPath).toBe(".agents/skills/my-skill");
+      expect(packages[0].directoryPath).toBe(".agloom/skills/my-skill");
     });
 
     // --- Трансформация: шаг 4 — рекурсивный сбор всех файлов пакета ---
     it("рекурсивно собирает все файлы skill-пакета в массив files", () => {
-      const skillDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       const helpersDir = path.join(skillDir, "helpers");
       fs.mkdirSync(helpersDir, { recursive: true });
       fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# My Skill");
@@ -111,14 +111,14 @@ describe("SkillsTranspiler", () => {
       expect(packages[0].files).toHaveLength(3);
 
       const filePaths = packages[0].files.sort();
-      expect(filePaths).toContain(".agents/skills/my-skill/SKILL.md");
-      expect(filePaths).toContain(".agents/skills/my-skill/config.json");
-      expect(filePaths).toContain(".agents/skills/my-skill/helpers/util.ts");
+      expect(filePaths).toContain(".agloom/skills/my-skill/SKILL.md");
+      expect(filePaths).toContain(".agloom/skills/my-skill/config.json");
+      expect(filePaths).toContain(".agloom/skills/my-skill/helpers/util.ts");
     });
 
-    // --- Расширение 1a: каталог .agents/skills/ не существует → пустой массив ---
-    it("возвращает пустой массив, если каталог .agents/skills/ не существует", () => {
-      // tmpDir пуст — нет .agents/skills/
+    // --- Расширение 1a: каталог .agloom/skills/ не существует → пустой массив ---
+    it("возвращает пустой массив, если каталог .agloom/skills/ не существует", () => {
+      // tmpDir пуст — нет .agloom/skills/
 
       const transpiler = createSkillsTranspiler({
         projectRoot: tmpDir,
@@ -130,9 +130,9 @@ describe("SkillsTranspiler", () => {
       expect(packages).toEqual([]);
     });
 
-    // --- Расширение 2a: ошибка доступа к .agents/skills/ (EACCES) ---
-    it("выбрасывает SkillDiscoverError при ошибке доступа к каталогу .agents/skills/", () => {
-      const skillsDir = path.join(tmpDir, ".agents", "skills");
+    // --- Расширение 2a: ошибка доступа к .agloom/skills/ (EACCES) ---
+    it("выбрасывает SkillDiscoverError при ошибке доступа к каталогу .agloom/skills/", () => {
+      const skillsDir = path.join(tmpDir, ".agloom", "skills");
       fs.mkdirSync(skillsDir, { recursive: true });
       fs.chmodSync(skillsDir, 0o000);
 
@@ -144,7 +144,7 @@ describe("SkillsTranspiler", () => {
       try {
         expect(() => transpiler.discover()).toThrow(SkillDiscoverError);
         expect(() => transpiler.discover()).toThrow(
-          /Failed to scan directory \.agents\/skills\//,
+          /Failed to scan directory \.agloom\/skills\//,
         );
       } finally {
         fs.chmodSync(skillsDir, 0o755);
@@ -153,7 +153,7 @@ describe("SkillsTranspiler", () => {
 
     // --- Расширение 3a: подкаталог не содержит SKILL.md → пропустить ---
     it("пропускает подкаталоги без SKILL.md", () => {
-      const skillsDir = path.join(tmpDir, ".agents", "skills");
+      const skillsDir = path.join(tmpDir, ".agloom", "skills");
 
       // Skill-пакет с SKILL.md
       const validSkill = path.join(skillsDir, "valid-skill");
@@ -178,7 +178,7 @@ describe("SkillsTranspiler", () => {
 
     // --- Расширение 4a: ошибка доступа при рекурсивном сканировании файлов ---
     it("выбрасывает SkillDiscoverError при ошибке доступа при рекурсивном сканировании подкаталога", () => {
-      const skillDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       const restrictedSubDir = path.join(skillDir, "restricted");
       fs.mkdirSync(restrictedSubDir, { recursive: true });
       fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# My Skill");
@@ -201,7 +201,7 @@ describe("SkillsTranspiler", () => {
 
     // --- Happy path: пакет только с SKILL.md (без вспомогательных файлов) ---
     it("обнаруживает skill-пакет, содержащий только SKILL.md", () => {
-      const skillDir = path.join(tmpDir, ".agents", "skills", "minimal");
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "minimal");
       fs.mkdirSync(skillDir, { recursive: true });
       fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# Minimal");
 
@@ -214,7 +214,7 @@ describe("SkillsTranspiler", () => {
 
       expect(packages).toHaveLength(1);
       expect(packages[0].name).toBe("minimal");
-      expect(packages[0].files).toEqual([".agents/skills/minimal/SKILL.md"]);
+      expect(packages[0].files).toEqual([".agloom/skills/minimal/SKILL.md"]);
     });
   });
 });

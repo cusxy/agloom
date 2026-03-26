@@ -34,7 +34,7 @@ skills, instructions, prompts, agents, hooks, plugins, MCP-серверы. По�
 Structured config (JSON <-> TOML) трансформация не документирована.
 
 **C3. Покрытие агентов**: GitHub Copilot, Claude Code, Cursor, OpenCode (4 агента).
-Не покрывает Codex CLI и Gemini CLI — два из четырёх целевых агентов Agent SDS.
+Не покрывает Codex CLI и Gemini CLI — два из четырёх целевых агентов Agloom.
 
 **C4. Расширяемость**: package registry (`apm_modules/`) с транзитивным
 dependency resolution. Новые агенты требуют изменения в core (формальный
@@ -69,9 +69,9 @@ Lockfile обеспечивает воспроизводимость.
 
 ## Минусы
 
-- Не покрывает Codex CLI и Gemini CLI — два из четырёх целевых агентов Agent SDS.
+- Не покрывает Codex CLI и Gemini CLI — два из четырёх целевых агентов Agloom.
 - Зависимость от Python (`pip install apm-cli`) — несовместимость с
-  TypeScript-экосистемой Agent SDS.
+  TypeScript-экосистемой Agloom.
 - Поддерживается одним разработчиком, несмотря на Microsoft org.
 - Модель package manager (установка пакетов из registry) отличается от модели
   transpiler (трансляция единого формата) — APM управляет **распределением
@@ -83,8 +83,8 @@ Lockfile обеспечивает воспроизводимость.
 APM оправдан для команд, нуждающихся в dependency management для агентных
 конфигураций (переиспользование skills и instructions между проектами как
 npm-пакетов). Менее подходит для трансляции project-specific конфигурации
-между форматами агентов. Комплементарен, но не заменяет Agent SDS: APM
-решает задачу distribution пакетов, Agent SDS — трансляции канонического
+между форматами агентов. Комплементарен, но не заменяет Agloom: APM
+решает задачу distribution пакетов, Agloom — трансляции канонического
 формата.
 
 ## Источники

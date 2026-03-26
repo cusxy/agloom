@@ -9,7 +9,7 @@ import type { AgentDefinition } from "../types.js";
 function makeDefinition(name: string, rawContent: string): AgentDefinition {
   return {
     name,
-    relativePath: `.agents/agents/${name}.md`,
+    relativePath: `.agloom/agents/${name}.md`,
     rawContent,
   };
 }
@@ -23,7 +23,7 @@ describe("ClaudeAgentAdapter", () => {
     });
 
     // --- Happy path: шаги 1–3 — трансформация и замена пути ---
-    it("трансформирует содержимое для claude и заменяет .agents/agents/ на .claude/agents/", () => {
+    it("трансформирует содержимое для claude и заменяет .agloom/agents/ на .claude/agents/", () => {
       const adapter = new ClaudeAgentAdapter();
 
       const rawContent = [
@@ -61,7 +61,7 @@ describe("ClaudeAgentAdapter", () => {
     });
 
     // --- Трансформация: шаг 2 — замена префикса пути ---
-    it("заменяет префикс .agents/agents/ на .claude/agents/ в relativePath", () => {
+    it("заменяет префикс .agloom/agents/ на .claude/agents/ в relativePath", () => {
       const adapter = new ClaudeAgentAdapter();
 
       const files = adapter.transpile([

@@ -16,7 +16,7 @@ describe("InstructionsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-instr-integration-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-instr-integration-"));
     });
 
     afterEach(() => {
@@ -26,18 +26,18 @@ describe("InstructionsTranspiler", () => {
     // --- IT-INSTR-01: Pipeline с Claude адаптером ---
     it("транспилирует все четыре типа канонических файлов для Claude адаптера", () => {
       // Вход: создать каноническую структуру
-      fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "root instructions");
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "root instructions");
       fs.writeFileSync(
-        path.join(tmpDir, "AGENTS.local.md"),
+        path.join(tmpDir, "AGLOOM.local.md"),
         "local instructions",
       );
       fs.mkdirSync(path.join(tmpDir, "src", "module"), { recursive: true });
       fs.writeFileSync(
-        path.join(tmpDir, "src", "module", "AGENTS.md"),
+        path.join(tmpDir, "src", "module", "AGLOOM.md"),
         "directory instructions",
       );
       fs.writeFileSync(
-        path.join(tmpDir, "src", "module", "AGENTS.local.md"),
+        path.join(tmpDir, "src", "module", "AGLOOM.local.md"),
         "directory-local instructions",
       );
 
@@ -87,12 +87,12 @@ describe("InstructionsTranspiler", () => {
       expect(writeResult.written).toContain("src/module/CLAUDE.local.md");
     });
 
-    // --- IT-INSTR-02: Pipeline с OpenCode адаптером (no-op) ---
-    it("OpenCode адаптер не создаёт файлов", () => {
+    // --- IT-INSTR-02: Pipeline с OpenCode адаптером ---
+    it("OpenCode адаптер генерирует AGENTS.md из канонического AGLOOM.md", () => {
       // Вход: создать канонические файлы
-      fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "root instructions");
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "root instructions");
       fs.writeFileSync(
-        path.join(tmpDir, "AGENTS.local.md"),
+        path.join(tmpDir, "AGLOOM.local.md"),
         "local instructions",
       );
 
@@ -107,18 +107,25 @@ describe("InstructionsTranspiler", () => {
       // Шаг 4: writeResult.errors — пустой массив
       expect(writeResult.errors).toHaveLength(0);
 
-      // Шаг 5: writeResult.written — пустой массив
-      expect(writeResult.written).toHaveLength(0);
+      // Шаг 5: AGENTS.md создан из AGLOOM.md
+      const agentsContent = fs.readFileSync(
+        path.join(tmpDir, "AGENTS.md"),
+        "utf-8",
+      );
+      expect(agentsContent).toBe("root instructions");
 
-      // Шаги 6–7: файлы CLAUDE.md и CLAUDE.local.md НЕ существуют
+      // Шаги 7–8: CLAUDE.md и CLAUDE.local.md НЕ существуют
       expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(false);
       expect(fs.existsSync(path.join(tmpDir, "CLAUDE.local.md"))).toBe(false);
+
+      // Результат: writeResult.written содержит AGENTS.md
+      expect(writeResult.written).toContain("AGENTS.md");
     });
 
     // --- IT-INSTR-03: Pipeline с обоими адаптерами одновременно ---
     it("оба адаптера обрабатываются за один вызов transpile() и writeResults()", () => {
       // Вход: создать канонический файл
-      fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "shared instructions");
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "shared instructions");
 
       // Поведение: шаги 1–2
       const transpiler = createInstructionsTranspiler({
@@ -144,8 +151,16 @@ describe("InstructionsTranspiler", () => {
       );
       expect(claudeContent).toBe("shared instructions");
 
-      // Результат: writeResult.written содержит CLAUDE.md
+      // Шаги 8–9: AGENTS.md создан с правильным содержимым
+      const agentsContent = fs.readFileSync(
+        path.join(tmpDir, "AGENTS.md"),
+        "utf-8",
+      );
+      expect(agentsContent).toBe("shared instructions");
+
+      // Результат: writeResult.written содержит CLAUDE.md и AGENTS.md
       expect(writeResult.written).toContain("CLAUDE.md");
+      expect(writeResult.written).toContain("AGENTS.md");
     });
 
     // --- IT-INSTR-04: Pipeline при отсутствии канонических файлов ---

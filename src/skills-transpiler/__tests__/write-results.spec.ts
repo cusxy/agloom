@@ -20,7 +20,7 @@ describe("SkillsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-skills-write-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-skills-write-"));
     });
 
     afterEach(() => {
@@ -30,7 +30,7 @@ describe("SkillsTranspiler", () => {
     // --- Happy path: шаги 1–3 — побайтовое копирование файлов ---
     it("побайтово копирует файлы из sourcePath в relativePath и возвращает пути записанных файлов", () => {
       // Arrange: создаём исходный файл
-      const sourceDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
       const sourceContent = "# My Skill\n\nDescription with Unicode: Привет 🚀";
       fs.writeFileSync(path.join(sourceDir, "SKILL.md"), sourceContent);
@@ -47,7 +47,7 @@ describe("SkillsTranspiler", () => {
           files: [
             {
               relativePath: ".claude/skills/my-skill/SKILL.md",
-              sourcePath: ".agents/skills/my-skill/SKILL.md",
+              sourcePath: ".agloom/skills/my-skill/SKILL.md",
             },
           ],
           errors: [],
@@ -69,7 +69,7 @@ describe("SkillsTranspiler", () => {
     // --- Трансформация: шаг 2 — побайтовое копирование бинарных файлов ---
     it("побайтово копирует бинарные файлы (не повреждает данные)", () => {
       // Arrange: создаём бинарный файл
-      const sourceDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
       // Создаём буфер с произвольными байтами (включая null bytes)
       const binaryContent = Buffer.from([
@@ -89,7 +89,7 @@ describe("SkillsTranspiler", () => {
           files: [
             {
               relativePath: ".claude/skills/my-skill/image.png",
-              sourcePath: ".agents/skills/my-skill/image.png",
+              sourcePath: ".agloom/skills/my-skill/image.png",
             },
           ],
           errors: [],
@@ -112,7 +112,7 @@ describe("SkillsTranspiler", () => {
       // Arrange
       const sourceDir = path.join(
         tmpDir,
-        ".agents",
+        ".agloom",
         "skills",
         "my-skill",
         "deep",
@@ -133,7 +133,7 @@ describe("SkillsTranspiler", () => {
           files: [
             {
               relativePath: ".claude/skills/my-skill/deep/nested/file.ts",
-              sourcePath: ".agents/skills/my-skill/deep/nested/file.ts",
+              sourcePath: ".agloom/skills/my-skill/deep/nested/file.ts",
             },
           ],
           errors: [],
@@ -163,7 +163,7 @@ describe("SkillsTranspiler", () => {
     // --- Расширение 1a: SkillTranspileResult содержит ошибки → пропуск с сообщением ---
     it('пропускает запись файлов адаптера с ошибками и создаёт SkillWriteError "Skipped {agentId}: transpile errors present"', () => {
       // Arrange: создаём исходный файл (не должен быть записан)
-      const sourceDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
       fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "# My Skill");
 
@@ -179,7 +179,7 @@ describe("SkillsTranspiler", () => {
           files: [
             {
               relativePath: ".claude/skills/my-skill/SKILL.md",
-              sourcePath: ".agents/skills/my-skill/SKILL.md",
+              sourcePath: ".agloom/skills/my-skill/SKILL.md",
             },
           ],
           errors: [
@@ -213,7 +213,7 @@ describe("SkillsTranspiler", () => {
     // --- Расширение 1a: смешанный сценарий — один адаптер с ошибками, другой без ---
     it("пропускает файлы адаптера с ошибками, но записывает файлы успешного адаптера", () => {
       // Arrange
-      const sourceDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
       fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "# My Skill");
 
@@ -229,7 +229,7 @@ describe("SkillsTranspiler", () => {
           files: [
             {
               relativePath: ".failing/skills/my-skill/SKILL.md",
-              sourcePath: ".agents/skills/my-skill/SKILL.md",
+              sourcePath: ".agloom/skills/my-skill/SKILL.md",
             },
           ],
           errors: [
@@ -245,7 +245,7 @@ describe("SkillsTranspiler", () => {
           files: [
             {
               relativePath: ".claude/skills/my-skill/SKILL.md",
-              sourcePath: ".agents/skills/my-skill/SKILL.md",
+              sourcePath: ".agloom/skills/my-skill/SKILL.md",
             },
           ],
           errors: [],
@@ -285,7 +285,7 @@ describe("SkillsTranspiler", () => {
           files: [
             {
               relativePath: ".claude/skills/missing/SKILL.md",
-              sourcePath: ".agents/skills/missing/SKILL.md",
+              sourcePath: ".agloom/skills/missing/SKILL.md",
             },
           ],
           errors: [],
@@ -296,14 +296,14 @@ describe("SkillsTranspiler", () => {
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(SkillWriteError);
       expect(writeResult.errors[0].message).toMatch(
-        /Failed to read source \.agents\/skills\/missing\/SKILL\.md/,
+        /Failed to read source \.agloom\/skills\/missing\/SKILL\.md/,
       );
     });
 
     // --- Расширение 2b: ошибка записи целевого файла → SkillWriteError ---
     it("возвращает SkillWriteError при ошибке записи целевого файла", () => {
       // Arrange: создаём исходный файл
-      const sourceDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
       fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "# My Skill");
 
@@ -322,7 +322,7 @@ describe("SkillsTranspiler", () => {
           files: [
             {
               relativePath: ".claude/skills/my-skill/SKILL.md",
-              sourcePath: ".agents/skills/my-skill/SKILL.md",
+              sourcePath: ".agloom/skills/my-skill/SKILL.md",
             },
           ],
           errors: [],
@@ -340,7 +340,7 @@ describe("SkillsTranspiler", () => {
     // --- Happy path: запись результатов нескольких адаптеров ---
     it("записывает файлы от нескольких адаптеров", () => {
       // Arrange
-      const sourceDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
       fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "# My Skill");
 
@@ -356,7 +356,7 @@ describe("SkillsTranspiler", () => {
           files: [
             {
               relativePath: ".claude/skills/my-skill/SKILL.md",
-              sourcePath: ".agents/skills/my-skill/SKILL.md",
+              sourcePath: ".agloom/skills/my-skill/SKILL.md",
             },
           ],
           errors: [],
@@ -366,7 +366,7 @@ describe("SkillsTranspiler", () => {
           files: [
             {
               relativePath: ".other/skills/my-skill/SKILL.md",
-              sourcePath: ".agents/skills/my-skill/SKILL.md",
+              sourcePath: ".agloom/skills/my-skill/SKILL.md",
             },
           ],
           errors: [],

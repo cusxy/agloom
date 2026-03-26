@@ -1,8 +1,8 @@
 ---
-summary: Instructions Transpiler — библиотека транспиляции AGENTS.md в agent-specific файлы инструкций
+summary: Instructions Transpiler — библиотека транспиляции AGLOOM.md в agent-specific файлы инструкций
 description: >
-  Библиотека для транспиляции канонических файлов AGENTS.md и AGENTS.local.md
-  (AAIF-стандарт) в agent-specific файлы инструкций. Поддерживает root, directory,
+  Библиотека для транспиляции канонических файлов AGLOOM.md и AGLOOM.local.md
+  в agent-specific файлы инструкций. Поддерживает root, directory,
   local и directory-local канонические файлы. Расширяется через адаптеры.
 type: spec
 status: implemented
@@ -23,8 +23,8 @@ maps_to:
 «НЕ СЛЕДУЕТ», «МОЖЕТ» и «НЕОБЯЗАТЕЛЬНО» в этом документе толкуются
 в соответствии с [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
-Библиотека для транспиляции канонического файла `AGENTS.md`
-(стандарт [AAIF](https://agents.md/)) в agent-specific файлы инструкций.
+Библиотека для транспиляции канонического файла `AGLOOM.md`
+в agent-specific файлы инструкций.
 Канонический формат является единственным источником истины (single source of truth);
 agent-specific файлы — производные артефакты, генерируемые при каждом запуске
 транспиляции.
@@ -33,10 +33,10 @@ agent-specific файлы — производные артефакты, ген�
 
 Библиотека оперирует четырьмя видами канонических файлов:
 
-- `AGENTS.md` в корне проекта — общие инструкции (git-tracked).
-- `AGENTS.md` в подпапках проекта — directory-level инструкции (git-tracked).
-- `AGENTS.local.md` в корне проекта — личные инструкции (всегда .gitignore).
-- `AGENTS.local.md` в подпапках проекта — directory-level личные инструкции
+- `AGLOOM.md` в корне проекта — общие инструкции (git-tracked).
+- `AGLOOM.md` в подпапках проекта — directory-level инструкции (git-tracked).
+- `AGLOOM.local.md` в корне проекта — личные инструкции (всегда .gitignore).
+- `AGLOOM.local.md` в подпапках проекта — directory-level личные инструкции
   (всегда .gitignore).
 
 ## Инициализация
@@ -125,10 +125,10 @@ agent-specific файлы — производные артефакты, ген�
 
 **Поведение:**
 
-1. Проверить наличие `AGENTS.md` в `projectRoot`.
-2. Проверить наличие `AGENTS.local.md` в `projectRoot`.
-3. Рекурсивно найти все файлы `AGENTS.md` в подпапках `projectRoot`.
-4. Рекурсивно найти все файлы `AGENTS.local.md` в подпапках `projectRoot`.
+1. Проверить наличие `AGLOOM.md` в `projectRoot`.
+2. Проверить наличие `AGLOOM.local.md` в `projectRoot`.
+3. Рекурсивно найти все файлы `AGLOOM.md` в подпапках `projectRoot`.
+4. Рекурсивно найти все файлы `AGLOOM.local.md` в подпапках `projectRoot`.
 5. Исключить из результатов поиска каталоги, перечисленные в `.gitignore`
    (если файл `.gitignore` существует в `projectRoot`).
 6. Исключить из результатов поиска каталог `node_modules`.
@@ -155,10 +155,10 @@ agent-specific файлы — производные артефакты, ген�
 
 - `relativePath` (string) — путь файла относительно `projectRoot`.
 - `type` (string: "root" | "directory" | "local" | "directory-local") — тип файла.
-  - `"root"` — `AGENTS.md` в корне проекта.
-  - `"directory"` — `AGENTS.md` в подпапке проекта.
-  - `"local"` — `AGENTS.local.md` в корне проекта.
-  - `"directory-local"` — `AGENTS.local.md` в подпапке проекта.
+  - `"root"` — `AGLOOM.md` в корне проекта.
+  - `"directory"` — `AGLOOM.md` в подпапке проекта.
+  - `"local"` — `AGLOOM.local.md` в корне проекта.
+  - `"directory-local"` — `AGLOOM.local.md` в подпапке проекта.
 - `content` (string) — содержимое файла (raw Markdown).
 
 ## Интерфейс адаптера
@@ -201,12 +201,12 @@ agent-specific файлы — производные артефакты, ген�
 Для каждого канонического файла адаптер генерирует соответствующий
 agent-specific файл по следующим правилам:
 
-| Канонический файл            | Тип             | Генерируемый файл                  | Условие |
-| ---------------------------- | --------------- | ---------------------------------- | ------- |
-| `AGENTS.md` (корень)         | root            | `CLAUDE.md` (корень)               | Всегда  |
-| `AGENTS.md` (подпапка)       | directory       | `CLAUDE.md` (та же подпапка)       | Всегда  |
-| `AGENTS.local.md` (корень)   | local           | `CLAUDE.local.md` (корень)         | Всегда  |
-| `AGENTS.local.md` (подпапка) | directory-local | `CLAUDE.local.md` (та же подпапка) | Всегда  |
+| Канонический файл             | Тип             | Генерируемый файл                  | Условие |
+| ----------------------------- | --------------- | ---------------------------------- | ------- |
+| `AGLOOM.md` (корень)         | root            | `CLAUDE.md` (корень)               | Всегда  |
+| `AGLOOM.md` (подпапка)       | directory       | `CLAUDE.md` (та же подпапка)       | Всегда  |
+| `AGLOOM.local.md` (корень)   | local           | `CLAUDE.local.md` (корень)         | Всегда  |
+| `AGLOOM.local.md` (подпапка) | directory-local | `CLAUDE.local.md` (та же подпапка) | Всегда  |
 
 ### transpile
 
@@ -220,9 +220,9 @@ agent-specific файл по следующим правилам:
 
 1. Отфильтровать `files`, оставив файлы типов `"root"`, `"directory"`,
    `"local"` и `"directory-local"`.
-2. Для файла типа `"root"` или `"directory"` — заменить `AGENTS.md` на `CLAUDE.md`
+2. Для файла типа `"root"` или `"directory"` — заменить `AGLOOM.md` на `CLAUDE.md`
    в `relativePath`.
-3. Для файла типа `"local"` или `"directory-local"` — заменить `AGENTS.local.md`
+3. Для файла типа `"local"` или `"directory-local"` — заменить `AGLOOM.local.md`
    на `CLAUDE.local.md` в `relativePath`.
 4. Сформировать `OutputFile` с изменённым `relativePath` и `file.content`.
 
@@ -240,16 +240,17 @@ agent-specific файл по следующим правилам:
 
 ### Правила генерации
 
-OpenCode нативно читает `AGENTS.md`. OpenCode не поддерживает directory-level
-инструкции, local инструкции и directory-local инструкции. Адаптер не генерирует
-файлов.
+OpenCode нативно читает `AGENTS.md`. Адаптер генерирует `AGENTS.md`
+из канонического `AGLOOM.md` для обеспечения совместимости.
+OpenCode не поддерживает directory-level
+инструкции, local инструкции и directory-local инструкции.
 
-| Канонический файл            | Тип             | Генерируемый файл   | Условие                                             |
-| ---------------------------- | --------------- | ------------------- | --------------------------------------------------- |
-| `AGENTS.md` (корень)         | root            | _(не генерируется)_ | OpenCode читает `AGENTS.md` нативно                 |
-| `AGENTS.md` (подпапка)       | directory       | _(не генерируется)_ | OpenCode не поддерживает directory-level инструкции |
-| `AGENTS.local.md` (корень)   | local           | _(не генерируется)_ | OpenCode не поддерживает local инструкции           |
-| `AGENTS.local.md` (подпапка) | directory-local | _(не генерируется)_ | OpenCode не поддерживает directory-local инструкции |
+| Канонический файл             | Тип             | Генерируемый файл   | Условие                                            |
+| ----------------------------- | --------------- | ------------------- | -------------------------------------------------- |
+| `AGLOOM.md` (корень)         | root            | `AGENTS.md` (корень) | Всегда                                             |
+| `AGLOOM.md` (подпапка)       | directory       | _(не генерируется)_ | OpenCode не поддерживает directory-level инструкции |
+| `AGLOOM.local.md` (корень)   | local           | _(не генерируется)_ | OpenCode не поддерживает local инструкции           |
+| `AGLOOM.local.md` (подпапка) | directory-local | _(не генерируется)_ | OpenCode не поддерживает directory-local инструкции |
 
 ### transpile
 
@@ -261,8 +262,10 @@ OpenCode нативно читает `AGENTS.md`. OpenCode не поддержи
 
 **Поведение:**
 
-1. Вернуть пустой массив (OpenCode читает `AGENTS.md` нативно;
-   адаптер не генерирует файлов).
+1. Отфильтровать `files`, оставив только файлы типа `"root"`.
+2. Для каждого файла типа `"root"` — заменить `AGLOOM.md` на `AGENTS.md`
+   в `relativePath`.
+3. Сформировать `OutputFile` с изменённым `relativePath` и `file.content`.
 
 **Расширения:**
 
@@ -270,7 +273,7 @@ OpenCode нативно читает `AGENTS.md`. OpenCode не поддержи
 
 **Результат:**
 
-`OutputFile[]` (всегда пустой массив).
+`OutputFile[]`.
 
 ## Запись результатов
 

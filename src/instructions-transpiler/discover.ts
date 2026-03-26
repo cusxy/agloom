@@ -17,27 +17,27 @@ export function discover(projectRoot: string): CanonicalFile[] {
   // Загружаем .gitignore паттерны (если файл существует)
   const gitignorePatterns = loadGitignorePatterns(projectRoot);
 
-  // Шаг 1: проверить наличие AGENTS.md в projectRoot
-  const rootAgents = path.join(projectRoot, "AGENTS.md");
+  // Шаг 1: проверить наличие AGLOOM.md в projectRoot
+  const rootAgents = path.join(projectRoot, "AGLOOM.md");
   if (fs.existsSync(rootAgents)) {
     files.push({
-      relativePath: "AGENTS.md",
+      relativePath: "AGLOOM.md",
       type: "root",
-      content: readFileSafe(rootAgents, "AGENTS.md"),
+      content: readFileSafe(rootAgents, "AGLOOM.md"),
     });
   }
 
-  // Шаг 2: проверить наличие AGENTS.local.md в projectRoot
-  const localAgents = path.join(projectRoot, "AGENTS.local.md");
+  // Шаг 2: проверить наличие AGLOOM.local.md в projectRoot
+  const localAgents = path.join(projectRoot, "AGLOOM.local.md");
   if (fs.existsSync(localAgents)) {
     files.push({
-      relativePath: "AGENTS.local.md",
+      relativePath: "AGLOOM.local.md",
       type: "local",
-      content: readFileSafe(localAgents, "AGENTS.local.md"),
+      content: readFileSafe(localAgents, "AGLOOM.local.md"),
     });
   }
 
-  // Шаг 3: рекурсивно найти все AGENTS.md в подпапках
+  // Шаг 3: рекурсивно найти все AGLOOM.md в подпапках
   const subdirFiles = scanDirectory(
     projectRoot,
     projectRoot,
@@ -100,7 +100,7 @@ function isExcludedDir(
 }
 
 /**
- * Рекурсивно сканирует каталог на наличие AGENTS.md файлов в подпапках.
+ * Рекурсивно сканирует каталог на наличие AGLOOM.md файлов в подпапках.
  */
 function scanDirectory(
   currentDir: string,
@@ -131,10 +131,10 @@ function scanDirectory(
       continue;
     }
 
-    // Check for AGENTS.md in this subdirectory
-    const agentsFile = path.join(dirPath, "AGENTS.md");
+    // Check for AGLOOM.md in this subdirectory
+    const agentsFile = path.join(dirPath, "AGLOOM.md");
     if (fs.existsSync(agentsFile)) {
-      const relativePath = path.join(relativeDirPath, "AGENTS.md");
+      const relativePath = path.join(relativeDirPath, "AGLOOM.md");
       files.push({
         relativePath,
         type: "directory",
@@ -142,10 +142,10 @@ function scanDirectory(
       });
     }
 
-    // Check for AGENTS.local.md in this subdirectory
-    const agentsLocalFile = path.join(dirPath, "AGENTS.local.md");
+    // Check for AGLOOM.local.md in this subdirectory
+    const agentsLocalFile = path.join(dirPath, "AGLOOM.local.md");
     if (fs.existsSync(agentsLocalFile)) {
-      const relativePath = path.join(relativeDirPath, "AGENTS.local.md");
+      const relativePath = path.join(relativeDirPath, "AGLOOM.local.md");
       files.push({
         relativePath,
         type: "directory-local",

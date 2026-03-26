@@ -19,11 +19,11 @@ describe("CLI", () => {
 
     // --- Расширение 1a: запись не найдена ---
     // 1a. Запись не найдена → отобразить сообщение
-    // "Unknown adapter: {value}. Run 'agent-sds adapters' to see available adapters.";
+    // "Unknown adapter: {value}. Run 'agloom adapters' to see available adapters.";
     // exit code 1.
     it('выбрасывает ошибку с сообщением "Unknown adapter: {value}..." при несуществующем adapterId', () => {
       expect(() => resolveAdapter("nonexistent")).toThrow(
-        "Unknown adapter: nonexistent. Run 'agent-sds adapters' to see available adapters.",
+        "Unknown adapter: nonexistent. Run 'agloom adapters' to see available adapters.",
       );
     });
   });

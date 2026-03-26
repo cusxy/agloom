@@ -5,7 +5,7 @@
  * agentId: "claude"
  *
  * Правила генерации:
- * - .agents/agents/<name>.md → .claude/agents/<name>.md
+ * - .agloom/agents/<name>.md → .claude/agents/<name>.md
  */
 
 import { transformContent } from "../transform-content.js";
@@ -25,9 +25,9 @@ export class ClaudeAgentAdapter implements AgentAdapter {
       // Шаг 1: трансформация контента для agentId = "claude"
       const content = transformContent(def.rawContent, "claude");
 
-      // Шаг 2: замена префикса .agents/agents/ на .claude/agents/
+      // Шаг 2: замена префикса .agloom/agents/ на .claude/agents/
       const relativePath = def.relativePath.replace(
-        ".agents/agents/",
+        ".agloom/agents/",
         ".claude/agents/",
       );
 

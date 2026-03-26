@@ -52,7 +52,7 @@ agentsfolder spec помечена «TODO: fix references» в нескольк�
 
 **C8. Каноническая модель**: наиболее проработанная формальная модель
 среди найденных решений (agentsfolder). Profiles, scopes, overlays,
-deterministic resolution — архитектурно наиболее близка к Agent SDS.
+deterministic resolution — архитектурно наиболее близка к Agloom.
 
 ## Плюсы
 
@@ -61,7 +61,7 @@ deterministic resolution — архитектурно наиболее близ�
 - Формальная спецификация (agentsfolder AGENTS-1) — единственное решение
   со спецификацией канонической модели.
 - `.agents/skills/` уже поддерживается несколькими агентами.
-- Архитектурно наиболее близка к видению Agent SDS.
+- Архитектурно наиболее близка к видению Agloom.
 
 ## Минусы
 
@@ -69,7 +69,7 @@ deterministic resolution — архитектурно наиболее близ�
   минимальная adoption.
 - Нет корпоративной поддержки (не под AAIF, в отличие от AGENTS.md и SKILL.md).
 - agentsfolder CLI написан на Rust — несовместим с TypeScript-экосистемой
-  Agent SDS.
+  Agloom.
 - Ни один агент не поддерживает `.agents/` как единый каталог нативно —
   агенты читают собственные каталоги (`.claude/`, `.codex/`, `.gemini/`,
   `.opencode/`).

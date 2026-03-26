@@ -12,22 +12,22 @@ import type { AgentDefinition } from "./types.js";
  * Обнаруживает все определения агентов в проекте.
  */
 export function discover(projectRoot: string): AgentDefinition[] {
-  const agentsDir = path.join(projectRoot, ".agents", "agents");
+  const agentsDir = path.join(projectRoot, ".agloom", "agents");
 
-  // Шаг 1: проверить наличие каталога .agents/agents/
+  // Шаг 1: проверить наличие каталога .agloom/agents/
   // Расширение 1a: каталог не существует → пустой массив
   if (!fs.existsSync(agentsDir)) {
     return [];
   }
 
-  // Шаг 2: получить список прямых дочерних файлов каталога .agents/agents/
+  // Шаг 2: получить список прямых дочерних файлов каталога .agloom/agents/
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(agentsDir, { withFileTypes: true });
   } catch (err) {
     // Расширение 2a: ошибка доступа к каталогу (EACCES)
     throw new AgentDiscoverError(
-      `Failed to scan directory .agents/agents/: ${(err as Error).message}`,
+      `Failed to scan directory .agloom/agents/: ${(err as Error).message}`,
     );
   }
 
@@ -45,7 +45,7 @@ export function discover(projectRoot: string): AgentDefinition[] {
     }
 
     // Шаг 4: прочитать содержимое каждого .md файла
-    const relativePath = path.join(".agents", "agents", entry.name);
+    const relativePath = path.join(".agloom", "agents", entry.name);
     const absolutePath = path.join(agentsDir, entry.name);
 
     let content: string;

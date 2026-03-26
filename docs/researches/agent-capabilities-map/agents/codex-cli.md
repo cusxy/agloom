@@ -1,6 +1,6 @@
 ---
 type: research
-summary: Возможности Codex CLI для Agent SDS
+summary: Возможности Codex CLI для Agloom
 description: >
   Детальный анализ project-level конфигурации Codex CLI (OpenAI)
   по критериям C1–C8. Часть исследования agent-capabilities-map.

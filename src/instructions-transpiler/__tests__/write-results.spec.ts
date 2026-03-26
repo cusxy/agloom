@@ -20,7 +20,7 @@ describe("InstructionsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-write-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-write-"));
     });
 
     afterEach(() => {

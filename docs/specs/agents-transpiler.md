@@ -1,8 +1,8 @@
 ---
-summary: Agents Transpiler — библиотека транспиляции agent-определений из .agents/agents/ в agent-specific каталоги
+summary: Agents Transpiler — библиотека транспиляции agent-определений из .agloom/agents/ в agent-specific каталоги
 description: >
   Библиотека для транспиляции определений суб-агентов из канонического каталога
-  .agents/agents/ в agent-specific каталоги. Выполняет трансформацию контента:
+  .agloom/agents/ в agent-specific каталоги. Выполняет трансформацию контента:
   парсинг YAML frontmatter, применение override-полей, фильтрацию agent-specific
   секций в body. Расширяется через адаптеры.
 type: spec
@@ -24,7 +24,7 @@ maps_to:
 в соответствии с [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
 Библиотека для транспиляции определений суб-агентов из канонического каталога
-`.agents/agents/` в agent-specific каталоги. Канонический каталог является
+`.agloom/agents/` в agent-specific каталоги. Канонический каталог является
 единственным источником истины (single source of truth); agent-specific файлы —
 производные артефакты, генерируемые при каждом запуске транспиляции.
 
@@ -39,7 +39,7 @@ factory function, адаптеры, обнаружение, запись рез�
 
 ## Канонический формат
 
-Агент — одиночный `.md` файл в `.agents/agents/<name>.md` (git-tracked).
+Агент — одиночный `.md` файл в `.agloom/agents/<name>.md` (git-tracked).
 Формат: YAML frontmatter + Markdown body. Парсинг frontmatter выполняется
 библиотекой `gray-matter` (зависимость: `gray-matter`, добавляется
 в `dependencies` проекта).
@@ -115,7 +115,7 @@ OpenCode-specific instructions here.
 
 - `name` (string) — имя агента (имя файла без расширения `.md`).
 - `relativePath` (string) — путь к файлу относительно `projectRoot`
-  (например, `".agents/agents/code-reviewer.md"`).
+  (например, `".agloom/agents/code-reviewer.md"`).
 - `rawContent` (string) — содержимое файла (raw Markdown с frontmatter).
 
 ### AgentOutputFile
@@ -206,8 +206,8 @@ OpenCode-specific instructions here.
 
 **Поведение:**
 
-1. Проверить наличие каталога `.agents/agents/` в `projectRoot`.
-2. Получить список прямых дочерних файлов каталога `.agents/agents/`.
+1. Проверить наличие каталога `.agloom/agents/` в `projectRoot`.
+2. Получить список прямых дочерних файлов каталога `.agloom/agents/`.
 3. Отфильтровать файлы, оставив только файлы с расширением `.md`.
 4. Прочитать содержимое каждого `.md` файла.
 5. Сформировать массив `AgentDefinition`, где `name` — имя файла
@@ -215,11 +215,11 @@ OpenCode-specific instructions here.
 
 **Расширения:**
 
-1a. Каталог `.agents/agents/` не существует → вернуть пустой массив
+1a. Каталог `.agloom/agents/` не существует → вернуть пустой массив
 `AgentDefinition[]` (не является ошибкой).
 
-2a. Ошибка доступа к каталогу `.agents/agents/` (EACCES) →
-`AgentDiscoverError("Failed to scan directory .agents/agents/: {причина}")`.
+2a. Ошибка доступа к каталогу `.agloom/agents/` (EACCES) →
+`AgentDiscoverError("Failed to scan directory .agloom/agents/: {причина}")`.
 
 4a. Ошибка чтения файла (EACCES, файл удалён между обнаружением и чтением) →
 `AgentDiscoverError("Failed to read {relativePath}: {причина}")`.
@@ -504,11 +504,11 @@ More general instructions.
 Для каждого обнаруженного определения агента адаптер генерирует
 соответствующий файл по следующим правилам:
 
-| Исходный путь              | Целевой путь               | Условие |
-| -------------------------- | -------------------------- | ------- |
-| `.agents/agents/<name>.md` | `.claude/agents/<name>.md` | Всегда  |
+| Исходный путь               | Целевой путь               | Условие |
+| --------------------------- | -------------------------- | ------- |
+| `.agloom/agents/<name>.md` | `.claude/agents/<name>.md` | Всегда  |
 
-Адаптер заменяет префикс `.agents/agents/` на `.claude/agents/`
+Адаптер заменяет префикс `.agloom/agents/` на `.claude/agents/`
 и трансформирует содержимое файла для `agentId = "claude"`.
 
 ### transpile
@@ -525,7 +525,7 @@ More general instructions.
 1. Для каждого определения из `definitions` вызвать
    `transformContent(definition.rawContent, "claude")`
    (см. «Трансформация контента»).
-2. Заменить префикс `.agents/agents/` на `.claude/agents/`
+2. Заменить префикс `.agloom/agents/` на `.claude/agents/`
    в `definition.relativePath`, сформировав целевой `relativePath`.
 3. Сформировать `AgentOutputFile` с вычисленным `relativePath`
    и результатом `transformContent` в качестве `content`.
@@ -548,11 +548,11 @@ More general instructions.
 Для каждого обнаруженного определения агента адаптер генерирует
 соответствующий файл по следующим правилам:
 
-| Исходный путь              | Целевой путь                 | Условие |
-| -------------------------- | ---------------------------- | ------- |
-| `.agents/agents/<name>.md` | `.opencode/agents/<name>.md` | Всегда  |
+| Исходный путь               | Целевой путь                 | Условие |
+| --------------------------- | ---------------------------- | ------- |
+| `.agloom/agents/<name>.md` | `.opencode/agents/<name>.md` | Всегда  |
 
-Адаптер заменяет префикс `.agents/agents/` на `.opencode/agents/`
+Адаптер заменяет префикс `.agloom/agents/` на `.opencode/agents/`
 и трансформирует содержимое файла для `agentId = "opencode"`.
 
 ### transpile
@@ -569,7 +569,7 @@ More general instructions.
 1. Для каждого определения из `definitions` вызвать
    `transformContent(definition.rawContent, "opencode")`
    (см. «Трансформация контента»).
-2. Заменить префикс `.agents/agents/` на `.opencode/agents/`
+2. Заменить префикс `.agloom/agents/` на `.opencode/agents/`
    в `definition.relativePath`, сформировав целевой `relativePath`.
 3. Сформировать `AgentOutputFile` с вычисленным `relativePath`
    и результатом `transformContent` в качестве `content`.

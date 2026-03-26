@@ -23,7 +23,7 @@ describe("AgentsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-agents-discover-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-agents-discover-"));
     });
 
     afterEach(() => {
@@ -31,9 +31,9 @@ describe("AgentsTranspiler", () => {
     });
 
     // --- Happy path: шаги 1–5 ---
-    it("обнаруживает .md файлы в .agents/agents/ и формирует AgentDefinition[]", () => {
+    it("обнаруживает .md файлы в .agloom/agents/ и формирует AgentDefinition[]", () => {
       // Arrange
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(
         path.join(agentsDir, "code-reviewer.md"),
@@ -57,14 +57,14 @@ describe("AgentsTranspiler", () => {
 
       const reviewer = definitions.find((d) => d.name === "code-reviewer");
       expect(reviewer).toBeDefined();
-      expect(reviewer!.relativePath).toBe(".agents/agents/code-reviewer.md");
+      expect(reviewer!.relativePath).toBe(".agloom/agents/code-reviewer.md");
       expect(reviewer!.rawContent).toBe(
         "---\nname: code-reviewer\n---\nBody content.",
       );
 
       const writer = definitions.find((d) => d.name === "test-writer");
       expect(writer).toBeDefined();
-      expect(writer!.relativePath).toBe(".agents/agents/test-writer.md");
+      expect(writer!.relativePath).toBe(".agloom/agents/test-writer.md");
       expect(writer!.rawContent).toBe(
         "---\nname: test-writer\n---\nTest body.",
       );
@@ -72,7 +72,7 @@ describe("AgentsTranspiler", () => {
 
     // --- Трансформация: шаг 3 — фильтрация только .md файлов ---
     it("отфильтровывает файлы без расширения .md", () => {
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(path.join(agentsDir, "agent.md"), "md content");
       fs.writeFileSync(path.join(agentsDir, "readme.txt"), "txt content");
@@ -91,7 +91,7 @@ describe("AgentsTranspiler", () => {
 
     // --- Трансформация: шаг 5 — name формируется из имени файла без .md ---
     it("формирует name как имя файла без расширения .md", () => {
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(path.join(agentsDir, "my-complex-agent.md"), "content");
 
@@ -107,8 +107,8 @@ describe("AgentsTranspiler", () => {
     });
 
     // --- Трансформация: шаг 2 — только прямые дочерние файлы ---
-    it("обнаруживает только прямые дочерние файлы каталога .agents/agents/", () => {
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+    it("обнаруживает только прямые дочерние файлы каталога .agloom/agents/", () => {
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(path.join(agentsDir, "top-level.md"), "top content");
 
@@ -128,9 +128,9 @@ describe("AgentsTranspiler", () => {
       expect(definitions[0].name).toBe("top-level");
     });
 
-    // --- Расширение 1a: каталог .agents/agents/ не существует → пустой массив ---
-    it("возвращает пустой массив, если каталог .agents/agents/ не существует", () => {
-      // tmpDir не содержит .agents/agents/
+    // --- Расширение 1a: каталог .agloom/agents/ не существует → пустой массив ---
+    it("возвращает пустой массив, если каталог .agloom/agents/ не существует", () => {
+      // tmpDir не содержит .agloom/agents/
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
@@ -143,8 +143,8 @@ describe("AgentsTranspiler", () => {
     });
 
     // --- Расширение 2a: ошибка доступа к каталогу (EACCES) ---
-    it("выбрасывает AgentDiscoverError при ошибке доступа к каталогу .agents/agents/", () => {
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+    it("выбрасывает AgentDiscoverError при ошибке доступа к каталогу .agloom/agents/", () => {
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.chmodSync(agentsDir, 0o000);
 
@@ -156,7 +156,7 @@ describe("AgentsTranspiler", () => {
       try {
         expect(() => transpiler.discover()).toThrow(AgentDiscoverError);
         expect(() => transpiler.discover()).toThrow(
-          /Failed to scan directory \.agents\/agents\//,
+          /Failed to scan directory \.agloom\/agents\//,
         );
       } finally {
         fs.chmodSync(agentsDir, 0o755);
@@ -165,7 +165,7 @@ describe("AgentsTranspiler", () => {
 
     // --- Расширение 4a: ошибка чтения файла ---
     it("выбрасывает AgentDiscoverError при ошибке чтения файла", () => {
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       const filePath = path.join(agentsDir, "broken.md");
       fs.writeFileSync(filePath, "content");
@@ -179,16 +179,16 @@ describe("AgentsTranspiler", () => {
       try {
         expect(() => transpiler.discover()).toThrow(AgentDiscoverError);
         expect(() => transpiler.discover()).toThrow(
-          /Failed to read .agents\/agents\/broken\.md/,
+          /Failed to read .agloom\/agents\/broken\.md/,
         );
       } finally {
         fs.chmodSync(filePath, 0o644);
       }
     });
 
-    // --- Пустой каталог: .agents/agents/ существует, но пуст ---
-    it("возвращает пустой массив, если каталог .agents/agents/ пуст", () => {
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+    // --- Пустой каталог: .agloom/agents/ существует, но пуст ---
+    it("возвращает пустой массив, если каталог .agloom/agents/ пуст", () => {
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
 
       const transpiler = createAgentsTranspiler({

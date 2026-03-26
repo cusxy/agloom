@@ -1,6 +1,6 @@
 ---
 type: research
-summary: Возможности Claude Code для Agent SDS
+summary: Возможности Claude Code для Agloom
 description: >
   Детальный анализ project-level конфигурации Claude Code (Anthropic)
   по критериям C1–C8. Часть исследования agent-capabilities-map.

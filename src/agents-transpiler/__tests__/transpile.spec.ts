@@ -26,7 +26,7 @@ describe("AgentsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-agents-transpile-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-agents-transpile-"));
     });
 
     afterEach(() => {
@@ -35,7 +35,7 @@ describe("AgentsTranspiler", () => {
 
     // --- Happy path: шаги 1–3 — полный цикл транспиляции ---
     it("выполняет полный цикл: discover → adapter.transpile(definitions) → собрать результаты", () => {
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(
         path.join(agentsDir, "code-reviewer.md"),
@@ -77,7 +77,7 @@ describe("AgentsTranspiler", () => {
 
     // --- Расширение 1a: нет определений агентов → пустой массив ---
     it("возвращает пустой массив AgentTranspileResult[], если определений агентов не обнаружено", () => {
-      // tmpDir не содержит .agents/agents/
+      // tmpDir не содержит .agloom/agents/
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
@@ -91,7 +91,7 @@ describe("AgentsTranspiler", () => {
 
     // --- Расширение 1b: discover() выбрасывает AgentDiscoverError → пробросить ---
     it("пробрасывает AgentDiscoverError к вызывающему коду, если discover() выбросил ошибку", () => {
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.chmodSync(agentsDir, 0o000);
 
@@ -109,7 +109,7 @@ describe("AgentsTranspiler", () => {
 
     // --- Расширение 2a: адаптер выбрасывает исключение → AgentTranspileResult с ошибкой, продолжить остальные ---
     it("создаёт AgentTranspileResult с ошибкой при исключении адаптера и продолжает остальные", () => {
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(
         path.join(agentsDir, "agent.md"),

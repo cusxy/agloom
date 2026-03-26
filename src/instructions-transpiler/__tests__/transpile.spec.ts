@@ -15,7 +15,7 @@ describe("InstructionsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-transpile-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-transpile-"));
     });
 
     afterEach(() => {
@@ -25,7 +25,7 @@ describe("InstructionsTranspiler", () => {
     // --- Happy path: шаги 1–3 — полный цикл транспиляции ---
     it("выполняет полный цикл транспиляции: discover → adapter.transpile(CanonicalFile[]) → собрать результаты", () => {
       fs.writeFileSync(
-        path.join(tmpDir, "AGENTS.md"),
+        path.join(tmpDir, "AGLOOM.md"),
         "General instructions for all agents.",
       );
 
@@ -49,7 +49,11 @@ describe("InstructionsTranspiler", () => {
 
       const opencodeResult = results.find((r) => r.agentId === "opencode");
       expect(opencodeResult).toBeDefined();
-      expect(opencodeResult!.files).toHaveLength(0);
+      expect(opencodeResult!.files).toHaveLength(1);
+      expect(opencodeResult!.files[0].relativePath).toBe("AGENTS.md");
+      expect(opencodeResult!.files[0].content).toBe(
+        "General instructions for all agents.",
+      );
       expect(opencodeResult!.errors).toHaveLength(0);
     });
 
@@ -72,7 +76,7 @@ describe("InstructionsTranspiler", () => {
       // Создаём каталог без прав на чтение — discover() выбросит DiscoverError
       const restrictedDir = path.join(tmpDir, "restricted");
       fs.mkdirSync(restrictedDir);
-      fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "root");
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "root");
       fs.chmodSync(restrictedDir, 0o000);
 
       const transpiler = createInstructionsTranspiler({
@@ -89,7 +93,7 @@ describe("InstructionsTranspiler", () => {
 
     // --- Расширение 2a: адаптер выбрасывает исключение ---
     it("создаёт TranspileResult с ошибкой при исключении адаптера и продолжает остальные", () => {
-      fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "General content.");
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "General content.");
 
       const failingAdapter = {
         agentId: "failing",
@@ -128,7 +132,7 @@ describe("InstructionsTranspiler", () => {
     // --- Трансформация: шаг 2 — адаптеры получают CanonicalFile[] напрямую (без парсинга) ---
     it("передаёт CanonicalFile[] адаптерам напрямую без промежуточного парсинга", () => {
       const originalContent = "# My Instructions\n\nContent here.";
-      fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), originalContent);
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), originalContent);
 
       const transpiler = createInstructionsTranspiler({
         projectRoot: tmpDir,

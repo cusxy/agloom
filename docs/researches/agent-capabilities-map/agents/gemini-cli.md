@@ -1,6 +1,6 @@
 ---
 type: research
-summary: Возможности Gemini CLI для Agent SDS
+summary: Возможности Gemini CLI для Agloom
 description: >
   Детальный анализ project-level конфигурации Gemini CLI (Google)
   по критериям C1–C8. Часть исследования agent-capabilities-map.

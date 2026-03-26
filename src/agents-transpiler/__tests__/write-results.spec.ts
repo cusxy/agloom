@@ -20,7 +20,7 @@ describe("AgentsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-agents-write-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-agents-write-"));
     });
 
     afterEach(() => {

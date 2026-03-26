@@ -37,23 +37,23 @@ describe("CLI", () => {
     let originalExitCode: number | undefined;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-transpile-clean-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-transpile-clean-"));
       originalExitCode = process.exitCode;
 
       // Канонические source-файлы для транспиляции
-      // Instructions: AGENTS.md
-      fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "General instructions.");
+      // Instructions: AGLOOM.md
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "General instructions.");
 
-      // Skills: .agents/skills/my-skill/SKILL.md
-      const skillDir = path.join(tmpDir, ".agents", "skills", "my-skill");
+      // Skills: .agloom/skills/my-skill/SKILL.md
+      const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
       fs.writeFileSync(
         path.join(skillDir, "SKILL.md"),
         "---\nname: my-skill\n---\nSkill content.",
       );
 
-      // Agents: .agents/agents/reviewer.md
-      const agentDir = path.join(tmpDir, ".agents", "agents");
+      // Agents: .agloom/agents/reviewer.md
+      const agentDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentDir, { recursive: true });
       fs.writeFileSync(
         path.join(agentDir, "reviewer.md"),

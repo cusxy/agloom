@@ -1,8 +1,8 @@
 ---
 summary: Команда init — импорт существующих agent-специфичных файлов в overlays/
 description: >
-  Команда agent-sds init для копирования существующих agent-специфичных
-  файлов в .agents/overlays/<adapterId>/.
+  Команда agloom init для копирования существующих agent-специфичных
+  файлов в .agloom/overlays/<adapterId>/.
 type: spec
 status: implemented
 relates:
@@ -21,7 +21,7 @@ maps_to:
 
 Данная спецификация добавляет команду `init` в CLI
 (см. `docs/specs/cli.md`). Команда импортирует существующие
-agent-специфичные файлы в `.agents/overlays/<adapterId>/`
+agent-специфичные файлы в `.agloom/overlays/<adapterId>/`
 (см. `docs/specs/provider-overlay.md` § Структура директории overlays/).
 
 ## Типы данных
@@ -35,8 +35,8 @@ agent-специфичные файлы в `.agents/overlays/<adapterId>/`
 
 ## Команда init
 
-`agent-sds init --adapter <adapterId> [--force]` — копирует существующие
-agent-специфичные файлы в `.agents/overlays/<adapterId>/`.
+`agloom init --adapter <adapterId> [--force]` — копирует существующие
+agent-специфичные файлы в `.agloom/overlays/<adapterId>/`.
 
 **Аргументы:**
 
@@ -52,7 +52,7 @@ agent-специфичные файлы в `.agents/overlays/<adapterId>/`.
 2–3. Resolve Adapter
 (см. `docs/specs/adapter-registry-ext.md` § Процедура Resolve Adapter).
 4. Определить целевую директорию как
-   `<projectRoot>/.agents/overlays/<entry.id>/`.
+   `<projectRoot>/.agloom/overlays/<entry.id>/`.
 5. Проверить, что целевая директория не содержит файлов.
 6. Создать целевую директорию и промежуточные каталоги
    при необходимости.
@@ -73,7 +73,7 @@ agent-специфичные файлы в `.agents/overlays/<adapterId>/`.
 
 5a. Целевая директория уже существует и содержит файлы,
 флаг `--force` не указан → отобразить сообщение
-`".agents/overlays/{entry.id}/ already exists. Use --force to overwrite."`;
+`".agloom/overlays/{entry.id}/ already exists. Use --force to overwrite."`;
 exit code 1.
 
 5b. Флаг `--force` указан → пропустить проверку,
@@ -100,7 +100,7 @@ exit code 1.
 
 ```text
 Initializing for {adapterId}...
-  ✓ {copiedCount} files copied to .agents/overlays/{adapterId}/
+  ✓ {copiedCount} files copied to .agloom/overlays/{adapterId}/
 
 Done.
 ```
@@ -132,19 +132,19 @@ Done.
 
 ## Справка
 
-Команда `init` ДОЛЖНА быть добавлена в вывод `agent-sds --help`:
+Команда `init` ДОЛЖНА быть добавлена в вывод `agloom --help`:
 
 ```text
-  init         Import existing agent configs into .agents/overlays/
+  init         Import existing agent configs into .agloom/overlays/
 ```
 
-Команда ДОЛЖНА поддерживать `agent-sds init --help`.
-Вывод `agent-sds init --help`:
+Команда ДОЛЖНА поддерживать `agloom init --help`.
+Вывод `agloom init --help`:
 
 ```text
-Usage: agent-sds init --adapter <adapterId> [--force]
+Usage: agloom init --adapter <adapterId> [--force]
 
-Import existing agent configs into .agents/overlays/
+Import existing agent configs into .agloom/overlays/
 
 Options:
   --adapter <adapterId>  Adapter identifier (required)

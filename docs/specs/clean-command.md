@@ -1,7 +1,7 @@
 ---
 summary: Команда clean — удаление сгенерированных agent-специфичных файлов
 description: >
-  Команда agent-sds clean для удаления файлов, сгенерированных
+  Команда agloom clean для удаления файлов, сгенерированных
   транспиляцией. Флаг --clean для команды transpile.
 type: spec
 status: implemented
@@ -71,7 +71,7 @@ maps_to:
 
 ## Команда clean
 
-`agent-sds clean --adapter <adapterId>` — удаляет сгенерированные
+`agloom clean --adapter <adapterId>` — удаляет сгенерированные
 файлы для указанного адаптера.
 
 **Аргументы:**
@@ -158,13 +158,13 @@ Done. {totalWritten} files written.
 
 ## Справка
 
-Команда `clean` ДОЛЖНА быть добавлена в вывод `agent-sds --help`:
+Команда `clean` ДОЛЖНА быть добавлена в вывод `agloom --help`:
 
 ```text
   clean        Remove generated agent-specific files
 ```
 
-Команда ДОЛЖНА поддерживать `agent-sds clean --help`.
+Команда ДОЛЖНА поддерживать `agloom clean --help`.
 
 ## Вне scope
 

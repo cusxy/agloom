@@ -1,5 +1,5 @@
 ---
-summary: CLI — Ink-based TUI интерфейс для Agent SDS
+summary: CLI — Ink-based TUI интерфейс для Agloom
 description: >
   CLI-модуль на базе React + Ink для запуска транспиляции канонических
   конфигураций в agent-specific файлы. Содержит встроенный реестр адаптеров,
@@ -20,7 +20,7 @@ maps_to:
 "НЕ СЛЕДУЕТ", "МОЖЕТ" и "НЕОБЯЗАТЕЛЬНО" в этом документе толкуются
 в соответствии с [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
-CLI-модуль для запуска транспиляции канонических конфигураций Agent SDS
+CLI-модуль для запуска транспиляции канонических конфигураций Agloom
 в agent-specific файлы. Реализован на базе React + Ink (TUI framework).
 Содержит встроенный реестр адаптеров и предоставляет команды для
 транспиляции и просмотра доступных адаптеров.
@@ -83,7 +83,7 @@ CLI-модуль для запуска транспиляции канониче
 
 ## Команда transpile
 
-`agent-sds transpile --adapter <adapterId>` — запускает транспиляцию
+`agloom transpile --adapter <adapterId>` — запускает транспиляцию
 всех трёх транспилеров последовательно с указанным адаптером.
 
 **Вход:**
@@ -115,7 +115,7 @@ CLI-модуль для запуска транспиляции канониче
 об обязательности аргумента `--adapter`; процесс завершается с exit code 1.
 
 2a. Запись с указанным `id` не найдена в реестре → отобразить сообщение
-`"Unknown adapter: {value}. Run 'agent-sds adapters' to see available adapters."`;
+`"Unknown adapter: {value}. Run 'agloom adapters' to see available adapters."`;
 процесс завершается с exit code 1.
 
 **Результат:**
@@ -163,7 +163,7 @@ CLI-модуль для запуска транспиляции канониче
 
 ## Команда adapters
 
-`agent-sds adapters` — выводит список доступных адаптеров из реестра.
+`agloom adapters` — выводит список доступных адаптеров из реестра.
 
 **Вход:**
 
@@ -197,7 +197,7 @@ Available adapters:
 
 ### --help
 
-`agent-sds --help` или `agent-sds help` — отображает общую справку.
+`agloom --help` или `agloom help` — отображает общую справку.
 
 **Вход:**
 
@@ -220,12 +220,12 @@ Available adapters:
 
 Каждая команда ДОЛЖНА поддерживать опцию `--help`:
 
-- `agent-sds transpile --help` — справка по команде `transpile`.
-- `agent-sds adapters --help` — справка по команде `adapters`.
+- `agloom transpile --help` — справка по команде `transpile`.
+- `agloom adapters --help` — справка по команде `adapters`.
 
 ### --version
 
-`agent-sds --version` или `agent-sds version` — отображает версию программы.
+`agloom --version` или `agloom version` — отображает версию программы.
 
 **Вход:**
 
@@ -247,8 +247,8 @@ Available adapters:
 
 ### Вызов без команды
 
-При вызове `agent-sds` без указания команды ДОЛЖНА отображаться
-общая справка (аналогично `agent-sds --help`). Процесс завершается
+При вызове `agloom` без указания команды ДОЛЖНА отображаться
+общая справка (аналогично `agloom --help`). Процесс завершается
 с exit code 0.
 
 ## TUI-отображение прогресса
@@ -345,7 +345,7 @@ Done. 8 files written.
   ```json
   {
     "bin": {
-      "agent-sds": "./dist/cli/index.js"
+      "agloom": "./dist/cli/index.js"
     }
   }
   ```
@@ -377,7 +377,6 @@ Done. 8 files written.
 - Флаг `--verbose` (подробный вывод списка записанных файлов).
 - Флаг `--dry-run` (пробный запуск без записи файлов).
 - Команда `init` (инициализация проекта).
-- Конфигурационный файл (`.agent-sds.yml` и т.п.).
-- Короткий алиас бинарника (`sds`, `asds`).
+- Конфигурационный файл (`.agloom.yml` и т.п.).
 - Адаптеры для Codex CLI и Gemini CLI.
 - Очистка устаревших agent-specific файлов.

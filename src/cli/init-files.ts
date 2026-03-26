@@ -50,7 +50,7 @@ function hasFiles(dir: string): boolean {
  * Импортирует существующие agent-специфичные файлы в overlays/.
  *
  * Шаги:
- * 4. Определить целевую директорию как <projectRoot>/.agents/overlays/<entry.id>/.
+ * 4. Определить целевую директорию как <projectRoot>/.agloom/overlays/<entry.id>/.
  * 5. Проверить, что целевая директория не содержит файлов.
  * 6. Создать целевую директорию и промежуточные каталоги при необходимости.
  * 7. Рекурсивно скопировать все файлы из <projectRoot>/<entry.targetRoot>/ в целевую директорию.
@@ -70,12 +70,12 @@ export function initFiles(
   let copiedCount = 0;
 
   // Шаг 4: определить целевую директорию
-  const targetDir = path.join(projectRoot, ".agents", "overlays", entry.id);
+  const targetDir = path.join(projectRoot, ".agloom", "overlays", entry.id);
 
   // Шаг 5: проверить, что целевая директория не содержит файлов
   // Расширение 5a: целевая директория содержит файлы, --force не указан
   if (!force && hasFiles(targetDir)) {
-    return `.agents/overlays/${entry.id}/ already exists. Use --force to overwrite.`;
+    return `.agloom/overlays/${entry.id}/ already exists. Use --force to overwrite.`;
   }
   // Расширение 5b: --force указан → пропустить проверку
 

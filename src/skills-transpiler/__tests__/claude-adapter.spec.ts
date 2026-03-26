@@ -8,7 +8,7 @@ import type { SkillPackage } from "../types.js";
 function makeSkillPackage(name: string, files: string[]): SkillPackage {
   return {
     name,
-    directoryPath: `.agents/skills/${name}`,
+    directoryPath: `.agloom/skills/${name}`,
     files,
   };
 }
@@ -16,13 +16,13 @@ function makeSkillPackage(name: string, files: string[]): SkillPackage {
 describe("ClaudeSkillAdapter", () => {
   describe("transpile", () => {
     // --- Happy path: шаги 1–3 — замена префикса для одного пакета ---
-    it("заменяет префикс .agents/skills/ на .claude/skills/ в путях файлов", () => {
+    it("заменяет префикс .agloom/skills/ на .claude/skills/ в путях файлов", () => {
       const adapter = new ClaudeSkillAdapter();
 
       const result = adapter.transpile([
         makeSkillPackage("my-skill", [
-          ".agents/skills/my-skill/SKILL.md",
-          ".agents/skills/my-skill/helpers/util.ts",
+          ".agloom/skills/my-skill/SKILL.md",
+          ".agloom/skills/my-skill/helpers/util.ts",
         ]),
       ]);
 
@@ -38,11 +38,11 @@ describe("ClaudeSkillAdapter", () => {
       const adapter = new ClaudeSkillAdapter();
 
       const result = adapter.transpile([
-        makeSkillPackage("my-skill", [".agents/skills/my-skill/SKILL.md"]),
+        makeSkillPackage("my-skill", [".agloom/skills/my-skill/SKILL.md"]),
       ]);
 
       expect(result).toHaveLength(1);
-      expect(result[0].sourcePath).toBe(".agents/skills/my-skill/SKILL.md");
+      expect(result[0].sourcePath).toBe(".agloom/skills/my-skill/SKILL.md");
       expect(result[0].relativePath).toBe(".claude/skills/my-skill/SKILL.md");
     });
 
@@ -52,10 +52,10 @@ describe("ClaudeSkillAdapter", () => {
 
       const result = adapter.transpile([
         makeSkillPackage("complex-skill", [
-          ".agents/skills/complex-skill/SKILL.md",
-          ".agents/skills/complex-skill/src/index.ts",
-          ".agents/skills/complex-skill/src/helpers/format.ts",
-          ".agents/skills/complex-skill/docs/README.md",
+          ".agloom/skills/complex-skill/SKILL.md",
+          ".agloom/skills/complex-skill/src/index.ts",
+          ".agloom/skills/complex-skill/src/helpers/format.ts",
+          ".agloom/skills/complex-skill/docs/README.md",
         ]),
       ]);
 
@@ -75,10 +75,10 @@ describe("ClaudeSkillAdapter", () => {
       const adapter = new ClaudeSkillAdapter();
 
       const result = adapter.transpile([
-        makeSkillPackage("skill-a", [".agents/skills/skill-a/SKILL.md"]),
+        makeSkillPackage("skill-a", [".agloom/skills/skill-a/SKILL.md"]),
         makeSkillPackage("skill-b", [
-          ".agents/skills/skill-b/SKILL.md",
-          ".agents/skills/skill-b/config.json",
+          ".agloom/skills/skill-b/SKILL.md",
+          ".agloom/skills/skill-b/config.json",
         ]),
       ]);
 

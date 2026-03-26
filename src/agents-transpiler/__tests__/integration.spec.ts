@@ -39,7 +39,7 @@ describe("AgentsTranspiler", () => {
 
     beforeEach(() => {
       tmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "sds-agents-integration-"),
+        path.join(os.tmpdir(), "agl-agents-integration-"),
       );
     });
 
@@ -50,7 +50,7 @@ describe("AgentsTranspiler", () => {
     // --- IT-AGENT-01: Pipeline с Claude адаптером — override и agent-specific секции ---
     it("применяет override для Claude, удаляет ключ override, фильтрует agent-specific секции", () => {
       // Вход: создать каноническую структуру
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(path.join(agentsDir, "reviewer.md"), REVIEWER_CANONICAL);
 
@@ -106,7 +106,7 @@ describe("AgentsTranspiler", () => {
     // --- IT-AGENT-02: Pipeline с OpenCode адаптером — override и agent-specific секции ---
     it("применяет override для OpenCode, удаляет ключ override, фильтрует agent-specific секции", () => {
       // Вход: тот же файл, что в IT-AGENT-01
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(path.join(agentsDir, "reviewer.md"), REVIEWER_CANONICAL);
 
@@ -164,7 +164,7 @@ describe("AgentsTranspiler", () => {
     // --- IT-AGENT-03: Pipeline с обоими адаптерами одновременно ---
     it("оба адаптера обрабатываются за один вызов, каждый создаёт свой целевой файл", () => {
       // Вход: тот же файл, что в IT-AGENT-01
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(path.join(agentsDir, "reviewer.md"), REVIEWER_CANONICAL);
 
@@ -225,9 +225,9 @@ describe("AgentsTranspiler", () => {
     });
 
     // --- IT-AGENT-04: Pipeline с несколькими определениями агентов ---
-    it("несколько .md файлов из .agents/agents/ обрабатываются за один вызов", () => {
+    it("несколько .md файлов из .agloom/agents/ обрабатываются за один вызов", () => {
       // Вход: создать два определения агентов
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(
         path.join(agentsDir, "reviewer.md"),
@@ -270,8 +270,8 @@ describe("AgentsTranspiler", () => {
       expect(writeResult.written).toContain(".claude/agents/coder.md");
     });
 
-    // --- IT-AGENT-05: Pipeline при отсутствии каталога .agents/agents/ ---
-    it("корректно завершается при отсутствии каталога .agents/agents/", () => {
+    // --- IT-AGENT-05: Pipeline при отсутствии каталога .agloom/agents/ ---
+    it("корректно завершается при отсутствии каталога .agloom/agents/", () => {
       // Вход: tmpDir — пустая директория
 
       // Поведение: шаги 1–2
@@ -293,7 +293,7 @@ describe("AgentsTranspiler", () => {
     // --- IT-AGENT-06: Pipeline без override и без agent-specific секций ---
     it("файл без override и без agent-specific секций проходит pipeline без трансформации body", () => {
       // Вход: простой файл без override и без agent-specific секций
-      const agentsDir = path.join(tmpDir, ".agents", "agents");
+      const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(
         path.join(agentsDir, "simple.md"),

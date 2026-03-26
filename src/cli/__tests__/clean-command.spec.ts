@@ -37,7 +37,7 @@ describe("CLI", () => {
     let originalExitCode: number | undefined;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sds-clean-cmd-"));
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-clean-cmd-"));
       originalExitCode = process.exitCode;
     });
 
@@ -127,7 +127,7 @@ describe("CLI", () => {
 
     // --- Resolve Adapter расширение 1a (через Команду clean): неизвестный адаптер ---
     // Шаги 2–3 ссылаются на § Процедура Resolve Adapter (adapter-registry-ext.md).
-    // Расширение 1a: "Unknown adapter: {value}. Run 'agent-sds adapters' to see available adapters."
+    // Расширение 1a: "Unknown adapter: {value}. Run 'agloom adapters' to see available adapters."
     // Exit code 1.
     it('отображает "Unknown adapter" и завершается с exit code 1 при неизвестном adapterId', async () => {
       const { lastFrame, unmount } = render(
@@ -150,7 +150,7 @@ describe("CLI", () => {
 
       expect(output).toContain("Unknown adapter");
       expect(output).toContain("nonexistent");
-      expect(output).toContain("agent-sds adapters");
+      expect(output).toContain("agloom adapters");
       expect(process.exitCode).toBe(1);
 
       unmount();
@@ -197,7 +197,7 @@ describe("CLI", () => {
     });
 
     // --- § Справка: clean --help ---
-    // Команда ДОЛЖНА поддерживать agent-sds clean --help.
+    // Команда ДОЛЖНА поддерживать agloom clean --help.
     it("отображает справку при вызове clean --help", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -224,8 +224,8 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- § Справка: clean в agent-sds --help ---
-    // Команда clean ДОЛЖНА быть добавлена в вывод agent-sds --help:
+    // --- § Справка: clean в agloom --help ---
+    // Команда clean ДОЛЖНА быть добавлена в вывод agloom --help:
     // "  clean        Remove generated agent-specific files"
     it('содержит "clean" с описанием "Remove generated agent-specific files" в выводе --help', async () => {
       const { lastFrame, unmount } = render(

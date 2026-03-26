@@ -9,7 +9,7 @@ import type { AgentDefinition } from "../types.js";
 function makeDefinition(name: string, rawContent: string): AgentDefinition {
   return {
     name,
-    relativePath: `.agents/agents/${name}.md`,
+    relativePath: `.agloom/agents/${name}.md`,
     rawContent,
   };
 }
@@ -23,7 +23,7 @@ describe("OpenCodeAgentAdapter", () => {
     });
 
     // --- Happy path: шаги 1–3 — трансформация и замена пути ---
-    it("трансформирует содержимое для opencode и заменяет .agents/agents/ на .opencode/agents/", () => {
+    it("трансформирует содержимое для opencode и заменяет .agloom/agents/ на .opencode/agents/", () => {
       const adapter = new OpenCodeAgentAdapter();
 
       const rawContent = [
@@ -63,7 +63,7 @@ describe("OpenCodeAgentAdapter", () => {
     });
 
     // --- Трансформация: шаг 2 — замена префикса пути ---
-    it("заменяет префикс .agents/agents/ на .opencode/agents/ в relativePath", () => {
+    it("заменяет префикс .agloom/agents/ на .opencode/agents/ в relativePath", () => {
       const adapter = new OpenCodeAgentAdapter();
 
       const files = adapter.transpile([
