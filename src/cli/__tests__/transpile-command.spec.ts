@@ -47,12 +47,12 @@ describe("CLI", () => {
     });
 
     // =====================================================================
-    // Happy path: Режим --agent
-    // § cli.md § Режим --agent § Поведение шаги 1-11
+    // Happy path: Режим --adapter
+    // § cli.md § Режим --adapter § Поведение шаги 1-11
     // =====================================================================
 
     // --- Happy path: шаги 1-11 ---
-    // Шаг 1: распарсить --agent и --all
+    // Шаг 1: распарсить --adapter и --all
     // Шаг 2: найти в реестре
     // Шаг 3: projectRoot = cwd()
     // Шаг 4: отобразить заголовок со spinner
@@ -64,7 +64,7 @@ describe("CLI", () => {
     it("при успешной транспиляции всех трёх шагов отображает заголовок, результаты для каждого шага, итоговую строку и завершается с exit code 0", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude"],
+          args: ["transpile", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -99,11 +99,11 @@ describe("CLI", () => {
     });
 
     // =====================================================================
-    // Расширение 1a: ни --agent, ни --all не указаны
-    // § cli.md § Режим --agent § Расширения 1a
+    // Расширение 1a: ни --adapter, ни --all не указаны
+    // § cli.md § Режим --adapter § Расширения 1a
     // =====================================================================
 
-    it("при отсутствии --agent и --all отображает сообщение об обязательности и exit code 1", async () => {
+    it("при отсутствии --adapter и --all отображает сообщение об обязательности и exit code 1", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["transpile"],
@@ -122,22 +122,22 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Сообщение должно указывать на --agent или --all
-      expect(output).toMatch(/--agent|--all/);
+      // Сообщение должно указывать на --adapter или --all
+      expect(output).toMatch(/--adapter|--all/);
       expect(process.exitCode).toBe(1);
 
       unmount();
     });
 
     // =====================================================================
-    // Расширение 1b: --agent и --all указаны одновременно
-    // § cli.md § Режим --agent § Расширения 1b
+    // Расширение 1b: --adapter и --all указаны одновременно
+    // § cli.md § Режим --adapter § Расширения 1b
     // =====================================================================
 
-    it("при одновременном --agent и --all отображает сообщение о взаимоисключающих аргументах и exit code 1", async () => {
+    it("при одновременном --adapter и --all отображает сообщение о взаимоисключающих аргументах и exit code 1", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude", "--all"],
+          args: ["transpile", "--adapter", "claude", "--all"],
           projectRoot: tmpDir,
         }),
       );
@@ -161,15 +161,15 @@ describe("CLI", () => {
 
     // =====================================================================
     // Расширение 2a: адаптер не найден в реестре
-    // § cli.md § Режим --agent § Расширения 2a:
+    // § cli.md § Режим --adapter § Расширения 2a:
     // "Unknown agent: {value}. Run 'agloom adapters' to see available adapters."
     // exit code 1.
     // =====================================================================
 
-    it('при неизвестном --agent отображает "Unknown agent" и завершается с exit code 1', async () => {
+    it('при неизвестном --adapter отображает "Unknown agent" и завершается с exit code 1', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "nonexistent"],
+          args: ["transpile", "--adapter", "nonexistent"],
           projectRoot: tmpDir,
         }),
       );
@@ -213,7 +213,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude"],
+          args: ["transpile", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -246,7 +246,7 @@ describe("CLI", () => {
     });
 
     // --- Трансформация: шаг 9 — totalWritten = сумма writtenCount всех шагов ---
-    // § cli.md § Режим --agent § Поведение шаг 9:
+    // § cli.md § Режим --adapter § Поведение шаг 9:
     // totalWritten включает writtenCount из шагов с ошибками
     // (частично записанные файлы учитываются).
     it("вычисляет totalWritten как сумму writtenCount всех шагов, включая шаги с частичными ошибками", async () => {
@@ -259,7 +259,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude"],
+          args: ["transpile", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -301,7 +301,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude"],
+          args: ["transpile", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -334,7 +334,7 @@ describe("CLI", () => {
       // Не создаём overlays/claude/
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude"],
+          args: ["transpile", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -360,7 +360,7 @@ describe("CLI", () => {
       // Не создаём overlays/claude/
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude", "--verbose"],
+          args: ["transpile", "--adapter", "claude", "--verbose"],
           projectRoot: tmpDir,
         }),
       );
@@ -390,7 +390,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "opencode"],
+          args: ["transpile", "--adapter", "opencode"],
           projectRoot: emptyDir,
         }),
       );
@@ -423,7 +423,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude"],
+          args: ["transpile", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -464,7 +464,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude"],
+          args: ["transpile", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -510,7 +510,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude"],
+          args: ["transpile", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -539,7 +539,7 @@ describe("CLI", () => {
     it('отображает заголовок "Transpiling for {adapterId}..."', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "opencode"],
+          args: ["transpile", "--adapter", "opencode"],
           projectRoot: tmpDir,
         }),
       );
@@ -638,7 +638,7 @@ describe("CLI", () => {
     it("при транспиляции opencode с --verbose шаг Instructions показывает 0 files (no-op)", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "opencode", "--verbose"],
+          args: ["transpile", "--adapter", "opencode", "--verbose"],
           projectRoot: tmpDir,
         }),
       );
@@ -661,10 +661,10 @@ describe("CLI", () => {
 
     // =====================================================================
     // § cli.md § Разрешение зависимостей
-    // opencode.dependsOn = ["agentsmd"] → AGENTS.md создаётся при transpile --agent opencode
+    // opencode.dependsOn = ["agentsmd"] → AGENTS.md создаётся при transpile --adapter opencode
     // =====================================================================
 
-    it("при transpile --agent opencode создаёт AGENTS.md через зависимость agentsmd", async () => {
+    it("при transpile --adapter opencode создаёт AGENTS.md через зависимость agentsmd", async () => {
       // Создаём канонический файл
       fs.writeFileSync(
         path.join(tmpDir, "AGLOOM.md"),
@@ -673,7 +673,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "opencode"],
+          args: ["transpile", "--adapter", "opencode"],
           projectRoot: tmpDir,
         }),
       );
@@ -746,10 +746,10 @@ describe("CLI", () => {
     // Постмортем: docs/postmortems/003-transpile-hang.md
     // =====================================================================
 
-    it("при --agent заменяет spinner на ✓ в заголовке после завершения транспиляции", async () => {
+    it("при --adapter заменяет spinner на ✓ в заголовке после завершения транспиляции", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "claude"],
+          args: ["transpile", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -802,8 +802,8 @@ describe("CLI", () => {
     // =====================================================================
 
     // § cli.md § --help: Вывод agloom transpile --help ДОЛЖЕН содержать
-    // Usage: agloom transpile (--agent <agentId> | --all) [--clean]
-    it("справка transpile --help содержит --agent и --all", async () => {
+    // Usage: agloom transpile (--adapter <agentId> | --all) [--clean]
+    it("справка transpile --help содержит --adapter и --all", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["transpile", "--help"],
@@ -822,8 +822,8 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Обновлённая справка содержит --agent и --all
-      expect(output).toContain("--agent");
+      // Обновлённая справка содержит --adapter и --all
+      expect(output).toContain("--adapter");
       expect(output).toContain("--all");
 
       unmount();

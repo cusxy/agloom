@@ -109,7 +109,7 @@ Overlay-файлы копируются ПОСЛЕ всех транспилер
 Команда `transpile` (см. `docs/specs/cli.md` § Команда transpile)
 расширяется шагом provider overlay.
 
-### Режим --agent
+### Режим --adapter
 
 **Новые шаги:**
 

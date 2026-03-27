@@ -57,7 +57,7 @@ maps_to:
 
 Общая процедура бэкапа agent-специфичных project-файлов из корня проекта
 в `.agloom/instructions/`. Вызывается командой `init` при любом режиме
-(`--agent` или `--all`).
+(`--adapter` или `--all`).
 
 **Вход:**
 
@@ -158,37 +158,37 @@ maps_to:
 
 ## Команда init
 
-`agloom init (--agent <agentId> | --all) [--force]` — создаёт бэкап
+`agloom init (--adapter <adapterId> | --all) [--force]` — создаёт бэкап
 project-файлов в `.agloom/instructions/` и копирует существующие
 agent-специфичные файлы в `.agloom/overlays/<agentId>/`.
 
 **Аргументы:**
 
-- `--agent` (string, опционально) — идентификатор агента из реестра.
+- `--adapter` (string, опционально) — идентификатор агента из реестра.
   ТРЕБУЕТСЯ, если `--all` не указан.
 - `--all` (boolean, опционально, default: false) — инициализировать
   все поддерживаемые агенты из реестра.
 - `--force` (boolean, опционально, default: false) — перезаписать
   существующие файлы.
 
-Аргументы `--agent` и `--all` являются взаимоисключающими.
+Аргументы `--adapter` и `--all` являются взаимоисключающими.
 
 <!-- prettier-ignore-start -->
 
 **Поведение:**
 
-1. Распарсить аргументы `--agent`, `--all` и `--force`
+1. Распарсить аргументы `--adapter`, `--all` и `--force`
    из командной строки.
-2. Проверить, что указан хотя бы один из `--agent` или `--all`.
-3. Проверить, что `--agent` и `--all` не указаны одновременно.
+2. Проверить, что указан хотя бы один из `--adapter` или `--all`.
+3. Проверить, что `--adapter` и `--all` не указаны одновременно.
 4. Определить `projectRoot` как текущий рабочий каталог процесса
    (`process.cwd()`).
 5. Выполнить процедуру Backup Project Files
    (см. § Процедура Backup Project Files) с `projectRoot` и `force`.
-6. Если указан `--agent`: выполнить процедуру Resolve Adapter
+6. Если указан `--adapter`: выполнить процедуру Resolve Adapter
    (см. `docs/specs/adapter-registry-ext.md` § Процедура Resolve Adapter)
    с `agentId`.
-7. Если указан `--agent`: выполнить процедуру Init Overlay Files
+7. Если указан `--adapter`: выполнить процедуру Init Overlay Files
    (см. § Процедура Init Overlay Files) с `entry`, `projectRoot`
    и `force`.
 8. Если указан `--all`: для каждой записи реестра адаптеров
@@ -202,11 +202,11 @@ agent-специфичные файлы в `.agloom/overlays/<agentId>/`.
 
 **Расширения:**
 
-2a. Ни `--agent`, ни `--all` не указан → отобразить сообщение
+2a. Ни `--adapter`, ни `--all` не указан → отобразить сообщение
 об обязательности одного из аргументов; exit code 1.
 
-3a. `--agent` и `--all` указаны одновременно → отобразить сообщение
-`"--agent and --all are mutually exclusive."`; exit code 1.
+3a. `--adapter` и `--all` указаны одновременно → отобразить сообщение
+`"--adapter and --all are mutually exclusive."`; exit code 1.
 
 5a. Процедура Backup Project Files вернула строку-сообщение →
 ошибка процедуры Backup Project Files является блокирующей;
@@ -244,7 +244,7 @@ exit code 1.
   ✓ {copiedCount} files copied to .agloom/overlays/{agentId}/
 ```
 
-Вариант «успех» (--agent claude):
+Вариант «успех» (--adapter claude):
 
 ```text
 Initializing...
@@ -282,7 +282,7 @@ Done. {copiedCount} files copied.
 **Exit codes:**
 
 - `0` — все шаги завершились без ошибок (включая 0 файлов).
-- `1` — ни `--agent`, ни `--all` не указан; `--agent` и `--all`
+- `1` — ни `--adapter`, ни `--all` не указан; `--adapter` и `--all`
   указаны одновременно; неизвестный агент; директория уже
   существует без `--force`; ошибка создания директории;
   или ошибка копирования.
@@ -299,15 +299,15 @@ Done. {copiedCount} files copied.
 Вывод `agloom init --help`:
 
 ```text
-Usage: agloom init (--agent <agentId> | --all) [--force]
+Usage: agloom init (--adapter <adapterId> | --all) [--force] [--verbose]
 
 Import existing agent configs into .agloom/
 
 Options:
-  --agent <agentId>  Agent identifier (required unless --all)
-  --all              Initialize all supported agents
-  --force            Overwrite existing files
-  --help             Show help
+  --adapter <adapterId>  Adapter identifier (required unless --all)
+  --all                  Initialize all supported agents
+  --force                Overwrite existing files
+  --verbose              Show all steps including 0-file ones
 ```
 
 ## Вне scope

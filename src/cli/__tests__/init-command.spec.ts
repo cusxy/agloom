@@ -55,11 +55,11 @@ describe("CLI", () => {
     });
 
     // =====================================================================
-    // Happy path: Команда init --agent
+    // Happy path: Команда init --adapter
     // § init-command.md § Команда init § Поведение шаги 1-10
-    // 1. Распарсить аргументы --agent, --all и --force.
-    // 2. Проверить, что указан хотя бы один из --agent или --all.
-    // 3. Проверить, что --agent и --all не указаны одновременно.
+    // 1. Распарсить аргументы --adapter, --all и --force.
+    // 2. Проверить, что указан хотя бы один из --adapter или --all.
+    // 3. Проверить, что --adapter и --all не указаны одновременно.
     // 4. Определить projectRoot как process.cwd().
     // 5. Выполнить процедуру Backup Project Files.
     // 6. Resolve Adapter.
@@ -69,7 +69,7 @@ describe("CLI", () => {
     // 10. Завершить процесс с exit code.
     // =====================================================================
 
-    it("при успешной инициализации --agent выполняет Backup Project Files и Init Overlay Files, отображает успех и завершается с exit code 0", async () => {
+    it("при успешной инициализации --adapter выполняет Backup Project Files и Init Overlay Files, отображает успех и завершается с exit code 0", async () => {
       // Создаём project-файлы (CLAUDE.md — в projectFiles записи claude)
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Claude instructions");
 
@@ -84,7 +84,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -136,12 +136,12 @@ describe("CLI", () => {
     });
 
     // =====================================================================
-    // Расширение 2a: ни --agent, ни --all не указан
-    // § init-command.md § Расширения 2a: Ни --agent, ни --all не указан →
+    // Расширение 2a: ни --adapter, ни --all не указан
+    // § init-command.md § Расширения 2a: Ни --adapter, ни --all не указан →
     // отобразить сообщение об обязательности одного из аргументов; exit code 1.
     // =====================================================================
 
-    it("завершается с exit code 1 и сообщением об обязательности --agent или --all, если ни один не указан", async () => {
+    it("завершается с exit code 1 и сообщением об обязательности --adapter или --all, если ни один не указан", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["init"],
@@ -160,23 +160,23 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Сообщение должно указывать на обязательность --agent или --all
-      expect(output).toMatch(/--agent|--all/);
+      // Сообщение должно указывать на обязательность --adapter или --all
+      expect(output).toMatch(/--adapter|--all/);
       expect(process.exitCode).toBe(1);
 
       unmount();
     });
 
     // =====================================================================
-    // Расширение 3a: --agent и --all указаны одновременно
-    // § init-command.md § Расширения 3a: --agent и --all указаны одновременно →
-    // отобразить "--agent and --all are mutually exclusive."; exit code 1.
+    // Расширение 3a: --adapter и --all указаны одновременно
+    // § init-command.md § Расширения 3a: --adapter и --all указаны одновременно →
+    // отобразить "--adapter and --all are mutually exclusive."; exit code 1.
     // =====================================================================
 
-    it('отображает "--agent and --all are mutually exclusive." и exit code 1, если оба указаны одновременно', async () => {
+    it('отображает "--adapter and --all are mutually exclusive." и exit code 1, если оба указаны одновременно', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude", "--all"],
+          args: ["init", "--adapter", "claude", "--all"],
           projectRoot: tmpDir,
         }),
       );
@@ -192,7 +192,7 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain("--agent and --all are mutually exclusive");
+      expect(output).toContain("--adapter and --all are mutually exclusive");
       expect(process.exitCode).toBe(1);
 
       unmount();
@@ -205,10 +205,10 @@ describe("CLI", () => {
     // exit code 1.
     // =====================================================================
 
-    it('при неизвестном --agent отображает "Unknown agent" и завершается с exit code 1', async () => {
+    it('при неизвестном --adapter отображает "Unknown agent" и завершается с exit code 1', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "nonexistent"],
+          args: ["init", "--adapter", "nonexistent"],
           projectRoot: tmpDir,
         }),
       );
@@ -253,7 +253,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -300,7 +300,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude", "--force"],
+          args: ["init", "--adapter", "claude", "--force"],
           projectRoot: tmpDir,
         }),
       );
@@ -352,7 +352,7 @@ describe("CLI", () => {
 
         const { lastFrame, unmount } = render(
           React.createElement(App, {
-            args: ["init", "--agent", "claude"],
+            args: ["init", "--adapter", "claude"],
             projectRoot: tmpDir,
           }),
         );
@@ -385,7 +385,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -417,7 +417,7 @@ describe("CLI", () => {
       // Не создаём .claude/ — targetRoot отсутствует
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -483,7 +483,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -521,7 +521,7 @@ describe("CLI", () => {
 
         const { lastFrame, unmount } = render(
           React.createElement(App, {
-            args: ["init", "--agent", "claude"],
+            args: ["init", "--adapter", "claude"],
             projectRoot: tmpDir,
           }),
         );
@@ -568,7 +568,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -621,7 +621,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -784,7 +784,7 @@ describe("CLI", () => {
 
     // --- Happy path: Backup Project Files ---
     // § init-command.md § Процедура Backup Project Files § Поведение шаги 1-11
-    it("при --agent выполняет бэкап project-файлов в .agloom/instructions/ перед Init Overlay Files", async () => {
+    it("при --adapter выполняет бэкап project-файлов в .agloom/instructions/ перед Init Overlay Files", async () => {
       // Создаём project-файлы в корне проекта (CLAUDE.md — в projectFiles записи claude)
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Claude instructions");
 
@@ -795,7 +795,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -839,7 +839,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -881,7 +881,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude", "--force"],
+          args: ["init", "--adapter", "claude", "--force"],
           projectRoot: tmpDir,
         }),
       );
@@ -927,7 +927,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -975,7 +975,7 @@ describe("CLI", () => {
 
         const { lastFrame, unmount } = render(
           React.createElement(App, {
-            args: ["init", "--agent", "claude"],
+            args: ["init", "--adapter", "claude"],
             projectRoot: tmpDir,
           }),
         );
@@ -1020,7 +1020,7 @@ describe("CLI", () => {
 
         const { lastFrame, unmount } = render(
           React.createElement(App, {
-            args: ["init", "--agent", "claude"],
+            args: ["init", "--adapter", "claude"],
             projectRoot: tmpDir,
           }),
         );
@@ -1055,7 +1055,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -1106,7 +1106,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--agent", "claude"],
+          args: ["init", "--adapter", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -1167,9 +1167,9 @@ describe("CLI", () => {
 
     // --- § Справка: init --help обновлена ---
     // § init-command.md § Справка: Вывод agloom init --help
-    // Usage: agloom init (--agent <agentId> | --all) [--force]
-    // Содержит --agent, --all, --force, --help
-    it("отображает обновлённую справку с --agent и --all при вызове init --help", async () => {
+    // Usage: agloom init (--adapter <agentId> | --all) [--force]
+    // Содержит --adapter, --all, --force, --verbose
+    it("отображает обновлённую справку с --adapter и --all при вызове init --help", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["init", "--help"],
@@ -1188,11 +1188,11 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Обновлённая справка содержит --agent (не --adapter) и --all
-      expect(output).toContain("--agent");
+      // Обновлённая справка содержит --adapter (не --adapter) и --all
+      expect(output).toContain("--adapter");
       expect(output).toContain("--all");
       expect(output).toContain("--force");
-      expect(output).toContain("--help");
+      expect(output).toContain("--verbose");
 
       unmount();
     });

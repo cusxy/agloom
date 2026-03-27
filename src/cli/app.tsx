@@ -165,7 +165,7 @@ function TranspileHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
       <Text>
-        Usage: agloom transpile (--agent &lt;agentId&gt; | --all) [--clean]
+        Usage: agloom transpile (--adapter &lt;adapterId&gt; | --all) [--clean]
         [--verbose]
       </Text>
       <Text> </Text>
@@ -176,19 +176,17 @@ function TranspileHelpView(): React.ReactElement {
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
-        {"  "}--agent, --adapter &lt;agentId&gt;{"  "}Agent ID from the registry
+        {"  "}--adapter &lt;adapterId&gt;{"  "}Adapter ID from the registry
         (required unless --all)
       </Text>
       <Text>
-        {"  "}--all {"                        "}Transpile for all supported
-        agents
+        {"  "}--all {"                 "}Transpile for all supported agents
       </Text>
       <Text>
-        {"  "}--clean {"                      "}Clean before transpiling
+        {"  "}--clean {"               "}Clean before transpiling
       </Text>
       <Text>
-        {"  "}--verbose {"                    "}Show all steps including 0-file
-        ones
+        {"  "}--verbose {"             "}Show all steps including 0-file ones
       </Text>
     </Box>
   );
@@ -224,7 +222,7 @@ function CleanHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
       <Text>
-        Usage: agloom clean (--adapter &lt;agentId&gt; | --all) [--verbose]
+        Usage: agloom clean (--adapter &lt;adapterId&gt; | --all) [--verbose]
       </Text>
       <Text> </Text>
       <Text>
@@ -233,14 +231,14 @@ function CleanHelpView(): React.ReactElement {
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
-        {"  "}--adapter &lt;agentId&gt;{"  "}Adapter ID from the registry
+        {"  "}--adapter &lt;adapterId&gt;{"  "}Adapter ID from the registry
         (required unless --all)
       </Text>
       <Text>
-        {"  "}--all {"                "}Clean for all supported adapters
+        {"  "}--all {"                 "}Clean for all supported adapters
       </Text>
       <Text>
-        {"  "}--verbose {"            "}Show details even when 0 files removed
+        {"  "}--verbose {"             "}Show details even when 0 files removed
       </Text>
     </Box>
   );
@@ -391,7 +389,7 @@ function InitHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
       <Text>
-        Usage: agloom init (--agent &lt;agentId&gt; | --all) [--force]
+        Usage: agloom init (--adapter &lt;adapterId&gt; | --all) [--force]
         [--verbose]
       </Text>
       <Text> </Text>
@@ -399,20 +397,17 @@ function InitHelpView(): React.ReactElement {
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
-        {"  "}--agent &lt;agentId&gt;{"  "}Agent identifier (required unless
-        --all)
+        {"  "}--adapter &lt;adapterId&gt;{"  "}Adapter identifier (required
+        unless --all)
       </Text>
       <Text>
-        {"  "}--all {"              "}Initialize all supported agents
+        {"  "}--all {"                 "}Initialize all supported agents
       </Text>
       <Text>
-        {"  "}--force {"            "}Overwrite existing files
+        {"  "}--force {"               "}Overwrite existing files
       </Text>
       <Text>
-        {"  "}--verbose {"          "}Show all steps including 0-file ones
-      </Text>
-      <Text>
-        {"  "}--help {"             "}Show help
+        {"  "}--verbose {"             "}Show all steps including 0-file ones
       </Text>
     </Box>
   );
@@ -945,21 +940,21 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
 
   // § Команда init
   if (parsed.command === "init") {
-    // Расширение 2a: ни --agent, ни --all не указан
+    // Расширение 2a: ни --adapter, ни --all не указан
     if (!parsed.agent && !parsed.all) {
       process.exitCode = 1;
       return (
         <Text>
-          Error: --agent or --all is required. Usage: agloom init (--agent
-          &lt;agentId&gt; | --all) [--force]
+          Error: --adapter or --all is required. Usage: agloom init (--adapter
+          &lt;adapterId&gt; | --all) [--force]
         </Text>
       );
     }
 
-    // Расширение 3a: --agent и --all указаны одновременно
+    // Расширение 3a: --adapter и --all указаны одновременно
     if (parsed.agent && parsed.all) {
       process.exitCode = 1;
-      return <Text>--agent and --all are mutually exclusive.</Text>;
+      return <Text>--adapter and --all are mutually exclusive.</Text>;
     }
 
     // Расширение 6a: адаптер не найден (Resolve Adapter § 1a)
@@ -1028,21 +1023,21 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
 
   // § Команда transpile
   if (parsed.command === "transpile") {
-    // Расширение 1a: ни --agent, ни --all не указаны
+    // Расширение 1a: ни --adapter, ни --all не указаны
     if (!parsed.agent && !parsed.all) {
       process.exitCode = 1;
       return (
         <Text>
-          Error: --agent or --all is required. Usage: agloom transpile (--agent
-          &lt;agentId&gt; | --all) [--clean]
+          Error: --adapter or --all is required. Usage: agloom transpile
+          (--adapter &lt;adapterId&gt; | --all) [--clean]
         </Text>
       );
     }
 
-    // Расширение 1b: --agent и --all указаны одновременно
+    // Расширение 1b: --adapter и --all указаны одновременно
     if (parsed.agent && parsed.all) {
       process.exitCode = 1;
-      return <Text>--agent and --all are mutually exclusive.</Text>;
+      return <Text>--adapter and --all are mutually exclusive.</Text>;
     }
 
     // Режим --all
