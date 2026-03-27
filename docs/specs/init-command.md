@@ -1,7 +1,7 @@
 ---
 summary: Команда init — импорт существующих agent-специфичных файлов в .agloom/
 description: >
-  Команда agloom init для бэкапа project-файлов в .agloom/project/
+  Команда agloom init для бэкапа project-файлов в .agloom/instructions/
   и копирования существующих agent-специфичных файлов
   в .agloom/overlays/<agentId>/.
 type: spec
@@ -24,7 +24,7 @@ maps_to:
 (см. `docs/specs/cli.md`). Команда выполняет две задачи:
 
 1. Создаёт полный бэкап agent-специфичных project-файлов
-   в `.agloom/project/`.
+   в `.agloom/instructions/`.
 2. Импортирует существующие agent-специфичные файлы
    в `.agloom/overlays/<agentId>/`
    (см. `docs/specs/provider-overlay.md` § Структура директории overlays/).
@@ -56,7 +56,7 @@ maps_to:
 ## Процедура Backup Project Files
 
 Общая процедура бэкапа agent-специфичных project-файлов из корня проекта
-в `.agloom/project/`. Вызывается командой `init` при любом режиме
+в `.agloom/instructions/`. Вызывается командой `init` при любом режиме
 (`--agent` или `--all`).
 
 **Вход:**
@@ -76,14 +76,14 @@ maps_to:
 5. Исключить из результатов сканирования файлы, находящиеся
    в `node_modules/`, скрытых каталогах (имя начинается с `.`)
    и каталоге `.agloom/`.
-6. Определить целевую директорию как `<projectRoot>/.agloom/project/`.
+6. Определить целевую директорию как `<projectRoot>/.agloom/instructions/`.
 7. Проверить, что целевая директория не содержит файлов.
 8. Создать целевую директорию и промежуточные каталоги
    при необходимости.
 9. Для каждого найденного файла определить относительный путь
    от `projectRoot`.
 10. Для каждого найденного файла скопировать его
-    в `<projectRoot>/.agloom/project/<relativePath>`,
+    в `<projectRoot>/.agloom/instructions/<relativePath>`,
     создавая промежуточные каталоги при необходимости.
 11. Сформировать `ProjectBackupOutcome` с `copiedCount`
     (количество файлов, успешно скопированных на шаге 10) и `errors`.
@@ -92,7 +92,7 @@ maps_to:
 
 7a. Целевая директория уже существует и содержит файлы,
 `force` равен `false` → вернуть строку-сообщение
-`".agloom/project/ already exists. Use --force to overwrite."`.
+`".agloom/instructions/ already exists. Use --force to overwrite."`.
 
 7b. `force` равен `true` → пропустить проверку,
 перезаписать существующие файлы при копировании.
@@ -159,7 +159,7 @@ maps_to:
 ## Команда init
 
 `agloom init (--agent <agentId> | --all) [--force]` — создаёт бэкап
-project-файлов в `.agloom/project/` и копирует существующие
+project-файлов в `.agloom/instructions/` и копирует существующие
 agent-специфичные файлы в `.agloom/overlays/<agentId>/`.
 
 **Аргументы:**
@@ -235,7 +235,7 @@ exit code 1.
 Результат бэкапа project-файлов (успех):
 
 ```text
-  ✓ {projectCopiedCount} project files backed up to .agloom/project/
+  ✓ {projectCopiedCount} project files backed up to .agloom/instructions/
 ```
 
 Результат копирования overlay-файлов (успех, для каждого агента):
@@ -248,7 +248,7 @@ exit code 1.
 
 ```text
 Initializing...
-  ✓ {projectCopiedCount} project files backed up to .agloom/project/
+  ✓ {projectCopiedCount} project files backed up to .agloom/instructions/
   ✓ {copiedCount} files copied to .agloom/overlays/claude/
 
 Done.
@@ -258,7 +258,7 @@ Done.
 
 ```text
 Initializing...
-  ✓ {projectCopiedCount} project files backed up to .agloom/project/
+  ✓ {projectCopiedCount} project files backed up to .agloom/instructions/
   ✓ {copiedCount} files copied to .agloom/overlays/claude/
   ✓ {copiedCount} files copied to .agloom/overlays/opencode/
   ✓ {copiedCount} files copied to .agloom/overlays/agentsmd/
@@ -270,7 +270,7 @@ Done.
 
 ```text
 Initializing...
-  ✓ {projectCopiedCount} project files backed up to .agloom/project/
+  ✓ {projectCopiedCount} project files backed up to .agloom/instructions/
   ✗ {errors[0]}
 
 Done. {copiedCount} files copied.

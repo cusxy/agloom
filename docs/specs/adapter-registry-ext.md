@@ -37,7 +37,7 @@ maps_to:
   (например, `["CLAUDE.md"]`). Массив МОЖЕТ быть пустым, если адаптер
   не генерирует файлов за пределами `targetRoot`.
 - `projectFiles` (array\<string>, обязательно) — имена файлов для рекурсивного
-  поиска в project tree при создании `.agloom/project/` бэкапа командой `init`
+  поиска в project tree при создании `.agloom/instructions/` бэкапа командой `init`
   (например, `["CLAUDE.md", "CLAUDE.local.md"]`). Массив МОЖЕТ быть пустым,
   если адаптер не имеет уникальных файлов в project tree.
 - `instructionsFile` (string | null, обязательно) — имя собственного файла

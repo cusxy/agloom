@@ -557,7 +557,7 @@ function InitView({
         <Text>
           {"  "}
           <Text color="green">✓</Text> {backupOutcome.copiedCount} project
-          files backed up to .agloom/project/
+          files backed up to .agloom/instructions/
         </Text>
       )}
       {overlayResults.map((r) => {

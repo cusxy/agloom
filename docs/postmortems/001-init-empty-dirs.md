@@ -9,7 +9,7 @@
 При выполнении `agloom init --all` создавались пустые директории:
 - `.agloom/overlays/agentsmd/`
 - `.agloom/overlays/opencode/`
-- `.agloom/project/`
+- `.agloom/instructions/`
 
 Эти директории не должны существовать, если нет файлов для копирования.
 
@@ -32,7 +32,7 @@
 ### `backupProjectFiles` (project-директория)
 
 ```
-Шаг 8: mkdirSync → создать .agloom/project/            ← создаётся всегда
+Шаг 8: mkdirSync → создать .agloom/instructions/            ← создаётся всегда
 Шаги 9-10: цикл копирования                            ← если foundFiles пуст → пустая директория
 ```
 
@@ -58,7 +58,7 @@
 
 1. `не создаёт пустую overlay-директорию если targetRoot не существует`
 2. `при --all не создаёт пустые overlay-директории для адаптеров без файлов`
-3. `не создаёт пустую .agloom/project/ если project-файлов нет`
+3. `не создаёт пустую .agloom/instructions/ если project-файлов нет`
 
 ## Уроки
 

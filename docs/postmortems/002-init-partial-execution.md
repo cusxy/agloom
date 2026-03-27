@@ -11,7 +11,7 @@
 
 ```
 Initializing...
-  ✓ 0 project files backed up to .agloom/project/
+  ✓ 0 project files backed up to .agloom/instructions/
   ✗ .agloom/overlays/claude/ already exists. Use --force to overwrite.
 
 Done. 0 files copied.
@@ -22,15 +22,15 @@ Done. 0 files copied.
    при общем провале операции.
 2. Backup Project Files выполнялся до проверки overlay, допуская
    частичное выполнение и неконсистентное состояние `.agloom/`.
-3. Проверки `.agloom/project/` и `.agloom/overlays/{id}/` выполнялись
+3. Проверки `.agloom/instructions/` и `.agloom/overlays/{id}/` выполнялись
    независимо, допуская сценарий "backup ok → overlay fail".
 
 ## Корневая причина
 
 Команда `init` проверяла существование каждой поддиректории `.agloom/`
-индивидуально (`.agloom/project/`, `.agloom/overlays/{id}/`), а не
+индивидуально (`.agloom/instructions/`, `.agloom/overlays/{id}/`), а не
 наличие `.agloom/` целиком. Это допускало частичное выполнение:
-`backupProjectFiles` мог создать `.agloom/project/` до того как
+`backupProjectFiles` мог создать `.agloom/instructions/` до того как
 `initFiles` обнаруживал конфликт в `.agloom/overlays/`.
 
 ## Исправление
@@ -56,7 +56,7 @@ Done. 0 files copied.
 
 1. `.agloom/ already exists` — блокирует init без --force (overlay-файлы)
 2. `при --all, если .agloom/ существует` — блокирует init --all
-3. `при наличии .agloom/project/` — top-level check перехватывает
+3. `при наличии .agloom/instructions/` — top-level check перехватывает
 4. `при наличии .agloom/ без --force не выполняет ни Backup, ни Init`
 5. `при существующей пустой .agloom/ блокирует init без --force`
 

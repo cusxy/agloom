@@ -103,7 +103,7 @@ describe("CLI", () => {
       // § Вывод: "Initializing..." (не "Initializing for claude...")
       expect(output).toContain("Initializing...");
       // § Вывод (успех): результат бэкапа project-файлов
-      expect(output).toMatch(/project files backed up to \.agloom\/project\//);
+      expect(output).toMatch(/project files backed up to \.agloom\/instructions\//);
       // § Вывод (успех): результат overlay
       expect(output).toContain("✓");
       expect(output).toMatch(
@@ -114,8 +114,8 @@ describe("CLI", () => {
       // § Exit codes: 0 — успех
       expect(process.exitCode).toBeUndefined();
 
-      // Побочный эффект: project-файлы скопированы в .agloom/project/
-      const backedUp = path.join(tmpDir, ".agloom", "project", "CLAUDE.md");
+      // Побочный эффект: project-файлы скопированы в .agloom/instructions/
+      const backedUp = path.join(tmpDir, ".agloom", "instructions", "CLAUDE.md");
       expect(fs.existsSync(backedUp)).toBe(true);
       expect(fs.readFileSync(backedUp, "utf-8")).toBe("Claude instructions");
 
@@ -473,9 +473,9 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Bug fix: пустая .agloom/project/ не создаётся при отсутствии project-файлов ---
-    // Регрессия: backupProjectFiles создавал .agloom/project/ даже когда нет файлов для бэкапа.
-    it("не создаёт пустую .agloom/project/ если project-файлов нет", async () => {
+    // --- Bug fix: пустая .agloom/instructions/ не создаётся при отсутствии project-файлов ---
+    // Регрессия: backupProjectFiles создавал .agloom/instructions/ даже когда нет файлов для бэкапа.
+    it("не создаёт пустую .agloom/instructions/ если project-файлов нет", async () => {
       // Создаём targetRoot для claude чтобы overlay работал
       const claudeDir = path.join(tmpDir, ".claude");
       fs.mkdirSync(claudeDir, { recursive: true });
@@ -497,8 +497,8 @@ describe("CLI", () => {
         { timeout: 5000 },
       );
 
-      // Побочный эффект: .agloom/project/ НЕ создана (нет project-файлов)
-      const projectDir = path.join(tmpDir, ".agloom", "project");
+      // Побочный эффект: .agloom/instructions/ НЕ создана (нет project-файлов)
+      const projectDir = path.join(tmpDir, ".agloom", "instructions");
       expect(fs.existsSync(projectDir)).toBe(false);
 
       unmount();
@@ -784,7 +784,7 @@ describe("CLI", () => {
 
     // --- Happy path: Backup Project Files ---
     // § init-command.md § Процедура Backup Project Files § Поведение шаги 1-11
-    it("при --agent выполняет бэкап project-файлов в .agloom/project/ перед Init Overlay Files", async () => {
+    it("при --agent выполняет бэкап project-файлов в .agloom/instructions/ перед Init Overlay Files", async () => {
       // Создаём project-файлы в корне проекта (CLAUDE.md — в projectFiles записи claude)
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Claude instructions");
 
@@ -812,25 +812,25 @@ describe("CLI", () => {
       const output = lastFrame()!;
 
       // § Вывод: результат бэкапа project-файлов
-      expect(output).toMatch(/project files backed up to \.agloom\/project\//);
+      expect(output).toMatch(/project files backed up to \.agloom\/instructions\//);
       expect(output).toContain("Done.");
       expect(process.exitCode).toBeUndefined();
 
-      // Побочный эффект: CLAUDE.md скопирован в .agloom/project/
-      const backedUp = path.join(tmpDir, ".agloom", "project", "CLAUDE.md");
+      // Побочный эффект: CLAUDE.md скопирован в .agloom/instructions/
+      const backedUp = path.join(tmpDir, ".agloom", "instructions", "CLAUDE.md");
       expect(fs.existsSync(backedUp)).toBe(true);
       expect(fs.readFileSync(backedUp, "utf-8")).toBe("Claude instructions");
 
       unmount();
     });
 
-    // --- Расширение 7a Backup Project Files: .agloom/project/ already exists ---
+    // --- Расширение 7a Backup Project Files: .agloom/instructions/ already exists ---
     // § init-command.md § Процедура Backup Project Files § Расширения 7a:
     // Целевая директория уже существует и содержит файлы, force=false →
-    // ".agloom/project/ already exists. Use --force to overwrite."
-    it('при наличии .agloom/project/ без --force отображает ".agloom/ already exists" и exit code 1', async () => {
-      // Создаём существующие файлы в .agloom/project/
-      const projectBackupDir = path.join(tmpDir, ".agloom", "project");
+    // ".agloom/instructions/ already exists. Use --force to overwrite."
+    it('при наличии .agloom/instructions/ без --force отображает ".agloom/ already exists" и exit code 1', async () => {
+      // Создаём существующие файлы в .agloom/instructions/
+      const projectBackupDir = path.join(tmpDir, ".agloom", "instructions");
       fs.mkdirSync(projectBackupDir, { recursive: true });
       fs.writeFileSync(path.join(projectBackupDir, "existing.md"), "existing");
 
@@ -862,12 +862,12 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Расширение 7b Backup Project Files: --force перезаписывает .agloom/project/ ---
+    // --- Расширение 7b Backup Project Files: --force перезаписывает .agloom/instructions/ ---
     // § init-command.md § Процедура Backup Project Files § Расширения 7b:
     // force=true → пропустить проверку, перезаписать существующие файлы.
-    it("при --force перезаписывает существующие файлы в .agloom/project/", async () => {
-      // Создаём существующие файлы в .agloom/project/
-      const projectBackupDir = path.join(tmpDir, ".agloom", "project");
+    it("при --force перезаписывает существующие файлы в .agloom/instructions/", async () => {
+      // Создаём существующие файлы в .agloom/instructions/
+      const projectBackupDir = path.join(tmpDir, ".agloom", "instructions");
       fs.mkdirSync(projectBackupDir, { recursive: true });
       fs.writeFileSync(path.join(projectBackupDir, "CLAUDE.md"), "old backup");
 
@@ -915,8 +915,8 @@ describe("CLI", () => {
     // --- .agloom/ существует → ни backup, ни overlay не выполняются ---
     // Pre-check блокирует все операции до начала работы.
     it("при наличии .agloom/ без --force не выполняет ни Backup, ни Init Overlay Files", async () => {
-      // Создаём .agloom/project/ с файлами
-      const projectBackupDir = path.join(tmpDir, ".agloom", "project");
+      // Создаём .agloom/instructions/ с файлами
+      const projectBackupDir = path.join(tmpDir, ".agloom", "instructions");
       fs.mkdirSync(projectBackupDir, { recursive: true });
       fs.writeFileSync(path.join(projectBackupDir, "existing.md"), "existing");
 
@@ -994,7 +994,7 @@ describe("CLI", () => {
         // Ошибка отображается
         expect(output).toContain("✗");
         // CLAUDE.md (успешный) всё равно скопирован
-        const backedUp = path.join(tmpDir, ".agloom", "project", "CLAUDE.md");
+        const backedUp = path.join(tmpDir, ".agloom", "instructions", "CLAUDE.md");
         expect(fs.existsSync(backedUp)).toBe(true);
         // Exit code 1 из-за errors
         expect(process.exitCode).toBe(1);
@@ -1122,7 +1122,7 @@ describe("CLI", () => {
 
       // Побочный эффект: корневой CLAUDE.md скопирован
       expect(
-        fs.existsSync(path.join(tmpDir, ".agloom", "project", "CLAUDE.md")),
+        fs.existsSync(path.join(tmpDir, ".agloom", "instructions", "CLAUDE.md")),
       ).toBe(true);
       // Побочный эффект: CLAUDE.md из подпапки скопирован с сохранением пути
       expect(
@@ -1130,7 +1130,7 @@ describe("CLI", () => {
           path.join(
             tmpDir,
             ".agloom",
-            "project",
+            "instructions",
             "packages",
             "core",
             "CLAUDE.md",
@@ -1143,7 +1143,7 @@ describe("CLI", () => {
           path.join(
             tmpDir,
             ".agloom",
-            "project",
+            "instructions",
             "node_modules",
             "some-pkg",
             "CLAUDE.md",
@@ -1153,7 +1153,7 @@ describe("CLI", () => {
       // Побочный эффект: CLAUDE.md из скрытого каталога НЕ скопирован
       expect(
         fs.existsSync(
-          path.join(tmpDir, ".agloom", "project", ".hidden", "CLAUDE.md"),
+          path.join(tmpDir, ".agloom", "instructions", ".hidden", "CLAUDE.md"),
         ),
       ).toBe(false);
 

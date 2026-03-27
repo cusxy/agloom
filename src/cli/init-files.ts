@@ -1,6 +1,6 @@
 /**
  * Процедура Init Files — импорт существующих agent-специфичных файлов в overlays/.
- * Процедура Backup Project Files — бэкап project-файлов в .agloom/project/.
+ * Процедура Backup Project Files — бэкап project-файлов в .agloom/instructions/.
  * Spec: docs/specs/init-command.md § Процедура Init Overlay Files, § Процедура Backup Project Files
  */
 
@@ -99,7 +99,7 @@ function scanProjectFiles(
 
 /**
  * Процедура Backup Project Files — бэкап agent-специфичных project-файлов
- * из корня проекта в .agloom/project/.
+ * из корня проекта в .agloom/instructions/.
  *
  * Spec: docs/specs/init-command.md § Процедура Backup Project Files
  *
@@ -130,12 +130,12 @@ export function backupProjectFiles(
   const foundFiles = scanProjectFiles(projectRoot, projectRoot, fileNames);
 
   // Шаг 6: определить целевую директорию
-  const targetDir = path.join(projectRoot, ".agloom", "project");
+  const targetDir = path.join(projectRoot, ".agloom", "instructions");
 
   // Шаг 7: проверить, что целевая директория не содержит файлов
   // Расширение 7a: целевая директория содержит файлы, force=false
   if (!force && hasFiles(targetDir)) {
-    return ".agloom/project/ already exists. Use --force to overwrite.";
+    return ".agloom/instructions/ already exists. Use --force to overwrite.";
   }
   // Расширение 7b: force=true → пропустить проверку
 
@@ -153,7 +153,7 @@ export function backupProjectFiles(
     return error.message;
   }
 
-  // Шаги 9-10: для каждого найденного файла скопировать в .agloom/project/<relativePath>
+  // Шаги 9-10: для каждого найденного файла скопировать в .agloom/instructions/<relativePath>
   for (const file of foundFiles) {
     const destPath = path.join(targetDir, file.relativePath);
     const destDir = path.dirname(destPath);
