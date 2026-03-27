@@ -10,6 +10,7 @@ relates:
   - docs/specs/cli.md
   - docs/specs/adapter-registry-ext.md
   - docs/specs/provider-overlay.md
+  - docs/specs/config.md
 maps_to:
   - src/cli/
 ---
@@ -21,11 +22,13 @@ maps_to:
 в соответствии с [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
 Данная спецификация добавляет команду `init` в CLI
-(см. `docs/specs/cli.md`). Команда выполняет две задачи:
+(см. `docs/specs/cli.md`). Команда выполняет три задачи:
 
-1. Создаёт полный бэкап agent-специфичных project-файлов
+1. Создаёт конфигурационный файл `.agloom/config.yml`
+   (см. `docs/specs/config.md`).
+2. Создаёт полный бэкап agent-специфичных project-файлов
    в `.agloom/instructions/`.
-2. Импортирует существующие agent-специфичные файлы
+3. Импортирует существующие agent-специфичные файлы
    в `.agloom/overlays/<agentId>/`
    (см. `docs/specs/provider-overlay.md` § Структура директории overlays/).
 
@@ -50,8 +53,8 @@ maps_to:
 Процедуры Backup Project Files и Init Overlay Files возвращают
 `ProjectBackupOutcome | string` и `InitOutcome | string` соответственно.
 Возврат строки означает ошибку, предотвращающую выполнение процедуры
-(см. расширения 7a, 8a в § Процедура Backup Project Files
-и 2a, 3a в § Процедура Init Overlay Files).
+(см. расширения в § Процедура Backup Project Files
+и § Процедура Init Overlay Files).
 
 ## Процедура Backup Project Files
 
@@ -158,14 +161,16 @@ maps_to:
 
 ## Команда init
 
-`agloom init (--adapter <adapterId> | --all) [--force] [--verbose]` — создаёт бэкап
-project-файлов в `.agloom/instructions/` и копирует существующие
-agent-специфичные файлы в `.agloom/overlays/<agentId>/`.
+`agloom init [--adapter <adapterId> | --all] [--force] [--verbose]` — создаёт бэкап
+project-файлов в `.agloom/instructions/`, копирует существующие
+agent-специфичные файлы в `.agloom/overlays/<agentId>/` и создаёт
+конфигурационный файл `.agloom/config.yml`
+(см. `docs/specs/config.md`).
 
 **Аргументы:**
 
 - `--adapter` (string, опционально) — идентификатор агента из реестра.
-  ТРЕБУЕТСЯ, если `--all` не указан.
+  Взаимоисключающий с `--all`.
 - `--all` (boolean, опционально, default: false) — инициализировать
   все поддерживаемые агенты из реестра.
 - `--force` (boolean, опционально, default: false) — перезаписать
@@ -174,6 +179,8 @@ agent-специфичные файлы в `.agloom/overlays/<agentId>/`.
   результаты, включая шаги с 0 скопированных файлов.
 
 Аргументы `--adapter` и `--all` являются взаимоисключающими.
+При отсутствии обоих используется конфигурационный файл
+(см. `docs/specs/config.md`).
 
 <!-- prettier-ignore-start -->
 
@@ -181,59 +188,78 @@ agent-специфичные файлы в `.agloom/overlays/<agentId>/`.
 
 1. Распарсить аргументы `--adapter`, `--all`, `--force` и `--verbose`
    из командной строки.
-2. Проверить, что указан хотя бы один из `--adapter` или `--all`.
-3. Проверить, что `--adapter` и `--all` не указаны одновременно.
-4. Определить `projectRoot` как текущий рабочий каталог процесса
+2. Определить `projectRoot` как текущий рабочий каталог процесса
    (`process.cwd()`).
-5. Если указан `--adapter`: выполнить процедуру Resolve Adapter
-   (см. `docs/specs/adapter-registry-ext.md` § Процедура Resolve Adapter)
-   с `agentId`.
-6. Проверить наличие директории `.agloom/` в `projectRoot`.
-7. Выполнить процедуру Backup Project Files
+3. Выполнить процедуру Resolve Adapters from CLI Args
+   (см. `docs/specs/config.md`
+   § Процедура Resolve Adapters from CLI Args)
+   с `adapter`, `all`, `projectRoot`, `"init"`.
+4. Проверить наличие директории `.agloom/` в `projectRoot`.
+5. Если указан `--adapter` или `--all`: создать файл
+   `.agloom/config.yml` (см. § Создание конфигурационного файла).
+6. Выполнить процедуру Backup Project Files
    (см. § Процедура Backup Project Files) с `projectRoot` и `force`.
-8. Если указан `--adapter`: выполнить процедуру Init Overlay Files
-   (см. § Процедура Init Overlay Files) с `entry`, `projectRoot`
-   и `force`.
-9. Если указан `--all`: для каждой записи реестра адаптеров
+7. Для каждой записи из списка, полученного на шаге 3,
    выполнить процедуру Init Overlay Files
    (см. § Процедура Init Overlay Files) с `entry`, `projectRoot`
    и `force`.
-10. Отобразить результат в TUI (см. § Вывод).
-11. Завершить процесс с exit code (см. § Exit codes).
+8. Отобразить результат в TUI (см. § Вывод).
+9. Завершить процесс с exit code (см. § Exit codes).
 
 <!-- prettier-ignore-end -->
 
 **Расширения:**
 
-2a. Ни `--adapter`, ни `--all` не указан → отобразить сообщение
-об обязательности одного из аргументов; exit code 1.
+3a. Resolve Adapters from CLI Args вернул ошибку → отобразить
+сообщение ошибки; exit code 1.
 
-3a. `--adapter` и `--all` указаны одновременно → отобразить сообщение
-`"--adapter and --all are mutually exclusive."`; exit code 1.
-
-5a. Resolve Adapter вернул ошибку (адаптер не найден) →
-отобразить сообщение
-`"Unknown agent: {value}. Run 'agloom adapters' to see available adapters."`;
-exit code 1.
-
-6a. Директория `.agloom/` существует и `--force` не указан →
+4a. Директория `.agloom/` существует и `--force` не указан →
 отобразить сообщение
 `".agloom/ already exists. Use --force to reinitialize."`;
-exit code 1. Процедура Backup Project Files и Init Overlay Files
-не выполняются.
+exit code 1. Последующие шаги не выполняются.
 
-6b. `--force` указан → пропустить проверку, продолжить с шага 7.
+4b. `--force` указан → пропустить проверку, продолжить с шага 5.
 
-7a. Процедура Backup Project Files вернула строку-сообщение →
+5a. Ошибка записи `.agloom/config.yml` → отобразить сообщение
+ошибки; exit code 1.
+
+6a. Процедура Backup Project Files вернула строку-сообщение →
 ошибка процедуры Backup Project Files является блокирующей;
 при возврате строки-сообщения команда завершается с exit code 1
 без выполнения Init Overlay Files. Сообщение отображается в TUI.
 
-8a. Процедура Init Overlay Files вернула строку-сообщение →
-отобразить сообщение; exit code 1.
-
-9a. Процедура Init Overlay Files для одной из записей реестра
+7a. Процедура Init Overlay Files для одной из записей
 вернула строку-сообщение → отобразить сообщение; exit code 1.
+
+### Создание конфигурационного файла
+
+Выполняется на шаге 5 при указании `--adapter` или `--all`.
+Создаёт файл `<projectRoot>/.agloom/config.yml` в формате,
+описанном в `docs/specs/config.md` § Формат файла.
+
+Содержимое поля `adapters`:
+
+- При `--adapter <id>`: `[<id>]`.
+- При `--all`: список `id` всех нескрытых адаптеров
+  (с `hidden !== true`) из реестра в порядке их определения
+  в реестре.
+
+Файл ДОЛЖЕН содержать комментарии для onboarding:
+
+```yaml
+# Agloom configuration
+# List of adapters to use by default when no --adapter or --all flag is provided.
+# Run 'agloom adapters --all' to see all available adapters.
+adapters:
+  - <id>
+```
+
+При `--force` существующий файл перезаписывается. Без `--force`
+шаг создания конфига достижим только если директория `.agloom/`
+не существует (проверка на шаге 4 предотвращает перезапись).
+
+При отсутствии `--adapter` и `--all` (режим конфига)
+файл `.agloom/config.yml` уже существует и НЕ модифицируется.
 
 **Вывод:**
 
@@ -306,11 +332,12 @@ project-файлов и всех overlay-результатов.
 **Exit codes:**
 
 - `0` — все шаги завершились без ошибок (включая 0 файлов).
-- `1` — ни `--adapter`, ни `--all` не указан; `--adapter` и `--all`
-  указаны одновременно; неизвестный агент; `.agloom/` уже существует
-  без `--force`; директория `.agloom/instructions/` или
-  `.agloom/overlays/` уже существует без `--force`; ошибка создания
-  директории; или ошибка копирования.
+- `1` — `--adapter` и `--all` указаны одновременно; конфиг не найден
+  (при отсутствии `--adapter` и `--all`); ошибка конфига; неизвестный
+  или скрытый агент; `.agloom/` уже существует без `--force`;
+  директория `.agloom/instructions/` или `.agloom/overlays/` уже
+  существует без `--force`; ошибка создания директории; или ошибка
+  копирования.
 
 ## Справка
 
@@ -324,12 +351,12 @@ project-файлов и всех overlay-результатов.
 Вывод `agloom init --help`:
 
 ```text
-Usage: agloom init (--adapter <adapterId> | --all) [--force] [--verbose]
+Usage: agloom init [--adapter <adapterId> | --all] [--force] [--verbose]
 
 Import existing agent configs into .agloom/
 
 Options:
-  --adapter <adapterId>  Adapter identifier (required unless --all)
+  --adapter <adapterId>  Adapter identifier
   --all                  Initialize all supported agents
   --force                Overwrite existing files
   --verbose              Show all steps including 0-file ones

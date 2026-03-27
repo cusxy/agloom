@@ -165,5 +165,33 @@ describe("CLI", () => {
       expect(agentsmd).toBeDefined();
       expect(agentsmd!.dependsOn).toEqual([]);
     });
+
+    // =====================================================================
+    // § adapter-registry-ext.md § Обновление реестра адаптеров — поле hidden
+    // =====================================================================
+
+    // --- Happy path: запись claude содержит поле hidden ---
+    // § Обновление реестра адаптеров, строка claude: hidden=false
+    it('запись "claude" содержит hidden false', () => {
+      const claude = adapterRegistry.find((e) => e.id === "claude");
+      expect(claude).toBeDefined();
+      expect(claude).toHaveProperty("hidden", false);
+    });
+
+    // --- Happy path: запись opencode содержит поле hidden ---
+    // § Обновление реестра адаптеров, строка opencode: hidden=false
+    it('запись "opencode" содержит hidden false', () => {
+      const opencode = adapterRegistry.find((e) => e.id === "opencode");
+      expect(opencode).toBeDefined();
+      expect(opencode).toHaveProperty("hidden", false);
+    });
+
+    // --- Happy path: запись agentsmd содержит поле hidden ---
+    // § Обновление реестра адаптеров, строка agentsmd: hidden=true
+    it('запись "agentsmd" содержит hidden true', () => {
+      const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
+      expect(agentsmd).toBeDefined();
+      expect(agentsmd).toHaveProperty("hidden", true);
+    });
   });
 });

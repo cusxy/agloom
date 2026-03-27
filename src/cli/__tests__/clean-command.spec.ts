@@ -197,8 +197,9 @@ describe("CLI", () => {
     });
 
     // --- § Справка: clean --help ---
-    // Команда ДОЛЖНА поддерживать agloom clean --help.
-    it("отображает справку при вызове clean --help", async () => {
+    // § clean-command.md § Справка: Вывод agloom clean --help
+    // Содержит --adapter, --all, --verbose
+    it("отображает справку с --adapter, --all и --verbose при вызове clean --help", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["clean", "--help"],
@@ -217,9 +218,11 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Справка содержит описание команды clean и её аргумент --adapter
+      // Справка содержит описание команды clean и все её аргументы
       expect(output).toMatch(/clean/i);
-      expect(output).toMatch(/--adapter/);
+      expect(output).toContain("--adapter");
+      expect(output).toContain("--all");
+      expect(output).toContain("--verbose");
 
       unmount();
     });
@@ -312,7 +315,67 @@ describe("CLI", () => {
       unmount();
     });
 
-    it("при отсутствии --adapter и --all отображает сообщение об обязательности и exit code 1", async () => {
+    // =====================================================================
+    // Спецификация: docs/specs/config.md § Процедура Resolve Adapters from CLI Args
+    // Спецификация: docs/specs/clean-command.md § Команда clean (обновлённая)
+    // =====================================================================
+
+    // --- § config.md: clean без --adapter/--all + конфиг [claude] ---
+    // § clean-command.md § Команда clean § Поведение шаг 3:
+    // Resolve Adapters from CLI Args с adapter=null, all=false.
+    // § config.md § Поведение шаги 4-5: Load Config → Resolve Adapters from Config.
+    it("при отсутствии --adapter и --all с конфигом adapters: [claude] очищает для claude", async () => {
+      // Создаём .agloom/config.yml
+      const configDir = path.join(tmpDir, ".agloom");
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(configDir, "config.yml"),
+        "adapters:\n  - claude\n",
+      );
+
+      // Создаём файлы адаптера claude
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
+      fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Generated content");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["clean"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // § Вывод (успех): "Cleaning for claude..."
+      expect(output).toContain("Cleaning for claude");
+      expect(output).toMatch(/\d+\s+files removed/);
+      // § Exit codes: 0 — успех
+      expect(process.exitCode).toBeUndefined();
+
+      // Побочный эффект: файлы удалены
+      expect(fs.existsSync(claudeDir)).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(false);
+
+      unmount();
+    });
+
+    // --- § config.md: clean без аргументов + нет конфига → ошибка ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 4a:
+    // command !== "init" →
+    // Error("No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.")
+    // § clean-command.md § Команда clean § Расширения 3a.
+    it('при отсутствии --adapter, --all и конфига отображает "No config found" и exit code 1', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["clean"],
@@ -331,7 +394,7 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toMatch(/--adapter|--all/);
+      expect(output).toContain("No config found");
       expect(process.exitCode).toBe(1);
 
       unmount();

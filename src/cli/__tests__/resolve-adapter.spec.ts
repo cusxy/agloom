@@ -28,15 +28,14 @@ describe("CLI", () => {
       );
     });
 
-    // --- Happy path: resolveAdapter для agentsmd ---
-    // § adapter-registry-ext.md § Процедура Resolve Adapter шаг 1:
-    // Найти запись в реестре адаптеров с id=agentsmd.
-    it('возвращает запись адаптера "agentsmd" из реестра при валидном agentId', () => {
-      const result = resolveAdapter("agentsmd");
-
-      expect(result.entry).toBeDefined();
-      expect(result.entry.id).toBe("agentsmd");
-      expect(result.projectRoot).toBe(process.cwd());
+    // --- Расширение 1b: скрытый адаптер ---
+    // § adapter-registry-ext.md § Процедура Resolve Adapter § Расширения 1b:
+    // Запись найдена, но entry.hidden === true →
+    // Error("Adapter '{value}' cannot be used directly. It is included automatically as a dependency.")
+    it('при скрытом адаптере agentsmd выбрасывает ошибку "cannot be used directly"', () => {
+      expect(() => resolveAdapter("agentsmd")).toThrow(
+        "Adapter 'agentsmd' cannot be used directly. It is included automatically as a dependency.",
+      );
     });
   });
 });

@@ -182,6 +182,34 @@ export function backupProjectFiles(
 }
 
 /**
+ * Создаёт файл .agloom/config.yml с указанным списком адаптеров.
+ *
+ * Spec: docs/specs/init-command.md § Создание конфигурационного файла
+ *
+ * @param projectRoot — абсолютный путь к корню проекта.
+ * @param adapterIds — список идентификаторов адаптеров для записи в конфиг.
+ */
+export function createConfigFile(
+  projectRoot: string,
+  adapterIds: string[],
+): void {
+  const configDir = path.join(projectRoot, ".agloom");
+  const configPath = path.join(configDir, "config.yml");
+
+  fs.mkdirSync(configDir, { recursive: true });
+
+  const adapterLines = adapterIds.map((id) => `  - ${id}`).join("\n");
+  const content = `# Agloom configuration
+# List of adapters to use by default when no --adapter or --all flag is provided.
+# Run 'agloom adapters --all' to see all available adapters.
+adapters:
+${adapterLines}
+`;
+
+  fs.writeFileSync(configPath, content);
+}
+
+/**
  * Процедура Init Overlay Files — импортирует существующие agent-специфичные файлы в overlays/.
  *
  * Spec: docs/specs/init-command.md § Процедура Init Overlay Files

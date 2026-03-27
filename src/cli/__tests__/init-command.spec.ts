@@ -143,38 +143,6 @@ describe("CLI", () => {
     });
 
     // =====================================================================
-    // Расширение 2a: ни --adapter, ни --all не указан
-    // § init-command.md § Расширения 2a: Ни --adapter, ни --all не указан →
-    // отобразить сообщение об обязательности одного из аргументов; exit code 1.
-    // =====================================================================
-
-    it("завершается с exit code 1 и сообщением об обязательности --adapter или --all, если ни один не указан", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init"],
-          projectRoot: tmpDir,
-        }),
-      );
-
-      await vi.waitFor(
-        () => {
-          const frame = lastFrame();
-          expect(frame).toBeDefined();
-          expect(frame!.length).toBeGreaterThan(0);
-        },
-        { timeout: 5000 },
-      );
-
-      const output = lastFrame()!;
-
-      // Сообщение должно указывать на обязательность --adapter или --all
-      expect(output).toMatch(/--adapter|--all/);
-      expect(process.exitCode).toBe(1);
-
-      unmount();
-    });
-
-    // =====================================================================
     // Расширение 3a: --adapter и --all указаны одновременно
     // § init-command.md § Расширения 3a: --adapter и --all указаны одновременно →
     // отобразить "--adapter and --all are mutually exclusive."; exit code 1.
@@ -1353,6 +1321,230 @@ describe("CLI", () => {
       expect(output).toContain(
         ".agloom/ already exists. Use --force to reinitialize.",
       );
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Спецификация: docs/specs/init-command.md § Создание конфигурационного файла
+    // Спецификация: docs/specs/config.md § Формат файла
+    // =====================================================================
+
+    // --- § init-command.md § Поведение шаг 5: создать .agloom/config.yml ---
+    // При --adapter <id>: adapters: [<id>].
+    it("при --adapter claude создаёт .agloom/config.yml с adapters: [claude]", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--adapter", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      // Побочный эффект: .agloom/config.yml создан
+      const configPath = path.join(tmpDir, ".agloom", "config.yml");
+      expect(fs.existsSync(configPath)).toBe(true);
+
+      const content = fs.readFileSync(configPath, "utf-8");
+      // Содержит adapters: [claude]
+      expect(content).toMatch(/adapters:/);
+      expect(content).toMatch(/- claude/);
+      // НЕ содержит opencode или agentsmd
+      expect(content).not.toMatch(/- opencode/);
+      expect(content).not.toMatch(/- agentsmd/);
+
+      unmount();
+    });
+
+    // --- § init-command.md § Создание конфигурационного файла ---
+    // При --all: список id всех нескрытых адаптеров.
+    it("при --all создаёт .agloom/config.yml с adapters содержащими все нескрытые адаптеры", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      // Побочный эффект: .agloom/config.yml создан
+      const configPath = path.join(tmpDir, ".agloom", "config.yml");
+      expect(fs.existsSync(configPath)).toBe(true);
+
+      const content = fs.readFileSync(configPath, "utf-8");
+      // Содержит нескрытые адаптеры
+      expect(content).toMatch(/- claude/);
+      expect(content).toMatch(/- opencode/);
+      // НЕ содержит скрытый адаптер agentsmd
+      expect(content).not.toMatch(/- agentsmd/);
+
+      unmount();
+    });
+
+    // --- § init-command.md § Создание конфигурационного файла § --force ---
+    // При --force: существующий config.yml перезаписывается новым содержимым.
+    it("при --force перезаписывает существующий .agloom/config.yml новым списком адаптеров", async () => {
+      // Создаём существующий .agloom/config.yml с opencode
+      const configDir = path.join(tmpDir, ".agloom");
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(configDir, "config.yml"),
+        "adapters:\n  - opencode\n",
+      );
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--adapter", "claude", "--force"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      // Побочный эффект: config.yml перезаписан с adapters: [claude]
+      const configPath = path.join(tmpDir, ".agloom", "config.yml");
+      const content = fs.readFileSync(configPath, "utf-8");
+      expect(content).toMatch(/- claude/);
+      // Старое значение opencode заменено
+      expect(content).not.toMatch(/- opencode/);
+
+      unmount();
+    });
+
+    // --- § init-command.md § Создание конфигурационного файла § Комментарии ---
+    // Файл ДОЛЖЕН содержать комментарии для onboarding:
+    // "# Agloom configuration"
+    it("созданный config.yml содержит комментарии для onboarding", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--adapter", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const configPath = path.join(tmpDir, ".agloom", "config.yml");
+      const content = fs.readFileSync(configPath, "utf-8");
+
+      // § init-command.md: Файл ДОЛЖЕН содержать комментарии для onboarding
+      expect(content).toContain("# Agloom configuration");
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Спецификация: docs/specs/config.md § Процедура Resolve Adapters from CLI Args
+    // init без аргументов: fallback на конфигурационный файл
+    // =====================================================================
+
+    // --- § config.md: init без --adapter/--all + существующий конфиг ---
+    // § config.md § Поведение шаги 4-5: Load Config → Resolve Adapters from Config.
+    // § init-command.md § Создание конфигурационного файла:
+    // При отсутствии --adapter и --all файл config.yml НЕ модифицируется.
+    it("при отсутствии --adapter и --all с существующим конфигом использует конфиг и НЕ модифицирует config.yml", async () => {
+      // Создаём существующий .agloom/ с config.yml
+      const configDir = path.join(tmpDir, ".agloom");
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(configDir, "config.yml"),
+        "adapters:\n  - claude\n",
+      );
+
+      // Создаём файлы в targetRoot
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--force"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Инициализация выполнена (не ошибка)
+      expect(output).toContain("Done.");
+      expect(process.exitCode).toBeUndefined();
+
+      // config.yml НЕ модифицирован
+      const configContent = fs.readFileSync(
+        path.join(configDir, "config.yml"),
+        "utf-8",
+      );
+      expect(configContent).toBe("adapters:\n  - claude\n");
+
+      unmount();
+    });
+
+    // --- § config.md: init без аргументов + нет конфига → ошибка ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 4a:
+    // command === "init" →
+    // Error("No config found. Use --adapter <id> or --all to specify adapters.")
+    it('при отсутствии --adapter, --all и конфига отображает "No config found" без упоминания agloom init', async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("No config found");
+      // Для command="init" сообщение НЕ должно содержать "run 'agloom init'"
+      expect(output).not.toContain("run 'agloom init'");
       expect(process.exitCode).toBe(1);
 
       unmount();

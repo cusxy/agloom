@@ -29,6 +29,8 @@ export interface AdapterRegistryEntry {
   instructionsFile: string | null;
   /** Идентификаторы адаптеров, от которых зависит данный адаптер. */
   dependsOn: string[];
+  /** Признак скрытого адаптера. */
+  hidden: boolean;
 }
 
 /** Результат выполнения очистки. */

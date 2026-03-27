@@ -99,37 +99,6 @@ describe("CLI", () => {
     });
 
     // =====================================================================
-    // Расширение 1a: ни --adapter, ни --all не указаны
-    // § cli.md § Режим --adapter § Расширения 1a
-    // =====================================================================
-
-    it("при отсутствии --adapter и --all отображает сообщение об обязательности и exit code 1", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile"],
-          projectRoot: tmpDir,
-        }),
-      );
-
-      await vi.waitFor(
-        () => {
-          const frame = lastFrame();
-          expect(frame).toBeDefined();
-          expect(frame!.length).toBeGreaterThan(0);
-        },
-        { timeout: 5000 },
-      );
-
-      const output = lastFrame()!;
-
-      // Сообщение должно указывать на --adapter или --all
-      expect(output).toMatch(/--adapter|--all/);
-      expect(process.exitCode).toBe(1);
-
-      unmount();
-    });
-
-    // =====================================================================
     // Расширение 1b: --adapter и --all указаны одновременно
     // § cli.md § Режим --adapter § Расширения 1b
     // =====================================================================
@@ -916,6 +885,144 @@ describe("CLI", () => {
 
       unmount();
       fs.rmSync(emptyDir, { recursive: true, force: true });
+    });
+
+    // =====================================================================
+    // Спецификация: docs/specs/config.md § Процедура Resolve Adapters from CLI Args
+    // Спецификация: docs/specs/cli.md § Команда transpile (обновлённая)
+    // =====================================================================
+
+    // --- § config.md: transpile без --adapter/--all + конфиг [claude] ---
+    // § cli.md § Команда transpile § Поведение шаг 3:
+    // Resolve Adapters from CLI Args с adapter=null, all=false.
+    // § config.md § Поведение шаги 4-5: Load Config → Resolve Adapters from Config.
+    it("при отсутствии --adapter и --all с конфигом adapters: [claude] транспилирует для claude", async () => {
+      // .agloom/ уже создан в beforeEach (для skills/agents),
+      // добавим config.yml
+      fs.writeFileSync(
+        path.join(tmpDir, ".agloom", "config.yml"),
+        "adapters:\n  - claude\n",
+      );
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 10000 },
+      );
+
+      const output = lastFrame()!;
+
+      // TUI § Заголовок: содержит имя адаптера из конфига
+      expect(output).toContain("Transpiling for claude");
+      expect(output).toMatch(/Done\.\s+\d+\s+files written\./);
+      // § Exit codes: 0 при успехе
+      expect(process.exitCode).toBeUndefined();
+
+      unmount();
+    });
+
+    // --- § config.md: transpile без аргументов + нет конфига → ошибка ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 4a:
+    // command !== "init" →
+    // Error("No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.")
+    // § cli.md § Команда transpile § Расширения 3a.
+    it('при отсутствии --adapter, --all и конфига отображает "No config found" и exit code 1', async () => {
+      // Удаляем .agloom/config.yml если существует (в beforeEach .agloom создаётся для skills/agents)
+      const configPath = path.join(tmpDir, ".agloom", "config.yml");
+      if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("No config found");
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    // --- § cli.md § --help: usage line с квадратными скобками ---
+    // § cli.md § Глобальные опции § --help:
+    // Вывод agloom transpile --help ДОЛЖЕН содержать строку usage:
+    // "Usage: agloom transpile [--adapter <adapterId> | --all] [--clean] [--verbose]"
+    // Квадратные скобки, не круглые — аргументы опциональны (fallback на конфиг).
+    it("справка transpile --help содержит usage с квадратными скобками для --adapter/--all", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--help"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Usage line ДОЛЖНА содержать квадратные скобки (не круглые)
+      expect(output).toContain("[--adapter");
+      expect(output).toContain("| --all]");
+
+      unmount();
+    });
+
+    // --- § adapter-registry-ext.md § hidden: --adapter agentsmd → ошибка ---
+    // § adapter-registry-ext.md § Процедура Resolve Adapter § Расширения 1b:
+    // Скрытый адаптер не может быть указан через --adapter.
+    // § cli.md § Команда transpile § Расширения 3a:
+    // Resolve Adapters from CLI Args вернул ошибку → exit code 1.
+    it('при --adapter agentsmd отображает ошибку "cannot be used directly" и exit code 1', async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--adapter", "agentsmd"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("cannot be used directly");
+      expect(process.exitCode).toBe(1);
+
+      unmount();
     });
 
     // --- С --verbose: все шаги отображаются, включая 0 файлов ---

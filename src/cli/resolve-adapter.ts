@@ -30,6 +30,12 @@ export function resolveAdapter(adapterId: string): ResolveAdapterResult {
     );
   }
 
+  if (entry.hidden) {
+    throw new Error(
+      `Adapter '${adapterId}' cannot be used directly. It is included automatically as a dependency.`,
+    );
+  }
+
   const projectRoot = process.cwd();
 
   return { entry, projectRoot };

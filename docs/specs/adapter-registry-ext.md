@@ -1,8 +1,8 @@
 ---
-summary: Расширение реестра адаптеров — targetRoot, targetFiles, projectFiles, instructionsFile, dependsOn, Resolve Adapter
+summary: Расширение реестра адаптеров — targetRoot, targetFiles, projectFiles, instructionsFile, dependsOn, hidden, Resolve Adapter
 description: >
   Расширяет AdapterRegistryEntry полями targetRoot, targetFiles, projectFiles,
-  instructionsFile и dependsOn. Определяет общую процедуру Resolve Adapter
+  instructionsFile, dependsOn и hidden. Определяет общую процедуру Resolve Adapter
   для переиспользования в командах, принимающих --adapter.
 type: spec
 status: implemented
@@ -10,6 +10,7 @@ relates:
   - docs/specs/cli.md
   - docs/specs/instructions-transpiler.md
   - docs/specs/init-command.md
+  - docs/specs/config.md
 maps_to:
   - src/cli/
 ---
@@ -23,7 +24,8 @@ maps_to:
 Данная спецификация расширяет реестр адаптеров
 (см. `docs/specs/cli.md` § Реестр адаптеров) дополнительными
 метаданными, необходимыми для операций с файловой системой
-целевого агента, и формализует общую процедуру разрешения адаптера.
+целевого агента, признаком скрытости адаптера и формализует
+общую процедуру разрешения адаптера.
 
 ## Расширение AdapterRegistryEntry
 
@@ -51,17 +53,28 @@ maps_to:
   транспилированы до самого адаптера. Массив МОЖЕТ быть пустым.
   Связь является явной: наличие `instructionsFile: null` НЕ подразумевает
   автоматическую зависимость от какого-либо адаптера.
+- `hidden` (boolean, обязательно) — признак скрытого адаптера.
+  Скрытые адаптеры (`hidden: true`):
+  - ЗАПРЕЩАЕТСЯ указывать в конфигурационном файле
+    `.agloom/config.yml` (см. `docs/specs/config.md`).
+  - ЗАПРЕЩАЕТСЯ указывать через `--adapter`.
+  - НЕ отображаются в выводе команды `adapters`
+    (см. `docs/specs/cli.md` § Команда adapters).
+  - МОГУТ быть включены только неявно через `dependsOn`
+    другого адаптера.
+  - МОГУТ быть обработаны при указании `--all` для команд
+    `transpile`, `clean` и `init`.
 
 ## Обновление реестра адаптеров
 
 В реестр адаптеров ТРЕБУЕТСЯ добавить поля `targetRoot`, `targetFiles`,
-`projectFiles`, `instructionsFile` и `dependsOn` для каждой записи:
+`projectFiles`, `instructionsFile`, `dependsOn` и `hidden` для каждой записи:
 
-| `id`         | `targetRoot`  | `targetFiles`   | `projectFiles`                     | `instructionsFile` | `dependsOn`    |
-| ------------ | ------------- | --------------- | ---------------------------------- | ------------------ | -------------- |
-| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` | `["CLAUDE.md", "CLAUDE.local.md"]` | `"CLAUDE.md"`      | `[]`           |
-| `"opencode"` | `".opencode"` | `[]`            | `[]`                               | `null`             | `["agentsmd"]` |
-| `"agentsmd"` | `".agents"`   | `["AGENTS.md"]` | `["AGENTS.md"]`                    | `"AGENTS.md"`      | `[]`           |
+| `id`         | `targetRoot`  | `targetFiles`   | `projectFiles`                     | `instructionsFile` | `dependsOn`    | `hidden` |
+| ------------ | ------------- | --------------- | ---------------------------------- | ------------------ | -------------- | -------- |
+| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` | `["CLAUDE.md", "CLAUDE.local.md"]` | `"CLAUDE.md"`      | `[]`           | `false`  |
+| `"opencode"` | `".opencode"` | `[]`            | `[]`                               | `null`             | `["agentsmd"]` | `false`  |
+| `"agentsmd"` | `".agents"`   | `["AGENTS.md"]` | `["AGENTS.md"]`                    | `"AGENTS.md"`      | `[]`           | `true`   |
 
 ### Запись agentsmd
 
@@ -109,6 +122,9 @@ OpenCode не имеет уникальных файлов в project tree. По
 
 1a. Запись не найдена →
 `Error("Unknown agent: {value}. Run 'agloom adapters' to see available adapters.")`.
+
+1b. Запись найдена, но `entry.hidden === true` →
+`Error("Adapter '{value}' cannot be used directly. It is included automatically as a dependency.")`.
 
 **Результат:**
 
