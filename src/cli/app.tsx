@@ -223,7 +223,9 @@ function AdaptersView(): React.ReactElement {
 function CleanHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agloom clean --adapter &lt;agentId&gt; [--verbose]</Text>
+      <Text>
+        Usage: agloom clean (--adapter &lt;agentId&gt; | --all) [--verbose]
+      </Text>
       <Text> </Text>
       <Text>
         Remove generated agent-specific files for the specified adapter.
@@ -232,7 +234,10 @@ function CleanHelpView(): React.ReactElement {
       <Text>Options:</Text>
       <Text>
         {"  "}--adapter &lt;agentId&gt;{"  "}Adapter ID from the registry
-        (required)
+        (required unless --all)
+      </Text>
+      <Text>
+        {"  "}--all {"                "}Clean for all supported adapters
       </Text>
       <Text>
         {"  "}--verbose {"            "}Show details even when 0 files removed
@@ -314,6 +319,70 @@ function CleanView({
       )}
       <Text> </Text>
       <Text>Done. {outcome.removedCount} files removed.</Text>
+    </Box>
+  );
+}
+
+function CleanAllView({
+  projectRoot,
+  verbose,
+}: {
+  projectRoot: string;
+  verbose?: boolean;
+}): React.ReactElement {
+  const [results] = useState(() => {
+    const outcomes: { adapterId: string; outcome: CleanOutcome }[] = [];
+    let hasErrors = false;
+
+    for (const entry of adapterRegistry) {
+      const result = cleanFiles(entry, projectRoot);
+      outcomes.push({ adapterId: entry.id, outcome: result });
+      if (result.errors.length > 0) {
+        hasErrors = true;
+      }
+    }
+
+    if (hasErrors) {
+      process.exitCode = 1;
+    }
+
+    return outcomes;
+  });
+
+  const totalRemoved = results.reduce((sum, r) => sum + r.outcome.removedCount, 0);
+  const hasAnyErrors = results.some((r) => r.outcome.errors.length > 0);
+
+  return (
+    <Box flexDirection="column">
+      {results.map((r) => {
+        const hasErrors = r.outcome.errors.length > 0;
+        const hasVisible = hasErrors || r.outcome.removedCount > 0 || verbose;
+        if (!hasVisible) return null;
+        return (
+          <React.Fragment key={r.adapterId}>
+            <Text>
+              <Text color="green">✓</Text> Cleaning for {r.adapterId}...
+            </Text>
+            {hasErrors && (
+              <Text>
+                {"  "}
+                <Text color="red">✗</Text> {r.outcome.errors[0]}
+              </Text>
+            )}
+            {!hasErrors && (verbose || r.outcome.removedCount > 0) && (
+              <Text>
+                {"  "}
+                <Text color="green">✓</Text> {r.outcome.removedCount} files removed
+              </Text>
+            )}
+          </React.Fragment>
+        );
+      })}
+      {!verbose && !hasAnyErrors && totalRemoved === 0 && (
+        <Text>Nothing to clean.</Text>
+      )}
+      <Text> </Text>
+      <Text>Done. {totalRemoved} files removed.</Text>
     </Box>
   );
 }
@@ -920,15 +989,26 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
 
   // § Команда clean
   if (parsed.command === "clean") {
-    // Расширение 1a: --adapter не указан
-    if (!parsed.agent) {
+    // Расширение: ни --adapter, ни --all не указаны
+    if (!parsed.agent && !parsed.all) {
       process.exitCode = 1;
       return (
         <Text>
-          Error: --adapter is required. Usage: agloom clean --adapter
-          &lt;adapterId&gt;
+          Error: --adapter or --all is required. Usage: agloom clean (--adapter
+          &lt;adapterId&gt; | --all)
         </Text>
       );
+    }
+
+    // Расширение: --adapter и --all указаны одновременно
+    if (parsed.agent && parsed.all) {
+      process.exitCode = 1;
+      return <Text>--adapter and --all are mutually exclusive.</Text>;
+    }
+
+    // Режим --all
+    if (parsed.all) {
+      return <CleanAllView projectRoot={root} verbose={parsed.verbose} />;
     }
 
     // Расширение: адаптер не найден (Resolve Adapter § 1a)
@@ -943,7 +1023,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       );
     }
 
-    return <CleanView adapterId={parsed.agent} projectRoot={root} verbose={parsed.verbose} />;
+    return <CleanView adapterId={parsed.agent!} projectRoot={root} verbose={parsed.verbose} />;
   }
 
   // § Команда transpile

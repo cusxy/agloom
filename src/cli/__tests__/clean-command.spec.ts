@@ -224,6 +224,119 @@ describe("CLI", () => {
       unmount();
     });
 
+    // --- Режим --all ---
+
+    it("при --all очищает все адаптеры и показывает суммарное количество удалённых файлов", async () => {
+      // Создаём файлы для claude
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "settings.json"), "{}");
+      fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "content");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["clean", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Cleaning for claude");
+      expect(output).toMatch(/Done\.\s+\d+\s+files removed\./);
+
+      // Файлы удалены
+      expect(fs.existsSync(claudeDir)).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(false);
+      expect(process.exitCode).toBeUndefined();
+
+      unmount();
+    });
+
+    it("при --all без файлов отображает 'Nothing to clean.'", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["clean", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Nothing to clean.");
+      expect(output).toMatch(/Done\.\s+0\s+files removed\./);
+
+      unmount();
+    });
+
+    it("при одновременном --adapter и --all отображает сообщение о взаимоисключающих аргументах и exit code 1", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["clean", "--adapter", "claude", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toMatch(/mutually exclusive/i);
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    it("при отсутствии --adapter и --all отображает сообщение об обязательности и exit code 1", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["clean"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toMatch(/--adapter|--all/);
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
     // --- § Справка: clean в agloom --help ---
     // Команда clean ДОЛЖНА быть добавлена в вывод agloom --help:
     // "  clean        Remove generated agent-specific files"
