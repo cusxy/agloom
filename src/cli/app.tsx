@@ -223,7 +223,7 @@ function AdaptersView(): React.ReactElement {
 function CleanHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agloom clean --adapter &lt;agentId&gt;</Text>
+      <Text>Usage: agloom clean --adapter &lt;agentId&gt; [--verbose]</Text>
       <Text> </Text>
       <Text>
         Remove generated agent-specific files for the specified adapter.
@@ -233,6 +233,9 @@ function CleanHelpView(): React.ReactElement {
       <Text>
         {"  "}--adapter &lt;agentId&gt;{"  "}Adapter ID from the registry
         (required)
+      </Text>
+      <Text>
+        {"  "}--verbose {"            "}Show details even when 0 files removed
       </Text>
     </Box>
   );
@@ -268,9 +271,11 @@ function CleanResultView({
 function CleanView({
   adapterId,
   projectRoot,
+  verbose,
 }: {
   adapterId: string;
   projectRoot: string;
+  verbose?: boolean;
 }): React.ReactElement {
   // cleanFiles — синхронная операция, вычисляем результат при инициализации состояния
   const [outcome] = useState<CleanOutcome>(() => {
@@ -283,16 +288,32 @@ function CleanView({
   });
 
   const hasErrors = outcome.errors.length > 0;
+  const hasVisibleResults = hasErrors || outcome.removedCount > 0 || verbose;
 
   return (
     <Box flexDirection="column">
-      <CleanResultView adapterId={adapterId} outcome={outcome} />
-      <Text> </Text>
-      {hasErrors ? (
-        <Text>Done. {outcome.removedCount} files removed.</Text>
-      ) : (
-        <Text>Done.</Text>
+      {hasVisibleResults && (
+        <Text>
+          <Text color="green">✓</Text> Cleaning for {adapterId}...
+        </Text>
       )}
+      {hasErrors && (
+        <Text>
+          {"  "}
+          <Text color="red">✗</Text> {outcome.errors[0]}
+        </Text>
+      )}
+      {!hasErrors && (verbose || outcome.removedCount > 0) && (
+        <Text>
+          {"  "}
+          <Text color="green">✓</Text> {outcome.removedCount} files removed
+        </Text>
+      )}
+      {!verbose && !hasErrors && outcome.removedCount === 0 && (
+        <Text>Nothing to clean.</Text>
+      )}
+      <Text> </Text>
+      <Text>Done. {outcome.removedCount} files removed.</Text>
     </Box>
   );
 }
@@ -922,7 +943,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       );
     }
 
-    return <CleanView adapterId={parsed.agent} projectRoot={root} />;
+    return <CleanView adapterId={parsed.agent} projectRoot={root} verbose={parsed.verbose} />;
   }
 
   // § Команда transpile
