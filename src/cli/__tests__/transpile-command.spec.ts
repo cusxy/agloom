@@ -329,8 +329,8 @@ describe("CLI", () => {
     });
 
     // --- § Расширение команды transpile, вывод ---
-    // Если .agloom/overlays/<adapterId>/ не существует: ✓ Overlay 0 files
-    it('отображает "Overlay 0 files" если директория overlays/<adapterId>/ не существует', async () => {
+    // Без --verbose: шаги с 0 файлов скрываются
+    it("без --verbose скрывает шаги с 0 файлов", async () => {
       // Не создаём overlays/claude/
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -349,14 +349,67 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Шаг Overlay отображается даже если директория не существует
+      // Overlay с 0 файлов не должен отображаться без --verbose
+      expect(output).not.toContain("Overlay");
+
+      unmount();
+    });
+
+    // С --verbose: шаги с 0 файлов отображаются
+    it('с --verbose отображает "Overlay 0 files" если директория overlays/<adapterId>/ не существует', async () => {
+      // Не создаём overlays/claude/
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--agent", "claude", "--verbose"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 10000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Шаг Overlay отображается с --verbose даже если 0 файлов
       expect(output).toContain("Overlay");
       expect(output).toMatch(/Overlay\s+0\s+files/);
-
-      // 0 files — это успех, отображается с ✓
       expect(output).toMatch(/✓.*Overlay/);
 
       unmount();
+    });
+
+    // --- "Nothing to transpile." при 0 файлов без ошибок ---
+    it('отображает "Nothing to transpile." при 0 записанных файлов', async () => {
+      // Пустой проект: нет AGLOOM.md, skills, agents, overlays
+      const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-empty-"));
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--agent", "opencode"],
+          projectRoot: emptyDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 10000 },
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Nothing to transpile.");
+      expect(output).toMatch(/Done\.\s+0\s+files written\./);
+
+      unmount();
+      fs.rmSync(emptyDir, { recursive: true, force: true });
     });
 
     // --- § Расширение команды transpile, шаг 10: totalWritten всех четырёх шагов ---
@@ -582,10 +635,10 @@ describe("CLI", () => {
 
     // § cli.md: OpenCodeAdapter является no-op для instructions: метод transpile()
     // возвращает пустой массив OutputFile[].
-    it("при транспиляции opencode шаг Instructions показывает 0 files (no-op)", async () => {
+    it("при транспиляции opencode с --verbose шаг Instructions показывает 0 files (no-op)", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--agent", "opencode"],
+          args: ["transpile", "--agent", "opencode", "--verbose"],
           projectRoot: tmpDir,
         }),
       );

@@ -401,12 +401,10 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // § Вывод: "Initializing..."
-      expect(output).toContain("Initializing...");
-      // 0 files → строки с адаптерами не отображаются, но есть "Nothing to import."
-      expect(output).not.toContain("files copied");
+      // 0 files → "Initializing..." не отображается, вместо него "Nothing to import."
+      expect(output).not.toContain("Initializing...");
       expect(output).toContain("Nothing to import.");
-      expect(output).toContain("Done.");
+      expect(output).toMatch(/Done\.\s+0\s+files copied\./);
       // § Exit codes: 0 — успех (включая 0 файлов)
       expect(process.exitCode).toBeUndefined();
 

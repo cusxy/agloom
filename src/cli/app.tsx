@@ -72,6 +72,7 @@ function parseArgs(args: string[]): {
   version: boolean;
   clean: boolean;
   force: boolean;
+  verbose: boolean;
 } {
   let command: string | null = null;
   let unknownCommand: string | null = null;
@@ -81,6 +82,7 @@ function parseArgs(args: string[]): {
   let version = false;
   let clean = false;
   let force = false;
+  let verbose = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -100,6 +102,8 @@ function parseArgs(args: string[]): {
       clean = true;
     } else if (arg === "--force") {
       force = true;
+    } else if (arg === "--verbose") {
+      verbose = true;
     } else if (
       arg === "transpile" ||
       arg === "adapters" ||
@@ -112,7 +116,7 @@ function parseArgs(args: string[]): {
     }
   }
 
-  return { command, unknownCommand, agent, all, help, version, clean, force };
+  return { command, unknownCommand, agent, all, help, version, clean, force, verbose };
 }
 
 function getVersion(): string {
@@ -162,6 +166,7 @@ function TranspileHelpView(): React.ReactElement {
     <Box flexDirection="column">
       <Text>
         Usage: agloom transpile (--agent &lt;agentId&gt; | --all) [--clean]
+        [--verbose]
       </Text>
       <Text> </Text>
       <Text>
@@ -180,6 +185,10 @@ function TranspileHelpView(): React.ReactElement {
       </Text>
       <Text>
         {"  "}--clean {"                      "}Clean before transpiling
+      </Text>
+      <Text>
+        {"  "}--verbose {"                    "}Show all steps including 0-file
+        ones
       </Text>
     </Box>
   );
@@ -293,6 +302,7 @@ function InitHelpView(): React.ReactElement {
     <Box flexDirection="column">
       <Text>
         Usage: agloom init (--agent &lt;agentId&gt; | --all) [--force]
+        [--verbose]
       </Text>
       <Text> </Text>
       <Text>Import existing agent configs into .agloom/</Text>
@@ -309,6 +319,9 @@ function InitHelpView(): React.ReactElement {
         {"  "}--force {"            "}Overwrite existing files
       </Text>
       <Text>
+        {"  "}--verbose {"          "}Show all steps including 0-file ones
+      </Text>
+      <Text>
         {"  "}--help {"             "}Show help
       </Text>
     </Box>
@@ -320,11 +333,13 @@ function InitView({
   projectRoot,
   force,
   all,
+  verbose,
 }: {
   agentId: string | null;
   projectRoot: string;
   force: boolean;
   all: boolean;
+  verbose?: boolean;
 }): React.ReactElement {
   // Все операции синхронные — вычисляем при инициализации состояния
   const [state] = useState(() => {
@@ -432,16 +447,23 @@ function InitView({
         (typeof r.outcome !== "string" && r.outcome.errors.length > 0),
     );
 
+  const hasVisibleResults = hasAnyErrors ||
+    totalOverlayCopied > 0 ||
+    (backupOutcome && backupOutcome.copiedCount > 0) ||
+    verbose;
+
   return (
     <Box flexDirection="column">
-      <Text>Initializing...</Text>
+      {hasVisibleResults && (
+        <Text><Text color="green">✓</Text> Initializing...</Text>
+      )}
       {backupOutcome && backupOutcome.errors.length > 0 && (
         <Text>
           {"  "}
           <Text color="red">✗</Text> {backupOutcome.errors[0]}
         </Text>
       )}
-      {backupOutcome && backupOutcome.errors.length === 0 && backupOutcome.copiedCount > 0 && (
+      {backupOutcome && backupOutcome.errors.length === 0 && (verbose || backupOutcome.copiedCount > 0) && (
         <Text>
           {"  "}
           <Text color="green">✓</Text> {backupOutcome.copiedCount} project
@@ -465,7 +487,7 @@ function InitView({
             </Text>
           );
         }
-        if (r.outcome.copiedCount === 0) {
+        if (!verbose && r.outcome.copiedCount === 0) {
           return null;
         }
         return (
@@ -476,17 +498,13 @@ function InitView({
           </Text>
         );
       })}
-      {!hasAnyErrors &&
+      {!verbose && !hasAnyErrors &&
         totalOverlayCopied === 0 &&
         (!backupOutcome || backupOutcome.copiedCount === 0) && (
-          <Text>{"  "}Nothing to import.</Text>
+          <Text>Nothing to import.</Text>
         )}
       <Text> </Text>
-      {hasAnyErrors ? (
-        <Text>Done. {totalOverlayCopied} files copied.</Text>
-      ) : (
-        <Text>Done.</Text>
-      )}
+      <Text>Done. {totalOverlayCopied + (backupOutcome ? backupOutcome.copiedCount : 0)} files copied.</Text>
     </Box>
   );
 }
@@ -495,10 +513,12 @@ function TranspileView({
   adapterId,
   projectRoot,
   clean,
+  verbose,
 }: {
   adapterId: string;
   projectRoot: string;
   clean?: boolean;
+  verbose?: boolean;
 }): React.ReactElement {
   const { exit } = useApp();
   const [cleanOutcome, setCleanOutcome] = useState<CleanOutcome | null>(null);
@@ -602,29 +622,38 @@ function TranspileView({
           <Text> </Text>
         </>
       )}
-      {entryResults.map((r) => (
-        <React.Fragment key={r.adapterId}>
-          <Text>
-            {done ? <Text color="green">✓</Text> : <Spinner type="dots" />} Transpiling for {r.adapterId}...
-          </Text>
-          {r.outcomes.map((outcome) => (
-            <Text key={`${r.adapterId}-${outcome.name}`}>
-              {"  "}
-              {outcome.errors.length === 0 ? (
-                <>
-                  <Text color="green">✓</Text> {outcome.name.padEnd(14)}
-                  {String(outcome.writtenCount).padStart(4)} files
-                </>
-              ) : (
-                <>
-                  <Text color="red">✗</Text> {outcome.name.padEnd(14)}
-                  {outcome.errors[0]}
-                </>
-              )}
+      {entryResults.map((r) => {
+        const visibleOutcomes = verbose
+          ? r.outcomes
+          : r.outcomes.filter((o) => o.writtenCount > 0 || o.errors.length > 0);
+        if (!verbose && visibleOutcomes.length === 0) return null;
+        return (
+          <React.Fragment key={r.adapterId}>
+            <Text>
+              {done ? <Text color="green">✓</Text> : <Spinner type="dots" />} Transpiling for {r.adapterId}...
             </Text>
-          ))}
-        </React.Fragment>
-      ))}
+            {visibleOutcomes.map((outcome) => (
+              <Text key={`${r.adapterId}-${outcome.name}`}>
+                {"  "}
+                {outcome.errors.length === 0 ? (
+                  <>
+                    <Text color="green">✓</Text> {outcome.name.padEnd(14)}
+                    {String(outcome.writtenCount).padStart(4)} files
+                  </>
+                ) : (
+                  <>
+                    <Text color="red">✗</Text> {outcome.name.padEnd(14)}
+                    {outcome.errors[0]}
+                  </>
+                )}
+              </Text>
+            ))}
+          </React.Fragment>
+        );
+      })}
+      {done && !verbose && totalWritten === 0 && !entryResults.some((r) => r.outcomes.some((o) => o.errors.length > 0)) && (
+        <Text>Nothing to transpile.</Text>
+      )}
       {done && (
         <>
           <Text> </Text>
@@ -638,9 +667,11 @@ function TranspileView({
 function TranspileAllView({
   projectRoot,
   clean,
+  verbose,
 }: {
   projectRoot: string;
   clean?: boolean;
+  verbose?: boolean;
 }): React.ReactElement {
   const { exit } = useApp();
   const [allResults, setAllResults] = useState<
@@ -730,29 +761,38 @@ function TranspileAllView({
 
   return (
     <Box flexDirection="column">
-      {allResults.map((r) => (
-        <React.Fragment key={r.adapterId}>
-          <Text>
-            {done ? <Text color="green">✓</Text> : <Spinner type="dots" />} Transpiling for {r.adapterId}...
-          </Text>
-          {r.outcomes.map((outcome) => (
-            <Text key={`${r.adapterId}-${outcome.name}`}>
-              {"  "}
-              {outcome.errors.length === 0 ? (
-                <>
-                  <Text color="green">✓</Text> {outcome.name.padEnd(14)}
-                  {String(outcome.writtenCount).padStart(4)} files
-                </>
-              ) : (
-                <>
-                  <Text color="red">✗</Text> {outcome.name.padEnd(14)}
-                  {outcome.errors[0]}
-                </>
-              )}
+      {allResults.map((r) => {
+        const visibleOutcomes = verbose
+          ? r.outcomes
+          : r.outcomes.filter((o) => o.writtenCount > 0 || o.errors.length > 0);
+        if (!verbose && visibleOutcomes.length === 0) return null;
+        return (
+          <React.Fragment key={r.adapterId}>
+            <Text>
+              {done ? <Text color="green">✓</Text> : <Spinner type="dots" />} Transpiling for {r.adapterId}...
             </Text>
-          ))}
-        </React.Fragment>
-      ))}
+            {visibleOutcomes.map((outcome) => (
+              <Text key={`${r.adapterId}-${outcome.name}`}>
+                {"  "}
+                {outcome.errors.length === 0 ? (
+                  <>
+                    <Text color="green">✓</Text> {outcome.name.padEnd(14)}
+                    {String(outcome.writtenCount).padStart(4)} files
+                  </>
+                ) : (
+                  <>
+                    <Text color="red">✗</Text> {outcome.name.padEnd(14)}
+                    {outcome.errors[0]}
+                  </>
+                )}
+              </Text>
+            ))}
+          </React.Fragment>
+        );
+      })}
+      {done && !verbose && totalWritten === 0 && !allResults.some((r) => r.outcomes.some((o) => o.errors.length > 0)) && (
+        <Text>Nothing to transpile.</Text>
+      )}
       {done && (
         <>
           <Text> </Text>
@@ -852,6 +892,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
         projectRoot={root}
         force={parsed.force}
         all={parsed.all}
+        verbose={parsed.verbose}
       />
     );
   }
@@ -905,7 +946,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
 
     // Режим --all
     if (parsed.all) {
-      return <TranspileAllView projectRoot={root} clean={parsed.clean} />;
+      return <TranspileAllView projectRoot={root} clean={parsed.clean} verbose={parsed.verbose} />;
     }
 
     // Расширение 2a: адаптер не найден
@@ -925,6 +966,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
         adapterId={parsed.agent!}
         projectRoot={root}
         clean={parsed.clean}
+        verbose={parsed.verbose}
       />
     );
   }
