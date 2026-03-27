@@ -65,6 +65,7 @@ interface AppProps {
  */
 function parseArgs(args: string[]): {
   command: string | null;
+  unknownCommand: string | null;
   agent: string | null;
   all: boolean;
   help: boolean;
@@ -73,6 +74,7 @@ function parseArgs(args: string[]): {
   force: boolean;
 } {
   let command: string | null = null;
+  let unknownCommand: string | null = null;
   let agent: string | null = null;
   let all = false;
   let help = false;
@@ -105,10 +107,12 @@ function parseArgs(args: string[]): {
       arg === "init"
     ) {
       command = arg;
+    } else if (!arg.startsWith("-")) {
+      unknownCommand = arg;
     }
   }
 
-  return { command, agent, all, help, version, clean, force };
+  return { command, unknownCommand, agent, all, help, version, clean, force };
 }
 
 function getVersion(): string {
@@ -324,6 +328,24 @@ function InitView({
 }): React.ReactElement {
   // Все операции синхронные — вычисляем при инициализации состояния
   const [state] = useState(() => {
+    // Pre-check: .agloom/ уже существует → fail без --force
+    if (!force) {
+      const agloomDir = path.join(projectRoot, ".agloom");
+      if (fs.existsSync(agloomDir)) {
+        process.exitCode = 1;
+        return {
+          backupOutcome:
+            ".agloom/ already exists. Use --force to reinitialize." as
+              | ProjectBackupOutcome
+              | string,
+          overlayResults: [] as {
+            entryId: string;
+            outcome: InitOutcome | string;
+          }[],
+        };
+      }
+    }
+
     // Шаг 5: выполнить Backup Project Files
     const backupResult = backupProjectFiles(projectRoot, force);
 
@@ -413,21 +435,18 @@ function InitView({
   return (
     <Box flexDirection="column">
       <Text>Initializing...</Text>
-      {backupOutcome && (
-        <>
-          {backupOutcome.errors.length > 0 ? (
-            <Text>
-              {"  "}
-              <Text color="red">✗</Text> {backupOutcome.errors[0]}
-            </Text>
-          ) : (
-            <Text>
-              {"  "}
-              <Text color="green">✓</Text> {backupOutcome.copiedCount} project
-              files backed up to .agloom/project/
-            </Text>
-          )}
-        </>
+      {backupOutcome && backupOutcome.errors.length > 0 && (
+        <Text>
+          {"  "}
+          <Text color="red">✗</Text> {backupOutcome.errors[0]}
+        </Text>
+      )}
+      {backupOutcome && backupOutcome.errors.length === 0 && backupOutcome.copiedCount > 0 && (
+        <Text>
+          {"  "}
+          <Text color="green">✓</Text> {backupOutcome.copiedCount} project
+          files backed up to .agloom/project/
+        </Text>
       )}
       {overlayResults.map((r) => {
         if (typeof r.outcome === "string") {
@@ -446,6 +465,9 @@ function InitView({
             </Text>
           );
         }
+        if (r.outcome.copiedCount === 0) {
+          return null;
+        }
         return (
           <Text key={r.entryId}>
             {"  "}
@@ -454,6 +476,11 @@ function InitView({
           </Text>
         );
       })}
+      {!hasAnyErrors &&
+        totalOverlayCopied === 0 &&
+        (!backupOutcome || backupOutcome.copiedCount === 0) && (
+          <Text>{"  "}Nothing to import.</Text>
+        )}
       <Text> </Text>
       {hasAnyErrors ? (
         <Text>Done. {totalOverlayCopied} files copied.</Text>
@@ -757,6 +784,17 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
   // § adapters --help
   if (parsed.command === "adapters" && parsed.help) {
     return <AdaptersHelpView />;
+  }
+
+  // § Неизвестная команда
+  if (parsed.unknownCommand && !parsed.help) {
+    process.exitCode = 1;
+    return (
+      <Text>
+        Unknown command: {parsed.unknownCommand}. Run &apos;agloom --help&apos;
+        to see available commands.
+      </Text>
+    );
   }
 
   // § --help or no command

@@ -238,12 +238,10 @@ describe("CLI", () => {
     // § init-command.md § Процедура Init Overlay Files
     // =====================================================================
 
-    // --- Расширение 2a Init Overlay Files: целевая директория содержит файлы, --force не указан ---
-    // § init-command.md § Процедура Init Overlay Files § Расширения 2a:
-    // ".agloom/overlays/{entry.id}/ already exists. Use --force to overwrite."
-    // exit code 1.
-    it('отображает "already exists. Use --force to overwrite." и exit code 1, если overlay-директория содержит файлы без --force', async () => {
-      // Создаём существующие файлы в целевой директории overlays/claude/
+    // --- .agloom/ уже существует, --force не указан ---
+    // Pre-check: наличие .agloom/ без --force → блокирующая ошибка до любых операций.
+    it('отображает ".agloom/ already exists" и exit code 1, если .agloom/ существует без --force', async () => {
+      // Создаём существующие файлы в .agloom/ (любая структура)
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "existing.txt"), "existing");
@@ -271,8 +269,8 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Сообщение о необходимости --force
-      expect(output).toContain(".agloom/overlays/claude/ already exists");
+      // Единое сообщение об ошибке на уровне .agloom/
+      expect(output).toContain(".agloom/ already exists");
       expect(output).toContain("--force");
       // Exit code 1
       expect(process.exitCode).toBe(1);
@@ -382,7 +380,7 @@ describe("CLI", () => {
     // --- Расширение 4a Init Overlay Files: targetRoot не существует ---
     // § init-command.md § Процедура Init Overlay Files § Расширения 4a:
     // targetRoot не существует → copiedCount: 0, не является ошибкой.
-    it("при несуществующем targetRoot overlay отображает 0 файлов и завершается с exit code 0", async () => {
+    it("при несуществующем targetRoot overlay не отображает строку для 0 файлов и завершается с exit code 0", async () => {
       // Не создаём .claude/ — targetRoot отсутствует
 
       const { lastFrame, unmount } = render(
@@ -405,10 +403,9 @@ describe("CLI", () => {
 
       // § Вывод: "Initializing..."
       expect(output).toContain("Initializing...");
-      // overlay: 0 files copied
-      expect(output).toMatch(
-        /0\s+files copied to \.agloom\/overlays\/claude\//,
-      );
+      // 0 files → строки с адаптерами не отображаются, но есть "Nothing to import."
+      expect(output).not.toContain("files copied");
+      expect(output).toContain("Nothing to import.");
       expect(output).toContain("Done.");
       // § Exit codes: 0 — успех (включая 0 файлов)
       expect(process.exitCode).toBeUndefined();
@@ -613,14 +610,11 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Процедура Init Overlay Files: пустая целевая директория не блокирует ---
-    // § init-command.md § Процедура Init Overlay Files § Поведение шаг 2:
-    // Проверить, что целевая директория не содержит файлов.
-    // Пустая директория проходит проверку, копирование продолжается.
-    it("при существующей пустой overlay-директории продолжает копирование без ошибки", async () => {
-      // Создаём пустую целевую директорию
-      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-      fs.mkdirSync(overlayDir, { recursive: true });
+    // --- .agloom/ существует (даже пустая) → блокирует init без --force ---
+    // Top-level check: наличие .agloom/ блокирует init без --force.
+    it("при существующей пустой .agloom/ блокирует init без --force", async () => {
+      // Создаём пустую .agloom/ директорию
+      fs.mkdirSync(path.join(tmpDir, ".agloom"), { recursive: true });
 
       // Создаём файлы в targetRoot (.claude/)
       const claudeDir = path.join(tmpDir, ".claude");
@@ -638,22 +632,16 @@ describe("CLI", () => {
         () => {
           const frame = lastFrame();
           expect(frame).toBeDefined();
-          expect(frame!).toContain("Done.");
+          expect(frame!.length).toBeGreaterThan(0);
         },
         { timeout: 5000 },
       );
 
       const output = lastFrame()!;
 
-      // Успешный вывод — пустая директория не блокирует
-      expect(output).toContain("Initializing...");
-      expect(output).toContain("✓");
-      expect(output).not.toContain("already exists");
-      // Exit code 0
-      expect(process.exitCode).toBeUndefined();
-
-      // Побочный эффект: файл скопирован
-      expect(fs.existsSync(path.join(overlayDir, "file.txt"))).toBe(true);
+      // .agloom/ существует → блокируется
+      expect(output).toContain(".agloom/ already exists");
+      expect(process.exitCode).toBe(1);
 
       unmount();
     });
@@ -720,10 +708,9 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- § Вывод: вывод при --all содержит результаты для всех адаптеров ---
-    // § init-command.md § Вывод, вариант «успех» (--all):
-    // Содержит строку для каждого адаптера из реестра (claude, opencode, agentsmd)
-    it("при --all отображает результаты для всех адаптеров из реестра включая agentsmd", async () => {
+    // --- § Вывод: при --all адаптеры с 0 файлов не отображаются ---
+    // Адаптеры без файлов для копирования не показываются в выводе.
+    it("при --all не отображает строки для адаптеров с 0 скопированных файлов", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["init", "--all"],
@@ -742,10 +729,12 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Результат должен содержать строки для claude, opencode и agentsmd
-      expect(output).toContain(".agloom/overlays/claude/");
-      expect(output).toContain(".agloom/overlays/opencode/");
-      expect(output).toContain(".agloom/overlays/agentsmd/");
+      // Нет targetRoot → 0 файлов → строки адаптеров не отображаются, есть "Nothing to import."
+      expect(output).not.toContain(".agloom/overlays/claude/");
+      expect(output).not.toContain(".agloom/overlays/opencode/");
+      expect(output).not.toContain(".agloom/overlays/agentsmd/");
+      expect(output).toContain("Nothing to import.");
+      expect(output).toContain("Done.");
 
       unmount();
     });
@@ -753,8 +742,8 @@ describe("CLI", () => {
     // --- Расширение 8a (Команда init): при --all, Init Overlay Files для одной записи вернула ошибку ---
     // § init-command.md § Расширения 8a: Процедура Init Overlay Files для одной из записей
     // реестра вернула строку-сообщение → отобразить сообщение; exit code 1.
-    it("при --all, если Init Overlay Files для одной записи вернула ошибку, отображает сообщение и exit code 1", async () => {
-      // Создаём overlay-директорию с файлами для claude (заблокирует без --force)
+    it("при --all, если .agloom/ существует, отображает ошибку и exit code 1", async () => {
+      // Создаём overlay-директорию с файлами для claude → .agloom/ существует
       const claudeOverlay = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(claudeOverlay, { recursive: true });
       fs.writeFileSync(path.join(claudeOverlay, "existing.txt"), "existing");
@@ -782,8 +771,8 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Сообщение об ошибке отображается
-      expect(output).toContain(".agloom/overlays/claude/ already exists");
+      // Top-level check: .agloom/ already exists
+      expect(output).toContain(".agloom/ already exists");
       // Exit code 1
       expect(process.exitCode).toBe(1);
 
@@ -841,7 +830,7 @@ describe("CLI", () => {
     // § init-command.md § Процедура Backup Project Files § Расширения 7a:
     // Целевая директория уже существует и содержит файлы, force=false →
     // ".agloom/project/ already exists. Use --force to overwrite."
-    it('при наличии файлов в .agloom/project/ без --force отображает "already exists" и exit code 1', async () => {
+    it('при наличии .agloom/project/ без --force отображает ".agloom/ already exists" и exit code 1', async () => {
       // Создаём существующие файлы в .agloom/project/
       const projectBackupDir = path.join(tmpDir, ".agloom", "project");
       fs.mkdirSync(projectBackupDir, { recursive: true });
@@ -868,9 +857,8 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain(
-        ".agloom/project/ already exists. Use --force to overwrite.",
-      );
+      // Top-level check: .agloom/ существует
+      expect(output).toContain(".agloom/ already exists");
       expect(process.exitCode).toBe(1);
 
       unmount();
@@ -926,11 +914,10 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Расширение 5a Команда init: Backup Project Files вернула строку-сообщение ---
-    // § init-command.md § Расширения 5a: Процедура Backup Project Files вернула строку-сообщение →
-    // ошибка является блокирующей; Init Overlay Files НЕ выполняется.
-    it("при ошибке Backup Project Files не выполняет Init Overlay Files", async () => {
-      // Создаём .agloom/project/ с файлами (блокирует без --force)
+    // --- .agloom/ существует → ни backup, ни overlay не выполняются ---
+    // Pre-check блокирует все операции до начала работы.
+    it("при наличии .agloom/ без --force не выполняет ни Backup, ни Init Overlay Files", async () => {
+      // Создаём .agloom/project/ с файлами
       const projectBackupDir = path.join(tmpDir, ".agloom", "project");
       fs.mkdirSync(projectBackupDir, { recursive: true });
       fs.writeFileSync(path.join(projectBackupDir, "existing.md"), "existing");
@@ -955,6 +942,11 @@ describe("CLI", () => {
         },
         { timeout: 5000 },
       );
+
+      const output = lastFrame()!;
+
+      // Top-level check: .agloom/ already exists
+      expect(output).toContain(".agloom/ already exists");
 
       // Побочный эффект: overlay-файлы НЕ скопированы
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");

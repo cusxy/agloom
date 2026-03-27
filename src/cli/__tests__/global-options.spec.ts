@@ -1,7 +1,7 @@
 // global-options.spec.ts
 // Спецификация: docs/specs/cli.md § Глобальные опции
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import React from "react";
@@ -10,6 +10,16 @@ import { App } from "../app.js";
 
 describe("CLI", () => {
   describe("Глобальные опции", () => {
+    let originalExitCode: number | undefined;
+
+    beforeEach(() => {
+      originalExitCode = process.exitCode;
+    });
+
+    afterEach(() => {
+      process.exitCode = originalExitCode;
+    });
+
     // --- § --version: шаги 1-2 ---
     // Шаг 1: прочитать version из package.json
     // Шаг 2: отобразить прочитанное значение
@@ -102,6 +112,23 @@ describe("CLI", () => {
 
       // Exit code 0
       expect(process.exitCode).toBeUndefined();
+
+      unmount();
+    });
+
+    // --- Неизвестная команда ---
+    // Неизвестная команда → "Unknown command: {value}"; exit code 1.
+    it('при неизвестной команде отображает "Unknown command" и exit code 1', () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["agents"] }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Unknown command");
+      expect(output).toContain("agents");
+      expect(output).toContain("agloom --help");
+      expect(process.exitCode).toBe(1);
 
       unmount();
     });
