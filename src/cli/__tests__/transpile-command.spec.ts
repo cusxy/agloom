@@ -689,6 +689,61 @@ describe("CLI", () => {
     });
 
     // =====================================================================
+    // Регрессия: spinner заменяется на ✓ при завершении (process exit)
+    // Постмортем: docs/postmortems/003-transpile-hang.md
+    // =====================================================================
+
+    it("при --agent заменяет spinner на ✓ в заголовке после завершения транспиляции", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--agent", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 10000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Заголовок должен содержать ✓ вместо spinner
+      expect(output).toMatch(/✓ Transpiling for claude/);
+
+      unmount();
+    });
+
+    it("при --all заменяет spinner на ✓ в заголовках после завершения транспиляции", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 15000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Все заголовки должны содержать ✓ вместо spinner
+      expect(output).toMatch(/✓ Transpiling for claude/);
+      expect(output).toMatch(/✓ Transpiling for opencode/);
+      expect(output).toMatch(/✓ Transpiling for agentsmd/);
+
+      unmount();
+    });
+
+    // =====================================================================
     // § Справка transpile --help
     // § cli.md § --help
     // =====================================================================

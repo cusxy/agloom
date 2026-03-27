@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Text, Box } from "ink";
+import { Text, Box, useApp } from "ink";
 import Spinner from "ink-spinner";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -500,11 +500,16 @@ function TranspileView({
   projectRoot: string;
   clean?: boolean;
 }): React.ReactElement {
+  const { exit } = useApp();
   const [cleanOutcome, setCleanOutcome] = useState<CleanOutcome | null>(null);
   const [entryResults, setEntryResults] = useState<
     { adapterId: string; outcomes: TranspilerStepOutcome[] }[]
   >([]);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (done) exit();
+  }, [done, exit]);
 
   useEffect(() => {
     // Шаг 4: разрешить зависимости
@@ -600,21 +605,19 @@ function TranspileView({
       {entryResults.map((r) => (
         <React.Fragment key={r.adapterId}>
           <Text>
-            <Spinner type="dots" /> Transpiling for {r.adapterId}...
+            {done ? <Text color="green">✓</Text> : <Spinner type="dots" />} Transpiling for {r.adapterId}...
           </Text>
           {r.outcomes.map((outcome) => (
             <Text key={`${r.adapterId}-${outcome.name}`}>
               {"  "}
               {outcome.errors.length === 0 ? (
                 <>
-                  <Text color="green">✓</Text> {outcome.name}
-                  {"        "}
-                  {outcome.writtenCount} files
+                  <Text color="green">✓</Text> {outcome.name.padEnd(14)}
+                  {String(outcome.writtenCount).padStart(4)} files
                 </>
               ) : (
                 <>
-                  <Text color="red">✗</Text> {outcome.name}
-                  {"        "}
+                  <Text color="red">✗</Text> {outcome.name.padEnd(14)}
                   {outcome.errors[0]}
                 </>
               )}
@@ -639,10 +642,15 @@ function TranspileAllView({
   projectRoot: string;
   clean?: boolean;
 }): React.ReactElement {
+  const { exit } = useApp();
   const [allResults, setAllResults] = useState<
     { adapterId: string; outcomes: TranspilerStepOutcome[] }[]
   >([]);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (done) exit();
+  }, [done, exit]);
 
   useEffect(() => {
     const results: {
@@ -725,21 +733,19 @@ function TranspileAllView({
       {allResults.map((r) => (
         <React.Fragment key={r.adapterId}>
           <Text>
-            <Spinner type="dots" /> Transpiling for {r.adapterId}...
+            {done ? <Text color="green">✓</Text> : <Spinner type="dots" />} Transpiling for {r.adapterId}...
           </Text>
           {r.outcomes.map((outcome) => (
             <Text key={`${r.adapterId}-${outcome.name}`}>
               {"  "}
               {outcome.errors.length === 0 ? (
                 <>
-                  <Text color="green">✓</Text> {outcome.name}
-                  {"        "}
-                  {outcome.writtenCount} files
+                  <Text color="green">✓</Text> {outcome.name.padEnd(14)}
+                  {String(outcome.writtenCount).padStart(4)} files
                 </>
               ) : (
                 <>
-                  <Text color="red">✗</Text> {outcome.name}
-                  {"        "}
+                  <Text color="red">✗</Text> {outcome.name.padEnd(14)}
                   {outcome.errors[0]}
                 </>
               )}
