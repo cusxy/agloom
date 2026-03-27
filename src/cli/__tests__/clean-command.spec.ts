@@ -127,9 +127,9 @@ describe("CLI", () => {
 
     // --- Resolve Adapter расширение 1a (через Команду clean): неизвестный адаптер ---
     // Шаги 2–3 ссылаются на § Процедура Resolve Adapter (adapter-registry-ext.md).
-    // Расширение 1a: "Unknown adapter: {value}. Run 'agloom adapters' to see available adapters."
+    // Расширение 1a: "Unknown agent: {value}. Run 'agloom adapters' to see available adapters."
     // Exit code 1.
-    it('отображает "Unknown adapter" и завершается с exit code 1 при неизвестном adapterId', async () => {
+    it('отображает "Unknown agent" и завершается с exit code 1 при неизвестном adapterId', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["clean", "--adapter", "nonexistent"],
@@ -148,7 +148,7 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain("Unknown adapter");
+      expect(output).toContain("Unknown agent");
       expect(output).toContain("nonexistent");
       expect(output).toContain("agloom adapters");
       expect(process.exitCode).toBe(1);

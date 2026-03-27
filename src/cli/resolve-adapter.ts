@@ -26,7 +26,7 @@ export function resolveAdapter(adapterId: string): ResolveAdapterResult {
 
   if (!entry) {
     throw new Error(
-      `Unknown adapter: ${adapterId}. Run 'agloom adapters' to see available adapters.`,
+      `Unknown agent: ${adapterId}. Run 'agloom adapters' to see available adapters.`,
     );
   }
 

@@ -47,13 +47,11 @@ describe("InstructionsTranspiler", () => {
       );
       expect(claudeResult!.errors).toHaveLength(0);
 
+      // OpenCode адаптер — no-op: возвращает пустой массив files
+      // Спецификация: § OpenCode адаптер → transpile → Поведение, шаг 1
       const opencodeResult = results.find((r) => r.agentId === "opencode");
       expect(opencodeResult).toBeDefined();
-      expect(opencodeResult!.files).toHaveLength(1);
-      expect(opencodeResult!.files[0].relativePath).toBe("AGENTS.md");
-      expect(opencodeResult!.files[0].content).toBe(
-        "General instructions for all agents.",
-      );
+      expect(opencodeResult!.files).toEqual([]);
       expect(opencodeResult!.errors).toHaveLength(0);
     });
 
@@ -144,6 +142,70 @@ describe("InstructionsTranspiler", () => {
       // Контент в результате должен совпадать с исходным файлом
       // (без промежуточной трансформации через parse/assemble)
       expect(results[0].files[0].content).toBe(originalContent);
+    });
+
+    // ===================================================================
+    // НОВЫЕ ТЕСТЫ: Обновлённое поведение транспиляции
+    // Спецификация: docs/specs/instructions-transpiler.md § Транспиляция (обновлённая)
+    // ===================================================================
+
+    // --- OpenCode адаптер — no-op: возвращает пустой files ---
+    it("OpenCode адаптер возвращает пустой массив files (no-op)", () => {
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "General instructions.");
+
+      const transpiler = createInstructionsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [new OpenCodeAdapter()],
+      });
+
+      const results = transpiler.transpile();
+
+      expect(results).toHaveLength(1);
+      const opencodeResult = results.find((r) => r.agentId === "opencode");
+      expect(opencodeResult).toBeDefined();
+      expect(opencodeResult!.files).toHaveLength(0);
+      expect(opencodeResult!.errors).toHaveLength(0);
+    });
+
+    // --- Трансформация контента: Claude адаптер применяет transformContent ---
+    it("Claude адаптер применяет трансформацию контента (override, фильтрация секций)", () => {
+      const content = [
+        "---",
+        "title: Project Instructions",
+        "override:",
+        "  claude:",
+        "    title: Claude Instructions",
+        "---",
+        "General content.",
+        "",
+        "<!-- agent:claude -->",
+        "Claude only.",
+        "<!-- /agent:claude -->",
+        "<!-- agent:agentsmd -->",
+        "AGENTS.md only.",
+        "<!-- /agent:agentsmd -->",
+      ].join("\n");
+
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), content);
+
+      const transpiler = createInstructionsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [new ClaudeAdapter()],
+      });
+
+      const results = transpiler.transpile();
+      const claudeResult = results.find((r) => r.agentId === "claude");
+
+      expect(claudeResult).toBeDefined();
+      expect(claudeResult!.files).toHaveLength(1);
+      // override применён
+      expect(claudeResult!.files[0].content).toContain(
+        "title: Claude Instructions",
+      );
+      expect(claudeResult!.files[0].content).not.toContain("override:");
+      // agent-specific секции отфильтрованы
+      expect(claudeResult!.files[0].content).toContain("Claude only.");
+      expect(claudeResult!.files[0].content).not.toContain("AGENTS.md only.");
     });
   });
 });

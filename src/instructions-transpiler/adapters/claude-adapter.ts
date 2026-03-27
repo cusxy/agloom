@@ -11,10 +11,16 @@
  * - AGLOOM.local.md (directory)   → CLAUDE.local.md (same directory)
  */
 
+import { transformContent } from "../transform-content.js";
 import type { Adapter, CanonicalFile, OutputFile } from "../types.js";
 
 export class ClaudeAdapter implements Adapter {
   readonly agentId = "claude";
+  private readonly allowedAgentIds?: string[];
+
+  constructor(allowedAgentIds?: string[]) {
+    this.allowedAgentIds = allowedAgentIds;
+  }
 
   transpile(files: CanonicalFile[]): OutputFile[] {
     const output: OutputFile[] = [];
@@ -29,21 +35,28 @@ export class ClaudeAdapter implements Adapter {
     );
 
     for (const file of relevantFiles) {
-      // Шаг 2-3: заменить имя файла
+      // Шаг 2: трансформация контента для agentId = "claude"
+      const content = transformContent(
+        file.content,
+        "claude",
+        this.allowedAgentIds,
+      );
+
+      // Шаг 3-4: заменить имя файла
       let relativePath: string;
       if (file.type === "local" || file.type === "directory-local") {
-        // Шаг 3: AGLOOM.local.md → CLAUDE.local.md
+        // Шаг 4: AGLOOM.local.md → CLAUDE.local.md
         relativePath = file.relativePath.replace(
           "AGLOOM.local.md",
           "CLAUDE.local.md",
         );
       } else {
-        // Шаг 2: AGLOOM.md → CLAUDE.md (для root и directory)
+        // Шаг 3: AGLOOM.md → CLAUDE.md (для root и directory)
         relativePath = file.relativePath.replace("AGLOOM.md", "CLAUDE.md");
       }
 
-      // Шаг 4: сформировать OutputFile с file.content
-      output.push({ relativePath, content: file.content });
+      // Шаг 5: сформировать OutputFile
+      output.push({ relativePath, content });
     }
 
     return output;

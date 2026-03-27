@@ -149,7 +149,9 @@ describe("SkillsTranspiler", () => {
       expect(targetContent.equals(sourceContent)).toBe(true);
 
       // Результат: writeResult.written содержит целевой файл
-      expect(writeResult.written).toContain(".opencode/skills/my-skill/SKILL.md");
+      expect(writeResult.written).toContain(
+        ".opencode/skills/my-skill/SKILL.md",
+      );
     });
 
     // --- IT-SKILL-04: Pipeline при отсутствии каталога .agloom/skills/ ---

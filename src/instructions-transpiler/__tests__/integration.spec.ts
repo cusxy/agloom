@@ -9,6 +9,7 @@ import {
   createInstructionsTranspiler,
   ClaudeAdapter,
   OpenCodeAdapter,
+  AgentsMdAdapter,
 } from "../index.js";
 
 describe("InstructionsTranspiler", () => {
@@ -87,8 +88,11 @@ describe("InstructionsTranspiler", () => {
       expect(writeResult.written).toContain("src/module/CLAUDE.local.md");
     });
 
-    // --- IT-INSTR-02: Pipeline с OpenCode адаптером ---
-    it("OpenCode адаптер генерирует AGENTS.md из канонического AGLOOM.md", () => {
+    // --- IT-INSTR-02: Pipeline с AgentsMd адаптером ---
+    // § instructions-transpiler.md § AGENTS.md адаптер: agentId "agentsmd",
+    // генерирует AGENTS.md из root и directory файлов.
+    // OpenCode адаптер — no-op (возвращает пустой массив).
+    it("AgentsMd адаптер генерирует AGENTS.md из канонического AGLOOM.md", () => {
       // Вход: создать канонические файлы
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "root instructions");
       fs.writeFileSync(
@@ -99,7 +103,7 @@ describe("InstructionsTranspiler", () => {
       // Поведение: шаги 1–3
       const transpiler = createInstructionsTranspiler({
         projectRoot: tmpDir,
-        adapters: [new OpenCodeAdapter()],
+        adapters: [new AgentsMdAdapter()],
       });
       const results = transpiler.transpile();
       const writeResult = transpiler.writeResults(results);
@@ -114,7 +118,7 @@ describe("InstructionsTranspiler", () => {
       );
       expect(agentsContent).toBe("root instructions");
 
-      // Шаги 7–8: CLAUDE.md и CLAUDE.local.md НЕ существуют
+      // CLAUDE.md и CLAUDE.local.md НЕ существуют
       expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(false);
       expect(fs.existsSync(path.join(tmpDir, "CLAUDE.local.md"))).toBe(false);
 
@@ -122,15 +126,17 @@ describe("InstructionsTranspiler", () => {
       expect(writeResult.written).toContain("AGENTS.md");
     });
 
-    // --- IT-INSTR-03: Pipeline с обоими адаптерами одновременно ---
-    it("оба адаптера обрабатываются за один вызов transpile() и writeResults()", () => {
+    // --- IT-INSTR-03: Pipeline с Claude и AgentsMd адаптерами одновременно ---
+    // § instructions-transpiler.md § Транспиляция: для каждого адаптера вызвать transpile(files).
+    // OpenCode — no-op, поэтому используем AgentsMd для генерации AGENTS.md.
+    it("Claude и AgentsMd адаптеры обрабатываются за один вызов transpile() и writeResults()", () => {
       // Вход: создать канонический файл
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "shared instructions");
 
       // Поведение: шаги 1–2
       const transpiler = createInstructionsTranspiler({
         projectRoot: tmpDir,
-        adapters: [new ClaudeAdapter(), new OpenCodeAdapter()],
+        adapters: [new ClaudeAdapter(), new AgentsMdAdapter()],
       });
       const results = transpiler.transpile();
 
@@ -138,20 +144,20 @@ describe("InstructionsTranspiler", () => {
       expect(results).toHaveLength(2);
       const agentIds = results.map((r) => r.agentId);
       expect(agentIds).toContain("claude");
-      expect(agentIds).toContain("opencode");
+      expect(agentIds).toContain("agentsmd");
 
       // Шаги 4–5
       const writeResult = transpiler.writeResults(results);
       expect(writeResult.errors).toHaveLength(0);
 
-      // Шаги 6–7: CLAUDE.md создан с правильным содержимым
+      // CLAUDE.md создан с правильным содержимым
       const claudeContent = fs.readFileSync(
         path.join(tmpDir, "CLAUDE.md"),
         "utf-8",
       );
       expect(claudeContent).toBe("shared instructions");
 
-      // Шаги 8–9: AGENTS.md создан с правильным содержимым
+      // AGENTS.md создан с правильным содержимым
       const agentsContent = fs.readFileSync(
         path.join(tmpDir, "AGENTS.md"),
         "utf-8",

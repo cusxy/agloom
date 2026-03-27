@@ -3,6 +3,7 @@
  * Spec: docs/specs/cli.md § Команда transpile, § Команда adapters, § Глобальные опции
  * Spec: docs/specs/clean-command.md § Команда clean, § Расширение команды transpile
  * Spec: docs/specs/init-command.md § Команда init
+ * Spec: docs/specs/adapter-registry-ext.md § Процедура Resolve Adapter
  */
 
 import React, { useState, useEffect } from "react";
@@ -14,7 +15,7 @@ import { adapterRegistry } from "./adapter-registry.js";
 import { runTranspileStep } from "./transpile-step.js";
 import { runOverlayStep } from "./overlay-step.js";
 import { cleanFiles } from "./clean-files.js";
-import { initFiles } from "./init-files.js";
+import { initFiles, backupProjectFiles } from "./init-files.js";
 import type {
   TranspilerStepOutcome,
   CleanOutcome,
@@ -23,6 +24,7 @@ import type {
 import { createInstructionsTranspiler } from "../instructions-transpiler/index.js";
 import { createSkillsTranspiler } from "../skills-transpiler/index.js";
 import { createAgentsTranspiler } from "../agents-transpiler/index.js";
+import type { ProjectBackupOutcome } from "./init-files.js";
 
 interface AppProps {
   args: string[];
@@ -34,14 +36,16 @@ interface AppProps {
  */
 function parseArgs(args: string[]): {
   command: string | null;
-  adapter: string | null;
+  agent: string | null;
+  all: boolean;
   help: boolean;
   version: boolean;
   clean: boolean;
   force: boolean;
 } {
   let command: string | null = null;
-  let adapter: string | null = null;
+  let agent: string | null = null;
+  let all = false;
   let help = false;
   let version = false;
   let clean = false;
@@ -53,9 +57,14 @@ function parseArgs(args: string[]): {
       help = true;
     } else if (arg === "--version" || arg === "version") {
       version = true;
-    } else if (arg === "--adapter" && i + 1 < args.length) {
-      adapter = args[i + 1];
+    } else if (
+      (arg === "--agent" || arg === "--adapter") &&
+      i + 1 < args.length
+    ) {
+      agent = args[i + 1];
       i++;
+    } else if (arg === "--all") {
+      all = true;
     } else if (arg === "--clean") {
       clean = true;
     } else if (arg === "--force") {
@@ -70,7 +79,7 @@ function parseArgs(args: string[]): {
     }
   }
 
-  return { command, adapter, help, version, clean, force };
+  return { command, agent, all, help, version, clean, force };
 }
 
 function getVersion(): string {
@@ -98,8 +107,7 @@ function HelpView(): React.ReactElement {
         {"  "}clean {"       "}Remove generated agent-specific files
       </Text>
       <Text>
-        {"  "}init {"        "}Import existing agent configs into
-        .agloom/overlays/
+        {"  "}init {"        "}Import existing agent configs into .agloom/
       </Text>
       <Text>
         {"  "}adapters {"    "}List available adapters
@@ -119,7 +127,9 @@ function HelpView(): React.ReactElement {
 function TranspileHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agloom transpile --adapter &lt;adapterId&gt;</Text>
+      <Text>
+        Usage: agloom transpile (--agent &lt;agentId&gt; | --all) [--clean]
+      </Text>
       <Text> </Text>
       <Text>
         Transpile canonical configs for all transpilers using the specified
@@ -128,7 +138,15 @@ function TranspileHelpView(): React.ReactElement {
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
-        {"  "}--adapter {"   "}Adapter ID from the registry (required)
+        {"  "}--agent, --adapter &lt;agentId&gt;{"  "}Agent ID from the registry
+        (required unless --all)
+      </Text>
+      <Text>
+        {"  "}--all {"                        "}Transpile for all supported
+        agents
+      </Text>
+      <Text>
+        {"  "}--clean {"                      "}Clean before transpiling
       </Text>
     </Box>
   );
@@ -163,7 +181,7 @@ function AdaptersView(): React.ReactElement {
 function CleanHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agloom clean --adapter &lt;adapterId&gt;</Text>
+      <Text>Usage: agloom clean --adapter &lt;agentId&gt;</Text>
       <Text> </Text>
       <Text>
         Remove generated agent-specific files for the specified adapter.
@@ -171,7 +189,8 @@ function CleanHelpView(): React.ReactElement {
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
-        {"  "}--adapter {"   "}Adapter ID from the registry (required)
+        {"  "}--adapter &lt;agentId&gt;{"  "}Adapter ID from the registry
+        (required)
       </Text>
     </Box>
   );
@@ -239,73 +258,176 @@ function CleanView({
 function InitHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agloom init --adapter &lt;adapterId&gt; [--force]</Text>
+      <Text>
+        Usage: agloom init (--agent &lt;agentId&gt; | --all) [--force]
+      </Text>
       <Text> </Text>
-      <Text>Import existing agent configs into .agloom/overlays/</Text>
+      <Text>Import existing agent configs into .agloom/</Text>
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
-        {"  "}--adapter &lt;adapterId&gt;{"  "}Adapter identifier (required)
+        {"  "}--agent &lt;agentId&gt;{"  "}Agent identifier (required unless
+        --all)
       </Text>
       <Text>
-        {"  "}--force {"               "}Overwrite existing files
+        {"  "}--all {"              "}Initialize all supported agents
       </Text>
       <Text>
-        {"  "}--help {"                "}Show help
+        {"  "}--force {"            "}Overwrite existing files
+      </Text>
+      <Text>
+        {"  "}--help {"             "}Show help
       </Text>
     </Box>
   );
 }
 
 function InitView({
-  adapterId,
+  agentId,
   projectRoot,
   force,
+  all,
 }: {
-  adapterId: string;
+  agentId: string | null;
   projectRoot: string;
   force: boolean;
+  all: boolean;
 }): React.ReactElement {
-  const [outcome] = useState<InitOutcome | string>(() => {
-    const entry = adapterRegistry.find((e) => e.id === adapterId)!;
-    const result = initFiles(entry, projectRoot, force);
-    // Set exit code for error cases
-    if (typeof result === "string") {
+  // Все операции синхронные — вычисляем при инициализации состояния
+  const [state] = useState(() => {
+    // Шаг 5: выполнить Backup Project Files
+    const backupResult = backupProjectFiles(projectRoot, force);
+
+    // Расширение 5a: Backup Project Files вернула строку — блокирующая ошибка
+    if (typeof backupResult === "string") {
       process.exitCode = 1;
-    } else if (result.errors.length > 0) {
+      return {
+        backupOutcome: backupResult as ProjectBackupOutcome | string,
+        overlayResults: [] as {
+          entryId: string;
+          outcome: InitOutcome | string;
+        }[],
+      };
+    }
+
+    // Определить записи для инициализации
+    let entries: typeof adapterRegistry;
+    if (all) {
+      // Шаг 8: для каждой записи реестра
+      entries = adapterRegistry;
+    } else {
+      // Шаг 6-7: Resolve Adapter и Init Overlay Files для одного агента
+      const entry = adapterRegistry.find((e) => e.id === agentId);
+      if (!entry) {
+        process.exitCode = 1;
+        return {
+          backupOutcome: backupResult as ProjectBackupOutcome | string,
+          overlayResults: [] as {
+            entryId: string;
+            outcome: InitOutcome | string;
+          }[],
+        };
+      }
+      entries = [entry];
+    }
+
+    const results: { entryId: string; outcome: InitOutcome | string }[] = [];
+    let hasError = false;
+
+    for (const entry of entries) {
+      const result = initFiles(entry, projectRoot, force);
+      results.push({ entryId: entry.id, outcome: result });
+
+      if (typeof result === "string") {
+        hasError = true;
+        // Расширение 7a/8a: строка-сообщение → exit code 1
+        break;
+      } else if (result.errors.length > 0) {
+        hasError = true;
+      }
+    }
+
+    // Set exit code
+    if (hasError || backupResult.errors.length > 0) {
       process.exitCode = 1;
     }
-    return result;
+
+    return {
+      backupOutcome: backupResult as ProjectBackupOutcome | string,
+      overlayResults: results,
+    };
   });
 
-  // Расширение 5a, 6a: строковое сообщение об ошибке
-  if (typeof outcome === "string") {
-    return <Text>{outcome}</Text>;
+  const { backupOutcome, overlayResults } = state;
+
+  // Расширение 5a: строковое сообщение от Backup Project Files
+  if (typeof backupOutcome === "string") {
+    return <Text>{backupOutcome}</Text>;
   }
 
-  const hasErrors = outcome.errors.length > 0;
-  const noFiles = outcome.copiedCount === 0 && !hasErrors;
+  // Вычислить общее количество overlay-файлов для вывода с ошибками
+  const totalOverlayCopied = overlayResults.reduce((sum, r) => {
+    if (typeof r.outcome !== "string") {
+      return sum + r.outcome.copiedCount;
+    }
+    return sum;
+  }, 0);
+
+  const hasAnyErrors =
+    (backupOutcome && backupOutcome.errors.length > 0) ||
+    overlayResults.some(
+      (r) =>
+        typeof r.outcome === "string" ||
+        (typeof r.outcome !== "string" && r.outcome.errors.length > 0),
+    );
 
   return (
     <Box flexDirection="column">
-      <Text>Initializing for {adapterId}...</Text>
-      {hasErrors ? (
-        <Text>
-          {"  "}
-          <Text color="red">✗</Text> {outcome.errors[0]}
-        </Text>
-      ) : noFiles ? (
-        <Text>{"  "}No files found.</Text>
-      ) : (
-        <Text>
-          {"  "}
-          <Text color="green">✓</Text> {outcome.copiedCount} files copied to
-          .agloom/overlays/{adapterId}/
-        </Text>
+      <Text>Initializing...</Text>
+      {backupOutcome && (
+        <>
+          {backupOutcome.errors.length > 0 ? (
+            <Text>
+              {"  "}
+              <Text color="red">✗</Text> {backupOutcome.errors[0]}
+            </Text>
+          ) : (
+            <Text>
+              {"  "}
+              <Text color="green">✓</Text> {backupOutcome.copiedCount} project
+              files backed up to .agloom/project/
+            </Text>
+          )}
+        </>
       )}
+      {overlayResults.map((r) => {
+        if (typeof r.outcome === "string") {
+          return (
+            <Text key={r.entryId}>
+              {"  "}
+              <Text color="red">✗</Text> {r.outcome}
+            </Text>
+          );
+        }
+        if (r.outcome.errors.length > 0) {
+          return (
+            <Text key={r.entryId}>
+              {"  "}
+              <Text color="red">✗</Text> {r.outcome.errors[0]}
+            </Text>
+          );
+        }
+        return (
+          <Text key={r.entryId}>
+            {"  "}
+            <Text color="green">✓</Text> {r.outcome.copiedCount} files copied to
+            .agloom/overlays/{r.entryId}/
+          </Text>
+        );
+      })}
       <Text> </Text>
-      {hasErrors ? (
-        <Text>Done. {outcome.copiedCount} files copied.</Text>
+      {hasAnyErrors ? (
+        <Text>Done. {totalOverlayCopied} files copied.</Text>
       ) : (
         <Text>Done.</Text>
       )}
@@ -432,6 +554,131 @@ function TranspileView({
   );
 }
 
+function TranspileAllView({
+  projectRoot,
+  clean,
+}: {
+  projectRoot: string;
+  clean?: boolean;
+}): React.ReactElement {
+  const [allResults, setAllResults] = useState<
+    { adapterId: string; outcomes: TranspilerStepOutcome[] }[]
+  >([]);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const results: {
+      adapterId: string;
+      outcomes: TranspilerStepOutcome[];
+    }[] = [];
+    let hasErrors = false;
+
+    for (const entry of adapterRegistry) {
+      // Clean if needed
+      if (clean) {
+        const cleanResult = cleanFiles(entry, projectRoot);
+        if (cleanResult.errors.length > 0) {
+          hasErrors = true;
+        }
+      }
+
+      const steps: TranspilerStepOutcome[] = [];
+
+      // Instructions
+      const instructionsOutcome = runTranspileStep({
+        transpilerFactory: createInstructionsTranspiler as Parameters<
+          typeof runTranspileStep
+        >[0]["transpilerFactory"],
+        adapter: entry.instructions,
+        projectRoot,
+        name: "Instructions",
+      });
+      steps.push(instructionsOutcome);
+
+      // Skills
+      const skillsOutcome = runTranspileStep({
+        transpilerFactory: createSkillsTranspiler as Parameters<
+          typeof runTranspileStep
+        >[0]["transpilerFactory"],
+        adapter: entry.skills,
+        projectRoot,
+        name: "Skills",
+      });
+      steps.push(skillsOutcome);
+
+      // Agents
+      const agentsOutcome = runTranspileStep({
+        transpilerFactory: createAgentsTranspiler as Parameters<
+          typeof runTranspileStep
+        >[0]["transpilerFactory"],
+        adapter: entry.agents,
+        projectRoot,
+        name: "Agents",
+      });
+      steps.push(agentsOutcome);
+
+      // Overlay
+      const overlayOutcome = runOverlayStep({ entry, projectRoot });
+      steps.push(overlayOutcome);
+
+      if (steps.some((s) => s.errors.length > 0)) {
+        hasErrors = true;
+      }
+
+      results.push({ adapterId: entry.id, outcomes: steps });
+    }
+
+    setAllResults(results);
+
+    if (hasErrors) {
+      process.exitCode = 1;
+    }
+
+    setDone(true);
+  }, [projectRoot, clean]);
+
+  const totalWritten = allResults.reduce(
+    (sum, r) => sum + r.outcomes.reduce((s, o) => s + o.writtenCount, 0),
+    0,
+  );
+
+  return (
+    <Box flexDirection="column">
+      {allResults.map((r) => (
+        <React.Fragment key={r.adapterId}>
+          <Text>
+            <Spinner type="dots" /> Transpiling for {r.adapterId}...
+          </Text>
+          {r.outcomes.map((outcome) => (
+            <Text key={`${r.adapterId}-${outcome.name}`}>
+              {"  "}
+              {outcome.errors.length === 0 ? (
+                <>
+                  <Text color="green">✓</Text> {outcome.name}
+                  {"        "}
+                  {outcome.writtenCount} files
+                </>
+              ) : (
+                <>
+                  <Text color="red">✗</Text> {outcome.name}
+                  {"        "}
+                  {outcome.errors[0]}
+                </>
+              )}
+            </Text>
+          ))}
+        </React.Fragment>
+      ))}
+      {done && (
+        <>
+          <Text> </Text>
+          <Text>Done. {totalWritten} files written.</Text>
+        </>
+      )}
+    </Box>
+  );
+}
+
 export function App({ args, projectRoot }: AppProps): React.ReactElement {
   const parsed = parseArgs(args);
   const root = projectRoot ?? process.cwd();
@@ -473,34 +720,43 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
 
   // § Команда init
   if (parsed.command === "init") {
-    // Расширение 1a: --adapter не указан
-    if (!parsed.adapter) {
+    // Расширение 2a: ни --agent, ни --all не указан
+    if (!parsed.agent && !parsed.all) {
       process.exitCode = 1;
       return (
         <Text>
-          Error: --adapter is required. Usage: agloom init --adapter
-          &lt;adapterId&gt;
+          Error: --agent or --all is required. Usage: agloom init (--agent
+          &lt;agentId&gt; | --all) [--force]
         </Text>
       );
     }
 
-    // Расширение: адаптер не найден (Resolve Adapter § 1a)
-    const entry = adapterRegistry.find((e) => e.id === parsed.adapter);
-    if (!entry) {
+    // Расширение 3a: --agent и --all указаны одновременно
+    if (parsed.agent && parsed.all) {
       process.exitCode = 1;
-      return (
-        <Text>
-          Unknown adapter: {parsed.adapter}. Run &apos;agloom adapters&apos;
-          to see available adapters.
-        </Text>
-      );
+      return <Text>--agent and --all are mutually exclusive.</Text>;
+    }
+
+    // Расширение 6a: адаптер не найден (Resolve Adapter § 1a)
+    if (parsed.agent) {
+      const entry = adapterRegistry.find((e) => e.id === parsed.agent);
+      if (!entry) {
+        process.exitCode = 1;
+        return (
+          <Text>
+            Unknown agent: {parsed.agent}. Run &apos;agloom adapters&apos; to
+            see available adapters.
+          </Text>
+        );
+      }
     }
 
     return (
       <InitView
-        adapterId={parsed.adapter}
+        agentId={parsed.agent}
         projectRoot={root}
         force={parsed.force}
+        all={parsed.all}
       />
     );
   }
@@ -508,7 +764,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
   // § Команда clean
   if (parsed.command === "clean") {
     // Расширение 1a: --adapter не указан
-    if (!parsed.adapter) {
+    if (!parsed.agent) {
       process.exitCode = 1;
       return (
         <Text>
@@ -519,48 +775,59 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     }
 
     // Расширение: адаптер не найден (Resolve Adapter § 1a)
-    const entry = adapterRegistry.find((e) => e.id === parsed.adapter);
+    const entry = adapterRegistry.find((e) => e.id === parsed.agent);
     if (!entry) {
       process.exitCode = 1;
       return (
         <Text>
-          Unknown adapter: {parsed.adapter}. Run &apos;agloom adapters&apos;
-          to see available adapters.
+          Unknown agent: {parsed.agent}. Run &apos;agloom adapters&apos; to see
+          available adapters.
         </Text>
       );
     }
 
-    return <CleanView adapterId={parsed.adapter} projectRoot={root} />;
+    return <CleanView adapterId={parsed.agent} projectRoot={root} />;
   }
 
   // § Команда transpile
   if (parsed.command === "transpile") {
-    // Расширение 1a: --adapter не указан
-    if (!parsed.adapter) {
+    // Расширение 1a: ни --agent, ни --all не указаны
+    if (!parsed.agent && !parsed.all) {
       process.exitCode = 1;
       return (
         <Text>
-          Error: --adapter is required. Usage: agloom transpile --adapter
-          &lt;adapterId&gt;
+          Error: --agent or --all is required. Usage: agloom transpile (--agent
+          &lt;agentId&gt; | --all) [--clean]
         </Text>
       );
     }
 
+    // Расширение 1b: --agent и --all указаны одновременно
+    if (parsed.agent && parsed.all) {
+      process.exitCode = 1;
+      return <Text>--agent and --all are mutually exclusive.</Text>;
+    }
+
+    // Режим --all
+    if (parsed.all) {
+      return <TranspileAllView projectRoot={root} clean={parsed.clean} />;
+    }
+
     // Расширение 2a: адаптер не найден
-    const entry = adapterRegistry.find((e) => e.id === parsed.adapter);
+    const entry = adapterRegistry.find((e) => e.id === parsed.agent);
     if (!entry) {
       process.exitCode = 1;
       return (
         <Text>
-          Unknown adapter: {parsed.adapter}. Run &apos;agloom adapters&apos;
-          to see available adapters.
+          Unknown agent: {parsed.agent}. Run &apos;agloom adapters&apos; to see
+          available adapters.
         </Text>
       );
     }
 
     return (
       <TranspileView
-        adapterId={parsed.adapter}
+        adapterId={parsed.agent!}
         projectRoot={root}
         clean={parsed.clean}
       />

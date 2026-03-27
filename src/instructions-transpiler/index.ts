@@ -11,8 +11,16 @@ import type { Adapter, TranspilerConfig } from "./types.js";
 // Barrel exports
 export { ClaudeAdapter } from "./adapters/claude-adapter.js";
 export { OpenCodeAdapter } from "./adapters/opencode-adapter.js";
+export { AgentsMdAdapter } from "./adapters/agentsmd-adapter.js";
 export { InstructionsTranspiler } from "./transpiler.js";
-export { ConfigError, DiscoverError, WriteError } from "./errors.js";
+export { transformContent } from "./transform-content.js";
+export { filterBody } from "./filter-body.js";
+export {
+  ConfigError,
+  DiscoverError,
+  TransformError,
+  WriteError,
+} from "./errors.js";
 export type {
   Adapter,
   CanonicalFile,

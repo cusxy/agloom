@@ -1,13 +1,15 @@
 ---
-summary: Расширение реестра адаптеров — targetRoot, targetFiles, Resolve Adapter
+summary: Расширение реестра адаптеров — targetRoot, targetFiles, projectFiles, instructionsFile, Resolve Adapter
 description: >
-  Расширяет AdapterRegistryEntry полями targetRoot и targetFiles.
-  Определяет общую процедуру Resolve Adapter для переиспользования
-  в командах, принимающих --adapter.
+  Расширяет AdapterRegistryEntry полями targetRoot, targetFiles, projectFiles
+  и instructionsFile. Определяет общую процедуру Resolve Adapter
+  для переиспользования в командах, принимающих --agent.
 type: spec
 status: implemented
 relates:
   - docs/specs/cli.md
+  - docs/specs/instructions-transpiler.md
+  - docs/specs/init-command.md
 maps_to:
   - src/cli/
 ---
@@ -26,49 +28,81 @@ maps_to:
 ## Расширение AdapterRegistryEntry
 
 К существующему типу `AdapterRegistryEntry`
-(см. `docs/specs/cli.md` § Типы данных) ТРЕБУЕТСЯ добавить два поля:
+(см. `docs/specs/cli.md` § Типы данных) ТРЕБУЕТСЯ добавить поля:
 
 - `targetRoot` (string, обязательно) — относительный путь к корневой директории
-  agent-специфичных файлов (например, `".claude"`, `".opencode"`).
+  agent-специфичных файлов (например, `".claude"`, `".opencode"`, `".agents"`).
 - `targetFiles` (array\<string>, обязательно) — список относительных путей к файлам
   за пределами `targetRoot`, которые генерируются транспилерами
-  (например, `["CLAUDE.md"]`, `["AGENTS.md"]`).
+  (например, `["CLAUDE.md"]`). Массив МОЖЕТ быть пустым, если адаптер
+  не генерирует файлов за пределами `targetRoot`.
+- `projectFiles` (array\<string>, обязательно) — имена файлов для рекурсивного
+  поиска в project tree при создании `.agloom/project/` бэкапа командой `init`
+  (например, `["CLAUDE.md", "CLAUDE.local.md"]`). Массив МОЖЕТ быть пустым,
+  если адаптер не имеет уникальных файлов в project tree.
+- `instructionsFile` (string | null, обязательно) — имя собственного файла
+  инструкций агента (например, `"CLAUDE.md"`, `"AGENTS.md"`). Значение `null`
+  означает, что агент НЕ ИМЕЕТ собственного формата файла инструкций.
+  Используется для валидации допустимых `agentId` в `<!-- agent:X -->` блоках
+  файлов инструкций.
 
 ## Обновление реестра адаптеров
 
-В реестр адаптеров ТРЕБУЕТСЯ добавить поля `targetRoot` и `targetFiles`
-для каждой записи:
+В реестр адаптеров ТРЕБУЕТСЯ добавить поля `targetRoot`, `targetFiles`,
+`projectFiles` и `instructionsFile` для каждой записи:
 
-| `id`         | `targetRoot`  | `targetFiles`   |
-| ------------ | ------------- | --------------- |
-| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` |
-| `"opencode"` | `".opencode"` | `["AGENTS.md"]` |
+| `id`         | `targetRoot`  | `targetFiles`   | `projectFiles`                     | `instructionsFile` |
+| ------------ | ------------- | --------------- | ---------------------------------- | ------------------ |
+| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` | `["CLAUDE.md", "CLAUDE.local.md"]` | `"CLAUDE.md"`      |
+| `"opencode"` | `".opencode"` | `[]`            | `[]`                               | `null`             |
+| `"agentsmd"` | `".agents"`   | `["AGENTS.md"]` | `["AGENTS.md"]`                    | `"AGENTS.md"`      |
+
+### Запись agentsmd
+
+Запись `"agentsmd"` представляет формат файлов `AGENTS.md`, используемый
+несколькими агентами (OpenCode, Gemini CLI и др.). Запись `"opencode"`
+НЕ ДОЛЖНА дублировать файлы, принадлежащие `"agentsmd"`: поле `targetFiles`
+записи `"opencode"` ДОЛЖНО быть пустым массивом, а генерация `AGENTS.md`
+ДОЛЖНА выполняться через адаптер `"agentsmd"`.
+
+### Запись opencode
+
+Запись `"opencode"` описывает агент OpenCode. Поле `targetFiles` ДОЛЖНО
+быть пустым массивом, поскольку файл `AGENTS.md` принадлежит записи
+`"agentsmd"`. Поле `projectFiles` ДОЛЖНО быть пустым массивом, поскольку
+OpenCode не имеет уникальных файлов в project tree. Поле `instructionsFile`
+ДОЛЖНО быть `null`, поскольку OpenCode не имеет собственного формата
+файла инструкций.
 
 ## Процедура Resolve Adapter
 
 Общая процедура разрешения адаптера для команд,
-принимающих аргумент `--adapter`. Каждая такая команда
+принимающих аргумент `--agent`. Каждая такая команда
 МОЖЕТ ссылаться на эту процедуру вместо повторного описания шагов.
 
-Процедура принимает уже распарсенный `adapterId`. Парсинг аргумента
-`--adapter` из командной строки является ответственностью вызывающей
+Процедура принимает уже распарсенный `agentId`. Парсинг аргумента
+`--agent` из командной строки является ответственностью вызывающей
 команды и НЕ ВХОДИТ в данную процедуру.
+
+При использовании флага `--all` вместо `--agent` процедура Resolve Adapter
+НЕ вызывается — вызывающая команда ДОЛЖНА использовать все записи
+из реестра адаптеров напрямую.
 
 **Вход:**
 
-- `adapterId` (string, обязательно) — идентификатор адаптера из реестра.
+- `agentId` (string, обязательно) — идентификатор адаптера из реестра.
 
 **Поведение:**
 
 1. Найти запись в реестре адаптеров с `id`, совпадающим
-   со значением `adapterId`.
+   со значением `agentId`.
 2. Определить `projectRoot` как текущий рабочий каталог процесса
    (`process.cwd()`).
 
 **Расширения:**
 
 1a. Запись не найдена → отобразить сообщение
-`"Unknown adapter: {value}. Run 'agloom adapters' to see available adapters."`;
+`"Unknown agent: {value}. Run 'agloom adapters' to see available adapters."`;
 exit code 1.
 
 **Результат:**
@@ -79,3 +113,4 @@ exit code 1.
 ## Вне scope
 
 - Глобальный scope (home directory).
+- Адаптеры для Codex CLI и Gemini CLI.

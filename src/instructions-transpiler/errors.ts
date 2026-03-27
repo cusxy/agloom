@@ -19,6 +19,14 @@ export class DiscoverError extends Error {
   }
 }
 
+/** Ошибка трансформации контента (парсинг frontmatter, фильтрация body). */
+export class TransformError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TransformError";
+  }
+}
+
 /** Ошибка записи файла. */
 export class WriteError extends Error {
   constructor(message: string) {

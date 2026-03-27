@@ -19,12 +19,24 @@ describe("CLI", () => {
 
     // --- Расширение 1a: запись не найдена ---
     // 1a. Запись не найдена → отобразить сообщение
-    // "Unknown adapter: {value}. Run 'agloom adapters' to see available adapters.";
+    // "Unknown agent: {value}. Run 'agloom adapters' to see available adapters.";
     // exit code 1.
-    it('выбрасывает ошибку с сообщением "Unknown adapter: {value}..." при несуществующем adapterId', () => {
+    // § adapter-registry-ext.md § Процедура Resolve Adapter § Расширения 1a
+    it('выбрасывает ошибку с сообщением "Unknown agent: {value}..." при несуществующем adapterId', () => {
       expect(() => resolveAdapter("nonexistent")).toThrow(
-        "Unknown adapter: nonexistent. Run 'agloom adapters' to see available adapters.",
+        "Unknown agent: nonexistent. Run 'agloom adapters' to see available adapters.",
       );
+    });
+
+    // --- Happy path: resolveAdapter для agentsmd ---
+    // § adapter-registry-ext.md § Процедура Resolve Adapter шаг 1:
+    // Найти запись в реестре адаптеров с id=agentsmd.
+    it('возвращает запись адаптера "agentsmd" из реестра при валидном agentId', () => {
+      const result = resolveAdapter("agentsmd");
+
+      expect(result.entry).toBeDefined();
+      expect(result.entry.id).toBe("agentsmd");
+      expect(result.projectRoot).toBe(process.cwd());
     });
   });
 });

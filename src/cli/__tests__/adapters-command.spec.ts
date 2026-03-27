@@ -43,5 +43,21 @@ describe("CLI", () => {
 
       unmount();
     });
+
+    // --- Happy path: вывод содержит запись agentsmd ---
+    // § cli.md § Команда adapters § Результат:
+    // agentsmd     AGENTS.md (Codex, OpenCode, KiloCode, ...)
+    it('выводит запись "agentsmd" с описанием "AGENTS.md (Codex, OpenCode, KiloCode, ...)"', () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["adapters"] }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("agentsmd");
+      expect(output).toContain("AGENTS.md (Codex, OpenCode, KiloCode, ...)");
+
+      unmount();
+    });
   });
 });

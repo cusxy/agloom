@@ -84,6 +84,11 @@ export class InstructionsTranspiler {
     const written: string[] = [];
     const errors: WriteError[] = [];
 
+    // Шаг 2: собрать все OutputFile из всех TranspileResult с пустым errors
+    // Шаг 3: дедупликация по relativePath (первый побеждает)
+    const seenPaths = new Set<string>();
+    const filesToWrite: import("./types.js").OutputFile[] = [];
+
     for (const result of results) {
       // Шаг 1: проверить, что массив errors пуст
       // Расширение 1a: при наличии ошибок — пропустить запись, включить в errors
@@ -94,28 +99,35 @@ export class InstructionsTranspiler {
         continue;
       }
 
-      // Шаг 2: записать каждый файл
       for (const file of result.files) {
-        const absolutePath = path.join(this.projectRoot, file.relativePath);
-
-        try {
-          // Создать промежуточные каталоги при необходимости
-          const dir = path.dirname(absolutePath);
-          fs.mkdirSync(dir, { recursive: true });
-
-          // Записать файл с кодировкой UTF-8
-          fs.writeFileSync(absolutePath, file.content, "utf-8");
-
-          // Шаг 3: добавить путь в массив written
-          written.push(file.relativePath);
-        } catch (err) {
-          // Расширение 2a: ошибка записи
-          errors.push(
-            new WriteError(
-              `Failed to write ${file.relativePath}: ${(err as Error).message}`,
-            ),
-          );
+        if (!seenPaths.has(file.relativePath)) {
+          seenPaths.add(file.relativePath);
+          filesToWrite.push(file);
         }
+      }
+    }
+
+    // Шаг 4: записать каждый уникальный файл
+    for (const file of filesToWrite) {
+      const absolutePath = path.join(this.projectRoot, file.relativePath);
+
+      try {
+        // Создать промежуточные каталоги при необходимости
+        const dir = path.dirname(absolutePath);
+        fs.mkdirSync(dir, { recursive: true });
+
+        // Записать файл с кодировкой UTF-8
+        fs.writeFileSync(absolutePath, file.content, "utf-8");
+
+        // Шаг 5: добавить путь в массив written
+        written.push(file.relativePath);
+      } catch (err) {
+        // Расширение 4a: ошибка записи
+        errors.push(
+          new WriteError(
+            `Failed to write ${file.relativePath}: ${(err as Error).message}`,
+          ),
+        );
       }
     }
 

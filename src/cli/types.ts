@@ -23,6 +23,10 @@ export interface AdapterRegistryEntry {
   targetRoot: string;
   /** Список относительных путей к файлам за пределами targetRoot, генерируемых транспилерами. */
   targetFiles: string[];
+  /** Имена файлов для рекурсивного поиска в project tree при создании .agloom/project/ бэкапа. */
+  projectFiles: string[];
+  /** Имя собственного файла инструкций агента, или null если агент не имеет собственного формата. */
+  instructionsFile: string | null;
 }
 
 /** Результат выполнения очистки. */

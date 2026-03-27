@@ -247,5 +247,141 @@ describe("InstructionsTranspiler", () => {
       );
       expect(writtenContent).toBe(unicodeContent);
     });
+
+    // ===================================================================
+    // НОВЫЕ ТЕСТЫ: Дедупликация в writeResults
+    // Спецификация: docs/specs/instructions-transpiler.md § Запись результатов (обновлённая)
+    // Шаг 3: если несколько OutputFile имеют одинаковый relativePath,
+    // сохранить только первый встреченный.
+    // ===================================================================
+
+    // --- Трансформация: шаг 3 — дедупликация одинаковых relativePath ---
+    it("при одинаковом relativePath в нескольких OutputFile записывает файл один раз (первый встреченный)", () => {
+      const transpiler = createInstructionsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude"), createStubAdapter("agentsmd")],
+      });
+
+      const writeResult = transpiler.writeResults([
+        {
+          agentId: "claude",
+          files: [
+            { relativePath: "AGENTS.md", content: "Content from claude." },
+          ],
+          errors: [],
+        },
+        {
+          agentId: "agentsmd",
+          files: [
+            { relativePath: "AGENTS.md", content: "Content from agentsmd." },
+          ],
+          errors: [],
+        },
+      ]);
+
+      // Файл должен быть записан только один раз
+      const writtenContent = fs.readFileSync(
+        path.join(tmpDir, "AGENTS.md"),
+        "utf-8",
+      );
+      // Первый встреченный — "Content from claude."
+      expect(writtenContent).toBe("Content from claude.");
+
+      // written должен содержать путь только один раз
+      const agentsMdCount = writeResult.written.filter(
+        (p) => p === "AGENTS.md",
+      ).length;
+      expect(agentsMdCount).toBe(1);
+
+      expect(writeResult.errors).toHaveLength(0);
+    });
+
+    // --- Трансформация: шаг 3 — дедупликация сохраняет порядок обхода массива results ---
+    it("при дедупликации сохраняет контент первого встреченного файла (порядок обхода results)", () => {
+      const transpiler = createInstructionsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("first"), createStubAdapter("second")],
+      });
+
+      const writeResult = transpiler.writeResults([
+        {
+          agentId: "first",
+          files: [
+            { relativePath: "SHARED.md", content: "First adapter content." },
+          ],
+          errors: [],
+        },
+        {
+          agentId: "second",
+          files: [
+            { relativePath: "SHARED.md", content: "Second adapter content." },
+          ],
+          errors: [],
+        },
+      ]);
+
+      const writtenContent = fs.readFileSync(
+        path.join(tmpDir, "SHARED.md"),
+        "utf-8",
+      );
+      expect(writtenContent).toBe("First adapter content.");
+      expect(writeResult.written).toContain("SHARED.md");
+    });
+
+    // --- Трансформация: шаг 3 — дедупликация не затрагивает файлы с разными путями ---
+    it("не дедуплицирует файлы с разными relativePath", () => {
+      const transpiler = createInstructionsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude"), createStubAdapter("agentsmd")],
+      });
+
+      const writeResult = transpiler.writeResults([
+        {
+          agentId: "claude",
+          files: [{ relativePath: "CLAUDE.md", content: "Claude content." }],
+          errors: [],
+        },
+        {
+          agentId: "agentsmd",
+          files: [{ relativePath: "AGENTS.md", content: "AGENTS.md content." }],
+          errors: [],
+        },
+      ]);
+
+      expect(writeResult.written).toContain("CLAUDE.md");
+      expect(writeResult.written).toContain("AGENTS.md");
+      expect(writeResult.written).toHaveLength(2);
+      expect(writeResult.errors).toHaveLength(0);
+    });
+
+    // --- Трансформация: шаг 3 — дедупликация внутри одного TranspileResult ---
+    it("дедуплицирует файлы с одинаковым relativePath внутри одного TranspileResult", () => {
+      const transpiler = createInstructionsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude")],
+      });
+
+      const writeResult = transpiler.writeResults([
+        {
+          agentId: "claude",
+          files: [
+            { relativePath: "CLAUDE.md", content: "First occurrence." },
+            { relativePath: "CLAUDE.md", content: "Second occurrence." },
+          ],
+          errors: [],
+        },
+      ]);
+
+      const writtenContent = fs.readFileSync(
+        path.join(tmpDir, "CLAUDE.md"),
+        "utf-8",
+      );
+      expect(writtenContent).toBe("First occurrence.");
+
+      const claudeMdCount = writeResult.written.filter(
+        (p) => p === "CLAUDE.md",
+      ).length;
+      expect(claudeMdCount).toBe(1);
+    });
   });
 });

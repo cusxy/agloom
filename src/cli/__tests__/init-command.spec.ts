@@ -1,5 +1,6 @@
 // init-command.spec.ts
-// Спецификация: docs/specs/init-command.md § Команда init, § Вывод, § Exit codes, § Справка
+// Спецификация: docs/specs/init-command.md § Команда init, § Процедура Backup Project Files,
+//               § Процедура Init Overlay Files, § Вывод, § Exit codes, § Справка
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
@@ -53,17 +54,25 @@ describe("CLI", () => {
       process.exitCode = originalExitCode;
     });
 
-    // --- Happy path: шаги 1–10 ---
-    // 1. Распарсить аргументы --adapter и --force.
-    // 2–3. Resolve Adapter (запись адаптера + projectRoot).
-    // 4. Определить целевую директорию .agloom/overlays/<entry.id>/.
-    // 5. Проверить, что целевая директория не содержит файлов.
-    // 6. Создать целевую директорию и промежуточные каталоги.
-    // 7. Рекурсивно скопировать файлы из <projectRoot>/<entry.targetRoot>/.
-    // 8. Сформировать InitOutcome с copiedCount и errors.
-    // 9. Отобразить результат (§ Вывод — успех).
-    // 10. Завершить процесс с exit code 0.
-    it("при успешной инициализации копирует файлы из targetRoot в overlays, отображает успех и завершается с exit code 0", async () => {
+    // =====================================================================
+    // Happy path: Команда init --agent
+    // § init-command.md § Команда init § Поведение шаги 1-10
+    // 1. Распарсить аргументы --agent, --all и --force.
+    // 2. Проверить, что указан хотя бы один из --agent или --all.
+    // 3. Проверить, что --agent и --all не указаны одновременно.
+    // 4. Определить projectRoot как process.cwd().
+    // 5. Выполнить процедуру Backup Project Files.
+    // 6. Resolve Adapter.
+    // 7. Init Overlay Files.
+    // 8. (--all вариант)
+    // 9. Отобразить результат (§ Вывод).
+    // 10. Завершить процесс с exit code.
+    // =====================================================================
+
+    it("при успешной инициализации --agent выполняет Backup Project Files и Init Overlay Files, отображает успех и завершается с exit code 0", async () => {
+      // Создаём project-файлы (CLAUDE.md — в projectFiles записи claude)
+      fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Claude instructions");
+
       // Создаём файлы в targetRoot адаптера "claude" (.claude/)
       const claudeDir = path.join(tmpDir, ".claude");
       fs.mkdirSync(claudeDir, { recursive: true });
@@ -75,7 +84,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
+          args: ["init", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -91,9 +100,11 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // § Вывод (успех): "Initializing for {adapterId}..."
-      expect(output).toContain("Initializing for claude");
-      // ✓ с количеством скопированных файлов и путём
+      // § Вывод: "Initializing..." (не "Initializing for claude...")
+      expect(output).toContain("Initializing...");
+      // § Вывод (успех): результат бэкапа project-файлов
+      expect(output).toMatch(/project files backed up to \.agloom\/project\//);
+      // § Вывод (успех): результат overlay
       expect(output).toContain("✓");
       expect(output).toMatch(
         /2\s+files copied to \.agloom\/overlays\/claude\//,
@@ -102,6 +113,11 @@ describe("CLI", () => {
       expect(output).toContain("Done.");
       // § Exit codes: 0 — успех
       expect(process.exitCode).toBeUndefined();
+
+      // Побочный эффект: project-файлы скопированы в .agloom/project/
+      const backedUp = path.join(tmpDir, ".agloom", "project", "CLAUDE.md");
+      expect(fs.existsSync(backedUp)).toBe(true);
+      expect(fs.readFileSync(backedUp, "utf-8")).toBe("Claude instructions");
 
       // Побочный эффект: файлы скопированы в .agloom/overlays/claude/
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
@@ -119,9 +135,13 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Расширение 1a: аргумент --adapter не указан ---
-    // → отобразить сообщение об обязательности аргумента --adapter; exit code 1.
-    it("завершается с exit code 1 и сообщением об обязательности --adapter, если аргумент не указан", async () => {
+    // =====================================================================
+    // Расширение 2a: ни --agent, ни --all не указан
+    // § init-command.md § Расширения 2a: Ни --agent, ни --all не указан →
+    // отобразить сообщение об обязательности одного из аргументов; exit code 1.
+    // =====================================================================
+
+    it("завершается с exit code 1 и сообщением об обязательности --agent или --all, если ни один не указан", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["init"],
@@ -140,22 +160,23 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Сообщение указывает на обязательность --adapter
-      expect(output).toMatch(/--adapter/);
-      // Exit code 1
+      // Сообщение должно указывать на обязательность --agent или --all
+      expect(output).toMatch(/--agent|--all/);
       expect(process.exitCode).toBe(1);
 
       unmount();
     });
 
-    // --- Resolve Adapter расширение 1a (через Команду init): неизвестный адаптер ---
-    // Шаги 2–3 ссылаются на § Процедура Resolve Adapter (adapter-registry-ext.md).
-    // Расширение 1a: "Unknown adapter: {value}. Run 'agloom adapters' to see available adapters."
-    // Exit code 1.
-    it('отображает "Unknown adapter" и завершается с exit code 1 при неизвестном adapterId', async () => {
+    // =====================================================================
+    // Расширение 3a: --agent и --all указаны одновременно
+    // § init-command.md § Расширения 3a: --agent и --all указаны одновременно →
+    // отобразить "--agent and --all are mutually exclusive."; exit code 1.
+    // =====================================================================
+
+    it('отображает "--agent and --all are mutually exclusive." и exit code 1, если оба указаны одновременно', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--adapter", "nonexistent"],
+          args: ["init", "--agent", "claude", "--all"],
           projectRoot: tmpDir,
         }),
       );
@@ -171,7 +192,40 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain("Unknown adapter");
+      expect(output).toContain("--agent and --all are mutually exclusive");
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение 6a (Команда init): Resolve Adapter вернул ошибку
+    // § init-command.md § Расширения 6a:
+    // "Unknown agent: {value}. Run 'agloom adapters' to see available adapters."
+    // exit code 1.
+    // =====================================================================
+
+    it('при неизвестном --agent отображает "Unknown agent" и завершается с exit code 1', async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--agent", "nonexistent"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Сообщение должно содержать "Unknown agent" (не "Unknown adapter")
+      expect(output).toContain("Unknown agent");
       expect(output).toContain("nonexistent");
       expect(output).toContain("agloom adapters");
       expect(process.exitCode).toBe(1);
@@ -179,10 +233,16 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Расширение 5a: целевая директория содержит файлы, --force не указан ---
-    // → отобразить ".agloom/overlays/{entry.id}/ already exists. Use --force to overwrite.";
+    // =====================================================================
+    // Процедура Init Overlay Files
+    // § init-command.md § Процедура Init Overlay Files
+    // =====================================================================
+
+    // --- Расширение 2a Init Overlay Files: целевая директория содержит файлы, --force не указан ---
+    // § init-command.md § Процедура Init Overlay Files § Расширения 2a:
+    // ".agloom/overlays/{entry.id}/ already exists. Use --force to overwrite."
     // exit code 1.
-    it('отображает "already exists. Use --force to overwrite." и exit code 1, если целевая директория содержит файлы без --force', async () => {
+    it('отображает "already exists. Use --force to overwrite." и exit code 1, если overlay-директория содержит файлы без --force', async () => {
       // Создаём существующие файлы в целевой директории overlays/claude/
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
@@ -195,7 +255,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
+          args: ["init", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -227,8 +287,9 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Расширение 5b: --force указан → перезаписать существующие файлы ---
-    it("при --force перезаписывает существующие файлы в целевой директории", async () => {
+    // --- Расширение 2b Init Overlay Files: --force указан → перезаписать существующие файлы ---
+    // § init-command.md § Процедура Init Overlay Files § Расширения 2b
+    it("при --force перезаписывает существующие overlay-файлы в целевой директории", async () => {
       // Существующие файлы в overlays/claude/
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
@@ -241,7 +302,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--adapter", "claude", "--force"],
+          args: ["init", "--agent", "claude", "--force"],
           projectRoot: tmpDir,
         }),
       );
@@ -258,7 +319,7 @@ describe("CLI", () => {
       const output = lastFrame()!;
 
       // Успешный вывод, не содержит ошибки "already exists"
-      expect(output).toContain("Initializing for claude");
+      expect(output).toContain("Initializing...");
       expect(output).toContain("✓");
       expect(output).not.toContain("already exists");
       // Exit code 0
@@ -274,11 +335,12 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Расширение 6a: ошибка создания директории ---
-    // → отобразить сообщение об ошибке; exit code 1.
+    // --- Расширение 3a Init Overlay Files: ошибка создания директории ---
+    // § init-command.md § Процедура Init Overlay Files § Расширения 3a:
+    // ошибка создания директории → вернуть строку-сообщение с текстом ошибки.
     // Skip: chmod не работает на Windows и бесполезен под root
     it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
-      "при ошибке создания целевой директории отображает сообщение об ошибке и завершается с exit code 1",
+      "при ошибке создания overlay-директории отображает сообщение об ошибке и завершается с exit code 1",
       async () => {
         // Создаём файлы в targetRoot (.claude/)
         const claudeDir = path.join(tmpDir, ".claude");
@@ -292,7 +354,7 @@ describe("CLI", () => {
 
         const { lastFrame, unmount } = render(
           React.createElement(App, {
-            args: ["init", "--adapter", "claude"],
+            args: ["init", "--agent", "claude"],
             projectRoot: tmpDir,
           }),
         );
@@ -317,16 +379,15 @@ describe("CLI", () => {
       },
     );
 
-    // --- Расширение 7a: targetRoot не существует ---
-    // → copiedCount: 0, не является ошибкой.
-    // § Вывод (отсутствие файлов): "No files found." + "Done."
-    // § Exit codes: 0 — успех (включая 0 файлов).
-    it('при несуществующем targetRoot отображает "No files found." и завершается с exit code 0', async () => {
+    // --- Расширение 4a Init Overlay Files: targetRoot не существует ---
+    // § init-command.md § Процедура Init Overlay Files § Расширения 4a:
+    // targetRoot не существует → copiedCount: 0, не является ошибкой.
+    it("при несуществующем targetRoot overlay отображает 0 файлов и завершается с exit code 0", async () => {
       // Не создаём .claude/ — targetRoot отсутствует
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
+          args: ["init", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -342,9 +403,12 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // § Вывод (отсутствие файлов)
-      expect(output).toContain("Initializing for claude");
-      expect(output).toContain("No files found.");
+      // § Вывод: "Initializing..."
+      expect(output).toContain("Initializing...");
+      // overlay: 0 files copied
+      expect(output).toMatch(
+        /0\s+files copied to \.agloom\/overlays\/claude\//,
+      );
       expect(output).toContain("Done.");
       // § Exit codes: 0 — успех (включая 0 файлов)
       expect(process.exitCode).toBeUndefined();
@@ -352,14 +416,12 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Расширение 7b: ошибка копирования ---
-    // → добавить сообщение в errors, продолжить с оставшимися файлами.
-    // § Вывод (ошибки): "✗ {errors[0]}" + "Done. {copiedCount} files copied."
-    // § Exit codes: 1 — ошибка копирования.
-    // Трансформация шага 8: copiedCount = количество успешно скопированных файлов.
+    // --- Расширение 4b Init Overlay Files: ошибка копирования ---
+    // § init-command.md § Процедура Init Overlay Files § Расширения 4b:
+    // ошибка копирования → добавить сообщение в errors, продолжить.
     // Skip: chmod не работает на Windows и бесполезен под root
     it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
-      "при ошибке копирования добавляет сообщение в errors, продолжает с оставшимися файлами и завершается с exit code 1",
+      "при ошибке копирования overlay-файла добавляет сообщение в errors, продолжает с оставшимися файлами и завершается с exit code 1",
       async () => {
         // Создаём файлы в targetRoot (.claude/)
         const claudeDir = path.join(tmpDir, ".claude");
@@ -371,7 +433,7 @@ describe("CLI", () => {
 
         const { lastFrame, unmount } = render(
           React.createElement(App, {
-            args: ["init", "--adapter", "claude"],
+            args: ["init", "--agent", "claude"],
             projectRoot: tmpDir,
           }),
         );
@@ -387,11 +449,11 @@ describe("CLI", () => {
 
         const output = lastFrame()!;
 
-        // § Вывод (ошибки): заголовок
-        expect(output).toContain("Initializing for claude");
+        // § Вывод: "Initializing..."
+        expect(output).toContain("Initializing...");
         // ✗ с сообщением ошибки
         expect(output).toContain("✗");
-        // "Done. {copiedCount} files copied." — copiedCount = 1 (только ok-file.txt)
+        // § Вывод (ошибки): "Done. {copiedCount} files copied."
         expect(output).toMatch(/Done\.\s+1\s+files? copied\./);
         // § Exit codes: 1
         expect(process.exitCode).toBe(1);
@@ -404,10 +466,10 @@ describe("CLI", () => {
       },
     );
 
-    // --- Трансформация: шаг 7 — рекурсивное копирование с сохранением структуры ---
-    // Файлы из вложенных подкаталогов targetRoot воспроизводятся в overlays
-    // с сохранением структуры каталогов.
-    it("рекурсивно копирует файлы из targetRoot с сохранением структуры каталогов", async () => {
+    // --- Трансформация: Процедура Init Overlay Files шаг 4 — рекурсивное копирование ---
+    // § init-command.md § Процедура Init Overlay Files § Поведение шаг 4:
+    // Рекурсивно скопировать все файлы, сохраняя структуру каталогов.
+    it("рекурсивно копирует overlay-файлы из targetRoot с сохранением структуры каталогов", async () => {
       // Создаём вложенные файлы в targetRoot (.claude/)
       const claudeDir = path.join(tmpDir, ".claude");
       const subDir = path.join(claudeDir, "commands", "sub");
@@ -418,7 +480,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
+          args: ["init", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -458,10 +520,11 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Шаг 5: пустая целевая директория не блокирует инициализацию ---
-    // Целевая директория существует, но не содержит файлов →
-    // шаг 5 проходит, процесс продолжается к шагу 6 и далее.
-    it("при существующей пустой целевой директории продолжает копирование без ошибки", async () => {
+    // --- Процедура Init Overlay Files: пустая целевая директория не блокирует ---
+    // § init-command.md § Процедура Init Overlay Files § Поведение шаг 2:
+    // Проверить, что целевая директория не содержит файлов.
+    // Пустая директория проходит проверку, копирование продолжается.
+    it("при существующей пустой overlay-директории продолжает копирование без ошибки", async () => {
       // Создаём пустую целевую директорию
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
@@ -473,7 +536,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
+          args: ["init", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -490,7 +553,7 @@ describe("CLI", () => {
       const output = lastFrame()!;
 
       // Успешный вывод — пустая директория не блокирует
-      expect(output).toContain("Initializing for claude");
+      expect(output).toContain("Initializing...");
       expect(output).toContain("✓");
       expect(output).not.toContain("already exists");
       // Exit code 0
@@ -502,10 +565,528 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- § Справка: init --help ---
-    // Команда ДОЛЖНА поддерживать agloom init --help.
-    // Вывод содержит Usage, --adapter, --force, --help.
-    it("отображает справку при вызове init --help", async () => {
+    // =====================================================================
+    // --all флаг
+    // § init-command.md § Команда init § Поведение шаг 8
+    // =====================================================================
+
+    // --- Шаг 8: --all — для каждой записи реестра выполнить Init Overlay Files ---
+    it("при --all инициализирует все адаптеры из реестра", async () => {
+      // Создаём файлы для адаптера claude
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "claude-file.txt"), "claude");
+
+      // Создаём файлы для адаптера opencode
+      const opencodeDir = path.join(tmpDir, ".opencode");
+      fs.mkdirSync(opencodeDir, { recursive: true });
+      fs.writeFileSync(path.join(opencodeDir, "opencode-file.txt"), "opencode");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Вывод должен содержать результаты для нескольких адаптеров
+      expect(output).toContain(".agloom/overlays/claude/");
+      expect(output).toContain(".agloom/overlays/opencode/");
+      expect(output).toContain("Done.");
+      expect(process.exitCode).toBeUndefined();
+
+      // Побочный эффект: файлы скопированы для каждого адаптера
+      expect(
+        fs.existsSync(
+          path.join(tmpDir, ".agloom", "overlays", "claude", "claude-file.txt"),
+        ),
+      ).toBe(true);
+      expect(
+        fs.existsSync(
+          path.join(
+            tmpDir,
+            ".agloom",
+            "overlays",
+            "opencode",
+            "opencode-file.txt",
+          ),
+        ),
+      ).toBe(true);
+
+      unmount();
+    });
+
+    // --- § Вывод: вывод при --all содержит результаты для всех адаптеров ---
+    // § init-command.md § Вывод, вариант «успех» (--all):
+    // Содержит строку для каждого адаптера из реестра (claude, opencode, agentsmd)
+    it("при --all отображает результаты для всех адаптеров из реестра включая agentsmd", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Результат должен содержать строки для claude, opencode и agentsmd
+      expect(output).toContain(".agloom/overlays/claude/");
+      expect(output).toContain(".agloom/overlays/opencode/");
+      expect(output).toContain(".agloom/overlays/agentsmd/");
+
+      unmount();
+    });
+
+    // --- Расширение 8a (Команда init): при --all, Init Overlay Files для одной записи вернула ошибку ---
+    // § init-command.md § Расширения 8a: Процедура Init Overlay Files для одной из записей
+    // реестра вернула строку-сообщение → отобразить сообщение; exit code 1.
+    it("при --all, если Init Overlay Files для одной записи вернула ошибку, отображает сообщение и exit code 1", async () => {
+      // Создаём overlay-директорию с файлами для claude (заблокирует без --force)
+      const claudeOverlay = path.join(tmpDir, ".agloom", "overlays", "claude");
+      fs.mkdirSync(claudeOverlay, { recursive: true });
+      fs.writeFileSync(path.join(claudeOverlay, "existing.txt"), "existing");
+
+      // Создаём файлы в targetRoot для claude
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Сообщение об ошибке отображается
+      expect(output).toContain(".agloom/overlays/claude/ already exists");
+      // Exit code 1
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Процедура Backup Project Files
+    // § init-command.md § Процедура Backup Project Files
+    // =====================================================================
+
+    // --- Happy path: Backup Project Files ---
+    // § init-command.md § Процедура Backup Project Files § Поведение шаги 1-11
+    it("при --agent выполняет бэкап project-файлов в .agloom/project/ перед Init Overlay Files", async () => {
+      // Создаём project-файлы в корне проекта (CLAUDE.md — в projectFiles записи claude)
+      fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Claude instructions");
+
+      // Создаём файлы в targetRoot адаптера claude
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "settings.json"), "{}");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--agent", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // § Вывод: результат бэкапа project-файлов
+      expect(output).toMatch(/project files backed up to \.agloom\/project\//);
+      expect(output).toContain("Done.");
+      expect(process.exitCode).toBeUndefined();
+
+      // Побочный эффект: CLAUDE.md скопирован в .agloom/project/
+      const backedUp = path.join(tmpDir, ".agloom", "project", "CLAUDE.md");
+      expect(fs.existsSync(backedUp)).toBe(true);
+      expect(fs.readFileSync(backedUp, "utf-8")).toBe("Claude instructions");
+
+      unmount();
+    });
+
+    // --- Расширение 7a Backup Project Files: .agloom/project/ already exists ---
+    // § init-command.md § Процедура Backup Project Files § Расширения 7a:
+    // Целевая директория уже существует и содержит файлы, force=false →
+    // ".agloom/project/ already exists. Use --force to overwrite."
+    it('при наличии файлов в .agloom/project/ без --force отображает "already exists" и exit code 1', async () => {
+      // Создаём существующие файлы в .agloom/project/
+      const projectBackupDir = path.join(tmpDir, ".agloom", "project");
+      fs.mkdirSync(projectBackupDir, { recursive: true });
+      fs.writeFileSync(path.join(projectBackupDir, "existing.md"), "existing");
+
+      // Создаём project-файлы
+      fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "New content");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--agent", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain(
+        ".agloom/project/ already exists. Use --force to overwrite.",
+      );
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    // --- Расширение 7b Backup Project Files: --force перезаписывает .agloom/project/ ---
+    // § init-command.md § Процедура Backup Project Files § Расширения 7b:
+    // force=true → пропустить проверку, перезаписать существующие файлы.
+    it("при --force перезаписывает существующие файлы в .agloom/project/", async () => {
+      // Создаём существующие файлы в .agloom/project/
+      const projectBackupDir = path.join(tmpDir, ".agloom", "project");
+      fs.mkdirSync(projectBackupDir, { recursive: true });
+      fs.writeFileSync(path.join(projectBackupDir, "CLAUDE.md"), "old backup");
+
+      // Создаём project-файлы
+      fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "New content");
+
+      // Создаём файлы в targetRoot для overlay
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "settings.json"), "{}");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--agent", "claude", "--force"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Успешный вывод, не содержит ошибку "already exists"
+      expect(output).toContain("Initializing...");
+      expect(output).not.toContain("already exists");
+      expect(process.exitCode).toBeUndefined();
+
+      // Побочный эффект: файл перезаписан новым содержимым
+      const backedUp = fs.readFileSync(
+        path.join(projectBackupDir, "CLAUDE.md"),
+        "utf-8",
+      );
+      expect(backedUp).toBe("New content");
+
+      unmount();
+    });
+
+    // --- Расширение 5a Команда init: Backup Project Files вернула строку-сообщение ---
+    // § init-command.md § Расширения 5a: Процедура Backup Project Files вернула строку-сообщение →
+    // ошибка является блокирующей; Init Overlay Files НЕ выполняется.
+    it("при ошибке Backup Project Files не выполняет Init Overlay Files", async () => {
+      // Создаём .agloom/project/ с файлами (блокирует без --force)
+      const projectBackupDir = path.join(tmpDir, ".agloom", "project");
+      fs.mkdirSync(projectBackupDir, { recursive: true });
+      fs.writeFileSync(path.join(projectBackupDir, "existing.md"), "existing");
+
+      // Создаём файлы в targetRoot
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--agent", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      // Побочный эффект: overlay-файлы НЕ скопированы
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      expect(fs.existsSync(path.join(overlayDir, "file.txt"))).toBe(false);
+
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    // --- Расширение 10a Backup Project Files: ошибка копирования файла ---
+    // § init-command.md § Процедура Backup Project Files § Расширения 10a:
+    // Ошибка копирования файла → добавить в errors, продолжить с оставшимися файлами.
+    // Skip: chmod не работает на Windows и бесполезен под root
+    it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+      "при ошибке копирования project-файла добавляет в errors и продолжает с оставшимися файлами",
+      async () => {
+        // Создаём два project-файла
+        fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Claude content");
+        fs.writeFileSync(path.join(tmpDir, "CLAUDE.local.md"), "Local content");
+        // Делаем один файл нечитаемым
+        fs.chmodSync(path.join(tmpDir, "CLAUDE.local.md"), 0o000);
+
+        // Создаём файлы в targetRoot для overlay
+        const claudeDir = path.join(tmpDir, ".claude");
+        fs.mkdirSync(claudeDir, { recursive: true });
+        fs.writeFileSync(path.join(claudeDir, "settings.json"), "{}");
+
+        const { lastFrame, unmount } = render(
+          React.createElement(App, {
+            args: ["init", "--agent", "claude"],
+            projectRoot: tmpDir,
+          }),
+        );
+
+        await vi.waitFor(
+          () => {
+            const frame = lastFrame();
+            expect(frame).toBeDefined();
+            expect(frame!).toContain("Done.");
+          },
+          { timeout: 5000 },
+        );
+
+        const output = lastFrame()!;
+
+        // Ошибка отображается
+        expect(output).toContain("✗");
+        // CLAUDE.md (успешный) всё равно скопирован
+        const backedUp = path.join(tmpDir, ".agloom", "project", "CLAUDE.md");
+        expect(fs.existsSync(backedUp)).toBe(true);
+        // Exit code 1 из-за errors
+        expect(process.exitCode).toBe(1);
+
+        unmount();
+      },
+    );
+
+    // --- § Вывод (ошибки): "Done. {copiedCount} files copied." ---
+    // § init-command.md § Вывод, вариант «ошибки»:
+    // При наличии ошибок в errors: "Done. {copiedCount} files copied."
+    // Skip: chmod не работает на Windows и бесполезен под root
+    it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+      'при наличии errors отображает "Done. {copiedCount} files copied."',
+      async () => {
+        // Создаём файлы в targetRoot (.claude/)
+        const claudeDir = path.join(tmpDir, ".claude");
+        fs.mkdirSync(claudeDir, { recursive: true });
+        fs.writeFileSync(path.join(claudeDir, "ok-file.txt"), "ok content");
+        fs.writeFileSync(path.join(claudeDir, "fail-file.txt"), "fail");
+        // Делаем файл нечитаемым — копирование провалится
+        fs.chmodSync(path.join(claudeDir, "fail-file.txt"), 0o000);
+
+        const { lastFrame, unmount } = render(
+          React.createElement(App, {
+            args: ["init", "--agent", "claude"],
+            projectRoot: tmpDir,
+          }),
+        );
+
+        await vi.waitFor(
+          () => {
+            const frame = lastFrame();
+            expect(frame).toBeDefined();
+            expect(frame!).toContain("Done.");
+          },
+          { timeout: 5000 },
+        );
+
+        const output = lastFrame()!;
+
+        // § Вывод (ошибки): "Done. {copiedCount} files copied."
+        expect(output).toMatch(/Done\.\s+\d+\s+files? copied\./);
+
+        unmount();
+      },
+    );
+
+    // =====================================================================
+    // § Вывод: формат начинается с "Initializing..."
+    // § init-command.md § Вывод: Вывод начинается со строки "Initializing...".
+    // =====================================================================
+
+    it('вывод начинается со строки "Initializing..." при успешном выполнении', async () => {
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--agent", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // § Вывод: "Initializing..." (не "Initializing for claude...")
+      expect(output).toContain("Initializing...");
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Backup Project Files: рекурсивный поиск и исключение каталогов
+    // § init-command.md § Процедура Backup Project Files шаги 3-5
+    // =====================================================================
+
+    it("при бэкапе проектных файлов находит файлы рекурсивно и исключает node_modules и скрытые каталоги", async () => {
+      // Создаём project-файлы: в корне и в подпапке
+      fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Root CLAUDE.md");
+      const subDir = path.join(tmpDir, "packages", "core");
+      fs.mkdirSync(subDir, { recursive: true });
+      fs.writeFileSync(path.join(subDir, "CLAUDE.md"), "Sub CLAUDE.md");
+
+      // Создаём CLAUDE.md в node_modules (должен быть исключён)
+      const nmDir = path.join(tmpDir, "node_modules", "some-pkg");
+      fs.mkdirSync(nmDir, { recursive: true });
+      fs.writeFileSync(path.join(nmDir, "CLAUDE.md"), "Should be excluded");
+
+      // Создаём CLAUDE.md в скрытом каталоге (должен быть исключён)
+      const hiddenDir = path.join(tmpDir, ".hidden");
+      fs.mkdirSync(hiddenDir, { recursive: true });
+      fs.writeFileSync(path.join(hiddenDir, "CLAUDE.md"), "Should be excluded");
+
+      // Создаём файлы в targetRoot для overlay
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "settings.json"), "{}");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--agent", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      // Побочный эффект: корневой CLAUDE.md скопирован
+      expect(
+        fs.existsSync(path.join(tmpDir, ".agloom", "project", "CLAUDE.md")),
+      ).toBe(true);
+      // Побочный эффект: CLAUDE.md из подпапки скопирован с сохранением пути
+      expect(
+        fs.existsSync(
+          path.join(
+            tmpDir,
+            ".agloom",
+            "project",
+            "packages",
+            "core",
+            "CLAUDE.md",
+          ),
+        ),
+      ).toBe(true);
+      // Побочный эффект: CLAUDE.md из node_modules НЕ скопирован
+      expect(
+        fs.existsSync(
+          path.join(
+            tmpDir,
+            ".agloom",
+            "project",
+            "node_modules",
+            "some-pkg",
+            "CLAUDE.md",
+          ),
+        ),
+      ).toBe(false);
+      // Побочный эффект: CLAUDE.md из скрытого каталога НЕ скопирован
+      expect(
+        fs.existsSync(
+          path.join(tmpDir, ".agloom", "project", ".hidden", "CLAUDE.md"),
+        ),
+      ).toBe(false);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // § Справка
+    // § init-command.md § Справка
+    // =====================================================================
+
+    // --- § Справка: init --help обновлена ---
+    // § init-command.md § Справка: Вывод agloom init --help
+    // Usage: agloom init (--agent <agentId> | --all) [--force]
+    // Содержит --agent, --all, --force, --help
+    it("отображает обновлённую справку с --agent и --all при вызове init --help", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["init", "--help"],
@@ -524,9 +1105,9 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // § Справка init --help: Usage, --adapter, --force, --help
-      expect(output).toContain("agloom init");
-      expect(output).toContain("--adapter");
+      // Обновлённая справка содержит --agent (не --adapter) и --all
+      expect(output).toContain("--agent");
+      expect(output).toContain("--all");
       expect(output).toContain("--force");
       expect(output).toContain("--help");
 
@@ -534,9 +1115,11 @@ describe("CLI", () => {
     });
 
     // --- § Справка: init в agloom --help ---
+    // § init-command.md § Справка:
     // Команда init ДОЛЖНА быть добавлена в вывод agloom --help:
-    // "  init         Import existing agent configs into .agloom/overlays/"
-    it('содержит "init" с описанием "Import existing agent configs into .agloom/overlays/" в выводе --help', async () => {
+    // "  init         Import existing agent configs into .agloom/"
+    // § cli.md § --help: описание init = "Import existing agent configs into .agloom/"
+    it('содержит "init" с описанием "Import existing agent configs into .agloom/" в выводе --help', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["--help"],
@@ -556,9 +1139,7 @@ describe("CLI", () => {
       const output = lastFrame()!;
 
       expect(output).toContain("init");
-      expect(output).toContain(
-        "Import existing agent configs into .agloom/overlays/",
-      );
+      expect(output).toContain("Import existing agent configs into .agloom/");
 
       unmount();
     });

@@ -116,5 +116,96 @@ describe("ClaudeAdapter", () => {
       const adapter = new ClaudeAdapter();
       expect(adapter.agentId).toBe("claude");
     });
+
+    // ===================================================================
+    // НОВЫЕ ТЕСТЫ: Claude адаптер вызывает transformContent
+    // Спецификация: docs/specs/instructions-transpiler.md § Claude Code адаптер (обновлённая)
+    // Шаг 2: вызвать transformContent(file.content, "claude", this.allowedAgentIds)
+    // ===================================================================
+
+    // --- Трансформация: шаг 2 — адаптер применяет override из frontmatter ---
+    it("применяет override из frontmatter через transformContent", () => {
+      const adapter = new ClaudeAdapter();
+
+      const content = [
+        "---",
+        "title: Project",
+        "override:",
+        "  claude:",
+        "    title: Claude Project",
+        "---",
+        "Body content.",
+      ].join("\n");
+
+      const files = adapter.transpile([
+        makeCanonicalFile("AGLOOM.md", "root", content),
+      ]);
+
+      expect(files).toHaveLength(1);
+      // Если transformContent вызван, override будет применён
+      expect(files[0].content).toContain("title: Claude Project");
+      expect(files[0].content).not.toContain("override:");
+    });
+
+    // --- Трансформация: шаг 2 — адаптер фильтрует agent-specific секции в body ---
+    it("фильтрует agent-specific секции через transformContent", () => {
+      const adapter = new ClaudeAdapter();
+
+      const content = [
+        "General instructions.",
+        "",
+        "<!-- agent:claude -->",
+        "Claude-specific.",
+        "<!-- /agent:claude -->",
+        "<!-- agent:agentsmd -->",
+        "AGENTS.md-specific.",
+        "<!-- /agent:agentsmd -->",
+      ].join("\n");
+
+      const files = adapter.transpile([
+        makeCanonicalFile("AGLOOM.md", "root", content),
+      ]);
+
+      expect(files).toHaveLength(1);
+      // Если transformContent вызван, claude секция раскрыта, agentsmd удалена
+      expect(files[0].content).toContain("Claude-specific.");
+      expect(files[0].content).not.toContain("AGENTS.md-specific.");
+      expect(files[0].content).not.toContain("<!-- agent:");
+    });
+
+    // --- Расширение 2a: transformContent выбрасывает TransformError → пробросить ---
+    it("пробрасывает TransformError от transformContent к вызывающему коду", () => {
+      const adapter = new ClaudeAdapter();
+
+      const content = [
+        "---",
+        "title: Test",
+        "override: not-an-object",
+        "---",
+        "Body.",
+      ].join("\n");
+
+      expect(() =>
+        adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]),
+      ).toThrow(/Override must be an object/);
+    });
+
+    // --- Конструктор: allowedAgentIds передаётся и используется ---
+    it("принимает allowedAgentIds в конструкторе и использует при transpile", () => {
+      const adapter = new ClaudeAdapter(["claude", "agentsmd"]);
+
+      const content = [
+        "General instructions.",
+        "",
+        "<!-- agent:opencode -->",
+        "OpenCode content.",
+        "<!-- /agent:opencode -->",
+      ].join("\n");
+
+      // "opencode" не входит в allowedAgentIds — должна быть ошибка
+      expect(() =>
+        adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]),
+      ).toThrow(/Invalid agent-id 'opencode'/);
+    });
   });
 });

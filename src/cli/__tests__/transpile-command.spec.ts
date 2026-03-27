@@ -45,19 +45,25 @@ describe("CLI", () => {
       process.exitCode = originalExitCode;
     });
 
-    // --- Happy path: шаги 1-13 ---
-    // Шаг 1: распарсить --adapter
+    // =====================================================================
+    // Happy path: Режим --agent
+    // § cli.md § Режим --agent § Поведение шаги 1-11
+    // =====================================================================
+
+    // --- Happy path: шаги 1-11 ---
+    // Шаг 1: распарсить --agent и --all
     // Шаг 2: найти в реестре
     // Шаг 3: projectRoot = cwd()
     // Шаг 4: отобразить заголовок со spinner
-    // Шаги 5-10: выполнить и отобразить 3 шага транспиляции
-    // Шаг 11: вычислить totalWritten
-    // Шаг 12: отобразить итоговую строку
-    // Шаг 13: exit code 0
-    it("при успешной транспиляции всех трёх шагов отображает заголовок, ✓ для каждого шага, итоговую строку и завершается с exit code 0", async () => {
+    // Шаги 5-7: выполнить 3 шага транспиляции (Instructions, Skills, Agents)
+    // Шаг 8: отобразить результаты в TUI
+    // Шаг 9: вычислить totalWritten
+    // Шаг 10: отобразить итоговую строку
+    // Шаг 11: exit code 0
+    it("при успешной транспиляции всех трёх шагов отображает заголовок, результаты для каждого шага, итоговую строку и завершается с exit code 0", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
+          args: ["transpile", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -91,10 +97,12 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Расширение 1a: аргумент --adapter не указан ---
-    // CLI-парсер отображает сообщение об обязательности аргумента --adapter;
-    // процесс завершается с exit code 1.
-    it("завершается с exit code 1 и сообщением об обязательности --adapter, если аргумент не указан", async () => {
+    // =====================================================================
+    // Расширение 1a: ни --agent, ни --all не указаны
+    // § cli.md § Режим --agent § Расширения 1a
+    // =====================================================================
+
+    it("при отсутствии --agent и --all отображает сообщение об обязательности и exit code 1", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["transpile"],
@@ -113,20 +121,22 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Сообщение должно указывать на обязательность --adapter
-      expect(output).toMatch(/--adapter/);
+      // Сообщение должно указывать на --agent или --all
+      expect(output).toMatch(/--agent|--all/);
       expect(process.exitCode).toBe(1);
 
       unmount();
     });
 
-    // --- Расширение 2a: адаптер не найден в реестре ---
-    // "Unknown adapter: {value}. Run 'agloom adapters' to see available adapters."
-    // Процесс завершается с exit code 1.
-    it('отображает "Unknown adapter" и завершается с exit code 1 при неизвестном adapterId', async () => {
+    // =====================================================================
+    // Расширение 1b: --agent и --all указаны одновременно
+    // § cli.md § Режим --agent § Расширения 1b
+    // =====================================================================
+
+    it("при одновременном --agent и --all отображает сообщение о взаимоисключающих аргументах и exit code 1", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--adapter", "nonexistent"],
+          args: ["transpile", "--agent", "claude", "--all"],
           projectRoot: tmpDir,
         }),
       );
@@ -134,12 +144,47 @@ describe("CLI", () => {
       await vi.waitFor(
         () => {
           const frame = lastFrame();
-          expect(frame).toContain("Unknown adapter");
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
         },
         { timeout: 5000 },
       );
 
       const output = lastFrame()!;
+
+      expect(output).toMatch(/mutually exclusive/i);
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение 2a: адаптер не найден в реестре
+    // § cli.md § Режим --agent § Расширения 2a:
+    // "Unknown agent: {value}. Run 'agloom adapters' to see available adapters."
+    // exit code 1.
+    // =====================================================================
+
+    it('при неизвестном --agent отображает "Unknown agent" и завершается с exit code 1', async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--agent", "nonexistent"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Unknown agent");
       expect(output).toContain("nonexistent");
       expect(output).toContain("agloom adapters");
       expect(process.exitCode).toBe(1);
@@ -147,7 +192,12 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- TUI § Неуспешный шаг + § Exit codes ---
+    // =====================================================================
+    // TUI § Неуспешный шаг + § Exit codes
+    // § cli.md § TUI-отображение прогресса § Неуспешный шаг
+    // =====================================================================
+
+    // --- TUI § Неуспешный шаг ---
     // Шаг с ошибками отображает ✗ и сообщение первой ошибки.
     // Exit code 1 при ошибках хотя бы одного шага.
     it("отображает ✗ и сообщение ошибки для неуспешного шага и завершается с exit code 1", async () => {
@@ -162,7 +212,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
+          args: ["transpile", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -194,7 +244,8 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- Трансформация: шаг 11 — totalWritten = сумма writtenCount всех шагов ---
+    // --- Трансформация: шаг 9 — totalWritten = сумма writtenCount всех шагов ---
+    // § cli.md § Режим --agent § Поведение шаг 9:
     // totalWritten включает writtenCount из шагов с ошибками
     // (частично записанные файлы учитываются).
     it("вычисляет totalWritten как сумму writtenCount всех шагов, включая шаги с частичными ошибками", async () => {
@@ -207,7 +258,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
+          args: ["transpile", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -222,8 +273,8 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Instructions: 1 файл (AGLOOM.md → CLAUDE.md)
-      // Skills: 1 файл (SKILL.md → .claude/skills/my-skill/SKILL.md)
+      // Instructions: 1 файл (AGLOOM.md -> CLAUDE.md)
+      // Skills: 1 файл (SKILL.md -> .claude/skills/my-skill/SKILL.md)
       // Agents: 0 файлов (ошибка)
       // totalWritten = 1 + 1 + 0 = 2
       expect(output).toMatch(/Done\.\s+2\s+files written\./);
@@ -237,7 +288,7 @@ describe("CLI", () => {
 
     // --- § Расширение команды transpile, шаг 8-9: Overlay отображается в TUI ---
     // После шага 7 (Agents) выполняется шаг 8 (Overlay).
-    // Порядок отображения: Instructions → Skills → Agents → Overlay.
+    // Порядок отображения: Instructions -> Skills -> Agents -> Overlay.
     it("отображает шаг Overlay в TUI после Instructions, Skills и Agents", async () => {
       // Создаём overlay-файлы для адаптера claude
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
@@ -249,7 +300,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
+          args: ["transpile", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -279,10 +330,10 @@ describe("CLI", () => {
     // --- § Расширение команды transpile, вывод ---
     // Если .agloom/overlays/<adapterId>/ не существует: ✓ Overlay 0 files
     it('отображает "Overlay 0 files" если директория overlays/<adapterId>/ не существует', async () => {
-      // Не создаём overlays/claude/ — расширение 1a → writtenCount: 0
+      // Не создаём overlays/claude/
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
+          args: ["transpile", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -301,7 +352,7 @@ describe("CLI", () => {
       expect(output).toContain("Overlay");
       expect(output).toMatch(/Overlay\s+0\s+files/);
 
-      // 0 files — это успех (расширение 1a), отображается с ✓
+      // 0 files — это успех, отображается с ✓
       expect(output).toMatch(/✓.*Overlay/);
 
       unmount();
@@ -318,7 +369,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
+          args: ["transpile", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -333,19 +384,18 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Instructions: 1 файл (AGLOOM.md → CLAUDE.md)
-      // Skills: 1 файл (SKILL.md → .claude/skills/my-skill/SKILL.md)
-      // Agents: 1 файл (reviewer.md → .claude/agents/reviewer.md)
-      // Overlay: 1 файл (extra.txt → .claude/extra.txt)
+      // Instructions: 1 файл (AGLOOM.md -> CLAUDE.md)
+      // Skills: 1 файл (SKILL.md -> .claude/skills/my-skill/SKILL.md)
+      // Agents: 1 файл (reviewer.md -> .claude/agents/reviewer.md)
+      // Overlay: 1 файл (extra.txt -> .claude/extra.txt)
       // totalWritten = 1 + 1 + 1 + 1 = 4
       expect(output).toMatch(/Done\.\s+4\s+files written\./);
 
       unmount();
     });
 
-    // --- § Exit codes: overlay ошибка → exit code 1 ---
+    // --- § Exit codes: overlay ошибка -> exit code 1 ---
     // Exit code учитывает ошибки шага overlay наравне с остальными шагами.
-    // Instructions/Skills/Agents успешны, overlay содержит ошибку → exit code 1.
     it("завершается с exit code 1 при ошибке только в шаге overlay (остальные шаги успешны)", async () => {
       // Создаём overlay-файл, который невозможно скопировать:
       // целевой путь заблокирован каталогом
@@ -360,7 +410,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
+          args: ["transpile", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -406,7 +456,7 @@ describe("CLI", () => {
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
+          args: ["transpile", "--agent", "claude"],
           projectRoot: tmpDir,
         }),
       );
@@ -431,10 +481,11 @@ describe("CLI", () => {
     });
 
     // --- TUI § Заголовок: отображается с adapterId ---
+    // § cli.md § TUI-отображение прогресса § Заголовок
     it('отображает заголовок "Transpiling for {adapterId}..."', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
-          args: ["transpile", "--adapter", "opencode"],
+          args: ["transpile", "--agent", "opencode"],
           projectRoot: tmpDir,
         }),
       );
@@ -448,9 +499,141 @@ describe("CLI", () => {
         { timeout: 5000 },
       );
 
-      // Проверяем заголовок в любом из фреймов (spinner может уже завершиться)
+      // Проверяем заголовок
       const output = lastFrame()!;
       expect(output).toContain("Transpiling for opencode");
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Режим --all
+    // § cli.md § Режим --all
+    // =====================================================================
+
+    // --- § Режим --all: для каждой записи реестра выполнить транспиляцию ---
+    // § cli.md § Режим --all § Поведение шаг 3: Для каждой записи реестра
+    // выполнить шаги транспиляции.
+    it("при --all выполняет транспиляцию для всех адаптеров из реестра", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 15000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Вывод должен содержать заголовки для нескольких адаптеров
+      expect(output).toContain("claude");
+      expect(output).toContain("opencode");
+      expect(output).toContain("agentsmd");
+      expect(output).toContain("Done.");
+
+      unmount();
+    });
+
+    // --- § Режим --all § totalWritten: суммарный writtenCount всех записей ---
+    // § cli.md § Режим --all § Поведение шаг 4: Вычислить totalWritten как
+    // суммарный writtenCount всех шагов всех записей.
+    it("при --all вычисляет totalWritten как суммарный writtenCount всех адаптеров", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 15000 },
+      );
+
+      const output = lastFrame()!;
+
+      // totalWritten > 0 и показывает суммарное количество файлов
+      expect(output).toMatch(/Done\.\s+\d+\s+files written\./);
+
+      // Число файлов должно быть больше, чем при одном адаптере
+      const match = output.match(/Done\.\s+(\d+)\s+files written\./);
+      expect(match).not.toBeNull();
+      const totalWritten = parseInt(match![1], 10);
+      expect(totalWritten).toBeGreaterThan(0);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // OpenCode no-op для instructions
+    // § cli.md § Реестр адаптеров
+    // =====================================================================
+
+    // § cli.md: OpenCodeAdapter является no-op для instructions: метод transpile()
+    // возвращает пустой массив OutputFile[].
+    it("при транспиляции opencode шаг Instructions показывает 0 files (no-op)", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--agent", "opencode"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 10000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Instructions для opencode — no-op, 0 files
+      expect(output).toMatch(/Instructions\s+0\s+files/);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // § Справка transpile --help
+    // § cli.md § --help
+    // =====================================================================
+
+    // § cli.md § --help: Вывод agloom transpile --help ДОЛЖЕН содержать
+    // Usage: agloom transpile (--agent <agentId> | --all) [--clean]
+    it("справка transpile --help содержит --agent и --all", async () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--help"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Обновлённая справка содержит --agent и --all
+      expect(output).toContain("--agent");
+      expect(output).toContain("--all");
 
       unmount();
     });

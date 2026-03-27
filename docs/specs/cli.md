@@ -10,14 +10,16 @@ relates:
   - docs/specs/instructions-transpiler.md
   - docs/specs/skills-transpiler.md
   - docs/specs/agents-transpiler.md
+  - docs/specs/adapter-registry-ext.md
+  - docs/specs/init-command.md
 maps_to:
   - src/cli/
 ---
 
 # CLI
 
-Ключевые слова "ТРЕБУЕТСЯ", "ЗАПРЕЩАЕТСЯ", "ДОЛЖЕН", "НЕ ДОЛЖЕН", "СЛЕДУЕТ",
-"НЕ СЛЕДУЕТ", "МОЖЕТ" и "НЕОБЯЗАТЕЛЬНО" в этом документе толкуются
+Ключевые слова «ТРЕБУЕТСЯ», «ЗАПРЕЩАЕТСЯ», «ДОЛЖЕН», «НЕ ДОЛЖЕН», «СЛЕДУЕТ»,
+«НЕ СЛЕДУЕТ», «МОЖЕТ» и «НЕОБЯЗАТЕЛЬНО» в этом документе толкуются
 в соответствии с [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
 CLI-модуль для запуска транспиляции канонических конфигураций Agloom
@@ -54,6 +56,10 @@ CLI-модуль для запуска транспиляции канониче
 - `agents` (AgentAdapter) — экземпляр адаптера для agents-transpiler
   (см. `docs/specs/agents-transpiler.md` § Интерфейс адаптера).
 
+Дополнительные поля (`targetRoot`, `targetFiles`, `projectFiles`,
+`instructionsFile`) описаны в `docs/specs/adapter-registry-ext.md`
+§ Расширение AdapterRegistryEntry.
+
 ### TranspilerStepOutcome
 
 Результат одного шага транспиляции (один транспилер).
@@ -70,30 +76,44 @@ CLI-модуль для запуска транспиляции канониче
 
 ### Состав реестра
 
-| `id`         | `description`   | `instructions`    | `skills`               | `agents`               |
-| ------------ | --------------- | ----------------- | ---------------------- | ---------------------- |
-| `"claude"`   | `"Claude Code"` | `ClaudeAdapter`   | `ClaudeSkillAdapter`   | `ClaudeAgentAdapter`   |
-| `"opencode"` | `"OpenCode"`    | `OpenCodeAdapter` | `OpenCodeSkillAdapter` | `OpenCodeAgentAdapter` |
+| `id`         | `description`                                  | `instructions`    | `skills`               | `agents`               |
+| ------------ | ---------------------------------------------- | ----------------- | ---------------------- | ---------------------- |
+| `"claude"`   | `"Claude Code"`                                | `ClaudeAdapter`   | `ClaudeSkillAdapter`   | `ClaudeAgentAdapter`   |
+| `"opencode"` | `"OpenCode"`                                   | `OpenCodeAdapter` | `OpenCodeSkillAdapter` | `OpenCodeAgentAdapter` |
+| `"agentsmd"` | `"AGENTS.md (Codex, OpenCode, KiloCode, ...)"` | `AgentsMdAdapter` | `AgentsMdSkillAdapter` | `AgentsMdAgentAdapter` |
 
 Адаптеры импортируются из соответствующих транспилер-модулей:
 
-- `ClaudeAdapter`, `OpenCodeAdapter` — из `src/instructions-transpiler/`.
-- `ClaudeSkillAdapter`, `OpenCodeSkillAdapter` — из `src/skills-transpiler/`.
-- `ClaudeAgentAdapter`, `OpenCodeAgentAdapter` — из `src/agents-transpiler/`.
+- `ClaudeAdapter`, `OpenCodeAdapter`, `AgentsMdAdapter` — из `src/instructions-transpiler/`.
+- `ClaudeSkillAdapter`, `OpenCodeSkillAdapter`, `AgentsMdSkillAdapter` — из `src/skills-transpiler/`.
+- `ClaudeAgentAdapter`, `OpenCodeAgentAdapter`, `AgentsMdAgentAdapter` — из `src/agents-transpiler/`.
+
+`OpenCodeAdapter` является no-op для instructions: метод `transpile()` возвращает
+пустой массив `OutputFile[]`. Генерация `AGENTS.md` из канонических инструкций
+выполняется адаптером `AgentsMdAdapter`.
 
 ## Команда transpile
 
-`agloom transpile --adapter <adapterId>` — запускает транспиляцию
-всех трёх транспилеров последовательно с указанным адаптером.
+`agloom transpile (--agent <agentId> | --all) [--clean]` — запускает
+транспиляцию всех трёх транспилеров последовательно. При `--agent`
+используется указанный адаптер; при `--all` — все записи реестра
+последовательно.
 
-**Вход:**
+**Аргументы:**
 
-- `--adapter` (string, обязательно) — идентификатор адаптера из реестра.
+- `--agent` (string, опционально) — идентификатор адаптера из реестра.
+  Взаимоисключающий с `--all`.
+- `--all` (boolean, опционально, default: false) — выполнить транспиляцию
+  для всех адаптеров из реестра. Взаимоисключающий с `--agent`.
+
+Ровно один из `--agent` и `--all` ТРЕБУЕТСЯ указать.
+
+### Режим --agent
 
 **Поведение:**
 
-1. Распарсить аргумент `--adapter` из командной строки.
-2. Найти запись в реестре адаптеров с `id`, совпадающим со значением `--adapter`.
+1. Распарсить аргументы `--agent` и `--all` из командной строки.
+2. Найти запись в реестре адаптеров с `id`, совпадающим со значением `--agent`.
 3. Определить `projectRoot` как текущий рабочий каталог процесса (`process.cwd()`).
 4. Отобразить заголовок с spinner (см. "TUI-отображение прогресса" § Заголовок).
 5. Выполнить шаг транспиляции "Instructions" (см. "Шаг транспиляции")
@@ -111,12 +131,42 @@ CLI-модуль для запуска транспиляции канониче
 
 **Расширения:**
 
-1a. Аргумент `--adapter` не указан → CLI-парсер отображает сообщение
-об обязательности аргумента `--adapter`; процесс завершается с exit code 1.
+1a. Ни `--agent`, ни `--all` не указаны → отобразить сообщение
+об обязательности одного из аргументов; процесс завершается с exit code 1.
+
+1b. Указаны одновременно `--agent` и `--all` → отобразить сообщение
+о взаимоисключающих аргументах; процесс завершается с exit code 1.
 
 2a. Запись с указанным `id` не найдена в реестре → отобразить сообщение
-`"Unknown adapter: {value}. Run 'agloom adapters' to see available adapters."`;
+`"Unknown agent: {value}. Run 'agloom adapters' to see available adapters."`;
 процесс завершается с exit code 1.
+
+### Режим --all
+
+**Поведение:**
+
+1. Распарсить аргумент `--all` из командной строки.
+2. Определить `projectRoot` как текущий рабочий каталог процесса (`process.cwd()`).
+3. Для каждой записи реестра (в порядке определения в массиве):
+   3.1. Отобразить заголовок с spinner для текущей записи.
+   3.2. Выполнить шаг транспиляции "Instructions" (см. "Шаг транспиляции")
+   с адаптером `entry.instructions`.
+   3.3. Выполнить шаг транспиляции "Skills" (см. "Шаг транспиляции")
+   с адаптером `entry.skills`.
+   3.4. Выполнить шаг транспиляции "Agents" (см. "Шаг транспиляции")
+   с адаптером `entry.agents`.
+   3.5. Отобразить результаты шагов текущей записи в TUI.
+4. Вычислить `totalWritten` как суммарный `writtenCount` всех шагов всех записей.
+5. Отобразить итоговую строку.
+6. Завершить процесс с exit code (см. "Exit codes").
+
+Дедупликация по output path выполняется на уровне `writeResults` каждого
+транспилера (см. `docs/specs/instructions-transpiler.md` § Запись результатов).
+CLI-уровень передаёт результаты в `writeResults` без собственной дедупликации.
+
+**Расширения:**
+
+Нет расширений (расширения аргументов описаны в режиме --agent § 1a, 1b).
 
 **Результат:**
 
@@ -189,6 +239,7 @@ Available adapters:
 
   claude       Claude Code
   opencode     OpenCode
+  agentsmd     AGENTS.md (Codex, OpenCode, KiloCode, ...)
 ```
 
 Процесс завершается с exit code 0.
@@ -206,8 +257,9 @@ Available adapters:
 **Поведение:**
 
 1. Отобразить описание программы.
-2. Отобразить список доступных команд (`transpile`, `adapters`)
-   с кратким описанием каждой.
+2. Отобразить список доступных команд (`transpile`, `clean`, `init`, `adapters`)
+   с кратким описанием каждой. Описание команды `init`:
+   `Import existing agent configs into .agloom/`.
 3. Отобразить список глобальных опций (`--help`, `--version`).
 
 **Расширения:**
@@ -222,6 +274,12 @@ Available adapters:
 
 - `agloom transpile --help` — справка по команде `transpile`.
 - `agloom adapters --help` — справка по команде `adapters`.
+
+Вывод `agloom transpile --help` ДОЛЖЕН содержать строку usage:
+
+```text
+Usage: agloom transpile (--agent <agentId> | --all) [--clean]
+```
 
 ### --version
 
@@ -291,14 +349,14 @@ Available adapters:
 
 ### Итоговая строка
 
-После завершения всех трёх шагов отображается пустая строка,
+После завершения всех шагов отображается пустая строка,
 затем итоговая строка:
 
 ```text
 Done. {totalWritten} files written.
 ```
 
-Значение `totalWritten` — сумма `writtenCount` всех трёх шагов,
+Значение `totalWritten` — сумма `writtenCount` всех шагов,
 включая шаги с ошибками (частично записанные файлы учитываются).
 
 ### Пример полного вывода (успех)
@@ -325,10 +383,11 @@ Done. 8 files written.
 
 ## Exit codes
 
-- `0` — все три шага транспиляции завершились без ошибок
+- `0` — все шаги транспиляции завершились без ошибок
   (массив `errors` пуст в каждом `TranspilerStepOutcome`).
 - `1` — хотя бы один шаг транспиляции завершился с ошибками,
-  аргумент `--adapter` не указан, или указанный адаптер не найден в реестре.
+  ни `--agent`, ни `--all` не указаны, указаны оба одновременно,
+  или указанный адаптер не найден в реестре.
 
 ## Конфигурация сборки
 
