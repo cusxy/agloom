@@ -139,6 +139,11 @@ export function backupProjectFiles(
   }
   // Расширение 7b: force=true → пропустить проверку
 
+  // Если файлов для бэкапа нет — не создаём пустую директорию
+  if (foundFiles.length === 0) {
+    return { copiedCount: 0, errors: [] };
+  }
+
   // Шаг 8: создать целевую директорию и промежуточные каталоги
   try {
     fs.mkdirSync(targetDir, { recursive: true });
@@ -204,15 +209,6 @@ export function initFiles(
   }
   // Расширение 2b: --force указан → пропустить проверку
 
-  // Шаг 3: создать целевую директорию и промежуточные каталоги
-  try {
-    fs.mkdirSync(targetDir, { recursive: true });
-  } catch (err) {
-    // Расширение 3a: ошибка создания директории
-    const error = err instanceof Error ? err : new Error(String(err));
-    return error.message;
-  }
-
   // Шаг 4: рекурсивно скопировать файлы из targetRoot
   const sourceDir = path.join(projectRoot, entry.targetRoot);
 
@@ -227,6 +223,20 @@ export function initFiles(
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
     return { copiedCount: 0, errors: [error.message] };
+  }
+
+  // Если файлов нет — не создаём пустую директорию
+  if (files.length === 0) {
+    return { copiedCount: 0, errors: [] };
+  }
+
+  // Шаг 3: создать целевую директорию и промежуточные каталоги
+  try {
+    fs.mkdirSync(targetDir, { recursive: true });
+  } catch (err) {
+    // Расширение 3a: ошибка создания директории
+    const error = err instanceof Error ? err : new Error(String(err));
+    return error.message;
   }
 
   for (const filePath of files) {

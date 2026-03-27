@@ -416,6 +416,99 @@ describe("CLI", () => {
       unmount();
     });
 
+    // --- Bug fix: пустые overlay-директории не создаются при отсутствии файлов ---
+    // Регрессия: initFiles создавал .agloom/overlays/{id}/ даже когда targetRoot не содержит файлов.
+    it("не создаёт пустую overlay-директорию если targetRoot не существует", async () => {
+      // Не создаём .claude/ — targetRoot отсутствует
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--agent", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      // Побочный эффект: overlay-директория НЕ создана
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      expect(fs.existsSync(overlayDir)).toBe(false);
+
+      unmount();
+    });
+
+    // --- Bug fix: при --all пустые overlay-директории не создаются ---
+    // Регрессия: initFiles создавал .agloom/overlays/{id}/ для каждого адаптера,
+    // даже если targetRoot не существует (agentsmd, opencode).
+    it("при --all не создаёт пустые overlay-директории для адаптеров без файлов", async () => {
+      // Не создаём ни .claude/, ни .opencode/, ни .agents/
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      // Побочный эффект: пустые overlay-директории НЕ созданы
+      expect(
+        fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "claude")),
+      ).toBe(false);
+      expect(
+        fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "opencode")),
+      ).toBe(false);
+      expect(
+        fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "agentsmd")),
+      ).toBe(false);
+
+      unmount();
+    });
+
+    // --- Bug fix: пустая .agloom/project/ не создаётся при отсутствии project-файлов ---
+    // Регрессия: backupProjectFiles создавал .agloom/project/ даже когда нет файлов для бэкапа.
+    it("не создаёт пустую .agloom/project/ если project-файлов нет", async () => {
+      // Создаём targetRoot для claude чтобы overlay работал
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--agent", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      // Побочный эффект: .agloom/project/ НЕ создана (нет project-файлов)
+      const projectDir = path.join(tmpDir, ".agloom", "project");
+      expect(fs.existsSync(projectDir)).toBe(false);
+
+      unmount();
+    });
+
     // --- Расширение 4b Init Overlay Files: ошибка копирования ---
     // § init-command.md § Процедура Init Overlay Files § Расширения 4b:
     // ошибка копирования → добавить сообщение в errors, продолжить.
