@@ -8,7 +8,8 @@ import * as path from "node:path";
 import * as os from "node:os";
 import React from "react";
 import { render } from "ink-testing-library";
-import { App } from "../app.js";
+import { App, resolveDeps } from "../app.js";
+import type { AdapterRegistryEntry } from "../types.js";
 
 describe("CLI", () => {
   describe("Команда transpile", () => {
@@ -603,6 +604,88 @@ describe("CLI", () => {
       expect(output).toMatch(/Instructions\s+0\s+files/);
 
       unmount();
+    });
+
+    // =====================================================================
+    // § cli.md § Разрешение зависимостей
+    // opencode.dependsOn = ["agentsmd"] → AGENTS.md создаётся при transpile --agent opencode
+    // =====================================================================
+
+    it("при transpile --agent opencode создаёт AGENTS.md через зависимость agentsmd", async () => {
+      // Создаём канонический файл
+      fs.writeFileSync(
+        path.join(tmpDir, "AGLOOM.md"),
+        "OpenCode project instructions",
+      );
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--agent", "opencode"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 10000 },
+      );
+
+      // Побочный эффект: AGENTS.md создан (через зависимость agentsmd)
+      const agentsMdPath = path.join(tmpDir, "AGENTS.md");
+      expect(fs.existsSync(agentsMdPath)).toBe(true);
+      expect(fs.readFileSync(agentsMdPath, "utf-8")).toBe(
+        "OpenCode project instructions",
+      );
+
+      unmount();
+    });
+
+    // =====================================================================
+    // § cli.md § Разрешение зависимостей § Расширение 1a
+    // circular dependency → Error("Circular dependency detected")
+    // =====================================================================
+
+    it("выбрасывает ошибку при циклической зависимости в реестре", () => {
+      // Тестовый реестр с циклом: a -> b -> a
+      const circularRegistry = [
+        {
+          id: "a",
+          description: "A",
+          dependsOn: ["b"],
+        },
+        {
+          id: "b",
+          description: "B",
+          dependsOn: ["a"],
+        },
+      ] as AdapterRegistryEntry[];
+
+      expect(() => resolveDeps("a", circularRegistry)).toThrow(
+        "Circular dependency detected",
+      );
+    });
+
+    // =====================================================================
+    // § cli.md § Разрешение зависимостей § Расширение 1b
+    // unknown dependency → Error("Unknown dependency: {id}")
+    // =====================================================================
+
+    it('выбрасывает ошибку "Unknown dependency: {id}" при отсутствии зависимости в реестре', () => {
+      // Тестовый реестр: a зависит от несуществующего "missing"
+      const missingDepRegistry = [
+        {
+          id: "a",
+          description: "A",
+          dependsOn: ["missing"],
+        },
+      ] as AdapterRegistryEntry[];
+
+      expect(() => resolveDeps("a", missingDepRegistry)).toThrow(
+        "Unknown dependency: missing",
+      );
     });
 
     // =====================================================================

@@ -4,12 +4,21 @@
 
 import { describe, it, expect } from "vitest";
 import { adapterRegistry } from "../adapter-registry.js";
-import { ClaudeAdapter } from "../../instructions-transpiler/index.js";
-import { OpenCodeAdapter } from "../../instructions-transpiler/index.js";
-import { ClaudeSkillAdapter } from "../../skills-transpiler/index.js";
-import { OpenCodeSkillAdapter } from "../../skills-transpiler/index.js";
-import { ClaudeAgentAdapter } from "../../agents-transpiler/index.js";
-import { OpenCodeAgentAdapter } from "../../agents-transpiler/index.js";
+import {
+  ClaudeAdapter,
+  OpenCodeAdapter,
+  AgentsMdAdapter,
+} from "../../instructions-transpiler/index.js";
+import {
+  ClaudeSkillAdapter,
+  OpenCodeSkillAdapter,
+  AgentsMdSkillAdapter,
+} from "../../skills-transpiler/index.js";
+import {
+  ClaudeAgentAdapter,
+  OpenCodeAgentAdapter,
+  AgentsMdAgentAdapter,
+} from "../../agents-transpiler/index.js";
 
 describe("CLI", () => {
   describe("Реестр адаптеров", () => {
@@ -52,10 +61,10 @@ describe("CLI", () => {
       expect(agentsmd!.description).toBe(
         "AGENTS.md (Codex, OpenCode, KiloCode, ...)",
       );
-      // Адаптеры должны быть определены (конкретные типы проверяются при наличии экспортов)
-      expect(agentsmd!.instructions).toBeDefined();
-      expect(agentsmd!.skills).toBeDefined();
-      expect(agentsmd!.agents).toBeDefined();
+      // § cli.md § Состав реестра: AgentsMdAdapter, AgentsMdSkillAdapter, AgentsMdAgentAdapter
+      expect(agentsmd!.instructions).toBeInstanceOf(AgentsMdAdapter);
+      expect(agentsmd!.skills).toBeInstanceOf(AgentsMdSkillAdapter);
+      expect(agentsmd!.agents).toBeInstanceOf(AgentsMdAgentAdapter);
     });
   });
 
@@ -131,6 +140,30 @@ describe("CLI", () => {
       const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmd).toBeDefined();
       expect(agentsmd!.instructionsFile).toBe("AGENTS.md");
+    });
+
+    // --- Happy path: запись claude содержит поле dependsOn ---
+    // § Обновление реестра адаптеров, строка claude: dependsOn=[]
+    it('запись "claude" содержит dependsOn [] (пустой массив)', () => {
+      const claude = adapterRegistry.find((e) => e.id === "claude");
+      expect(claude).toBeDefined();
+      expect(claude!.dependsOn).toEqual([]);
+    });
+
+    // --- Happy path: запись opencode содержит поле dependsOn ---
+    // § Обновление реестра адаптеров, строка opencode: dependsOn=["agentsmd"]
+    it('запись "opencode" содержит dependsOn ["agentsmd"]', () => {
+      const opencode = adapterRegistry.find((e) => e.id === "opencode");
+      expect(opencode).toBeDefined();
+      expect(opencode!.dependsOn).toEqual(["agentsmd"]);
+    });
+
+    // --- Happy path: запись agentsmd содержит поле dependsOn ---
+    // § Обновление реестра адаптеров, строка agentsmd: dependsOn=[]
+    it('запись "agentsmd" содержит dependsOn [] (пустой массив)', () => {
+      const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
+      expect(agentsmd).toBeDefined();
+      expect(agentsmd!.dependsOn).toEqual([]);
     });
   });
 });

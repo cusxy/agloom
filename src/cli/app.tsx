@@ -26,6 +26,35 @@ import { createSkillsTranspiler } from "../skills-transpiler/index.js";
 import { createAgentsTranspiler } from "../agents-transpiler/index.js";
 import type { ProjectBackupOutcome } from "./init-files.js";
 
+/**
+ * Разрешение зависимостей: собрать упорядоченный список записей
+ * в топологическом порядке (зависимости перед зависящими).
+ * Spec: docs/specs/cli.md § Разрешение зависимостей
+ */
+export function resolveDeps(
+  entryId: string,
+  registry: typeof adapterRegistry,
+): typeof adapterRegistry {
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+  const result: typeof adapterRegistry = [];
+
+  function visit(id: string): void {
+    if (visited.has(id)) return;
+    if (inStack.has(id)) throw new Error("Circular dependency detected");
+    const entry = registry.find((e) => e.id === id);
+    if (!entry) throw new Error(`Unknown dependency: ${id}`);
+    inStack.add(id);
+    for (const dep of entry.dependsOn) visit(dep);
+    inStack.delete(id);
+    visited.add(id);
+    result.push(entry);
+  }
+
+  visit(entryId);
+  return result;
+}
+
 interface AppProps {
   args: string[];
   projectRoot?: string;
@@ -445,65 +474,80 @@ function TranspileView({
   clean?: boolean;
 }): React.ReactElement {
   const [cleanOutcome, setCleanOutcome] = useState<CleanOutcome | null>(null);
-  const [outcomes, setOutcomes] = useState<TranspilerStepOutcome[]>([]);
+  const [entryResults, setEntryResults] = useState<
+    { adapterId: string; outcomes: TranspilerStepOutcome[] }[]
+  >([]);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    const entry = adapterRegistry.find((e) => e.id === adapterId);
-    if (!entry) {
-      return;
-    }
+    // Шаг 4: разрешить зависимости
+    const entries = resolveDeps(adapterId, adapterRegistry);
 
     // Шаг 4 (clean-command): При наличии флага --clean выполнить Clean Files
     let cleanResult: CleanOutcome | null = null;
     if (clean) {
-      cleanResult = cleanFiles(entry, projectRoot);
+      const mainEntry = entries[entries.length - 1];
+      cleanResult = cleanFiles(mainEntry, projectRoot);
       setCleanOutcome(cleanResult);
     }
 
-    const steps: TranspilerStepOutcome[] = [];
+    const results: {
+      adapterId: string;
+      outcomes: TranspilerStepOutcome[];
+    }[] = [];
 
-    // Шаг 5-6: Instructions
-    const instructionsOutcome = runTranspileStep({
-      transpilerFactory: createInstructionsTranspiler as Parameters<
-        typeof runTranspileStep
-      >[0]["transpilerFactory"],
-      adapter: entry.instructions,
-      projectRoot,
-      name: "Instructions",
-    });
-    steps.push(instructionsOutcome);
+    // Шаг 5: для каждой записи из упорядоченного списка
+    for (const entry of entries) {
+      const steps: TranspilerStepOutcome[] = [];
 
-    // Шаг 7-8: Skills
-    const skillsOutcome = runTranspileStep({
-      transpilerFactory: createSkillsTranspiler as Parameters<
-        typeof runTranspileStep
-      >[0]["transpilerFactory"],
-      adapter: entry.skills,
-      projectRoot,
-      name: "Skills",
-    });
-    steps.push(skillsOutcome);
+      // Instructions
+      steps.push(
+        runTranspileStep({
+          transpilerFactory: createInstructionsTranspiler as Parameters<
+            typeof runTranspileStep
+          >[0]["transpilerFactory"],
+          adapter: entry.instructions,
+          projectRoot,
+          name: "Instructions",
+        }),
+      );
 
-    // Шаг 9-10: Agents
-    const agentsOutcome = runTranspileStep({
-      transpilerFactory: createAgentsTranspiler as Parameters<
-        typeof runTranspileStep
-      >[0]["transpilerFactory"],
-      adapter: entry.agents,
-      projectRoot,
-      name: "Agents",
-    });
-    steps.push(agentsOutcome);
+      // Skills
+      steps.push(
+        runTranspileStep({
+          transpilerFactory: createSkillsTranspiler as Parameters<
+            typeof runTranspileStep
+          >[0]["transpilerFactory"],
+          adapter: entry.skills,
+          projectRoot,
+          name: "Skills",
+        }),
+      );
 
-    // Шаг 8: Overlay (после всех транспилерных шагов)
-    const overlayOutcome = runOverlayStep({ entry, projectRoot });
-    steps.push(overlayOutcome);
+      // Agents
+      steps.push(
+        runTranspileStep({
+          transpilerFactory: createAgentsTranspiler as Parameters<
+            typeof runTranspileStep
+          >[0]["transpilerFactory"],
+          adapter: entry.agents,
+          projectRoot,
+          name: "Agents",
+        }),
+      );
 
-    setOutcomes(steps);
+      // Overlay
+      steps.push(runOverlayStep({ entry, projectRoot }));
 
-    // Шаг 13: exit code — ошибки clean ИЛИ transpile
-    const hasTranspileErrors = steps.some((s) => s.errors.length > 0);
+      results.push({ adapterId: entry.id, outcomes: steps });
+    }
+
+    setEntryResults(results);
+
+    // Exit code
+    const hasTranspileErrors = results.some((r) =>
+      r.outcomes.some((s) => s.errors.length > 0),
+    );
     const hasCleanErrors = cleanResult ? cleanResult.errors.length > 0 : false;
     if (hasTranspileErrors || hasCleanErrors) {
       process.exitCode = 1;
@@ -512,8 +556,11 @@ function TranspileView({
     setDone(true);
   }, [adapterId, projectRoot, clean]);
 
-  // Шаг 11: totalWritten
-  const totalWritten = outcomes.reduce((sum, o) => sum + o.writtenCount, 0);
+  // totalWritten
+  const totalWritten = entryResults.reduce(
+    (sum, r) => sum + r.outcomes.reduce((s, o) => s + o.writtenCount, 0),
+    0,
+  );
 
   return (
     <Box flexDirection="column">
@@ -523,26 +570,30 @@ function TranspileView({
           <Text> </Text>
         </>
       )}
-      <Text>
-        <Spinner type="dots" /> Transpiling for {adapterId}...
-      </Text>
-      {outcomes.map((outcome) => (
-        <Text key={outcome.name}>
-          {"  "}
-          {outcome.errors.length === 0 ? (
-            <>
-              <Text color="green">✓</Text> {outcome.name}
-              {"        "}
-              {outcome.writtenCount} files
-            </>
-          ) : (
-            <>
-              <Text color="red">✗</Text> {outcome.name}
-              {"        "}
-              {outcome.errors[0]}
-            </>
-          )}
-        </Text>
+      {entryResults.map((r) => (
+        <React.Fragment key={r.adapterId}>
+          <Text>
+            <Spinner type="dots" /> Transpiling for {r.adapterId}...
+          </Text>
+          {r.outcomes.map((outcome) => (
+            <Text key={`${r.adapterId}-${outcome.name}`}>
+              {"  "}
+              {outcome.errors.length === 0 ? (
+                <>
+                  <Text color="green">✓</Text> {outcome.name}
+                  {"        "}
+                  {outcome.writtenCount} files
+                </>
+              ) : (
+                <>
+                  <Text color="red">✗</Text> {outcome.name}
+                  {"        "}
+                  {outcome.errors[0]}
+                </>
+              )}
+            </Text>
+          ))}
+        </React.Fragment>
       ))}
       {done && (
         <>

@@ -43,6 +43,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     targetFiles: ["CLAUDE.md"],
     projectFiles: ["CLAUDE.md", "CLAUDE.local.md"],
     instructionsFile: "CLAUDE.md",
+    dependsOn: [],
   },
   {
     id: "opencode",
@@ -54,6 +55,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     targetFiles: [],
     projectFiles: [],
     instructionsFile: null,
+    dependsOn: ["agentsmd"],
   },
   {
     id: "agentsmd",
@@ -65,5 +67,6 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     targetFiles: ["AGENTS.md"],
     projectFiles: ["AGENTS.md"],
     instructionsFile: "AGENTS.md",
+    dependsOn: [],
   },
 ];

@@ -1,8 +1,8 @@
 ---
-summary: Расширение реестра адаптеров — targetRoot, targetFiles, projectFiles, instructionsFile, Resolve Adapter
+summary: Расширение реестра адаптеров — targetRoot, targetFiles, projectFiles, instructionsFile, dependsOn, Resolve Adapter
 description: >
-  Расширяет AdapterRegistryEntry полями targetRoot, targetFiles, projectFiles
-  и instructionsFile. Определяет общую процедуру Resolve Adapter
+  Расширяет AdapterRegistryEntry полями targetRoot, targetFiles, projectFiles,
+  instructionsFile и dependsOn. Определяет общую процедуру Resolve Adapter
   для переиспользования в командах, принимающих --agent.
 type: spec
 status: implemented
@@ -45,17 +45,23 @@ maps_to:
   означает, что агент НЕ ИМЕЕТ собственного формата файла инструкций.
   Используется для валидации допустимых `agentId` в `<!-- agent:X -->` блоках
   файлов инструкций.
+- `dependsOn` (array\<string>, обязательно) — идентификаторы адаптеров,
+  от которых зависит данный адаптер. При выполнении `transpile --agent`
+  для адаптера с непустым `dependsOn` все зависимости ДОЛЖНЫ быть
+  транспилированы до самого адаптера. Массив МОЖЕТ быть пустым.
+  Связь является явной: наличие `instructionsFile: null` НЕ подразумевает
+  автоматическую зависимость от какого-либо адаптера.
 
 ## Обновление реестра адаптеров
 
 В реестр адаптеров ТРЕБУЕТСЯ добавить поля `targetRoot`, `targetFiles`,
-`projectFiles` и `instructionsFile` для каждой записи:
+`projectFiles`, `instructionsFile` и `dependsOn` для каждой записи:
 
-| `id`         | `targetRoot`  | `targetFiles`   | `projectFiles`                     | `instructionsFile` |
-| ------------ | ------------- | --------------- | ---------------------------------- | ------------------ |
-| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` | `["CLAUDE.md", "CLAUDE.local.md"]` | `"CLAUDE.md"`      |
-| `"opencode"` | `".opencode"` | `[]`            | `[]`                               | `null`             |
-| `"agentsmd"` | `".agents"`   | `["AGENTS.md"]` | `["AGENTS.md"]`                    | `"AGENTS.md"`      |
+| `id`         | `targetRoot`  | `targetFiles`   | `projectFiles`                     | `instructionsFile` | `dependsOn`    |
+| ------------ | ------------- | --------------- | ---------------------------------- | ------------------ | -------------- |
+| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` | `["CLAUDE.md", "CLAUDE.local.md"]` | `"CLAUDE.md"`      | `[]`           |
+| `"opencode"` | `".opencode"` | `[]`            | `[]`                               | `null`             | `["agentsmd"]` |
+| `"agentsmd"` | `".agents"`   | `["AGENTS.md"]` | `["AGENTS.md"]`                    | `"AGENTS.md"`      | `[]`           |
 
 ### Запись agentsmd
 
@@ -101,9 +107,8 @@ OpenCode не имеет уникальных файлов в project tree. По
 
 **Расширения:**
 
-1a. Запись не найдена → отобразить сообщение
-`"Unknown agent: {value}. Run 'agloom adapters' to see available adapters."`;
-exit code 1.
+1a. Запись не найдена →
+`Error("Unknown agent: {value}. Run 'agloom adapters' to see available adapters.")`.
 
 **Результат:**
 

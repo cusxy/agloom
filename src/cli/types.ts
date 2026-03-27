@@ -27,6 +27,8 @@ export interface AdapterRegistryEntry {
   projectFiles: string[];
   /** Имя собственного файла инструкций агента, или null если агент не имеет собственного формата. */
   instructionsFile: string | null;
+  /** Идентификаторы адаптеров, от которых зависит данный адаптер. */
+  dependsOn: string[];
 }
 
 /** Результат выполнения очистки. */
