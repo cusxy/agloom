@@ -11,6 +11,7 @@ relates:
   - docs/specs/skills-transpiler.md
   - docs/specs/agents-transpiler.md
   - docs/specs/adapter-registry-ext.md
+  - docs/specs/clean-command.md
   - docs/specs/init-command.md
 maps_to:
   - src/cli/
@@ -94,7 +95,7 @@ CLI-модуль для запуска транспиляции канониче
 
 ## Команда transpile
 
-`agloom transpile (--adapter <adapterId> | --all) [--clean]` — запускает
+`agloom transpile (--adapter <adapterId> | --all) [--clean] [--verbose]` — запускает
 транспиляцию всех трёх транспилеров последовательно. При `--adapter`
 используется указанный адаптер; при `--all` — все записи реестра
 последовательно.
@@ -105,6 +106,11 @@ CLI-модуль для запуска транспиляции канониче
   Взаимоисключающий с `--all`.
 - `--all` (boolean, опционально, default: false) — выполнить транспиляцию
   для всех адаптеров из реестра. Взаимоисключающий с `--adapter`.
+- `--verbose` (boolean, опционально, default: false) — показывать все шаги,
+  включая шаги с 0 файлов (см. "TUI-отображение прогресса" § Фильтрация шагов).
+
+Аргумент `--clean` определён в `docs/specs/clean-command.md`
+§ Расширение команды transpile.
 
 Ровно один из `--adapter` и `--all` ТРЕБУЕТСЯ указать.
 
@@ -319,7 +325,7 @@ Available adapters:
 Вывод `agloom transpile --help` ДОЛЖЕН содержать строку usage:
 
 ```text
-Usage: agloom transpile (--adapter <adapterId> | --all) [--clean]
+Usage: agloom transpile (--adapter <adapterId> | --all) [--clean] [--verbose]
 ```
 
 ### --version
@@ -350,6 +356,19 @@ Usage: agloom transpile (--adapter <adapterId> | --all) [--clean]
 общая справка (аналогично `agloom --help`). Процесс завершается
 с exit code 0.
 
+### Неизвестная команда
+
+При вызове `agloom <unknown>`, где `<unknown>` не является
+известной командой (`transpile`, `clean`, `init`, `adapters`)
+и не является флагом (не начинается с `--`), ДОЛЖНО отображаться
+сообщение:
+
+```text
+Unknown command: {cmd}. Run 'agloom --help' to see available commands.
+```
+
+Процесс завершается с exit code 1.
+
 ## TUI-отображение прогресса
 
 Правила рендеринга прогресса для команды `transpile`.
@@ -358,21 +377,27 @@ Usage: agloom transpile (--adapter <adapterId> | --all) [--clean]
 ### Заголовок
 
 Во время выполнения транспиляции отображается строка со spinner
-(компонент `ink-spinner`). Анимация spinner НЕОБЯЗАТЕЛЬНА — при быстрых
-синхронных операциях spinner МОЖЕТ отображаться как статический символ:
+(компонент `ink-spinner`). По завершении операции spinner
+заменяется на символ `✓` (зелёный):
 
 ```text
-◐ Transpiling for {adapterId}...
+◐ Transpiling for {adapterId}...   ← во время выполнения
+✓ Transpiling for {adapterId}...   ← после завершения
 ```
 
 ### Результат шага
+
+Выравнивание колонок: имя шага выравнивается по левому краю
+до 14 символов (`name.padEnd(14)`), количество файлов
+выравнивается по правому краю до 4 символов
+(`writtenCount.padStart(4)`).
 
 #### Успешный шаг
 
 Шаг без ошибок (`errors` пуст) отображается как:
 
 ```text
-  ✓ {name}        {writtenCount} files
+  ✓ {name.padEnd(14)}{writtenCount.padStart(4)} files
 ```
 
 Символ `✓` СЛЕДУЕТ отображать зелёным цветом.
@@ -382,11 +407,20 @@ Usage: agloom transpile (--adapter <adapterId> | --all) [--clean]
 Шаг с ошибками (`errors` непуст) отображается как:
 
 ```text
-  ✗ {name}        {errors[0]}
+  ✗ {name.padEnd(14)}{errors[0]}
 ```
 
 Символ `✗` СЛЕДУЕТ отображать красным цветом.
 Отображается сообщение первой ошибки из массива `errors`.
+
+### Фильтрация шагов (--verbose)
+
+Без `--verbose`: шаги с `writtenCount === 0` и пустым `errors`
+скрываются. Если для записи все шаги скрыты — заголовок записи
+также не отображается. Если все шаги всех записей скрыты
+и нет ошибок — отображается `"Nothing to transpile."`.
+
+С `--verbose`: все шаги отображаются, включая шаги с 0 файлов.
 
 ### Итоговая строка
 
@@ -399,14 +433,15 @@ Done. {totalWritten} files written.
 
 Значение `totalWritten` — сумма `writtenCount` всех шагов,
 включая шаги с ошибками (частично записанные файлы учитываются).
+Итоговая строка отображается всегда, независимо от `--verbose`.
 
 ### Пример полного вывода (успех)
 
 ```text
-◐ Transpiling for claude...
-  ✓ Instructions  3 files
-  ✓ Skills        5 files
-  ✓ Agents        2 files
+✓ Transpiling for claude...
+  ✓ Instructions     3 files
+  ✓ Skills           5 files
+  ✓ Agents           2 files
 
 Done. 10 files written.
 ```
@@ -414,9 +449,9 @@ Done. 10 files written.
 ### Пример полного вывода (частичная ошибка)
 
 ```text
-◐ Transpiling for claude...
-  ✓ Instructions  3 files
-  ✓ Skills        5 files
+✓ Transpiling for claude...
+  ✓ Instructions     3 files
+  ✓ Skills           5 files
   ✗ Agents        Failed to write .claude/agents/reviewer.md: EACCES
 
 Done. 8 files written.
@@ -428,7 +463,7 @@ Done. 8 files written.
   (массив `errors` пуст в каждом `TranspilerStepOutcome`).
 - `1` — хотя бы один шаг транспиляции завершился с ошибками,
   ни `--adapter`, ни `--all` не указаны, указаны оба одновременно,
-  или указанный адаптер не найден в реестре.
+  указанный адаптер не найден в реестре, или вызвана неизвестная команда.
 
 ## Конфигурация сборки
 
@@ -474,9 +509,7 @@ Done. 8 files written.
 Следующие аспекты НЕ ВХОДЯТ в scope данной спецификации:
 
 - Watch mode (отслеживание изменений файлов).
-- Флаг `--verbose` (подробный вывод списка записанных файлов).
 - Флаг `--dry-run` (пробный запуск без записи файлов).
-- Команда `init` (инициализация проекта).
 - Конфигурационный файл (`.agloom.yml` и т.п.).
 - Адаптеры для Codex CLI и Gemini CLI.
 - Очистка устаревших agent-specific файлов.

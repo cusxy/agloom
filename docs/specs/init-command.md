@@ -158,7 +158,7 @@ maps_to:
 
 ## Команда init
 
-`agloom init (--adapter <adapterId> | --all) [--force]` — создаёт бэкап
+`agloom init (--adapter <adapterId> | --all) [--force] [--verbose]` — создаёт бэкап
 project-файлов в `.agloom/instructions/` и копирует существующие
 agent-специфичные файлы в `.agloom/overlays/<agentId>/`.
 
@@ -170,6 +170,8 @@ agent-специфичные файлы в `.agloom/overlays/<agentId>/`.
   все поддерживаемые агенты из реестра.
 - `--force` (boolean, опционально, default: false) — перезаписать
   существующие файлы.
+- `--verbose` (boolean, опционально, default: false) — показывать все
+  результаты, включая шаги с 0 скопированных файлов.
 
 Аргументы `--adapter` и `--all` являются взаимоисключающими.
 
@@ -177,26 +179,27 @@ agent-специфичные файлы в `.agloom/overlays/<agentId>/`.
 
 **Поведение:**
 
-1. Распарсить аргументы `--adapter`, `--all` и `--force`
+1. Распарсить аргументы `--adapter`, `--all`, `--force` и `--verbose`
    из командной строки.
 2. Проверить, что указан хотя бы один из `--adapter` или `--all`.
 3. Проверить, что `--adapter` и `--all` не указаны одновременно.
 4. Определить `projectRoot` как текущий рабочий каталог процесса
    (`process.cwd()`).
-5. Выполнить процедуру Backup Project Files
-   (см. § Процедура Backup Project Files) с `projectRoot` и `force`.
-6. Если указан `--adapter`: выполнить процедуру Resolve Adapter
+5. Если указан `--adapter`: выполнить процедуру Resolve Adapter
    (см. `docs/specs/adapter-registry-ext.md` § Процедура Resolve Adapter)
    с `agentId`.
-7. Если указан `--adapter`: выполнить процедуру Init Overlay Files
+6. Проверить наличие директории `.agloom/` в `projectRoot`.
+7. Выполнить процедуру Backup Project Files
+   (см. § Процедура Backup Project Files) с `projectRoot` и `force`.
+8. Если указан `--adapter`: выполнить процедуру Init Overlay Files
    (см. § Процедура Init Overlay Files) с `entry`, `projectRoot`
    и `force`.
-8. Если указан `--all`: для каждой записи реестра адаптеров
+9. Если указан `--all`: для каждой записи реестра адаптеров
    выполнить процедуру Init Overlay Files
    (см. § Процедура Init Overlay Files) с `entry`, `projectRoot`
    и `force`.
-9. Отобразить результат в TUI (см. § Вывод).
-10. Завершить процесс с exit code (см. § Exit codes).
+10. Отобразить результат в TUI (см. § Вывод).
+11. Завершить процесс с exit code (см. § Exit codes).
 
 <!-- prettier-ignore-end -->
 
@@ -208,26 +211,43 @@ agent-специфичные файлы в `.agloom/overlays/<agentId>/`.
 3a. `--adapter` и `--all` указаны одновременно → отобразить сообщение
 `"--adapter and --all are mutually exclusive."`; exit code 1.
 
-5a. Процедура Backup Project Files вернула строку-сообщение →
-ошибка процедуры Backup Project Files является блокирующей;
-при возврате строки-сообщения команда завершается с exit code 1
-без выполнения Init Overlay Files. Сообщение отображается в TUI.
-
-6a. Resolve Adapter вернул ошибку (адаптер не найден) →
+5a. Resolve Adapter вернул ошибку (адаптер не найден) →
 отобразить сообщение
 `"Unknown agent: {value}. Run 'agloom adapters' to see available adapters."`;
 exit code 1.
 
-7a. Процедура Init Overlay Files вернула строку-сообщение →
+6a. Директория `.agloom/` существует и `--force` не указан →
+отобразить сообщение
+`".agloom/ already exists. Use --force to reinitialize."`;
+exit code 1. Процедура Backup Project Files и Init Overlay Files
+не выполняются.
+
+6b. `--force` указан → пропустить проверку, продолжить с шага 7.
+
+7a. Процедура Backup Project Files вернула строку-сообщение →
+ошибка процедуры Backup Project Files является блокирующей;
+при возврате строки-сообщения команда завершается с exit code 1
+без выполнения Init Overlay Files. Сообщение отображается в TUI.
+
+8a. Процедура Init Overlay Files вернула строку-сообщение →
 отобразить сообщение; exit code 1.
 
-8a. Процедура Init Overlay Files для одной из записей реестра
+9a. Процедура Init Overlay Files для одной из записей реестра
 вернула строку-сообщение → отобразить сообщение; exit code 1.
 
 **Вывод:**
 
-Вывод начинается со строки `"Initializing..."`. Далее отображаются
-результаты в следующем порядке:
+Вывод подчиняется правилам фильтрации по `--verbose`:
+
+- Без `--verbose`: строки с 0 скопированных файлов и без ошибок
+  скрываются. Если все строки скрыты и нет ошибок —
+  отображается `"Nothing to import."`.
+- С `--verbose`: все строки отображаются, включая 0 скопированных файлов.
+
+Заголовок `"✓ Initializing..."` отображается, если есть хотя бы один
+видимый результат (ошибки, ненулевое количество файлов, или `--verbose`).
+Символ `✓` в заголовке СЛЕДУЕТ отображать зелёным цветом.
+Далее отображаются результаты в следующем порядке:
 
 1. Результат бэкапа project-файлов.
 2. Результат(ы) копирования overlay-файлов.
@@ -247,45 +267,50 @@ exit code 1.
 Вариант «успех» (--adapter claude):
 
 ```text
-Initializing...
+✓ Initializing...
   ✓ {projectCopiedCount} project files backed up to .agloom/instructions/
   ✓ {copiedCount} files copied to .agloom/overlays/claude/
 
-Done.
+Done. {totalCopied} files copied.
 ```
 
 Вариант «успех» (--all):
 
 ```text
-Initializing...
+✓ Initializing...
   ✓ {projectCopiedCount} project files backed up to .agloom/instructions/
   ✓ {copiedCount} files copied to .agloom/overlays/claude/
   ✓ {copiedCount} files copied to .agloom/overlays/opencode/
   ✓ {copiedCount} files copied to .agloom/overlays/agentsmd/
 
-Done.
+Done. {totalCopied} files copied.
 ```
 
 Вариант «ошибки» (при наличии ошибок в `errors` любого из outcome):
 
 ```text
-Initializing...
+✓ Initializing...
   ✓ {projectCopiedCount} project files backed up to .agloom/instructions/
   ✗ {errors[0]}
 
-Done. {copiedCount} files copied.
+Done. {totalCopied} files copied.
 ```
 
 Символ `✓` СЛЕДУЕТ отображать зелёным цветом.
 Символ `✗` СЛЕДУЕТ отображать красным цветом.
 
+Итоговая строка `"Done. {totalCopied} files copied."` отображается
+всегда. Значение `totalCopied` — сумма `copiedCount` из бэкапа
+project-файлов и всех overlay-результатов.
+
 **Exit codes:**
 
 - `0` — все шаги завершились без ошибок (включая 0 файлов).
 - `1` — ни `--adapter`, ни `--all` не указан; `--adapter` и `--all`
-  указаны одновременно; неизвестный агент; директория уже
-  существует без `--force`; ошибка создания директории;
-  или ошибка копирования.
+  указаны одновременно; неизвестный агент; `.agloom/` уже существует
+  без `--force`; директория `.agloom/instructions/` или
+  `.agloom/overlays/` уже существует без `--force`; ошибка создания
+  директории; или ошибка копирования.
 
 ## Справка
 

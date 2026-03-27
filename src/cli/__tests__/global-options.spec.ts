@@ -151,5 +151,25 @@ describe("CLI", () => {
 
       unmount();
     });
+
+    // --- § Неизвестная команда: точный формат сообщения ---
+    // § cli.md § Неизвестная команда:
+    // "Unknown command: {cmd}. Run 'agloom --help' to see available commands."
+    // exit code 1.
+    it("при неизвестной команде отображает точный формат сообщения из спецификации", () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["foobar"] }),
+      );
+
+      const output = lastFrame()!;
+
+      // Точный формат сообщения из спецификации
+      expect(output).toContain(
+        "Unknown command: foobar. Run 'agloom --help' to see available commands.",
+      );
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
   });
 });

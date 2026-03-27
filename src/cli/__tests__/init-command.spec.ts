@@ -103,7 +103,9 @@ describe("CLI", () => {
       // § Вывод: "Initializing..." (не "Initializing for claude...")
       expect(output).toContain("Initializing...");
       // § Вывод (успех): результат бэкапа project-файлов
-      expect(output).toMatch(/project files backed up to \.agloom\/instructions\//);
+      expect(output).toMatch(
+        /project files backed up to \.agloom\/instructions\//,
+      );
       // § Вывод (успех): результат overlay
       expect(output).toContain("✓");
       expect(output).toMatch(
@@ -115,7 +117,12 @@ describe("CLI", () => {
       expect(process.exitCode).toBeUndefined();
 
       // Побочный эффект: project-файлы скопированы в .agloom/instructions/
-      const backedUp = path.join(tmpDir, ".agloom", "instructions", "CLAUDE.md");
+      const backedUp = path.join(
+        tmpDir,
+        ".agloom",
+        "instructions",
+        "CLAUDE.md",
+      );
       expect(fs.existsSync(backedUp)).toBe(true);
       expect(fs.readFileSync(backedUp, "utf-8")).toBe("Claude instructions");
 
@@ -812,12 +819,19 @@ describe("CLI", () => {
       const output = lastFrame()!;
 
       // § Вывод: результат бэкапа project-файлов
-      expect(output).toMatch(/project files backed up to \.agloom\/instructions\//);
+      expect(output).toMatch(
+        /project files backed up to \.agloom\/instructions\//,
+      );
       expect(output).toContain("Done.");
       expect(process.exitCode).toBeUndefined();
 
       // Побочный эффект: CLAUDE.md скопирован в .agloom/instructions/
-      const backedUp = path.join(tmpDir, ".agloom", "instructions", "CLAUDE.md");
+      const backedUp = path.join(
+        tmpDir,
+        ".agloom",
+        "instructions",
+        "CLAUDE.md",
+      );
       expect(fs.existsSync(backedUp)).toBe(true);
       expect(fs.readFileSync(backedUp, "utf-8")).toBe("Claude instructions");
 
@@ -994,7 +1008,12 @@ describe("CLI", () => {
         // Ошибка отображается
         expect(output).toContain("✗");
         // CLAUDE.md (успешный) всё равно скопирован
-        const backedUp = path.join(tmpDir, ".agloom", "instructions", "CLAUDE.md");
+        const backedUp = path.join(
+          tmpDir,
+          ".agloom",
+          "instructions",
+          "CLAUDE.md",
+        );
         expect(fs.existsSync(backedUp)).toBe(true);
         // Exit code 1 из-за errors
         expect(process.exitCode).toBe(1);
@@ -1122,7 +1141,9 @@ describe("CLI", () => {
 
       // Побочный эффект: корневой CLAUDE.md скопирован
       expect(
-        fs.existsSync(path.join(tmpDir, ".agloom", "instructions", "CLAUDE.md")),
+        fs.existsSync(
+          path.join(tmpDir, ".agloom", "instructions", "CLAUDE.md"),
+        ),
       ).toBe(true);
       // Побочный эффект: CLAUDE.md из подпапки скопирован с сохранением пути
       expect(
@@ -1223,6 +1244,116 @@ describe("CLI", () => {
 
       expect(output).toContain("init");
       expect(output).toContain("Import existing agent configs into .agloom/");
+
+      unmount();
+    });
+
+    // =====================================================================
+    // § init-command.md § Вывод § Фильтрация по --verbose
+    // =====================================================================
+
+    // --- С --verbose + --all: все строки отображаются, включая 0 скопированных ---
+    // § init-command.md § Вывод:
+    // "С --verbose: все строки отображаются, включая 0 скопированных файлов."
+    // "Заголовок «✓ Initializing...» отображается, если есть хотя бы один
+    //  видимый результат (ошибки, ненулевое количество файлов, или --verbose)."
+    it("при --all с --verbose отображает все адаптеры и бэкап, включая строки с 0 скопированных файлов", async () => {
+      // Не создаём ни targetRoot, ни project-файлов → все будут 0
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--all", "--verbose"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // С --verbose заголовок "Initializing..." отображается
+      expect(output).toContain("Initializing...");
+      // Строка бэкапа project-файлов с 0
+      expect(output).toMatch(/0\s+project files backed up/);
+      // Все overlay-строки отображаются с 0 файлов
+      expect(output).toContain(".agloom/overlays/claude/");
+      expect(output).toContain(".agloom/overlays/opencode/");
+      expect(output).toContain(".agloom/overlays/agentsmd/");
+      expect(output).toMatch(/Done\.\s+0\s+files copied\./);
+
+      unmount();
+    });
+
+    // --- С --verbose + --adapter: результат при 0 скопированных файлов отображается ---
+    // § init-command.md § Вывод:
+    // "С --verbose: все строки отображаются, включая 0 скопированных файлов."
+    it("при --adapter с --verbose отображает результат даже при 0 скопированных файлов", async () => {
+      // Не создаём targetRoot для claude и нет project-файлов → 0
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--adapter", "claude", "--verbose"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // С --verbose заголовок "Initializing..." отображается
+      expect(output).toContain("Initializing...");
+      // Строка overlay с 0 файлов отображается
+      expect(output).toContain(".agloom/overlays/claude/");
+      // Строка бэкапа с 0 файлов отображается
+      expect(output).toMatch(/0\s+project files backed up/);
+      expect(output).toMatch(/Done\.\s+0\s+files copied\./);
+
+      unmount();
+    });
+
+    // --- § Расширение 6a: точное сообщение ".agloom/ already exists. Use --force to reinitialize." ---
+    // § init-command.md § Расширения 6a:
+    // ".agloom/ already exists. Use --force to reinitialize."; exit code 1.
+    it('при наличии .agloom/ без --force отображает точное сообщение ".agloom/ already exists. Use --force to reinitialize."', async () => {
+      // Создаём .agloom/ директорию
+      fs.mkdirSync(path.join(tmpDir, ".agloom"), { recursive: true });
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["init", "--adapter", "claude"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!.length).toBeGreaterThan(0);
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Точный формат сообщения из спецификации
+      expect(output).toContain(
+        ".agloom/ already exists. Use --force to reinitialize.",
+      );
+      expect(process.exitCode).toBe(1);
 
       unmount();
     });

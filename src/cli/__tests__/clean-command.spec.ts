@@ -364,5 +364,111 @@ describe("CLI", () => {
 
       unmount();
     });
+
+    // =====================================================================
+    // § clean-command.md § Вывод § Фильтрация по --verbose
+    // =====================================================================
+
+    // --- Без --verbose + --all: адаптеры с 0 удалённых файлов скрываются ---
+    // § clean-command.md § Вывод:
+    // "Без --verbose: строки с 0 удалённых файлов и без ошибок скрываются."
+    // "Адаптеры, у которых removedCount === 0 и нет ошибок, скрываются при отсутствии --verbose."
+    it("при --all без --verbose скрывает адаптеры с 0 удалённых файлов, показывая только адаптеры с файлами", async () => {
+      // Создаём файлы только для claude (targetRoot=".claude", targetFiles=["CLAUDE.md"])
+      const claudeDir = path.join(tmpDir, ".claude");
+      fs.mkdirSync(claudeDir, { recursive: true });
+      fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
+      fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Generated content");
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["clean", "--all"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // claude (> 0 удалённых) — отображается
+      expect(output).toContain("Cleaning for claude");
+      // opencode (0 удалённых, нет .opencode/) — скрыт без --verbose
+      expect(output).not.toContain("Cleaning for opencode");
+      // agentsmd (0 удалённых, нет .agents/ и нет AGENTS.md) — скрыт без --verbose
+      expect(output).not.toContain("Cleaning for agentsmd");
+
+      unmount();
+    });
+
+    // --- С --verbose + --all: все адаптеры отображаются ---
+    // § clean-command.md § Вывод:
+    // "С --verbose: все строки отображаются, включая 0 удалённых файлов."
+    it("при --all с --verbose отображает все адаптеры, включая адаптеры с 0 удалённых файлов", async () => {
+      // tmpDir пустой — все адаптеры покажут 0 удалённых файлов
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["clean", "--all", "--verbose"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // С --verbose все адаптеры отображаются, даже с 0 удалённых файлов
+      expect(output).toContain("Cleaning for claude");
+      expect(output).toContain("Cleaning for opencode");
+      expect(output).toContain("Cleaning for agentsmd");
+      expect(output).toMatch(/Done\.\s+0\s+files removed\./);
+
+      unmount();
+    });
+
+    // --- С --verbose + --adapter: результат при 0 удалённых файлов отображается ---
+    // § clean-command.md § Вывод:
+    // "С --verbose: все строки отображаются, включая 0 удалённых файлов."
+    it("при --adapter с --verbose отображает результат даже при 0 удалённых файлов", async () => {
+      // tmpDir пустой — claude покажет 0 удалённых файлов
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["clean", "--adapter", "claude", "--verbose"],
+          projectRoot: tmpDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toBeDefined();
+          expect(frame!).toContain("Done.");
+        },
+        { timeout: 5000 },
+      );
+
+      const output = lastFrame()!;
+
+      // С --verbose результат отображается даже при 0 удалённых файлов
+      expect(output).toContain("Cleaning for claude");
+      expect(output).toMatch(/0\s+files removed/);
+      expect(output).toMatch(/Done\.\s+0\s+files removed\./);
+
+      unmount();
+    });
   });
 });

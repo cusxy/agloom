@@ -71,52 +71,119 @@ maps_to:
 
 ## Команда clean
 
-`agloom clean --adapter <adapterId>` — удаляет сгенерированные
-файлы для указанного адаптера.
+`agloom clean (--adapter <adapterId> | --all) [--verbose]` — удаляет
+сгенерированные файлы для указанного адаптера или всех адаптеров.
 
 **Аргументы:**
 
-- `--adapter` (string, обязательно) — идентификатор адаптера из реестра.
+- `--adapter` (string, опционально) — идентификатор адаптера из реестра.
+  Взаимоисключающий с `--all`.
+- `--all` (boolean, опционально, default: false) — выполнить очистку
+  для всех адаптеров из реестра. Взаимоисключающий с `--adapter`.
+- `--verbose` (boolean, опционально, default: false) — показывать все
+  результаты, включая адаптеры с 0 удалённых файлов.
+
+Ровно один из `--adapter` и `--all` ТРЕБУЕТСЯ указать.
+
+### Режим --adapter
+
+<!-- prettier-ignore-start -->
 
 **Поведение:**
 
-1. Распарсить аргумент `--adapter` из командной строки.
+1. Распарсить аргументы `--adapter`, `--all` и `--verbose`
+   из командной строки.
 2–3. Resolve Adapter
-(см. `docs/specs/adapter-registry-ext.md` § Процедура Resolve Adapter).
-4–6. Clean Files (см. § Процедура Clean Files).
+(см. `docs/specs/adapter-registry-ext.md` § Процедура Resolve Adapter)
+— возвращает `entry` и `projectRoot`.
+4–6. Clean Files (см. § Процедура Clean Files) с `entry`
+и `projectRoot`.
 7. Отобразить результат в TUI (см. § Вывод).
 8. Завершить процесс с exit code (см. § Exit codes).
 
+<!-- prettier-ignore-end -->
+
 **Расширения:**
 
-1a. Аргумент `--adapter` не указан → отобразить сообщение
-об обязательности аргумента `--adapter`; процесс завершается
+1a. Ни `--adapter`, ни `--all` не указан → отобразить сообщение
+об обязательности одного из аргументов; процесс завершается
 с exit code 1.
 
-**Вывод:**
+1b. Указаны одновременно `--adapter` и `--all` → отобразить сообщение
+о взаимоисключающих аргументах; процесс завершается с exit code 1.
 
-При успехе:
+### Режим --all
+
+**Поведение:**
+
+1. Распарсить аргументы `--all` и `--verbose` из командной строки.
+2. Определить `projectRoot` как текущий рабочий каталог процесса
+   (`process.cwd()`).
+3. Для каждой записи реестра (в порядке определения в массиве):
+   3.1. Выполнить процедуру Clean Files (см. § Процедура Clean Files)
+   с `entry` и `projectRoot`.
+4. Вычислить `totalRemoved` как сумму `removedCount` всех очисток.
+5. Отобразить результат в TUI (см. § Вывод).
+6. Завершить процесс с exit code (см. § Exit codes).
+
+**Расширения:**
+
+Нет расширений (расширения аргументов описаны в режиме --adapter § 1a, 1b).
+
+### Вывод
+
+Вывод подчиняется правилам фильтрации по `--verbose`:
+
+- Без `--verbose`: строки с 0 удалённых файлов и без ошибок
+  скрываются. Если все адаптеры имеют 0 удалённых файлов
+  и нет ошибок — отображается `"Nothing to clean."`.
+- С `--verbose`: все строки отображаются, включая 0 удалённых файлов.
+
+Режим --adapter — при наличии видимых результатов:
 
 ```text
-Cleaning for {adapterId}...
+✓ Cleaning for {adapterId}...
   ✓ {removedCount} files removed
 
-Done.
+Done. {removedCount} files removed.
 ```
 
-При наличии ошибок:
+Символ `✓` в заголовке и строке результата СЛЕДУЕТ отображать
+зелёным цветом.
+
+Режим --adapter — при наличии ошибок:
 
 ```text
-Cleaning for {adapterId}...
+✓ Cleaning for {adapterId}...
   ✗ {errors[0]}
 
 Done. {removedCount} files removed.
 ```
 
+Символ `✗` СЛЕДУЕТ отображать красным цветом.
+
+Режим --all — при наличии видимых результатов:
+
+```text
+✓ Cleaning for claude...
+  ✓ {removedCount} files removed
+✓ Cleaning for opencode...
+  ✓ {removedCount} files removed
+
+Done. {totalRemoved} files removed.
+```
+
+Адаптеры, у которых `removedCount === 0` и нет ошибок,
+скрываются при отсутствии `--verbose`.
+
+Итоговая строка `"Done. {totalRemoved} files removed."` отображается
+всегда. Значение `totalRemoved` — сумма `removedCount` всех адаптеров.
+
 **Exit codes:**
 
-- `0` — успех.
-- `1` — ошибка удаления или неизвестный адаптер.
+- `0` — все очистки завершились без ошибок.
+- `1` — ни `--adapter`, ни `--all` не указан; указаны оба
+  одновременно; неизвестный адаптер; или ошибка удаления.
 
 ## Расширение команды transpile
 
@@ -128,11 +195,17 @@ Done. {removedCount} files removed.
 - `--clean` (boolean, опционально, default: false) — выполнить
   очистку перед транспиляцией.
 
+### Режим --adapter с --clean
+
+<!-- prettier-ignore-start -->
+
 **Новые шаги:**
 
 После шага 3 (определение projectRoot):
 4. При наличии флага `--clean` выполнить процедуру Clean Files
 (см. § Процедура Clean Files) с `entry` и `projectRoot`.
+
+<!-- prettier-ignore-end -->
 
 Нумерация последующих шагов команды `transpile` сдвигается на 1.
 
@@ -151,6 +224,14 @@ Cleaning for {adapterId}...
 Done. {totalWritten} files written.
 ```
 
+### Режим --all с --clean
+
+При наличии флага `--clean` в режиме `--all`, для каждой записи
+реестра процедура Clean Files (см. § Процедура Clean Files)
+выполняется перед транспиляцией этой записи.
+
+Результаты очистки в режиме `--all` НЕ отображаются в TUI.
+
 **Изменения в exit codes:**
 
 Ошибка очистки НЕ прерывает транспиляцию. Exit code `1` если хотя бы
@@ -165,6 +246,18 @@ Done. {totalWritten} files written.
 ```
 
 Команда ДОЛЖНА поддерживать `agloom clean --help`.
+Вывод `agloom clean --help`:
+
+```text
+Usage: agloom clean (--adapter <adapterId> | --all) [--verbose]
+
+Remove generated agent-specific files for the specified adapter.
+
+Options:
+  --adapter <adapterId>  Adapter ID from the registry (required unless --all)
+  --all                  Clean for all supported adapters
+  --verbose              Show details even when 0 files removed
+```
 
 ## Вне scope
 

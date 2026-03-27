@@ -828,5 +828,130 @@ describe("CLI", () => {
 
       unmount();
     });
+
+    // =====================================================================
+    // § cli.md § TUI-отображение прогресса § Фильтрация шагов (--verbose)
+    // Тесты для поведения фильтрации по --verbose
+    // =====================================================================
+
+    // --- Без --verbose: шаги с writtenCount === 0 и пустым errors скрываются ---
+    // § cli.md § Фильтрация шагов:
+    // "Без --verbose: шаги с writtenCount === 0 и пустым errors скрываются."
+    // Проект без AGLOOM.md → Instructions = 0 файлов (скрыт).
+    // Skills и Agents имеют канонические файлы → > 0 файлов (отображаются).
+    it("без --verbose скрывает шаг с 0 файлов (Instructions), показывая остальные шаги", async () => {
+      // Создаём Skills и Agents но НЕ AGLOOM.md → Instructions = 0 файлов
+      const sparseDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-sparse-"));
+
+      const skillDir = path.join(sparseDir, ".agloom", "skills", "my-skill");
+      fs.mkdirSync(skillDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(skillDir, "SKILL.md"),
+        "---\nname: my-skill\n---\nSkill content.",
+      );
+
+      const agentDir = path.join(sparseDir, ".agloom", "agents");
+      fs.mkdirSync(agentDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(agentDir, "reviewer.md"),
+        "---\nname: reviewer\n---\nReviewer body.",
+      );
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--adapter", "claude"],
+          projectRoot: sparseDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 10000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Instructions (0 файлов, нет AGLOOM.md) — скрыт без --verbose
+      expect(output).not.toContain("Instructions");
+      // Skills и Agents — отображаются (> 0 файлов)
+      expect(output).toContain("Skills");
+      expect(output).toContain("Agents");
+      // Заголовок адаптера отображается (есть видимые шаги)
+      expect(output).toContain("Transpiling for claude");
+
+      unmount();
+      fs.rmSync(sparseDir, { recursive: true, force: true });
+    });
+
+    // --- Без --verbose: заголовок адаптера скрыт при всех шагах 0 ---
+    // § cli.md § Фильтрация шагов:
+    // "Если для записи все шаги скрыты — заголовок записи также не отображается."
+    it("без --verbose скрывает заголовок адаптера, если все шаги имеют 0 файлов", async () => {
+      const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-no-hdr-"));
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--adapter", "claude"],
+          projectRoot: emptyDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 10000 },
+      );
+
+      const output = lastFrame()!;
+
+      // Все шаги = 0, без --verbose → заголовок адаптера не отображается
+      expect(output).not.toContain("Transpiling for claude");
+      // "Nothing to transpile." отображается
+      expect(output).toContain("Nothing to transpile.");
+
+      unmount();
+      fs.rmSync(emptyDir, { recursive: true, force: true });
+    });
+
+    // --- С --verbose: все шаги отображаются, включая 0 файлов ---
+    // § cli.md § Фильтрация шагов:
+    // "С --verbose: все шаги отображаются, включая шаги с 0 файлов."
+    // Заголовок адаптера также отображается.
+    it("с --verbose при всех шагах 0 отображает заголовок адаптера и все шаги", async () => {
+      const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-verb-all-"));
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["transpile", "--adapter", "claude", "--verbose"],
+          projectRoot: emptyDir,
+        }),
+      );
+
+      await vi.waitFor(
+        () => {
+          const frame = lastFrame();
+          expect(frame).toContain("Done.");
+        },
+        { timeout: 10000 },
+      );
+
+      const output = lastFrame()!;
+
+      // С --verbose заголовок адаптера отображается даже при 0 файлах
+      expect(output).toContain("Transpiling for claude");
+      // Все 4 шага отображаются с 0 файлов
+      expect(output).toMatch(/Instructions\s+0\s+files/);
+      expect(output).toMatch(/Skills\s+0\s+files/);
+      expect(output).toMatch(/Agents\s+0\s+files/);
+      expect(output).toMatch(/Overlay\s+0\s+files/);
+
+      unmount();
+      fs.rmSync(emptyDir, { recursive: true, force: true });
+    });
   });
 });

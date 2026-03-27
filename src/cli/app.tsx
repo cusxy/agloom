@@ -116,7 +116,17 @@ function parseArgs(args: string[]): {
     }
   }
 
-  return { command, unknownCommand, agent, all, help, version, clean, force, verbose };
+  return {
+    command,
+    unknownCommand,
+    agent,
+    all,
+    help,
+    version,
+    clean,
+    force,
+    verbose,
+  };
 }
 
 function getVersion(): string {
@@ -347,7 +357,10 @@ function CleanAllView({
     return outcomes;
   });
 
-  const totalRemoved = results.reduce((sum, r) => sum + r.outcome.removedCount, 0);
+  const totalRemoved = results.reduce(
+    (sum, r) => sum + r.outcome.removedCount,
+    0,
+  );
   const hasAnyErrors = results.some((r) => r.outcome.errors.length > 0);
 
   return (
@@ -370,7 +383,8 @@ function CleanAllView({
             {!hasErrors && (verbose || r.outcome.removedCount > 0) && (
               <Text>
                 {"  "}
-                <Text color="green">✓</Text> {r.outcome.removedCount} files removed
+                <Text color="green">✓</Text> {r.outcome.removedCount} files
+                removed
               </Text>
             )}
           </React.Fragment>
@@ -532,7 +546,8 @@ function InitView({
         (typeof r.outcome !== "string" && r.outcome.errors.length > 0),
     );
 
-  const hasVisibleResults = hasAnyErrors ||
+  const hasVisibleResults =
+    hasAnyErrors ||
     totalOverlayCopied > 0 ||
     (backupOutcome && backupOutcome.copiedCount > 0) ||
     verbose;
@@ -540,7 +555,9 @@ function InitView({
   return (
     <Box flexDirection="column">
       {hasVisibleResults && (
-        <Text><Text color="green">✓</Text> Initializing...</Text>
+        <Text>
+          <Text color="green">✓</Text> Initializing...
+        </Text>
       )}
       {backupOutcome && backupOutcome.errors.length > 0 && (
         <Text>
@@ -548,13 +565,15 @@ function InitView({
           <Text color="red">✗</Text> {backupOutcome.errors[0]}
         </Text>
       )}
-      {backupOutcome && backupOutcome.errors.length === 0 && (verbose || backupOutcome.copiedCount > 0) && (
-        <Text>
-          {"  "}
-          <Text color="green">✓</Text> {backupOutcome.copiedCount} project
-          files backed up to .agloom/instructions/
-        </Text>
-      )}
+      {backupOutcome &&
+        backupOutcome.errors.length === 0 &&
+        (verbose || backupOutcome.copiedCount > 0) && (
+          <Text>
+            {"  "}
+            <Text color="green">✓</Text> {backupOutcome.copiedCount} project
+            files backed up to .agloom/instructions/
+          </Text>
+        )}
       {overlayResults.map((r) => {
         if (typeof r.outcome === "string") {
           return (
@@ -583,13 +602,18 @@ function InitView({
           </Text>
         );
       })}
-      {!verbose && !hasAnyErrors &&
+      {!verbose &&
+        !hasAnyErrors &&
         totalOverlayCopied === 0 &&
         (!backupOutcome || backupOutcome.copiedCount === 0) && (
           <Text>Nothing to import.</Text>
         )}
       <Text> </Text>
-      <Text>Done. {totalOverlayCopied + (backupOutcome ? backupOutcome.copiedCount : 0)} files copied.</Text>
+      <Text>
+        Done.{" "}
+        {totalOverlayCopied + (backupOutcome ? backupOutcome.copiedCount : 0)}{" "}
+        files copied.
+      </Text>
     </Box>
   );
 }
@@ -715,7 +739,8 @@ function TranspileView({
         return (
           <React.Fragment key={r.adapterId}>
             <Text>
-              {done ? <Text color="green">✓</Text> : <Spinner type="dots" />} Transpiling for {r.adapterId}...
+              {done ? <Text color="green">✓</Text> : <Spinner type="dots" />}{" "}
+              Transpiling for {r.adapterId}...
             </Text>
             {visibleOutcomes.map((outcome) => (
               <Text key={`${r.adapterId}-${outcome.name}`}>
@@ -736,9 +761,12 @@ function TranspileView({
           </React.Fragment>
         );
       })}
-      {done && !verbose && totalWritten === 0 && !entryResults.some((r) => r.outcomes.some((o) => o.errors.length > 0)) && (
-        <Text>Nothing to transpile.</Text>
-      )}
+      {done &&
+        !verbose &&
+        totalWritten === 0 &&
+        !entryResults.some((r) =>
+          r.outcomes.some((o) => o.errors.length > 0),
+        ) && <Text>Nothing to transpile.</Text>}
       {done && (
         <>
           <Text> </Text>
@@ -854,7 +882,8 @@ function TranspileAllView({
         return (
           <React.Fragment key={r.adapterId}>
             <Text>
-              {done ? <Text color="green">✓</Text> : <Spinner type="dots" />} Transpiling for {r.adapterId}...
+              {done ? <Text color="green">✓</Text> : <Spinner type="dots" />}{" "}
+              Transpiling for {r.adapterId}...
             </Text>
             {visibleOutcomes.map((outcome) => (
               <Text key={`${r.adapterId}-${outcome.name}`}>
@@ -875,9 +904,12 @@ function TranspileAllView({
           </React.Fragment>
         );
       })}
-      {done && !verbose && totalWritten === 0 && !allResults.some((r) => r.outcomes.some((o) => o.errors.length > 0)) && (
-        <Text>Nothing to transpile.</Text>
-      )}
+      {done &&
+        !verbose &&
+        totalWritten === 0 &&
+        !allResults.some((r) =>
+          r.outcomes.some((o) => o.errors.length > 0),
+        ) && <Text>Nothing to transpile.</Text>}
       {done && (
         <>
           <Text> </Text>
@@ -1018,7 +1050,13 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       );
     }
 
-    return <CleanView adapterId={parsed.agent!} projectRoot={root} verbose={parsed.verbose} />;
+    return (
+      <CleanView
+        adapterId={parsed.agent!}
+        projectRoot={root}
+        verbose={parsed.verbose}
+      />
+    );
   }
 
   // § Команда transpile
@@ -1042,7 +1080,13 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
 
     // Режим --all
     if (parsed.all) {
-      return <TranspileAllView projectRoot={root} clean={parsed.clean} verbose={parsed.verbose} />;
+      return (
+        <TranspileAllView
+          projectRoot={root}
+          clean={parsed.clean}
+          verbose={parsed.verbose}
+        />
+      );
     }
 
     // Расширение 2a: адаптер не найден
