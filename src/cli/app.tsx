@@ -46,6 +46,7 @@ interface AppProps {
 function parseArgs(args: string[]): {
   command: string | null;
   unknownCommand: string | null;
+  unknownFlag: string | null;
   agent: string | null;
   all: boolean;
   help: boolean;
@@ -56,6 +57,7 @@ function parseArgs(args: string[]): {
 } {
   let command: string | null = null;
   let unknownCommand: string | null = null;
+  let unknownFlag: string | null = null;
   let agent: string | null = null;
   let all = false;
   let help = false;
@@ -91,7 +93,9 @@ function parseArgs(args: string[]): {
       arg === "init"
     ) {
       command = arg;
-    } else if (!arg.startsWith("-")) {
+    } else if (arg.startsWith("-")) {
+      unknownFlag = arg;
+    } else {
       unknownCommand = arg;
     }
   }
@@ -99,6 +103,7 @@ function parseArgs(args: string[]): {
   return {
     command,
     unknownCommand,
+    unknownFlag,
     agent,
     all,
     help,
@@ -770,6 +775,17 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
   // § --version
   if (parsed.version) {
     return <Text>{getVersion()}</Text>;
+  }
+
+  // § Неизвестный флаг
+  if (parsed.unknownFlag && !parsed.help) {
+    process.exitCode = 1;
+    return (
+      <Text>
+        Unknown option: {parsed.unknownFlag}. Run &apos;agloom --help&apos; to
+        see available options.
+      </Text>
+    );
   }
 
   // § transpile --help

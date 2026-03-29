@@ -97,6 +97,50 @@ describe("CLI", () => {
       unmountEmpty();
     });
 
+    // --- § Неизвестный флаг ---
+    // Неизвестный флаг → "Unknown option: {flag}"; exit code 1.
+    it('при неизвестном флаге отображает "Unknown option" и exit code 1', () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["init", "--фаа", "--force"] }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Unknown option");
+      expect(output).toContain("--фаа");
+      expect(output).toContain("agloom --help");
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    it("при неизвестном флаге без команды отображает ошибку", () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["--foo"] }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Unknown option: --foo");
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    it("--help с неизвестным флагом отображает справку (не ошибку)", () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["--help", "--foo"] }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("transpile");
+      expect(output).toContain("adapters");
+      expect(process.exitCode).toBeUndefined();
+
+      unmount();
+    });
+
     // --- § --help на уровне команд ---
     // transpile --help: справка по команде transpile
     // adapters --help: справка по команде adapters
