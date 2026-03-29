@@ -194,4 +194,44 @@ describe("CLI", () => {
       expect(agentsmd).toHaveProperty("hidden", true);
     });
   });
+
+  // =====================================================================
+  // Спецификация: docs/specs/interpolation.md § Расширение AdapterRegistryEntry
+  // § Обновление реестра адаптеров — поле paths
+  // =====================================================================
+
+  describe("Расширение реестра адаптеров — поле paths", () => {
+    // --- Happy path: запись claude содержит поле paths с корректными значениями ---
+    // § Обновление реестра адаптеров, строка claude: paths.skills=".claude/skills", paths.agents=".claude/agents", paths.docs=".claude/docs", paths.schemas=".claude/schemas"
+    it('запись "claude" содержит paths с корректными значениями для skills, agents, docs, schemas', () => {
+      const claude = adapterRegistry.find((e) => e.id === "claude");
+      expect(claude).toBeDefined();
+      expect(claude!.paths).toBeDefined();
+      expect(claude!.paths.skills).toBe(".claude/skills");
+      expect(claude!.paths.agents).toBe(".claude/agents");
+      expect(claude!.paths.docs).toBe(".claude/docs");
+      expect(claude!.paths.schemas).toBe(".claude/schemas");
+    });
+
+    // --- Happy path: запись opencode содержит поле paths с корректными значениями ---
+    // § Обновление реестра адаптеров, строка opencode: paths.skills=".opencode/skills", paths.agents=".opencode/agents", paths.docs=".opencode/docs", paths.schemas=".opencode/schemas"
+    it('запись "opencode" содержит paths с корректными значениями для skills, agents, docs, schemas', () => {
+      const opencode = adapterRegistry.find((e) => e.id === "opencode");
+      expect(opencode).toBeDefined();
+      expect(opencode!.paths).toBeDefined();
+      expect(opencode!.paths.skills).toBe(".opencode/skills");
+      expect(opencode!.paths.agents).toBe(".opencode/agents");
+      expect(opencode!.paths.docs).toBe(".opencode/docs");
+      expect(opencode!.paths.schemas).toBe(".opencode/schemas");
+    });
+
+    // --- Happy path: запись agentsmd содержит пустой объект paths ---
+    // § Обновление реестра адаптеров: agentsmd ДОЛЖНА иметь пустой объект paths: {}
+    it('запись "agentsmd" содержит пустой объект paths', () => {
+      const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
+      expect(agentsmd).toBeDefined();
+      expect(agentsmd!.paths).toBeDefined();
+      expect(Object.keys(agentsmd!.paths)).toHaveLength(0);
+    });
+  });
 });

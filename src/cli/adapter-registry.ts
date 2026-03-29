@@ -45,6 +45,12 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructionsFile: "CLAUDE.md",
     dependsOn: [],
     hidden: false,
+    paths: {
+      skills: ".claude/skills",
+      agents: ".claude/agents",
+      docs: ".claude/docs",
+      schemas: ".claude/schemas",
+    },
   },
   {
     id: "opencode",
@@ -58,6 +64,12 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructionsFile: null,
     dependsOn: ["agentsmd"],
     hidden: false,
+    paths: {
+      skills: ".opencode/skills",
+      agents: ".opencode/agents",
+      docs: ".opencode/docs",
+      schemas: ".opencode/schemas",
+    },
   },
   {
     id: "agentsmd",
@@ -71,5 +83,6 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructionsFile: "AGENTS.md",
     dependsOn: [],
     hidden: true,
+    paths: {},
   },
 ];

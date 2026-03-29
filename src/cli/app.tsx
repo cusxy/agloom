@@ -35,6 +35,7 @@ import type {
 import { createInstructionsTranspiler } from "../instructions-transpiler/index.js";
 import { createSkillsTranspiler } from "../skills-transpiler/index.js";
 import { createAgentsTranspiler } from "../agents-transpiler/index.js";
+import { buildVariables } from "../interpolation/index.js";
 import type { ProjectBackupOutcome } from "./init-files.js";
 
 // Re-export resolveDeps for backward compatibility (tests import from app.js)
@@ -298,10 +299,7 @@ function formatTopicsList(topics: TopicEntry[]): string {
   const lines = [
     "Available help topics:",
     "",
-    ...topics.map(
-      (t) =>
-        `  ${t.name.padEnd(maxName + 3)}${t.description}`,
-    ),
+    ...topics.map((t) => `  ${t.name.padEnd(maxName + 3)}${t.description}`),
     "",
     "Run 'agloom help <topic>' to learn more.",
   ];
@@ -829,6 +827,25 @@ function TranspileView({
     for (const entry of entries) {
       const steps: TranspilerStepOutcome[] = [];
 
+      // Spec: docs/specs/interpolation.md § Расширение команды transpile
+      // Построить карту переменных для текущей записи
+      const variables = buildVariables(entry, adapterRegistry);
+
+      // Установить переменные на адаптерах instructions и agents
+      const instrAdapter = entry.instructions as {
+        variables?: Record<string, string>;
+      };
+      const agentsAdapter = entry.agents as {
+        variables?: Record<string, string>;
+      };
+      instrAdapter.variables = variables;
+      agentsAdapter.variables = variables;
+
+      // variablesByAgentId для skills transpiler
+      const variablesByAgentId: Record<string, Record<string, string>> = {
+        [entry.id]: variables,
+      };
+
       // Instructions
       steps.push(
         runTranspileStep({
@@ -850,6 +867,7 @@ function TranspileView({
           adapter: entry.skills,
           projectRoot,
           name: "Skills",
+          variablesByAgentId,
         }),
       );
 

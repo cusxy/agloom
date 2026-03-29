@@ -11,6 +11,7 @@ status: implemented
 relates:
   - docs/specs/skills-transpiler.md
   - docs/specs/agents-transpiler.md
+  - docs/specs/interpolation.md
   - docs/specs/cli.md
   - docs/specs/integration-tests.md
   - docs/specs/adapter-registry-ext.md

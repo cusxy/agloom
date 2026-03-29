@@ -17,13 +17,19 @@ import type {
 
 export class ClaudeAgentAdapter implements AgentAdapter {
   readonly agentId = "claude";
+  /** Карта переменных интерполяции (устанавливается CLI перед transpile). */
+  variables?: Record<string, string>;
 
   transpile(definitions: AgentDefinition[]): AgentOutputFile[] {
     const output: AgentOutputFile[] = [];
 
     for (const def of definitions) {
       // Шаг 1: трансформация контента для agentId = "claude"
-      const content = transformContent(def.rawContent, "claude");
+      const content = transformContent(
+        def.rawContent,
+        "claude",
+        this.variables,
+      );
 
       // Шаг 2: замена префикса .agloom/agents/ на .claude/agents/
       const relativePath = def.relativePath.replace(

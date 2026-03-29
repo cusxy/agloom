@@ -31,6 +31,13 @@ export interface AdapterRegistryEntry {
   dependsOn: string[];
   /** Признак скрытого адаптера. */
   hidden: boolean;
+  /** Пути к agent-specific каталогам. */
+  paths: {
+    skills?: string;
+    agents?: string;
+    docs?: string;
+    schemas?: string;
+  };
 }
 
 /** Результат выполнения очистки. */

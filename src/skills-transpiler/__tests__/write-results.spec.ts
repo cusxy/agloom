@@ -378,5 +378,273 @@ describe("SkillsTranspiler", () => {
       expect(writeResult.written).toContain(".other/skills/my-skill/SKILL.md");
       expect(writeResult.errors).toHaveLength(0);
     });
+
+    // =====================================================================
+    // Спецификация: docs/specs/interpolation.md § Расширение writeResults Skills Transpiler
+    // =====================================================================
+
+    // --- Изменения в поведении: шаг 2 — интерполяция .md файлов при наличии variablesByAgentId ---
+    it("интерполирует .md файлы при наличии variablesByAgentId", () => {
+      // Arrange: создаём .md файл с agloom-переменной
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(sourceDir, "SKILL.md"),
+        "Path: ${agloom:ROOT_DIR}/skills",
+      );
+
+      const transpiler = createSkillsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude")],
+      });
+
+      const variablesByAgentId: Record<string, Record<string, string>> = {
+        claude: { ROOT_DIR: ".claude" },
+      };
+
+      // Act
+      const writeResult = transpiler.writeResults(
+        [
+          {
+            agentId: "claude",
+            files: [
+              {
+                relativePath: ".claude/skills/my-skill/SKILL.md",
+                sourcePath: ".agloom/skills/my-skill/SKILL.md",
+              },
+            ],
+            errors: [],
+          },
+        ],
+        variablesByAgentId,
+      );
+
+      // Assert
+      expect(writeResult.written).toContain(".claude/skills/my-skill/SKILL.md");
+      expect(writeResult.errors).toHaveLength(0);
+
+      const writtenContent = fs.readFileSync(
+        path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
+        "utf-8",
+      );
+      expect(writtenContent).toBe("Path: .claude/skills");
+    });
+
+    // --- Изменения в поведении: шаг 2 — побайтовое копирование не-.md файлов при variablesByAgentId ---
+    it("побайтово копирует не-.md файлы, даже если variablesByAgentId передан", () => {
+      // Arrange: создаём .ts файл с agloom-переменной (не должен интерполироваться)
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      const tsContent = 'const dir = "${agloom:ROOT_DIR}";';
+      fs.writeFileSync(path.join(sourceDir, "helper.ts"), tsContent);
+
+      const transpiler = createSkillsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude")],
+      });
+
+      const variablesByAgentId: Record<string, Record<string, string>> = {
+        claude: { ROOT_DIR: ".claude" },
+      };
+
+      // Act
+      const writeResult = transpiler.writeResults(
+        [
+          {
+            agentId: "claude",
+            files: [
+              {
+                relativePath: ".claude/skills/my-skill/helper.ts",
+                sourcePath: ".agloom/skills/my-skill/helper.ts",
+              },
+            ],
+            errors: [],
+          },
+        ],
+        variablesByAgentId,
+      );
+
+      // Assert: файл скопирован побайтово, без интерполяции
+      expect(writeResult.written).toContain(
+        ".claude/skills/my-skill/helper.ts",
+      );
+      const writtenContent = fs.readFileSync(
+        path.join(tmpDir, ".claude", "skills", "my-skill", "helper.ts"),
+        "utf-8",
+      );
+      expect(writtenContent).toBe(tsContent);
+    });
+
+    // --- Обратная совместимость: побайтовое копирование всех файлов, если variablesByAgentId не передан ---
+    it("побайтово копирует все файлы, если variablesByAgentId не передан (обратная совместимость)", () => {
+      // Arrange: создаём .md файл с agloom-переменной (не должен интерполироваться)
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      const mdContent = "Path: ${agloom:ROOT_DIR}/skills";
+      fs.writeFileSync(path.join(sourceDir, "SKILL.md"), mdContent);
+
+      const transpiler = createSkillsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude")],
+      });
+
+      // Act: без variablesByAgentId
+      const writeResult = transpiler.writeResults([
+        {
+          agentId: "claude",
+          files: [
+            {
+              relativePath: ".claude/skills/my-skill/SKILL.md",
+              sourcePath: ".agloom/skills/my-skill/SKILL.md",
+            },
+          ],
+          errors: [],
+        },
+      ]);
+
+      // Assert: файл скопирован побайтово, без интерполяции
+      expect(writeResult.written).toContain(".claude/skills/my-skill/SKILL.md");
+      const writtenContent = fs.readFileSync(
+        path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
+        "utf-8",
+      );
+      expect(writtenContent).toBe(mdContent);
+    });
+
+    // --- Расширение 2c: SkillWriteError при отсутствии agentId в variablesByAgentId ---
+    it('возвращает SkillWriteError "No interpolation variables for adapter: {agentId}" при отсутствии ключа agentId', () => {
+      // Arrange: создаём .md файл
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(sourceDir, "SKILL.md"),
+        "Path: ${agloom:ROOT_DIR}",
+      );
+
+      const transpiler = createSkillsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude")],
+      });
+
+      // variablesByAgentId передан, но ключ "claude" отсутствует
+      const variablesByAgentId: Record<string, Record<string, string>> = {
+        opencode: { ROOT_DIR: ".opencode" },
+      };
+
+      // Act
+      const writeResult = transpiler.writeResults(
+        [
+          {
+            agentId: "claude",
+            files: [
+              {
+                relativePath: ".claude/skills/my-skill/SKILL.md",
+                sourcePath: ".agloom/skills/my-skill/SKILL.md",
+              },
+            ],
+            errors: [],
+          },
+        ],
+        variablesByAgentId,
+      );
+
+      // Assert
+      expect(writeResult.errors.length).toBeGreaterThan(0);
+      expect(writeResult.errors[0]).toBeInstanceOf(SkillWriteError);
+      expect(writeResult.errors[0].message).toBe(
+        "No interpolation variables for adapter: claude",
+      );
+    });
+
+    // --- Расширение 2d: SkillWriteError при InterpolationError в .md файле ---
+    it('возвращает SkillWriteError "Interpolation failed for {sourcePath}: ..." при ошибке интерполяции .md файла', () => {
+      // Arrange: создаём .md файл с несуществующей agloom-переменной
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(sourceDir, "SKILL.md"),
+        "Path: ${agloom:NONEXISTENT}",
+      );
+
+      const transpiler = createSkillsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude")],
+      });
+
+      const variablesByAgentId: Record<string, Record<string, string>> = {
+        claude: { ROOT_DIR: ".claude" },
+      };
+
+      // Act
+      const writeResult = transpiler.writeResults(
+        [
+          {
+            agentId: "claude",
+            files: [
+              {
+                relativePath: ".claude/skills/my-skill/SKILL.md",
+                sourcePath: ".agloom/skills/my-skill/SKILL.md",
+              },
+            ],
+            errors: [],
+          },
+        ],
+        variablesByAgentId,
+      );
+
+      // Assert
+      expect(writeResult.errors.length).toBeGreaterThan(0);
+      expect(writeResult.errors[0]).toBeInstanceOf(SkillWriteError);
+      expect(writeResult.errors[0].message).toMatch(
+        /Interpolation failed for \.agloom\/skills\/my-skill\/SKILL\.md/,
+      );
+    });
+
+    // --- Изменения в поведении: шаг 2 — case-insensitive проверка расширения .md ---
+    it("интерполирует файлы с расширением .MD (case-insensitive)", () => {
+      // Arrange
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(sourceDir, "README.MD"),
+        "Path: ${agloom:ROOT_DIR}",
+      );
+
+      const transpiler = createSkillsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude")],
+      });
+
+      const variablesByAgentId: Record<string, Record<string, string>> = {
+        claude: { ROOT_DIR: ".claude" },
+      };
+
+      // Act
+      const writeResult = transpiler.writeResults(
+        [
+          {
+            agentId: "claude",
+            files: [
+              {
+                relativePath: ".claude/skills/my-skill/README.MD",
+                sourcePath: ".agloom/skills/my-skill/README.MD",
+              },
+            ],
+            errors: [],
+          },
+        ],
+        variablesByAgentId,
+      );
+
+      // Assert
+      expect(writeResult.written).toContain(
+        ".claude/skills/my-skill/README.MD",
+      );
+      const writtenContent = fs.readFileSync(
+        path.join(tmpDir, ".claude", "skills", "my-skill", "README.MD"),
+        "utf-8",
+      );
+      expect(writtenContent).toBe("Path: .claude");
+    });
   });
 });

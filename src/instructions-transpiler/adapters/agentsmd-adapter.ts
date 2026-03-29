@@ -16,6 +16,8 @@ import type { Adapter, CanonicalFile, OutputFile } from "../types.js";
 export class AgentsMdAdapter implements Adapter {
   readonly agentId = "agentsmd";
   private readonly allowedAgentIds?: string[];
+  /** Карта переменных интерполяции (устанавливается CLI перед transpile). */
+  variables?: Record<string, string>;
 
   constructor(allowedAgentIds?: string[]) {
     this.allowedAgentIds = allowedAgentIds;
@@ -35,6 +37,7 @@ export class AgentsMdAdapter implements Adapter {
         file.content,
         "agentsmd",
         this.allowedAgentIds,
+        this.variables,
       );
 
       // Шаг 3: заменить AGLOOM.md → AGENTS.md

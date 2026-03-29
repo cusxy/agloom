@@ -6,6 +6,7 @@
 import matter from "gray-matter";
 import { AgentTransformError } from "./errors.js";
 import { filterBody } from "./filter-body.js";
+import { interpolate, InterpolationError } from "../interpolation/index.js";
 
 /**
  * Трансформирует содержимое канонического файла агента для конкретного
@@ -23,7 +24,11 @@ import { filterBody } from "./filter-body.js";
  * 9. Сериализовать data в YAML frontmatter.
  * 10. Присоединить отфильтрованный body к frontmatter.
  */
-export function transformContent(rawContent: string, agentId: string): string {
+export function transformContent(
+  rawContent: string,
+  agentId: string,
+  variables?: Record<string, string>,
+): string {
   // Шаг 1: парсинг frontmatter
   let parsed: matter.GrayMatterFile<string>;
   try {
@@ -86,10 +91,27 @@ export function transformContent(rawContent: string, agentId: string): string {
   const filteredBody = filterBody(parsed.content, agentId);
 
   // Расширение 9a: data пуст → только body (без разделителей ---)
+  let result: string;
   if (Object.keys(data).length === 0) {
-    return filteredBody;
+    result = filteredBody;
+  } else {
+    // Шаг 9–10: сериализовать frontmatter и присоединить body
+    result = matter.stringify(filteredBody, data);
   }
 
-  // Шаг 9–10: сериализовать frontmatter и присоединить body
-  return matter.stringify(filteredBody, data);
+  // Шаг 11: интерполяция (если variables передан)
+  // Spec: docs/specs/interpolation.md § Расширение transformContent Agents Transpiler
+  if (variables !== undefined) {
+    try {
+      result = interpolate(result, variables);
+    } catch (err) {
+      // Расширение 11a: InterpolationError → AgentTransformError
+      if (err instanceof InterpolationError) {
+        throw new AgentTransformError(`Interpolation failed: ${err.message}`);
+      }
+      throw err;
+    }
+  }
+
+  return result;
 }

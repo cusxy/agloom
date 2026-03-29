@@ -17,13 +17,19 @@ import type {
 
 export class OpenCodeAgentAdapter implements AgentAdapter {
   readonly agentId = "opencode";
+  /** Карта переменных интерполяции (устанавливается CLI перед transpile). */
+  variables?: Record<string, string>;
 
   transpile(definitions: AgentDefinition[]): AgentOutputFile[] {
     const output: AgentOutputFile[] = [];
 
     for (const def of definitions) {
       // Шаг 1: трансформация контента для agentId = "opencode"
-      const content = transformContent(def.rawContent, "opencode");
+      const content = transformContent(
+        def.rawContent,
+        "opencode",
+        this.variables,
+      );
 
       // Шаг 2: замена префикса .agloom/agents/ на .opencode/agents/
       const relativePath = def.relativePath.replace(

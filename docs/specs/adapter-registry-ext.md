@@ -9,6 +9,7 @@ status: implemented
 relates:
   - docs/specs/cli.md
   - docs/specs/instructions-transpiler.md
+  - docs/specs/interpolation.md
   - docs/specs/init-command.md
   - docs/specs/config.md
 maps_to:

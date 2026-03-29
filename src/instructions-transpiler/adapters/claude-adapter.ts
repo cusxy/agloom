@@ -17,6 +17,8 @@ import type { Adapter, CanonicalFile, OutputFile } from "../types.js";
 export class ClaudeAdapter implements Adapter {
   readonly agentId = "claude";
   private readonly allowedAgentIds?: string[];
+  /** Карта переменных интерполяции (устанавливается CLI перед transpile). */
+  variables?: Record<string, string>;
 
   constructor(allowedAgentIds?: string[]) {
     this.allowedAgentIds = allowedAgentIds;
@@ -25,7 +27,7 @@ export class ClaudeAdapter implements Adapter {
   transpile(files: CanonicalFile[]): OutputFile[] {
     const output: OutputFile[] = [];
 
-    // Шаг 1: отфильтровать файлы типов root, directory, local и directory-local
+    // Шаг 1: отфиль��ровать файлы типов root, directory, local и directory-local
     const relevantFiles = files.filter(
       (f) =>
         f.type === "root" ||
@@ -35,11 +37,12 @@ export class ClaudeAdapter implements Adapter {
     );
 
     for (const file of relevantFiles) {
-      // Шаг 2: трансформация контента для agentId = "claude"
+      // Шаг 2: трансформ��ция контента для agentId = "claude"
       const content = transformContent(
         file.content,
         "claude",
         this.allowedAgentIds,
+        this.variables,
       );
 
       // Шаг 3-4: заменить имя файла

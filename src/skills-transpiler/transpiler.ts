@@ -7,6 +7,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { discover } from "./discover.js";
 import { SkillWriteError } from "./errors.js";
+import { interpolate, InterpolationError } from "../interpolation/index.js";
 import type {
   SkillAdapter,
   SkillPackage,
@@ -79,8 +80,12 @@ export class SkillsTranspiler {
   /**
    * Записывает результаты транспиляции в файловую систему.
    * Spec: § Запись результатов
+   * Spec: docs/specs/interpolation.md § Расширение writeResults Skills Transpiler
    */
-  writeResults(results: SkillTranspileResult[]): SkillWriteResult {
+  writeResults(
+    results: SkillTranspileResult[],
+    variablesByAgentId?: Record<string, Record<string, string>>,
+  ): SkillWriteResult {
     const written: string[] = [];
     const errors: SkillWriteError[] = [];
 
@@ -96,40 +101,92 @@ export class SkillsTranspiler {
         continue;
       }
 
-      // Шаг 2: для каждого файла побайтово скопировать
+      // Расширение 2c: variablesByAgentId передан, но ключ agentId отсутствует
+      if (
+        variablesByAgentId !== undefined &&
+        !(result.agentId in variablesByAgentId)
+      ) {
+        errors.push(
+          new SkillWriteError(
+            `No interpolation variables for adapter: ${result.agentId}`,
+          ),
+        );
+        continue;
+      }
+
+      // Шаг 2: для каждого файла
       for (const file of result.files) {
         const sourceAbsolute = path.join(this.projectRoot, file.sourcePath);
         const destAbsolute = path.join(this.projectRoot, file.relativePath);
 
-        // Расширение 2a: исходный файл не существует или недоступен
-        try {
-          fs.accessSync(sourceAbsolute, fs.constants.R_OK);
-        } catch (err) {
-          errors.push(
-            new SkillWriteError(
-              `Failed to read source ${file.sourcePath}: ${(err as Error).message}`,
-            ),
-          );
-          continue;
-        }
+        // Определить, нужна ли интерполяция для данного файла
+        const isMd = path.extname(file.sourcePath).toLowerCase() === ".md";
+        const shouldInterpolate = variablesByAgentId !== undefined && isMd;
 
-        try {
-          // Создать промежуточные каталоги при необходимости
-          const dir = path.dirname(destAbsolute);
-          fs.mkdirSync(dir, { recursive: true });
+        if (shouldInterpolate) {
+          // Интерполяция .md файлов
+          try {
+            const content = fs.readFileSync(sourceAbsolute, "utf-8");
+            const interpolated = interpolate(
+              content,
+              variablesByAgentId![result.agentId],
+            );
 
-          // Побайтовое копирование
-          fs.copyFileSync(sourceAbsolute, destAbsolute);
+            // Создать промежуточные каталоги при необходимости
+            const dir = path.dirname(destAbsolute);
+            fs.mkdirSync(dir, { recursive: true });
 
-          // Шаг 3: добавить путь в массив written
-          written.push(file.relativePath);
-        } catch (err) {
-          // Расширение 2b: ошибка записи целевого файла
-          errors.push(
-            new SkillWriteError(
-              `Failed to write ${file.relativePath}: ${(err as Error).message}`,
-            ),
-          );
+            fs.writeFileSync(destAbsolute, interpolated, "utf-8");
+            written.push(file.relativePath);
+          } catch (err) {
+            // Расширение 2d: InterpolationError → SkillWriteError
+            if (err instanceof InterpolationError) {
+              errors.push(
+                new SkillWriteError(
+                  `Interpolation failed for ${file.sourcePath}: ${err.message}`,
+                ),
+              );
+              continue;
+            }
+            // Расширение 2a/2b: ошибка чтения или записи
+            errors.push(
+              new SkillWriteError(
+                `Failed to write ${file.relativePath}: ${(err as Error).message}`,
+              ),
+            );
+          }
+        } else {
+          // Побайтовое копирование (не-.md файлы или variablesByAgentId не передан)
+
+          // Расширение 2a: исходный файл не существует или недоступен
+          try {
+            fs.accessSync(sourceAbsolute, fs.constants.R_OK);
+          } catch (err) {
+            errors.push(
+              new SkillWriteError(
+                `Failed to read source ${file.sourcePath}: ${(err as Error).message}`,
+              ),
+            );
+            continue;
+          }
+
+          try {
+            // Создать промежуточные каталоги при необходимости
+            const dir = path.dirname(destAbsolute);
+            fs.mkdirSync(dir, { recursive: true });
+
+            // Побайтовое копирование
+            fs.copyFileSync(sourceAbsolute, destAbsolute);
+
+            written.push(file.relativePath);
+          } catch (err) {
+            // Расширение 2b: ошибка записи целевого файла
+            errors.push(
+              new SkillWriteError(
+                `Failed to write ${file.relativePath}: ${(err as Error).message}`,
+              ),
+            );
+          }
         }
       }
     }

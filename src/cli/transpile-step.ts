@@ -10,7 +10,10 @@ interface TranspileStepParams {
   /** Фабричная функция транспилера. */
   transpilerFactory: (config: { projectRoot: string; adapters: unknown[] }) => {
     transpile: () => unknown[];
-    writeResults: (results: unknown[]) => {
+    writeResults: (
+      results: unknown[],
+      variablesByAgentId?: Record<string, Record<string, string>>,
+    ) => {
       written: string[];
       errors: { message: string }[];
     };
@@ -21,6 +24,8 @@ interface TranspileStepParams {
   projectRoot: string;
   /** Имя шага. */
   name: "Instructions" | "Skills" | "Agents";
+  /** Карта переменных по agentId для интерполяции (skills transpiler). */
+  variablesByAgentId?: Record<string, Record<string, string>>;
 }
 
 /**
@@ -40,7 +45,8 @@ interface TranspileStepParams {
 export function runTranspileStep(
   params: TranspileStepParams,
 ): TranspilerStepOutcome {
-  const { transpilerFactory, adapter, projectRoot, name } = params;
+  const { transpilerFactory, adapter, projectRoot, name, variablesByAgentId } =
+    params;
 
   // Шаг 1: создать экземпляр транспилера
   const transpiler = transpilerFactory({
@@ -63,7 +69,10 @@ export function runTranspileStep(
   }
 
   // Шаг 3: вызвать writeResults()
-  const writeResult = transpiler.writeResults(transpileResults);
+  const writeResult = transpiler.writeResults(
+    transpileResults,
+    variablesByAgentId,
+  );
 
   // Шаг 4: writtenCount = writeResult.written.length
   const writtenCount = writeResult.written.length;

@@ -345,5 +345,62 @@ describe("AgentsTranspiler", () => {
       expect(result).toContain("More general content.");
       expect(result).not.toContain("<!-- agent:");
     });
+
+    // =====================================================================
+    // Спецификация: docs/specs/interpolation.md § Расширение transformContent Agents Transpiler
+    // =====================================================================
+
+    // --- Новый шаг 11: интерполяция выполняется, когда variables передан ---
+    it("выполняет интерполяцию переменных в результате, когда variables передан", () => {
+      const rawContent = [
+        "---",
+        "name: agent",
+        "---",
+        "Path: ${agloom:AGENTS_DIR}/spec-writer.md",
+      ].join("\n");
+
+      const variables: Record<string, string> = {
+        AGENTS_DIR: ".claude/agents",
+      };
+
+      const result = transformContent(rawContent, "claude", variables);
+
+      expect(result).toContain("Path: .claude/agents/spec-writer.md");
+      expect(result).not.toContain("${agloom:AGENTS_DIR}");
+    });
+
+    // --- Обратная совместимость: интерполяция пропускается, когда variables не передан ---
+    it("пропускает интерполяцию, когда variables не передан (обратная совместимость)", () => {
+      const rawContent = [
+        "---",
+        "name: agent",
+        "---",
+        "Path: ${agloom:AGENTS_DIR}/spec-writer.md",
+      ].join("\n");
+
+      // Без variables — ${agloom:AGENTS_DIR} остаётся как есть
+      const result = transformContent(rawContent, "claude");
+
+      expect(result).toContain("${agloom:AGENTS_DIR}");
+    });
+
+    // --- Расширение 11a: AgentTransformError при InterpolationError ---
+    it('выбрасывает AgentTransformError("Interpolation failed: ...") при ошибке интерполяции', () => {
+      const rawContent = [
+        "---",
+        "name: agent",
+        "---",
+        "Path: ${agloom:NONEXISTENT}",
+      ].join("\n");
+
+      const variables: Record<string, string> = {};
+
+      expect(() => transformContent(rawContent, "claude", variables)).toThrow(
+        AgentTransformError,
+      );
+      expect(() => transformContent(rawContent, "claude", variables)).toThrow(
+        /Interpolation failed/,
+      );
+    });
   });
 });

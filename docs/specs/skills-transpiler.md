@@ -9,6 +9,7 @@ status: implemented
 relates:
   - docs/specs/instructions-transpiler.md
   - docs/specs/agents-transpiler.md
+  - docs/specs/interpolation.md
   - docs/specs/cli.md
   - docs/specs/integration-tests.md
   - docs/researches/agent-capabilities-map/RESEARCH.md

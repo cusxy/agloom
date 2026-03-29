@@ -10,6 +10,7 @@ relates:
   - docs/specs/instructions-transpiler.md
   - docs/specs/skills-transpiler.md
   - docs/specs/agents-transpiler.md
+  - docs/specs/interpolation.md
   - docs/specs/adapter-registry-ext.md
   - docs/specs/clean-command.md
   - docs/specs/init-command.md

@@ -318,5 +318,65 @@ describe("InstructionsTranspiler", () => {
       // Без allowedAgentIds — ошибки быть не должно
       expect(() => transformContent(rawContent, "claude")).not.toThrow();
     });
+
+    // =====================================================================
+    // Спецификация: docs/specs/interpolation.md § Расширение transformContent Instructions Transpiler
+    // =====================================================================
+
+    // --- Новый шаг 11: интерполяция выполняется, когда variables передан ---
+    it("выполняет интерполяцию переменных в результате, когда variables передан", () => {
+      const rawContent = [
+        "---",
+        "title: Instructions",
+        "---",
+        "Path: ${agloom:ROOT_DIR}/agents",
+      ].join("\n");
+
+      const variables: Record<string, string> = { ROOT_DIR: ".claude" };
+
+      const result = transformContent(
+        rawContent,
+        "claude",
+        undefined,
+        variables,
+      );
+
+      expect(result).toContain("Path: .claude/agents");
+      expect(result).not.toContain("${agloom:ROOT_DIR}");
+    });
+
+    // --- Обратная совместимость: интерполяция пропускается, когда variables не передан ---
+    it("пропускает интерполяцию, когда variables не передан (обратная совместимость)", () => {
+      const rawContent = [
+        "---",
+        "title: Instructions",
+        "---",
+        "Path: ${agloom:ROOT_DIR}/agents",
+      ].join("\n");
+
+      // Без variables — ${agloom:ROOT_DIR} остаётся как есть
+      const result = transformContent(rawContent, "claude");
+
+      expect(result).toContain("${agloom:ROOT_DIR}");
+    });
+
+    // --- Расширение 11a: TransformError при InterpolationError ---
+    it('выбрасывает TransformError("Interpolation failed: ...") при ошибке интерполяции', () => {
+      const rawContent = [
+        "---",
+        "title: Instructions",
+        "---",
+        "Path: ${agloom:NONEXISTENT}",
+      ].join("\n");
+
+      const variables: Record<string, string> = {};
+
+      expect(() =>
+        transformContent(rawContent, "claude", undefined, variables),
+      ).toThrow(TransformError);
+      expect(() =>
+        transformContent(rawContent, "claude", undefined, variables),
+      ).toThrow(/Interpolation failed/);
+    });
   });
 });
