@@ -2,11 +2,11 @@
 
 Transpile canonical agent configurations across AI coding assistants.
 
-Write your instructions, skills, and agent definitions once — agloom generates the correct config files for each target (Claude Code, OpenCode, and more).
+Write your instructions, skills, and agent definitions once — agloom generates the correct config files for each target (Claude Code, OpenCode, Agents.md, and more).
 
 ## Problem
 
-AI coding assistants each expect their own config format: Claude Code reads `CLAUDE.md` and `.claude/`, OpenCode reads `AGENTS.md` and `.opencode/`, etc. Maintaining configs for multiple agents by hand is tedious and error-prone.
+AI coding assistants each expect their own config format: Claude Code reads `CLAUDE.md` and `.claude/`, OpenCode reads `AGENTS.md` and `.opencode/`, Agents.md-compatible tools read `AGENTS.md`, etc. Maintaining configs for multiple agents by hand is tedious and error-prone.
 
 ## Solution
 
@@ -14,10 +14,11 @@ agloom introduces a **canonical format** (Markdown files under `.agloom/`) and *
 
 ```
 .agloom/
-  instructions/       # project-wide instructions
-  skills/             # reusable skill definitions
-  agents/             # sub-agent definitions
-  overlays/<agent>/   # per-agent overrides
+  config.yml            # project configuration
+  instructions/         # project-wide instructions
+  skills/               # reusable skill definitions
+  agents/               # sub-agent definitions
+  overlays/<adapter>/   # per-adapter overrides
 ```
 
 ## Installation
@@ -28,17 +29,21 @@ npm install -g agloom
 
 ## Usage
 
-### Transpile configs for an agent
+### Transpile configs for an adapter
 
 ```bash
 agloom transpile --adapter claude
 agloom transpile --adapter opencode
+agloom transpile --adapter agentsmd
 ```
+
+Use `--verbose` for detailed output.
 
 ### Clean generated files
 
 ```bash
 agloom clean --adapter claude
+agloom clean --all              # clean all adapters
 ```
 
 ### Import existing configs
@@ -55,10 +60,11 @@ agloom adapters
 
 ## Supported adapters
 
-| Adapter    | Description |
-|------------|-------------|
-| `claude`   | Claude Code |
-| `opencode` | OpenCode    |
+| Adapter    | Description                        |
+|------------|------------------------------------|
+| `claude`   | Claude Code (`CLAUDE.md`, `.claude/`) |
+| `opencode` | OpenCode (`AGENTS.md`, `.opencode/`)  |
+| `agentsmd` | Agents.md (`AGENTS.md`)               |
 
 ## How it works
 
@@ -70,9 +76,15 @@ agloom has three transpiler modules that run in sequence:
 
 Each module uses an **adapter** that knows how to write output for its target agent. The adapter system is extensible — you can add support for new agents by implementing the adapter interface.
 
+Instructions support **agent-specific blocks** — sections that are only included when transpiling for a particular adapter.
+
+### Configuration
+
+Project-level settings live in `.agloom/config.yml`. See [config spec](docs/specs/config.md) for details.
+
 ### Overlays
 
-After transpiling, agloom applies **overlays** from `.agloom/overlays/<agent>/`. These are raw files copied directly to the agent's output directory, letting you add agent-specific config that doesn't fit the canonical format.
+After transpiling, agloom applies **overlays** from `.agloom/overlays/<adapter>/`. These are raw files copied directly to the adapter's output directory, letting you add adapter-specific config that doesn't fit the canonical format.
 
 ## License
 
