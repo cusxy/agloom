@@ -20,7 +20,8 @@
     "transpiler"
   ],
   "files": [
-    "dist"
+    "dist",
+    "docs/usage"
   ],
   "bin": {
     "agloom": "dist/cli/index.js"
@@ -43,10 +44,13 @@
     "vitest": "^3.1.1"
   },
   "dependencies": {
+    "chalk": "^5.6.2",
     "gray-matter": "^4.0.3",
     "ink": "^6.8.0",
     "ink-spinner": "^5.0.0",
     "js-yaml": "^4.1.1",
+    "marked": "^14.1.4",
+    "marked-terminal": "^7.3.0",
     "react": "^19.2.4"
   }
 }

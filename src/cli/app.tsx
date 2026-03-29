@@ -4,6 +4,7 @@
  * Spec: docs/specs/clean-command.md § Команда clean, § Расширение команды transpile
  * Spec: docs/specs/init-command.md § Команда init
  * Spec: docs/specs/adapter-registry-ext.md § Процедура Resolve Adapter
+ * Spec: docs/specs/help-command.md § Команда help
  */
 
 import React, { useState, useEffect } from "react";
@@ -11,6 +12,10 @@ import { Text, Box, useApp } from "ink";
 import Spinner from "ink-spinner";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { marked } from "marked";
+// @ts-expect-error marked-terminal has no type declarations
+import { markedTerminal } from "marked-terminal";
+import { Chalk } from "chalk";
 import { adapterRegistry } from "./adapter-registry.js";
 import { runTranspileStep } from "./transpile-step.js";
 import { runOverlayStep } from "./overlay-step.js";
@@ -45,6 +50,7 @@ interface AppProps {
  */
 function parseArgs(args: string[]): {
   command: string | null;
+  helpTopic: string | null;
   unknownCommand: string | null;
   unknownFlag: string | null;
   agent: string | null;
@@ -56,6 +62,7 @@ function parseArgs(args: string[]): {
   verbose: boolean;
 } {
   let command: string | null = null;
+  let helpTopic: string | null = null;
   let unknownCommand: string | null = null;
   let unknownFlag: string | null = null;
   let agent: string | null = null;
@@ -68,7 +75,7 @@ function parseArgs(args: string[]): {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === "--help" || arg === "help") {
+    if (arg === "--help") {
       help = true;
     } else if (arg === "--version" || arg === "version") {
       version = true;
@@ -86,11 +93,15 @@ function parseArgs(args: string[]): {
       force = true;
     } else if (arg === "--verbose") {
       verbose = true;
+    } else if (command === "help" && !arg.startsWith("-")) {
+      // После распознавания help как команды, позиционный аргумент — topic
+      helpTopic = arg;
     } else if (
       arg === "transpile" ||
       arg === "adapters" ||
       arg === "clean" ||
-      arg === "init"
+      arg === "init" ||
+      arg === "help"
     ) {
       command = arg;
     } else if (arg.startsWith("-")) {
@@ -102,6 +113,7 @@ function parseArgs(args: string[]): {
 
   return {
     command,
+    helpTopic,
     unknownCommand,
     unknownFlag,
     agent,
@@ -133,16 +145,19 @@ function HelpView(): React.ReactElement {
       <Text> </Text>
       <Text>Commands:</Text>
       <Text>
-        {"  "}transpile {"   "}Transpile canonical configs for a target adapter
+        {"  "}adapters {"    "}List available adapters
       </Text>
       <Text>
         {"  "}clean {"       "}Remove generated agent-specific files
       </Text>
       <Text>
+        {"  "}help {"        "}Show help topics or display a specific help topic
+      </Text>
+      <Text>
         {"  "}init {"        "}Import existing agent configs into .agloom/
       </Text>
       <Text>
-        {"  "}adapters {"    "}List available adapters
+        {"  "}transpile {"   "}Transpile canonical configs for a target adapter
       </Text>
       <Text> </Text>
       <Text>Options:</Text>
@@ -199,6 +214,168 @@ function AdaptersHelpView(): React.ReactElement {
       </Text>
     </Box>
   );
+}
+
+function HelpCommandHelpView(): React.ReactElement {
+  return (
+    <Box flexDirection="column">
+      <Text>Usage: agloom help [&lt;topic&gt;]</Text>
+      <Text> </Text>
+      <Text>Show help topics or display a specific help topic.</Text>
+      <Text> </Text>
+      <Text>Arguments:</Text>
+      <Text>
+        {"  "}&lt;topic&gt;{"  "}Help topic name (e.g., configuration,
+        transpile)
+      </Text>
+    </Box>
+  );
+}
+
+/**
+ * Вычисляет абсолютный путь к директории документации.
+ * Spec: docs/specs/help-command.md § Поведение шаг 2
+ */
+function getDocsDir(): string {
+  return path.resolve(import.meta.dirname, "../../docs/usage");
+}
+
+interface TopicEntry {
+  name: string;
+  description: string;
+}
+
+/**
+ * Извлекает описание из Markdown-файла: первая непустая строка после H1.
+ */
+function extractDescription(filePath: string): string {
+  try {
+    const content = fs.readFileSync(filePath, "utf-8");
+    const lines = content.split("\n");
+    let pastH1 = false;
+    for (const line of lines) {
+      if (line.startsWith("# ")) {
+        pastH1 = true;
+        continue;
+      }
+      if (pastH1 && line.trim() !== "") {
+        return line.trim();
+      }
+    }
+  } catch {
+    // Ошибка чтения — описание недоступно
+  }
+  return "";
+}
+
+/**
+ * Читает и возвращает отсортированный список topics из docs/usage/.
+ * Spec: docs/specs/help-command.md § Поведение шаги 3-6
+ */
+function loadTopics(docsDir: string): TopicEntry[] {
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(docsDir);
+  } catch {
+    // Расширение 3a: директория не существует → пустой список
+    return [];
+  }
+  return entries
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => ({
+      name: f.slice(0, -3),
+      description: extractDescription(path.join(docsDir, f)),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Форматирует вывод списка topics.
+ * Spec: docs/specs/help-command.md § Вывод списка topics
+ */
+function formatTopicsList(topics: TopicEntry[]): string {
+  const maxName = Math.max(...topics.map((t) => t.name.length));
+  const lines = [
+    "Available help topics:",
+    "",
+    ...topics.map(
+      (t) =>
+        `  ${t.name.padEnd(maxName + 3)}${t.description}`,
+    ),
+    "",
+    "Run 'agloom help <topic>' to learn more.",
+  ];
+  return lines.join("\n");
+}
+
+function HelpCommandView({
+  topic,
+}: {
+  topic: string | null;
+}): React.ReactElement {
+  const [output] = useState(() => {
+    const docsDir = getDocsDir();
+    const topics = loadTopics(docsDir);
+
+    // § Поведение шаг 7: <topic> не указан — отобразить список topics
+    if (topic === null) {
+      // Расширение 7a: пустой список
+      if (topics.length === 0) {
+        process.exitCode = 1;
+        return "No help topics available.";
+      }
+      return formatTopicsList(topics);
+    }
+
+    // § Поведение шаг 8: найти topic
+    if (!topics.some((t) => t.name === topic)) {
+      process.exitCode = 1;
+      // Расширение 8b: пустой список
+      if (topics.length === 0) {
+        return `Unknown help topic: ${topic}.`;
+      }
+      // Расширение 8a: непустой список
+      return `Unknown help topic: ${topic}.\n\n${formatTopicsList(topics)}`;
+    }
+
+    // § Поведение шаг 9: прочитать файл
+    let content: string;
+    try {
+      content = fs.readFileSync(path.join(docsDir, `${topic}.md`), "utf-8");
+    } catch {
+      // Расширение 9a: ошибка чтения
+      process.exitCode = 1;
+      return `Failed to read help topic: ${topic}.`;
+    }
+
+    // § Поведение шаг 10: отрендерить Markdown
+    try {
+      const forcedChalk = new Chalk({ level: 1 });
+      marked.use(
+        markedTerminal({
+          showSectionPrefix: false,
+          firstHeading: forcedChalk.bold.underline,
+          heading: forcedChalk.bold,
+          code: forcedChalk.yellow,
+          blockquote: forcedChalk.gray.italic,
+          html: forcedChalk.gray,
+          strong: forcedChalk.bold,
+          em: forcedChalk.italic,
+          codespan: forcedChalk.yellow,
+          del: forcedChalk.dim.gray.strikethrough,
+          link: forcedChalk.blue,
+          href: forcedChalk.blue.underline,
+        }),
+      );
+      return marked.parse(content, { async: false }).trimEnd();
+    } catch {
+      // Расширение 10a: ошибка рендеринга
+      process.exitCode = 1;
+      return `Failed to render help topic: ${topic}.`;
+    }
+  });
+
+  return <Text>{output}</Text>;
 }
 
 function AdaptersView({
@@ -806,6 +983,16 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
   // § adapters --help
   if (parsed.command === "adapters" && parsed.help) {
     return <AdaptersHelpView />;
+  }
+
+  // § help --help (Spec: docs/specs/help-command.md § Справка)
+  if (parsed.command === "help" && parsed.help) {
+    return <HelpCommandHelpView />;
+  }
+
+  // § Команда help (Spec: docs/specs/help-command.md § Команда help)
+  if (parsed.command === "help") {
+    return <HelpCommandView topic={parsed.helpTopic} />;
   }
 
   // § Неизвестная команда

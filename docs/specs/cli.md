@@ -14,6 +14,7 @@ relates:
   - docs/specs/clean-command.md
   - docs/specs/init-command.md
   - docs/specs/config.md
+  - docs/specs/help-command.md
 maps_to:
   - src/cli/
 ---
@@ -299,7 +300,7 @@ Available adapters:
 
 ### --help
 
-`agloom --help` или `agloom help` — отображает общую справку.
+`agloom --help` — отображает общую справку.
 
 **Вход:**
 
@@ -308,9 +309,11 @@ Available adapters:
 **Поведение:**
 
 1. Отобразить описание программы.
-2. Отобразить список доступных команд (`transpile`, `clean`, `init`, `adapters`)
-   с кратким описанием каждой. Описание команды `init`:
+2. Отобразить список доступных команд (`transpile`, `clean`, `init`, `adapters`,
+   `help`) с кратким описанием каждой. Описание команды `init`:
    `Import existing agent configs into .agloom/`.
+   Описание команды `help`:
+   `Show help topics or display a specific help topic`.
 3. Отобразить список глобальных опций (`--help`, `--version`).
 
 **Расширения:**
@@ -374,7 +377,7 @@ Options:
 ### Неизвестная команда
 
 При вызове `agloom <unknown>`, где `<unknown>` не является
-известной командой (`transpile`, `clean`, `init`, `adapters`)
+известной командой (`transpile`, `clean`, `init`, `adapters`, `help`)
 и не является флагом (не начинается с `--`), ДОЛЖНО отображаться
 сообщение:
 
