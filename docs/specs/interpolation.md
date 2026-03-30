@@ -101,11 +101,18 @@ codex МОЖЕТ иметь `targetRoot: ".codex"`, но `paths.skills: ".agents
 
 | Переменная           | Значение          |
 | -------------------- | ----------------- |
+| `PROJECT_DIR`        | значение параметра `projectRoot` |
 | `AGLOOM_DIR`         | `.agloom`         |
 | `AGLOOM_SKILLS_DIR`  | `.agloom/skills`  |
 | `AGLOOM_AGENTS_DIR`  | `.agloom/agents`  |
 | `AGLOOM_DOCS_DIR`    | `.agloom/docs`    |
 | `AGLOOM_SCHEMAS_DIR` | `.agloom/schemas` |
+
+`PROJECT_DIR` — единственная каноническая переменная, содержащая
+абсолютный путь. Все остальные канонические переменные содержат
+относительные пути. Пользователь МОЖЕТ компоновать абсолютные пути
+к любому каталогу: `${agloom:PROJECT_DIR}/${agloom:AGLOOM_DIR}`
+раскроется в `<projectRoot>/.agloom`.
 
 ### Динамические (per-current-adapter)
 
@@ -181,7 +188,7 @@ per-adapter переменные генерируются для `claude` и `op
 
 ## Построение карты переменных
 
-`buildVariables(currentAdapter, allAdapters)` — строит карту
+`buildVariables(currentAdapter, allAdapters, projectRoot)` — строит карту
 agloom-переменных для указанного текущего адаптера.
 
 **Вход:**
@@ -190,20 +197,23 @@ agloom-переменных для указанного текущего ада�
   адаптера, для которого выполняется транспиляция.
 - `allAdapters` (array\<AdapterRegistryEntry>, обязательно) — все записи
   реестра адаптеров.
+- `projectRoot` (string, обязательно) — абсолютный путь к корню проекта.
 
 **Поведение:**
 
 1. Создать пустую карту `Record<string, string>`.
-2. Добавить канонические переменные (см. «Канонические (фиксированные)»).
-3. Добавить `ROOT_DIR` со значением `currentAdapter.targetRoot`.
-4. Для каждого определённого поля из `currentAdapter.paths` добавить
+2. Добавить `PROJECT_DIR` со значением `projectRoot`.
+3. Добавить остальные канонические переменные
+   (см. «Канонические (фиксированные)»).
+4. Добавить `ROOT_DIR` со значением `currentAdapter.targetRoot`.
+5. Для каждого определённого поля из `currentAdapter.paths` добавить
    соответствующую динамическую переменную
    (см. «Динамические (per-current-adapter)»).
-5. Для каждого адаптера из `allAdapters`, у которого
+6. Для каждого адаптера из `allAdapters`, у которого
    `Object.keys(adapter.paths).length > 0` —
    вычислить префикс `adapter.id.toUpperCase()`.
-6. Добавить `{PREFIX}_DIR` со значением `adapter.targetRoot`.
-7. Для каждого определённого поля из `adapter.paths` добавить
+7. Добавить `{PREFIX}_DIR` со значением `adapter.targetRoot`.
+8. Для каждого определённого поля из `adapter.paths` добавить
    соответствующую per-adapter переменную
    (см. «Статические (per-adapter)»).
 
@@ -366,8 +376,10 @@ agloom-переменных для указанного текущего ада�
 и перед подшагом 4.2 (Instructions):
 
 Построить карту переменных для текущей записи:
-`buildVariables(entry, adapterRegistry)`, где `adapterRegistry` —
-полный реестр адаптеров (не только разрешённые записи).
+`buildVariables(entry, adapterRegistry, projectRoot)`, где
+`adapterRegistry` — полный реестр адаптеров (не только разрешённые
+записи), `projectRoot` — абсолютный путь к корню проекта
+(определён на шаге 2 команды transpile).
 
 **Изменения в поведении:**
 
@@ -386,26 +398,29 @@ Canonical содержимое:
 ```text
 | agent-protocol | `${agloom:AGLOOM_DIR}/docs/cycling/agent-protocol.md` |
 | spec-writer | `${agloom:AGENTS_DIR}/spec-writer/spec-writer.md` |
+| skills-abs | `${agloom:PROJECT_DIR}/${agloom:SKILLS_DIR}` |
 Env: ${env:PROJECT_NAME}
 Escaped: \${env:HOME}
 ```
 
 После интерполяции для адаптера `claude`
-(при `PROJECT_NAME=myapp` в окружении):
+(при `projectRoot=/home/user/myapp`, `PROJECT_NAME=myapp` в окружении):
 
 ```text
 | agent-protocol | `.agloom/docs/cycling/agent-protocol.md` |
 | spec-writer | `.claude/agents/spec-writer/spec-writer.md` |
+| skills-abs | `/home/user/myapp/.claude/skills` |
 Env: myapp
 Escaped: ${env:HOME}
 ```
 
 После интерполяции для адаптера `opencode`
-(при `PROJECT_NAME=myapp` в окружении):
+(при `projectRoot=/home/user/myapp`, `PROJECT_NAME=myapp` в окружении):
 
 ```text
 | agent-protocol | `.agloom/docs/cycling/agent-protocol.md` |
 | spec-writer | `.opencode/agents/spec-writer/spec-writer.md` |
+| skills-abs | `/home/user/myapp/.opencode/skills` |
 Env: myapp
 Escaped: ${env:HOME}
 ```

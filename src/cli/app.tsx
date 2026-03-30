@@ -829,7 +829,7 @@ function TranspileView({
 
       // Spec: docs/specs/interpolation.md § Расширение команды transpile
       // Построить карту переменных для текущей записи
-      const variables = buildVariables(entry, adapterRegistry);
+      const variables = buildVariables(entry, adapterRegistry, projectRoot);
 
       // Установить переменные на адаптерах instructions и agents
       const instrAdapter = entry.instructions as {

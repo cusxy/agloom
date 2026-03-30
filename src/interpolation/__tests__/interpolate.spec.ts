@@ -175,11 +175,38 @@ describe("Interpolation", () => {
       );
     });
 
-    // --- Пример из спецификации: трансформация для адаптера claude ---
+    // --- Трансформация: композиция PROJECT_DIR с другими переменными ---
+    it("подставляет композицию ${agloom:PROJECT_DIR}/${agloom:SKILLS_DIR} как абсолютный путь к skills", () => {
+      const content = "Skills: ${agloom:PROJECT_DIR}/${agloom:SKILLS_DIR}";
+      const variables: Record<string, string> = {
+        PROJECT_DIR: "/home/user/myapp",
+        SKILLS_DIR: ".claude/skills",
+      };
+
+      const result = interpolate(content, variables, {});
+
+      expect(result).toBe("Skills: /home/user/myapp/.claude/skills");
+    });
+
+    // --- Трансформация: композиция PROJECT_DIR с AGLOOM_DIR ---
+    it("подставляет композицию ${agloom:PROJECT_DIR}/${agloom:AGLOOM_DIR} как абсолютный путь к .agloom", () => {
+      const content = "Agloom: ${agloom:PROJECT_DIR}/${agloom:AGLOOM_DIR}";
+      const variables: Record<string, string> = {
+        PROJECT_DIR: "/home/user/myapp",
+        AGLOOM_DIR: ".agloom",
+      };
+
+      const result = interpolate(content, variables, {});
+
+      expect(result).toBe("Agloom: /home/user/myapp/.agloom");
+    });
+
+    // --- Пример из спецификации: трансформация для адаптера claude (с PROJECT_DIR) ---
     it("трансформирует контент для адаптера claude согласно примеру из спецификации", () => {
       const content = [
         "| agent-protocol | `${agloom:AGLOOM_DIR}/docs/cycling/agent-protocol.md` |",
         "| spec-writer | `${agloom:AGENTS_DIR}/spec-writer/spec-writer.md` |",
+        "| skills-abs | `${agloom:PROJECT_DIR}/${agloom:SKILLS_DIR}` |",
         "Env: ${env:PROJECT_NAME}",
         "Escaped: \\${env:HOME}",
       ].join("\n");
@@ -187,6 +214,8 @@ describe("Interpolation", () => {
       const variables: Record<string, string> = {
         AGLOOM_DIR: ".agloom",
         AGENTS_DIR: ".claude/agents",
+        PROJECT_DIR: "/home/user/myapp",
+        SKILLS_DIR: ".claude/skills",
       };
       const env: Record<string, string> = { PROJECT_NAME: "myapp" };
 
@@ -196,17 +225,19 @@ describe("Interpolation", () => {
         [
           "| agent-protocol | `.agloom/docs/cycling/agent-protocol.md` |",
           "| spec-writer | `.claude/agents/spec-writer/spec-writer.md` |",
+          "| skills-abs | `/home/user/myapp/.claude/skills` |",
           "Env: myapp",
           "Escaped: ${env:HOME}",
         ].join("\n"),
       );
     });
 
-    // --- Пример из спецификации: трансформация для адаптера opencode ---
+    // --- Пример из спецификации: трансформация для адаптера opencode (с PROJECT_DIR) ---
     it("трансформирует контент для адаптера opencode согласно примеру из спецификации", () => {
       const content = [
         "| agent-protocol | `${agloom:AGLOOM_DIR}/docs/cycling/agent-protocol.md` |",
         "| spec-writer | `${agloom:AGENTS_DIR}/spec-writer/spec-writer.md` |",
+        "| skills-abs | `${agloom:PROJECT_DIR}/${agloom:SKILLS_DIR}` |",
         "Env: ${env:PROJECT_NAME}",
         "Escaped: \\${env:HOME}",
       ].join("\n");
@@ -214,6 +245,8 @@ describe("Interpolation", () => {
       const variables: Record<string, string> = {
         AGLOOM_DIR: ".agloom",
         AGENTS_DIR: ".opencode/agents",
+        PROJECT_DIR: "/home/user/myapp",
+        SKILLS_DIR: ".opencode/skills",
       };
       const env: Record<string, string> = { PROJECT_NAME: "myapp" };
 
@@ -223,6 +256,7 @@ describe("Interpolation", () => {
         [
           "| agent-protocol | `.agloom/docs/cycling/agent-protocol.md` |",
           "| spec-writer | `.opencode/agents/spec-writer/spec-writer.md` |",
+          "| skills-abs | `/home/user/myapp/.opencode/skills` |",
           "Env: myapp",
           "Escaped: ${env:HOME}",
         ].join("\n"),

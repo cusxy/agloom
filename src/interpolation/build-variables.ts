@@ -20,24 +20,29 @@ interface AdapterEntry {
  *
  * Шаги:
  * 1. Создать пустую карту Record<string, string>.
- * 2. Добавить канонические переменные.
- * 3. Добавить ROOT_DIR со значением currentAdapter.targetRoot.
- * 4. Для каждого определённого поля из currentAdapter.paths добавить
+ * 2. Добавить PROJECT_DIR со значением projectRoot.
+ * 3. Добавить остальные канонические переменные.
+ * 4. Добавить ROOT_DIR со значением currentAdapter.targetRoot.
+ * 5. Для каждого определённого поля из currentAdapter.paths добавить
  *    соответствующую динамическую переменную.
- * 5. Для каждого адаптера из allAdapters, у которого
+ * 6. Для каждого адаптера из allAdapters, у которого
  *    Object.keys(adapter.paths).length > 0 — вычислить PREFIX.
- * 6. Добавить {PREFIX}_DIR со значением adapter.targetRoot.
- * 7. Для каждого определённого поля из adapter.paths добавить
+ * 7. Добавить {PREFIX}_DIR со значением adapter.targetRoot.
+ * 8. Для каждого определённого поля из adapter.paths добавить
  *    соответствующую per-adapter переменную.
  */
 export function buildVariables(
   currentAdapter: AdapterEntry,
   allAdapters: AdapterEntry[],
+  projectRoot: string,
 ): Record<string, string> {
   // Шаг 1: создать пустую карту
   const variables: Record<string, string> = {};
 
-  // Шаг 2: канонические переменные (фиксированные)
+  // Шаг 2: PROJECT_DIR со значением projectRoot
+  variables["PROJECT_DIR"] = projectRoot;
+
+  // Шаг 3: остальные канонические переменные (фиксированные)
   variables["AGLOOM_DIR"] = ".agloom";
   variables["AGLOOM_SKILLS_DIR"] = ".agloom/skills";
   variables["AGLOOM_AGENTS_DIR"] = ".agloom/agents";
