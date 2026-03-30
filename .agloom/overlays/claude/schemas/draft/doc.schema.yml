@@ -1,0 +1,65 @@
+$schema: ../meta-schema.json
+
+name: doc
+version: '0.0.0'
+description: >
+  Информационный документ без жизненного цикла.
+  Описывает архитектуру, конвенции, планы, процессы.
+  Не управляет имплементацией напрямую — служит справочным материалом.
+
+frontmatter:
+  required:
+    summary:
+      type: string
+      minLength: 1
+      description: Заголовок документа
+    description:
+      type: string
+      minLength: 1
+      description: Краткое описание (1-2 предложения)
+  optional:
+    relates:
+      type: array
+      items:
+        type: string
+      description: Связанные документы (кросс-ссылки)
+  additionalProperties: false
+
+structure:
+  headings:
+    require_h1: true
+    max_h1: 1
+    max_depth: 4
+    no_level_skip: true
+
+prose:
+  style: academic
+  language: ru
+  person: third
+  rfc2119: optional
+
+references:
+  frontmatter:
+    relates:
+      target_must_exist: true
+      allowed_extensions: ['.md']
+  internal_links:
+    must_resolve: true
+    check_anchors: true
+
+review:
+  criteria:
+    - id: D1
+      rule: Текст написан в третьем лице — нет обращений на «ты» и императивов
+      severity: error
+    - id: D2
+      rule: Текст не содержит разговорной лексики, сленга и неформальных сокращений
+      severity: error
+    - id: D3
+      rule: Заголовки секций используют полные формальные названия без сокращений
+      severity: warning
+  guidance: >
+    Оценить ясность и полноту изложения.
+    Проверить что документ не содержит устаревшей информации.
+    Убедиться что документ не дублирует содержимое других документов.
+    Проверить соответствие академическому стилю: формальная лексика, третье лицо.

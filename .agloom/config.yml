@@ -1,0 +1,6 @@
+# Agloom configuration
+# List of adapters to use by default when no --adapter or --all flag is provided.
+# Run 'agloom adapters --all' to see all available adapters.
+adapters:
+  - claude
+  - opencode

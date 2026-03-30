@@ -1,0 +1,518 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:acorn:schemas:meta-schema:v1",
+  "title": "Acorn Document Type Definition",
+  "description": "Meta-schema defining the vocabulary for markdown document type definitions",
+
+  "type": "object",
+  "required": ["$schema", "name", "version", "description", "frontmatter"],
+  "additionalProperties": false,
+
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Path to meta-schema.json for validation and editor support"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Type identifier. Matches the filename stem (e.g. 'spec' from spec.schema.yml)"
+    },
+    "version": {
+      "$ref": "#/$defs/semver",
+      "description": "SemVer version of this type definition"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Purpose and intended usage of this document type"
+    },
+    "frontmatter": { "$ref": "#/$defs/frontmatterRules" },
+    "structure": { "$ref": "#/$defs/structureRules" },
+    "prose": { "$ref": "#/$defs/proseRules" },
+    "references": { "$ref": "#/$defs/referenceRules" },
+    "review": { "$ref": "#/$defs/reviewRules" }
+  },
+
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+    },
+
+    "frontmatterRules": {
+      "type": "object",
+      "required": ["required"],
+      "additionalProperties": false,
+      "properties": {
+        "required": { "$ref": "#/$defs/fieldMap" },
+        "optional": { "$ref": "#/$defs/fieldMap" },
+        "additionalProperties": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow undeclared fields in frontmatter"
+        }
+      }
+    },
+
+    "fieldMap": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/fieldConstraint" }
+    },
+
+    "fieldConstraint": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["string", "number", "boolean", "array"] },
+        "enum": { "type": "array", "minItems": 1 },
+        "const": {},
+        "minLength": { "type": "integer", "minimum": 0 },
+        "pattern": { "type": "string", "format": "regex" },
+        "items": { "$ref": "#/$defs/fieldConstraint" },
+        "description": { "type": "string" }
+      }
+    },
+
+    "structureRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "headings": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "require_h1": {
+              "type": "boolean",
+              "default": true,
+              "description": "Document must contain at least one H1"
+            },
+            "max_h1": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of H1 headings allowed"
+            },
+            "max_depth": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6,
+              "description": "Deepest heading level allowed (e.g. 4 = H1–H4)"
+            },
+            "h1_matches_summary": {
+              "type": "boolean",
+              "default": false,
+              "description": "H1 text must equal frontmatter summary"
+            },
+            "no_level_skip": {
+              "type": "boolean",
+              "default": false,
+              "description": "Forbid heading level gaps (e.g. H2 → H4 without H3)"
+            },
+            "unique": {
+              "type": "boolean",
+              "default": false,
+              "description": "All heading texts must be unique within the document"
+            }
+          }
+        },
+        "sections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sectionDef" },
+          "description": "Ordered list of expected top-level sections. Array order defines expected document order."
+        },
+        "content": {
+          "$ref": "#/$defs/contentRules",
+          "description": "Document-level content constraints applied outside of section scope"
+        }
+      }
+    },
+
+    "sectionDef": {
+      "type": "object",
+      "required": ["heading", "level"],
+      "additionalProperties": false,
+      "properties": {
+        "heading": {
+          "$ref": "#/$defs/headingMatch",
+          "description": "Heading text to match — literal string or regex pattern"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 6,
+          "description": "Expected heading level (2–6; H1 is controlled by headings.require_h1)"
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false,
+          "description": "Section may be absent without triggering an error"
+        },
+        "count": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min": { "type": "integer", "minimum": 0 },
+            "max": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "0 means unlimited"
+            }
+          },
+          "description": "How many times a pattern-matched section may appear"
+        },
+        "description": {
+          "type": "string",
+          "description": "Section purpose — guidance for template generation and review"
+        },
+        "severity": {
+          "enum": ["error", "warning", "info"],
+          "default": "error",
+          "description": "Violation severity when section is missing or invalid"
+        },
+        "allow_additional": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow child headings not declared in children"
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sectionDef" },
+          "description": "Expected subsections (same structure, recursive)"
+        },
+        "required_text": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/textMatch" },
+          "description": "Text that must appear within this section"
+        },
+        "forbidden_text": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/textMatch" },
+          "description": "Text that must not appear within this section"
+        },
+        "code_blocks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/codeBlockRule" },
+          "description": "Code block constraints within this section"
+        },
+        "tables": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tableRule" },
+          "description": "Table constraints within this section"
+        },
+        "lists": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/listRule" },
+          "description": "List constraints within this section"
+        },
+        "word_count": {
+          "$ref": "#/$defs/wordCountRule",
+          "description": "Word count constraints for this section's prose"
+        }
+      }
+    },
+
+    "headingMatch": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exact heading text (without # prefix)"
+        },
+        {
+          "type": "object",
+          "required": ["pattern"],
+          "additionalProperties": false,
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "format": "regex",
+              "description": "Regex pattern matched against heading text"
+            }
+          }
+        }
+      ]
+    },
+
+    "textMatch": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Literal substring that must be present/absent"
+        },
+        {
+          "type": "object",
+          "required": ["pattern"],
+          "additionalProperties": false,
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "format": "regex",
+              "description": "Regex pattern matched against section content"
+            }
+          }
+        }
+      ]
+    },
+
+    "contentRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required_text": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/textMatch" },
+          "description": "Text that must appear somewhere in the document body"
+        },
+        "forbidden_text": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/textMatch" },
+          "description": "Text that must not appear anywhere in the document body"
+        },
+        "tail_pattern": {
+          "type": "string",
+          "format": "regex",
+          "description": "Regex that the last non-empty line of the document must match"
+        }
+      }
+    },
+
+    "codeBlockRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lang": {
+          "type": "string",
+          "description": "Required language identifier (e.g. yaml, typescript)"
+        },
+        "min": { "type": "integer", "minimum": 0 },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0 means unlimited"
+        }
+      }
+    },
+
+    "tableRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "integer", "minimum": 0 },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0 means unlimited"
+        },
+        "min_columns": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum number of columns"
+        },
+        "required_headers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Column headers that must be present"
+        }
+      }
+    },
+
+    "listRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": ["ordered", "unordered", "task_list"],
+          "description": "List variant. task_list = items with checkboxes (- [ ] / - [x])"
+        },
+        "min": { "type": "integer", "minimum": 0 },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0 means unlimited"
+        },
+        "min_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum number of items per matching list"
+        }
+      }
+    },
+
+    "wordCountRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "integer", "minimum": 0 },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0 means unlimited"
+        }
+      }
+    },
+
+    "proseRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "style": {
+          "enum": ["academic", "instructional"],
+          "description": "Writing style. academic: formal scientific/popular-science prose (third person, no slang). instructional: imperative SOP-style instructions (second person)"
+        },
+        "language": {
+          "enum": ["ru", "en"],
+          "description": "Primary language of the document"
+        },
+        "person": {
+          "enum": ["first", "second", "third"],
+          "description": "Required grammatical person"
+        },
+        "rfc2119": {
+          "enum": ["required", "optional", "forbidden"],
+          "description": "Usage of RFC 2119 keywords"
+        },
+        "vale": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "extends": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Vale style packages to apply"
+            }
+          }
+        }
+      }
+    },
+
+    "referenceRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "frontmatter": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/refFieldRule" }
+        },
+        "internal_links": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "must_resolve": { "type": "boolean", "default": true },
+            "check_anchors": {
+              "type": "boolean",
+              "default": false,
+              "description": "Verify that #fragment anchors resolve to a heading in the target document"
+            },
+            "check_external": {
+              "type": "boolean",
+              "default": false,
+              "description": "Verify that external URLs (http/https) are reachable. Slow — use via doc:links command."
+            }
+          }
+        }
+      }
+    },
+
+    "refFieldRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target_must_exist": {
+          "type": "boolean",
+          "default": true,
+          "description": "Target path must exist in the file system"
+        },
+        "allowed_extensions": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^\\." },
+          "description": "Allowed file extensions for targets"
+        },
+        "allowed_prefixes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Allowed path prefixes for targets"
+        }
+      }
+    },
+
+    "reviewRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "criteria": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reviewCriterion" },
+          "description": "Structured rules for AI reviewer. Each criterion is evaluated as pass/fail."
+        },
+        "guidance": {
+          "type": "string",
+          "description": "Free-form review guidance for nuanced assessment beyond binary criteria"
+        }
+      }
+    },
+
+    "reviewCriterion": {
+      "type": "object",
+      "required": ["id", "rule", "severity"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9]*$",
+          "description": "Unique identifier within the type (e.g. S6, A9)"
+        },
+        "rule": {
+          "type": "string",
+          "description": "What to check — one verifiable statement"
+        },
+        "description": {
+          "type": "string",
+          "description": "Clarifying details that help the reviewer correctly apply the rule — edge cases, exceptions, scope boundaries"
+        },
+        "severity": {
+          "enum": ["error", "warning", "info"],
+          "description": "error = must fix before acceptance, warning = recommendation, info = optional suggestion"
+        },
+        "examples": { "$ref": "#/$defs/reviewExamples" }
+      }
+    },
+
+    "reviewExamples": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pass": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reviewExample" },
+          "description": "Examples of text that satisfies the criterion"
+        },
+        "fail": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reviewExample" },
+          "description": "Examples of text that violates the criterion"
+        }
+      }
+    },
+
+    "reviewExample": {
+      "type": "object",
+      "required": ["text"],
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Example text fragment"
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Why this text passes or fails the criterion"
+        },
+        "fix": {
+          "type": "string",
+          "description": "Suggested fix (only for fail examples)"
+        }
+      }
+    }
+  }
+}

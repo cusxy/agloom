@@ -37,9 +37,6 @@ opencode.json
 # Agloom (local instructions)
 AGLOOM.local.md
 
-# Agloom (temporal)
-.agloom
-
 # IDE
 .idea/
 .vscode/
