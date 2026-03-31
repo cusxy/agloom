@@ -17,7 +17,7 @@ blueprint: schemas/draft/agent.schema.yml
 Тебе ТРЕБУЕТСЯ прочитать перед началом работы:
 
 - [agent-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
-- [research-format.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/research-cycle/docs/research-format.md) — методология, структура и критерии качества исследований.
+- [research-format.md](${agloom:PROJECT_DIR}/${agloom:SKILLS_DIR}/research-cycle/docs/research-format.md) — методология, структура и критерии качества исследований.
 
 ## Входные параметры
 
@@ -59,7 +59,7 @@ blueprint: schemas/draft/agent.schema.yml
 - Обязательные секции присутствуют: «Контекст исследования», «Заключение».
 - Документ не превышает 250 строк. Если суммарный объём объектов анализа
   > 400 строк, исследование ДОЛЖНО быть разбито на индекс + per-object файлы
-  > (см. [Размер и организация документа](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/research-cycle/docs/research-format.md#размер-и-организация-документа)).
+  > (см. [Размер и организация документа](${agloom:PROJECT_DIR}/${agloom:SKILLS_DIR}/research-cycle/docs/research-format.md#размер-и-организация-документа)).
 - При разбиении: per-object файлы содержат `relates` ссылку на индекс,
   индекс содержит ссылки на все per-object файлы.
 

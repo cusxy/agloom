@@ -16,7 +16,7 @@ description: Ревью спецификаций (quality gate фазы Specify)
 Перед началом работы прочитай:
 
 - [agent-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
-- [spec-format.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/spec-cycle/docs/spec-format.md) — формат операций и правила написания спецификаций.
+- [spec-format.md](${agloom:PROJECT_DIR}/${agloom:SKILLS_DIR}/spec-cycle/docs/spec-format.md) — формат операций и правила написания спецификаций.
 
 ## Входные параметры
 
@@ -74,7 +74,7 @@ reviewer и исполнителем обеспечивает независим
 ### S2. Полнота
 
 - Каждая операция содержит все секции, требуемые типом операции
-  (см. [Типы операций](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/spec-cycle/docs/spec-format.md#типы-операций), загрузить соответствующий файл типа):
+  (см. [Типы операций](${agloom:PROJECT_DIR}/${agloom:SKILLS_DIR}/spec-cycle/docs/spec-format.md#типы-операций), загрузить соответствующий файл типа):
   - `service:endpoint` — формат ответа (поля, типы), контекст доступа.
   - `library:method` — возвращаемое значение, исключения.
   - `cli:command` — аргументы, вывод, exit codes.

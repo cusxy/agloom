@@ -32,8 +32,8 @@ SKILL.md и определения всех агентов цикла, след�
 
 ## Артефакты генерации
 
-- SKILL.md в `${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/<cycle-name>/`.
-- Определения агентов в `${agloom:PROJECT_DIR}/${agloom:AGLOOM_AGENTS_DIR}/<agent-name>.md`.
+- SKILL.md в `${agloom:AGLOOM_SKILLS_DIR}/<cycle-name>/`.
+- Определения агентов в `${agloom:AGLOOM_AGENTS_DIR}/<agent-name>.md`.
 
 ## Definition of Ready
 
@@ -92,8 +92,8 @@ SKILL.md и определения всех агентов цикла, след�
 - `dor-6`: (режим «Обновление») Существующие файлы из scope прочитаны
   целиком.
 
-  **Pass-пример:** scope содержит `${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/spec-cycle/SKILL.md`
-  и `${agloom:PROJECT_DIR}/${agloom:AGLOOM_AGENTS_DIR}/spec-writer.md` — оба файла прочитаны полностью,
+  **Pass-пример:** scope содержит `${agloom:AGLOOM_SKILLS_DIR}/spec-cycle/SKILL.md`
+  и `${agloom:AGLOOM_AGENTS_DIR}/spec-writer.md` — оба файла прочитаны полностью,
   включая все секции и front matter.
 
   **Fail-пример:** scope содержит 3 файла, прочитан только SKILL.md —

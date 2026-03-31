@@ -28,7 +28,7 @@ blueprint: schemas/draft/skill.schema.yml
 
 ### Определение scope
 
-- Новый цикл → `${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/<cycle-name>/SKILL.md` + `${agloom:PROJECT_DIR}/${agloom:AGLOOM_AGENTS_DIR}/<agent-name>.md`
+- Новый цикл → `.agloom/skills/<cycle-name>/SKILL.md` + `.agloom/agents/<agent-name>.md`
   для каждого агента из таблицы фаз.
 - Обновление существующего цикла → существующие файлы skill и/или агентов.
 

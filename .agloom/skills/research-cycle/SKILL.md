@@ -28,7 +28,7 @@ blueprint: schemas/draft/skill.schema.yml
 ### Определение scope
 
 - Продуктовые решения → `docs/researches/<topic>.md`
-- Инфраструктура агентов / процессов → `${agloom:PROJECT_DIR}/${agloom:ROOT_DIR}/docs/<topic>.md`
+- Инфраструктура агентов / процессов → `.agloom/docs/<topic>.md`
 
 ## Definition of Ready
 
