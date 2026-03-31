@@ -190,7 +190,7 @@ describe("CLI", () => {
       await vi.waitFor(
         () => {
           const frame = lastFrame();
-          expect(frame).toContain("Done.");
+          expect(frame).toContain("Failed.");
         },
         { timeout: 10000 },
       );
@@ -200,13 +200,16 @@ describe("CLI", () => {
       // Успешные шаги показывают ✓
       expect(output).toContain("✓");
 
-      // Неуспешный шаг показывает ✗ и сообщение первой ошибки
-      expect(output).toContain("✗");
-      // TUI § Результат шага (неуспешный): "✗ {name}        {errors[0]}"
-      // Строка с ✗ должна содержать имя шага и текст ошибки
+      // Неуспешный шаг показывает ✗ и сообщение ошибки
       expect(output).toMatch(/✗.*Agents/);
       // Текст ошибки отображается в выводе (сообщение из transpiler)
       expect(output).toMatch(/✗.*\S+/); // ✗ с непустым сообщением после имени
+
+      // Заголовок группы с ошибкой отображает ✗ вместо ✓
+      expect(output).toMatch(/✗ Transpiling for claude/);
+
+      // Итоговая строка указывает на ошибки
+      expect(output).toContain("Failed.");
 
       // Exit code 1 при наличии ошибок
       expect(process.exitCode).toBe(1);
@@ -236,7 +239,7 @@ describe("CLI", () => {
       await vi.waitFor(
         () => {
           const frame = lastFrame();
-          expect(frame).toContain("Done.");
+          expect(frame).toContain("Failed.");
         },
         { timeout: 10000 },
       );
@@ -247,7 +250,7 @@ describe("CLI", () => {
       // Skills: 1 файл (SKILL.md -> .claude/skills/my-skill/SKILL.md)
       // Agents: 0 файлов (ошибка)
       // totalWritten = 1 + 1 + 0 = 2
-      expect(output).toMatch(/Done\.\s+2\s+files written\./);
+      expect(output).toMatch(/Failed\.\s+2\s+files written\./);
 
       unmount();
     });
@@ -441,7 +444,7 @@ describe("CLI", () => {
       await vi.waitFor(
         () => {
           const frame = lastFrame();
-          expect(frame).toContain("Done.");
+          expect(frame).toContain("Failed.");
         },
         { timeout: 10000 },
       );
@@ -455,6 +458,12 @@ describe("CLI", () => {
 
       // Overlay — ошибка (✗)
       expect(output).toMatch(/✗.*Overlay/);
+
+      // Заголовок группы с ошибкой отображает ✗
+      expect(output).toMatch(/✗ Transpiling for claude/);
+
+      // Итоговая строка указывает на ошибки
+      expect(output).toContain("Failed.");
 
       // Exit code 1: ошибка overlay учитывается наравне с остальными шагами
       expect(process.exitCode).toBe(1);

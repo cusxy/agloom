@@ -88,11 +88,9 @@ export class AgentsTranspiler {
       // Шаг 1: проверить, что массив errors пуст
       // Расширение 1a: при наличии ошибок — пропустить запись
       if (result.errors.length > 0) {
-        errors.push(
-          new AgentWriteError(
-            `Skipped ${result.agentId}: transpile errors present`,
-          ),
-        );
+        for (const err of result.errors) {
+          errors.push(new AgentWriteError(err.message));
+        }
         continue;
       }
 

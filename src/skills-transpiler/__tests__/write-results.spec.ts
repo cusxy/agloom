@@ -205,9 +205,7 @@ describe("SkillsTranspiler", () => {
       // Assert: ошибка с правильным сообщением
       expect(writeResult.errors).toHaveLength(1);
       expect(writeResult.errors[0]).toBeInstanceOf(SkillWriteError);
-      expect(writeResult.errors[0].message).toBe(
-        "Skipped failing: transpile errors present",
-      );
+      expect(writeResult.errors[0].message).toBe("Adapter failed");
     });
 
     // --- Расширение 1a: смешанный сценарий — один адаптер с ошибками, другой без ---

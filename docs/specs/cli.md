@@ -397,11 +397,13 @@ Unknown command: {cmd}. Run 'agloom --help' to see available commands.
 
 Во время выполнения транспиляции отображается строка со spinner
 (компонент `ink-spinner`). По завершении операции spinner
-заменяется на символ `✓` (зелёный):
+заменяется на символ `✓` (зелёный) если все шаги записи успешны,
+или на символ `✗` (красный) если хотя бы один шаг содержит ошибки:
 
 ```text
 ◐ Transpiling for {adapterId}...   ← во время выполнения
-✓ Transpiling for {adapterId}...   ← после завершения
+✓ Transpiling for {adapterId}...   ← после завершения (все шаги успешны)
+✗ Transpiling for {adapterId}...   ← после завершения (есть ошибки)
 ```
 
 ### Результат шага
@@ -427,10 +429,15 @@ Unknown command: {cmd}. Run 'agloom --help' to see available commands.
 
 ```text
   ✗ {name.padEnd(14)}{errors[0]}
+      {errors[1]}
+      {errors[2]}
+      ...
 ```
 
 Символ `✗` СЛЕДУЕТ отображать красным цветом.
-Отображается сообщение первой ошибки из массива `errors`.
+Первая ошибка отображается на строке с именем шага.
+Последующие ошибки отображаются на отдельных строках с отступом.
+ТРЕБУЕТСЯ отображать все ошибки из массива `errors`, а не только первую.
 
 ### Фильтрация шагов (--verbose)
 
@@ -448,6 +455,13 @@ Unknown command: {cmd}. Run 'agloom --help' to see available commands.
 
 ```text
 Done. {totalWritten} files written.
+```
+
+При наличии ошибок хотя бы в одном шаге итоговая строка ДОЛЖНА
+отображать `"Failed."` вместо `"Done."`:
+
+```text
+Failed. {totalWritten} files written.
 ```
 
 Значение `totalWritten` — сумма `writtenCount` всех шагов,
@@ -468,12 +482,12 @@ Done. 10 files written.
 ### Пример полного вывода (частичная ошибка)
 
 ```text
-✓ Transpiling for claude...
+✗ Transpiling for claude...
   ✓ Instructions     3 files
   ✓ Skills           5 files
   ✗ Agents        Failed to write .claude/agents/reviewer.md: EACCES
 
-Done. 8 files written.
+Failed. 8 files written.
 ```
 
 ## Exit codes

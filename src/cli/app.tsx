@@ -928,28 +928,49 @@ function TranspileView({
           ? r.outcomes
           : r.outcomes.filter((o) => o.writtenCount > 0 || o.errors.length > 0);
         if (!verbose && visibleOutcomes.length === 0) return null;
+        const hasErrors = visibleOutcomes.some((o) => o.errors.length > 0);
         return (
           <React.Fragment key={r.adapterId}>
             <Text>
-              {done ? <Text color="green">✓</Text> : <Spinner type="dots" />}{" "}
+              {done ? (
+                hasErrors ? (
+                  <Text color="red">✗</Text>
+                ) : (
+                  <Text color="green">✓</Text>
+                )
+              ) : (
+                <Spinner type="dots" />
+              )}{" "}
               Transpiling for {r.adapterId}...
             </Text>
-            {visibleOutcomes.map((outcome) => (
-              <Text key={`${r.adapterId}-${outcome.name}`}>
-                {"  "}
-                {outcome.errors.length === 0 ? (
-                  <>
-                    <Text color="green">✓</Text> {outcome.name.padEnd(14)}
-                    {String(outcome.writtenCount).padStart(4)} files
-                  </>
-                ) : (
-                  <>
-                    <Text color="red">✗</Text> {outcome.name.padEnd(14)}
-                    {outcome.errors[0]}
-                  </>
-                )}
-              </Text>
-            ))}
+            {visibleOutcomes.map((outcome) =>
+              outcome.errors.length === 0 ? (
+                <Text key={`${r.adapterId}-${outcome.name}`}>
+                  {"  "}
+                  <Text color="green">✓</Text> {outcome.name.padEnd(14)}
+                  {String(outcome.writtenCount).padStart(4)} files
+                </Text>
+              ) : (
+                <React.Fragment key={`${r.adapterId}-${outcome.name}`}>
+                  {outcome.errors.map((err, i) => (
+                    <Text key={`${r.adapterId}-${outcome.name}-${i}`}>
+                      {"  "}
+                      {i === 0 ? (
+                        <>
+                          <Text color="red">✗</Text> {outcome.name.padEnd(14)}
+                          {err}
+                        </>
+                      ) : (
+                        <>
+                          {"    "}
+                          {err}
+                        </>
+                      )}
+                    </Text>
+                  ))}
+                </React.Fragment>
+              ),
+            )}
           </React.Fragment>
         );
       })}
@@ -962,7 +983,14 @@ function TranspileView({
       {done && (
         <>
           <Text> </Text>
-          <Text>Done. {totalWritten} files written.</Text>
+          <Text>
+            {entryResults.some((r) =>
+              r.outcomes.some((o) => o.errors.length > 0),
+            )
+              ? "Failed."
+              : "Done."}{" "}
+            {totalWritten} files written.
+          </Text>
         </>
       )}
     </Box>

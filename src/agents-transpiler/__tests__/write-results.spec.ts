@@ -121,9 +121,7 @@ describe("AgentsTranspiler", () => {
       // Ошибки включены в AgentWriteResult.errors
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(AgentWriteError);
-      expect(writeResult.errors[0].message).toBe(
-        "Skipped failing: transpile errors present",
-      );
+      expect(writeResult.errors[0].message).toBe("Adapter failed");
       expect(writeResult.written).not.toContain(".failing/agents/agent.md");
     });
 

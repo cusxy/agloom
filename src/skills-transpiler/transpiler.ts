@@ -93,11 +93,9 @@ export class SkillsTranspiler {
       // Шаг 1: проверить, что массив errors пуст
       // Расширение 1a: при наличии ошибок — пропустить запись
       if (result.errors.length > 0) {
-        errors.push(
-          new SkillWriteError(
-            `Skipped ${result.agentId}: transpile errors present`,
-          ),
-        );
+        for (const err of result.errors) {
+          errors.push(new SkillWriteError(err.message));
+        }
         continue;
       }
 
