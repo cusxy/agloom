@@ -424,13 +424,13 @@ describe("CLI", () => {
     // Exit code учитывает ошибки шага overlay наравне с остальными шагами.
     it("завершается с exit code 1 при ошибке только в шаге overlay (остальные шаги успешны)", async () => {
       // Создаём overlay-файл, который невозможно скопировать:
-      // целевой путь заблокирован каталогом
+      // целевой путь заблокирован каталогом (overlay maps to project root)
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "blocked.txt"), "data");
 
-      // Создаём каталог на пути целевого файла — copyFile провалится
-      fs.mkdirSync(path.join(tmpDir, ".claude", "blocked.txt"), {
+      // Создаём каталог на пути целевого файла в project root — copyFile провалится
+      fs.mkdirSync(path.join(tmpDir, "blocked.txt"), {
         recursive: true,
       });
 
@@ -477,9 +477,14 @@ describe("CLI", () => {
     // overlay-файл ДОЛЖЕН перезаписать каноническое значение.
     it("overlay-файл перезаписывает файл, созданный каноническим транспилером", async () => {
       // Skills transpiler создаёт .claude/skills/my-skill/SKILL.md
-      // Overlay содержит файл с тем же относительным путём и другим содержимым
+      // Overlay содержит файл с тем же путём относительно project root
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-      const overlaySkillDir = path.join(overlayDir, "skills", "my-skill");
+      const overlaySkillDir = path.join(
+        overlayDir,
+        ".claude",
+        "skills",
+        "my-skill",
+      );
       fs.mkdirSync(overlaySkillDir, { recursive: true });
       fs.writeFileSync(
         path.join(overlaySkillDir, "SKILL.md"),

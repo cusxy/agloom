@@ -54,6 +54,10 @@ maps_to:
   транспилированы до самого адаптера. Массив МОЖЕТ быть пустым.
   Связь является явной: наличие `instructionsFile: null` НЕ подразумевает
   автоматическую зависимость от какого-либо адаптера.
+- `overlayImportPaths` (array\<string>, обязательно) — список путей относительно
+  project root, которые импортируются в overlay при выполнении `init`. Каждый
+  элемент — файл или директория. Используется процедурой Init Overlay Files
+  (см. `docs/specs/init-command.md` § Процедура Init Overlay Files).
 - `hidden` (boolean, обязательно) — признак скрытого адаптера.
   Скрытые адаптеры (`hidden: true`):
   - ЗАПРЕЩАЕТСЯ указывать в конфигурационном файле
@@ -69,13 +73,14 @@ maps_to:
 ## Обновление реестра адаптеров
 
 В реестр адаптеров ТРЕБУЕТСЯ добавить поля `targetRoot`, `targetFiles`,
-`projectFiles`, `instructionsFile`, `dependsOn` и `hidden` для каждой записи:
+`projectFiles`, `instructionsFile`, `dependsOn`, `overlayImportPaths`
+и `hidden` для каждой записи:
 
-| `id`         | `targetRoot`  | `targetFiles`   | `projectFiles`                     | `instructionsFile` | `dependsOn`    | `hidden` |
-| ------------ | ------------- | --------------- | ---------------------------------- | ------------------ | -------------- | -------- |
-| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` | `["CLAUDE.md", "CLAUDE.local.md"]` | `"CLAUDE.md"`      | `[]`           | `false`  |
-| `"opencode"` | `".opencode"` | `[]`            | `[]`                               | `null`             | `["agentsmd"]` | `false`  |
-| `"agentsmd"` | `".agents"`   | `["AGENTS.md"]` | `["AGENTS.md"]`                    | `"AGENTS.md"`      | `[]`           | `true`   |
+| `id`         | `targetRoot`  | `targetFiles`   | `projectFiles`                     | `instructionsFile` | `dependsOn`    | `overlayImportPaths`              | `hidden` |
+| ------------ | ------------- | --------------- | ---------------------------------- | ------------------ | -------------- | --------------------------------- | -------- |
+| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` | `["CLAUDE.md", "CLAUDE.local.md"]` | `"CLAUDE.md"`      | `[]`           | `[".claude", "CLAUDE.md"]`        | `false`  |
+| `"opencode"` | `".opencode"` | `[]`            | `[]`                               | `null`             | `["agentsmd"]` | `[".opencode"]`                   | `false`  |
+| `"agentsmd"` | `".agents"`   | `["AGENTS.md"]` | `["AGENTS.md"]`                    | `"AGENTS.md"`      | `[]`           | `[".agents", "AGENTS.md"]`        | `true`   |
 
 ### Запись agentsmd
 

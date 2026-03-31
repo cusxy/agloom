@@ -43,6 +43,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructionsFile: "CLAUDE.md",
     dependsOn: [],
     hidden: false,
+    overlayImportPaths: [".claude", "CLAUDE.md"],
     paths: {
       skills: ".claude/skills",
       agents: ".claude/agents",
@@ -62,6 +63,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructionsFile: null,
     dependsOn: ["agentsmd"],
     hidden: false,
+    overlayImportPaths: [".opencode"],
     paths: {
       skills: ".opencode/skills",
       agents: ".opencode/agents",
@@ -81,6 +83,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructionsFile: "AGENTS.md",
     dependsOn: [],
     hidden: true,
+    overlayImportPaths: [".agents", "AGENTS.md"],
     paths: {},
   },
 ];

@@ -42,7 +42,7 @@ function discoverFiles(dir: string): string[] {
  * 3. Для каждого обнаруженного файла определить относительный путь
  *    файла внутри директории-источника.
  * 4. Для каждого обнаруженного файла определить целевой путь как
- *    <projectRoot>/<entry.targetRoot>/<относительный путь>.
+ *    <projectRoot>/<относительный путь>.
  * 5. Для каждого обнаруженного файла создать промежуточные каталоги
  *    при необходимости.
  * 6. Для каждого обнаруженного файла скопировать файл побайтово.
@@ -91,7 +91,7 @@ export function runOverlayStep(
     const relativePath = path.relative(sourceDir, filePath);
 
     // Шаг 4: определить целевой путь
-    const targetPath = path.join(projectRoot, entry.targetRoot, relativePath);
+    const targetPath = path.join(projectRoot, relativePath);
 
     // Шаг 5: создать промежуточные каталоги при необходимости
     const targetDir = path.dirname(targetPath);

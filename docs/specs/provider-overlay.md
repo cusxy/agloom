@@ -34,15 +34,19 @@ Overlay позволяет пользователю размещать agent-с�
 .agloom/
   overlays/
     claude/
-      settings.json
-      commands/
-        my-cmd.md
+      .claude/
+        settings.json
+        commands/
+          my-cmd.md
+      .mcp.json
     opencode/
-      opencode.json
+      .opencode/
+        opencode.json
 ```
 
-Файлы в `.agloom/overlays/<adapterId>/` копируются
-в `<entry.targetRoot>/` при транспиляции.
+Файлы в `.agloom/overlays/<adapterId>/` отражают свою позицию
+относительно project root. При транспиляции они копируются
+в `<projectRoot>/<относительный путь>`.
 
 ## Расширение TranspilerStepOutcome
 
@@ -70,7 +74,7 @@ overlay-файлов в целевую директорию адаптера.
 3. Для каждого обнаруженного файла определить относительный путь
    файла внутри директории-источника.
 4. Для каждого обнаруженного файла определить целевой путь как
-   `<projectRoot>/<entry.targetRoot>/<относительный путь>`.
+   `<projectRoot>/<относительный путь>`.
 5. Для каждого обнаруженного файла создать промежуточные каталоги
    при необходимости.
 6. Для каждого обнаруженного файла скопировать файл побайтово.

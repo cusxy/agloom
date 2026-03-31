@@ -70,10 +70,10 @@ describe("CLI", () => {
     // =====================================================================
 
     it("при успешной инициализации --adapter выполняет Backup Project Files и Init Overlay Files, отображает успех и завершается с exit code 0", async () => {
-      // Создаём project-файлы (CLAUDE.md — в projectFiles записи claude)
+      // Создаём project-файлы (CLAUDE.md — в projectFiles и overlayImportPaths записи claude)
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Claude instructions");
 
-      // Создаём файлы в targetRoot адаптера "claude" (.claude/)
+      // Создаём файлы в .claude/ (в overlayImportPaths записи claude)
       const claudeDir = path.join(tmpDir, ".claude");
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(
@@ -106,10 +106,10 @@ describe("CLI", () => {
       expect(output).toMatch(
         /project files backed up to \.agloom\/instructions\//,
       );
-      // § Вывод (успех): результат overlay
+      // § Вывод (успех): результат overlay (2 files from .claude/ + 1 CLAUDE.md = 3)
       expect(output).toContain("✓");
       expect(output).toMatch(
-        /2\s+files copied to \.agloom\/overlays\/claude\//,
+        /3\s+files copied to \.agloom\/overlays\/claude\//,
       );
       // "Done."
       expect(output).toContain("Done.");
@@ -127,17 +127,24 @@ describe("CLI", () => {
       expect(fs.readFileSync(backedUp, "utf-8")).toBe("Claude instructions");
 
       // Побочный эффект: файлы скопированы в .agloom/overlays/claude/
+      // с сохранением позиции относительно project root
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       const overlaySettings = fs.readFileSync(
-        path.join(overlayDir, "settings.json"),
+        path.join(overlayDir, ".claude", "settings.json"),
         "utf-8",
       );
       expect(overlaySettings).toBe('{"key": "value"}');
       const overlayConfig = fs.readFileSync(
-        path.join(overlayDir, "config.txt"),
+        path.join(overlayDir, ".claude", "config.txt"),
         "utf-8",
       );
       expect(overlayConfig).toBe("config content");
+      // CLAUDE.md скопирован в overlay
+      const overlayClaude = fs.readFileSync(
+        path.join(overlayDir, "CLAUDE.md"),
+        "utf-8",
+      );
+      expect(overlayClaude).toBe("Claude instructions");
 
       unmount();
     });
@@ -263,12 +270,16 @@ describe("CLI", () => {
     // --- Расширение 2b Init Overlay Files: --force указан → перезаписать существующие файлы ---
     // § init-command.md § Процедура Init Overlay Files § Расширения 2b
     it("при --force перезаписывает существующие overlay-файлы в целевой директории", async () => {
-      // Существующие файлы в overlays/claude/
+      // Существующие файлы в overlays/claude/ (с путём, отражающим позицию в project root)
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-      fs.mkdirSync(overlayDir, { recursive: true });
-      fs.writeFileSync(path.join(overlayDir, "settings.json"), '{"old": true}');
+      const overlayClaudeDir = path.join(overlayDir, ".claude");
+      fs.mkdirSync(overlayClaudeDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(overlayClaudeDir, "settings.json"),
+        '{"old": true}',
+      );
 
-      // Новые файлы в targetRoot (.claude/)
+      // Новые файлы в .claude/ (overlayImportPaths)
       const claudeDir = path.join(tmpDir, ".claude");
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "settings.json"), '{"new": true}');
@@ -298,9 +309,9 @@ describe("CLI", () => {
       // Exit code 0
       expect(process.exitCode).toBeUndefined();
 
-      // Побочный эффект: файл перезаписан новым содержимым
+      // Побочный эффект: файл перезаписан новым содержимым (путь включает .claude/)
       const settings = fs.readFileSync(
-        path.join(overlayDir, "settings.json"),
+        path.join(overlayClaudeDir, "settings.json"),
         "utf-8",
       );
       expect(settings).toBe('{"new": true}');
@@ -486,7 +497,7 @@ describe("CLI", () => {
     it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
       "при ошибке копирования overlay-файла добавляет сообщение в errors, продолжает с оставшимися файлами и завершается с exit code 1",
       async () => {
-        // Создаём файлы в targetRoot (.claude/)
+        // Создаём файлы в .claude/ (overlayImportPaths)
         const claudeDir = path.join(tmpDir, ".claude");
         fs.mkdirSync(claudeDir, { recursive: true });
         fs.writeFileSync(path.join(claudeDir, "ok-file.txt"), "ok content");
@@ -521,9 +532,11 @@ describe("CLI", () => {
         // § Exit codes: 1
         expect(process.exitCode).toBe(1);
 
-        // Побочный эффект: ok-file.txt скопирован
+        // Побочный эффект: ok-file.txt скопирован (путь теперь включает .claude/)
         const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-        expect(fs.existsSync(path.join(overlayDir, "ok-file.txt"))).toBe(true);
+        expect(
+          fs.existsSync(path.join(overlayDir, ".claude", "ok-file.txt")),
+        ).toBe(true);
 
         unmount();
       },
@@ -531,9 +544,9 @@ describe("CLI", () => {
 
     // --- Трансформация: Процедура Init Overlay Files шаг 4 — рекурсивное копирование ---
     // § init-command.md § Процедура Init Overlay Files § Поведение шаг 4:
-    // Рекурсивно скопировать все файлы, сохраняя структуру каталогов.
-    it("рекурсивно копирует overlay-файлы из targetRoot с сохранением структуры каталогов", async () => {
-      // Создаём вложенные файлы в targetRoot (.claude/)
+    // Для каждого пути из overlayImportPaths, рекурсивно скопировать файлы.
+    it("рекурсивно копирует overlay-файлы из overlayImportPaths с сохранением структуры каталогов", async () => {
+      // Создаём вложенные файлы в .claude/ (overlayImportPaths)
       const claudeDir = path.join(tmpDir, ".claude");
       const subDir = path.join(claudeDir, "commands", "sub");
       fs.mkdirSync(subDir, { recursive: true });
@@ -566,16 +579,23 @@ describe("CLI", () => {
       expect(process.exitCode).toBeUndefined();
 
       // Побочный эффект: структура каталогов сохранена в overlays/claude/
+      // с путём, отражающим позицию в project root (включая .claude/)
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       expect(
-        fs.readFileSync(path.join(overlayDir, "root-file.txt"), "utf-8"),
+        fs.readFileSync(
+          path.join(overlayDir, ".claude", "root-file.txt"),
+          "utf-8",
+        ),
       ).toBe("root");
       expect(
-        fs.readFileSync(path.join(overlayDir, "commands", "cmd.md"), "utf-8"),
+        fs.readFileSync(
+          path.join(overlayDir, ".claude", "commands", "cmd.md"),
+          "utf-8",
+        ),
       ).toBe("cmd");
       expect(
         fs.readFileSync(
-          path.join(overlayDir, "commands", "sub", "deep.md"),
+          path.join(overlayDir, ".claude", "commands", "sub", "deep.md"),
           "utf-8",
         ),
       ).toBe("deep");
@@ -626,12 +646,12 @@ describe("CLI", () => {
 
     // --- Шаг 8: --all — для каждой записи реестра выполнить Init Overlay Files ---
     it("при --all инициализирует все адаптеры из реестра", async () => {
-      // Создаём файлы для адаптера claude
+      // Создаём файлы для адаптера claude (overlayImportPaths: [".claude", "CLAUDE.md"])
       const claudeDir = path.join(tmpDir, ".claude");
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "claude-file.txt"), "claude");
 
-      // Создаём файлы для адаптера opencode
+      // Создаём файлы для адаптера opencode (overlayImportPaths: [".opencode"])
       const opencodeDir = path.join(tmpDir, ".opencode");
       fs.mkdirSync(opencodeDir, { recursive: true });
       fs.writeFileSync(path.join(opencodeDir, "opencode-file.txt"), "opencode");
@@ -660,10 +680,17 @@ describe("CLI", () => {
       expect(output).toContain("Done.");
       expect(process.exitCode).toBeUndefined();
 
-      // Побочный эффект: файлы скопированы для каждого адаптера
+      // Побочный эффект: файлы скопированы с сохранением позиции в project root
       expect(
         fs.existsSync(
-          path.join(tmpDir, ".agloom", "overlays", "claude", "claude-file.txt"),
+          path.join(
+            tmpDir,
+            ".agloom",
+            "overlays",
+            "claude",
+            ".claude",
+            "claude-file.txt",
+          ),
         ),
       ).toBe(true);
       expect(
@@ -673,6 +700,7 @@ describe("CLI", () => {
             ".agloom",
             "overlays",
             "opencode",
+            ".opencode",
             "opencode-file.txt",
           ),
         ),

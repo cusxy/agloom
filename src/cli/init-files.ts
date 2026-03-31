@@ -237,24 +237,42 @@ export function initFiles(
   }
   // Расширение 2b: --force указан → пропустить проверку
 
-  // Шаг 4: рекурсивно скопировать файлы из targetRoot
-  const sourceDir = path.join(projectRoot, entry.targetRoot);
+  // Шаг 4: для каждого пути из entry.overlayImportPaths, собрать файлы для копирования
+  const filesToCopy: { absolutePath: string; relativePath: string }[] = [];
 
-  // Расширение 4a: targetRoot не существует → copiedCount: 0, не является ошибкой
-  if (!fs.existsSync(sourceDir)) {
-    return { copiedCount: 0, errors: [] };
-  }
+  for (const importPath of entry.overlayImportPaths) {
+    const sourcePath = path.join(projectRoot, importPath);
 
-  let files: string[];
-  try {
-    files = discoverFiles(sourceDir);
-  } catch (err) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    return { copiedCount: 0, errors: [error.message] };
+    if (!fs.existsSync(sourcePath)) {
+      continue;
+    }
+
+    const stat = fs.statSync(sourcePath);
+    if (stat.isDirectory()) {
+      // Рекурсивно собрать все файлы из директории
+      let files: string[];
+      try {
+        files = discoverFiles(sourcePath);
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        errors.push(error.message);
+        continue;
+      }
+      for (const filePath of files) {
+        const relativePath = path.join(
+          importPath,
+          path.relative(sourcePath, filePath),
+        );
+        filesToCopy.push({ absolutePath: filePath, relativePath });
+      }
+    } else {
+      // Это файл — копировать как есть
+      filesToCopy.push({ absolutePath: sourcePath, relativePath: importPath });
+    }
   }
 
   // Если файлов нет — не создаём пустую директорию
-  if (files.length === 0) {
+  if (filesToCopy.length === 0) {
     return { copiedCount: 0, errors: [] };
   }
 
@@ -267,12 +285,9 @@ export function initFiles(
     return error.message;
   }
 
-  for (const filePath of files) {
-    // Определить относительный путь внутри sourceDir
-    const relativePath = path.relative(sourceDir, filePath);
-
+  for (const file of filesToCopy) {
     // Определить целевой путь
-    const destPath = path.join(targetDir, relativePath);
+    const destPath = path.join(targetDir, file.relativePath);
 
     // Создать промежуточные каталоги при необходимости
     const destDir = path.dirname(destPath);
@@ -287,7 +302,7 @@ export function initFiles(
 
     // Скопировать файл
     try {
-      fs.copyFileSync(filePath, destPath);
+      fs.copyFileSync(file.absolutePath, destPath);
       copiedCount++;
     } catch (err) {
       // Расширение 4b: ошибка копирования — добавить в errors, продолжить

@@ -31,6 +31,8 @@ export interface AdapterRegistryEntry {
   dependsOn: string[];
   /** Признак скрытого адаптера. */
   hidden: boolean;
+  /** Список путей относительно project root, импортируемых в overlay при init. */
+  overlayImportPaths: string[];
   /** Пути к agent-specific каталогам. */
   paths: {
     skills?: string;

@@ -50,21 +50,22 @@ describe("CLI", () => {
     // 1. Определить директорию-источник: <projectRoot>/.agloom/overlays/<entry.id>/
     // 2. Рекурсивно обнаружить все файлы в директории-источнике
     // 3. Определить относительный путь файла внутри директории-источника
-    // 4. Определить целевой путь: <projectRoot>/<entry.targetRoot>/<относительный путь>
+    // 4. Определить целевой путь: <projectRoot>/<относительный путь>
     // 5. Создать промежуточные каталоги при необходимости
     // 6. Скопировать файл побайтово
     // 7. Сформировать TranspilerStepOutcome с name: "Overlay", writtenCount и errors
-    it('копирует файлы из overlays/<entry.id>/ в <entry.targetRoot>/ и возвращает outcome с name "Overlay" и корректным writtenCount', () => {
+    it('копирует файлы из overlays/<entry.id>/ в project root и возвращает outcome с name "Overlay" и корректным writtenCount', () => {
       const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
 
-      // Создаём overlay-файлы
+      // Создаём overlay-файлы (структура отражает позицию в project root)
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-      fs.mkdirSync(overlayDir, { recursive: true });
+      const overlayClaudeDir = path.join(overlayDir, ".claude");
+      fs.mkdirSync(overlayClaudeDir, { recursive: true });
       fs.writeFileSync(
-        path.join(overlayDir, "settings.json"),
+        path.join(overlayClaudeDir, "settings.json"),
         '{"key": "value"}',
       );
-      fs.writeFileSync(path.join(overlayDir, "config.txt"), "overlay content");
+      fs.writeFileSync(path.join(overlayDir, ".mcp.json"), '{"mcp": true}');
 
       const outcome = runOverlayStep({ entry, projectRoot: tmpDir });
 
@@ -72,27 +73,27 @@ describe("CLI", () => {
       expect(outcome.writtenCount).toBe(2);
       expect(outcome.errors).toEqual([]);
 
-      // Проверяем, что файлы действительно скопированы в целевую директорию
+      // Проверяем, что файлы скопированы в project root с сохранением пути
       const targetSettings = fs.readFileSync(
         path.join(tmpDir, ".claude", "settings.json"),
         "utf-8",
       );
       expect(targetSettings).toBe('{"key": "value"}');
 
-      const targetConfig = fs.readFileSync(
-        path.join(tmpDir, ".claude", "config.txt"),
+      const targetMcp = fs.readFileSync(
+        path.join(tmpDir, ".mcp.json"),
         "utf-8",
       );
-      expect(targetConfig).toBe("overlay content");
+      expect(targetMcp).toBe('{"mcp": true}');
     });
 
     // --- Трансформация: шаги 3-4 — рекурсивная структура подкаталогов ---
-    // Вложенные подкаталоги из overlays/ воспроизводятся в targetRoot
+    // Вложенные подкаталоги из overlays/ воспроизводятся в project root
     it("сохраняет структуру вложенных подкаталогов при копировании", () => {
       const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
 
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-      const nestedDir = path.join(overlayDir, "commands", "sub");
+      const nestedDir = path.join(overlayDir, ".claude", "commands", "sub");
       fs.mkdirSync(nestedDir, { recursive: true });
       fs.writeFileSync(path.join(nestedDir, "deep-file.md"), "deep content");
       fs.writeFileSync(path.join(overlayDir, "root-file.txt"), "root content");
@@ -110,7 +111,7 @@ describe("CLI", () => {
       expect(deepFile).toBe("deep content");
 
       const rootFile = fs.readFileSync(
-        path.join(tmpDir, ".claude", "root-file.txt"),
+        path.join(tmpDir, "root-file.txt"),
         "utf-8",
       );
       expect(rootFile).toBe("root content");
@@ -122,13 +123,17 @@ describe("CLI", () => {
       const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
 
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-      fs.mkdirSync(overlayDir, { recursive: true });
+      const overlayClaudeDir = path.join(overlayDir, ".claude");
+      fs.mkdirSync(overlayClaudeDir, { recursive: true });
 
       // Бинарные данные с null bytes и произвольными байтами
       const binaryContent = Buffer.from([
         0x00, 0x01, 0xff, 0xfe, 0x89, 0x50, 0x4e, 0x47,
       ]);
-      fs.writeFileSync(path.join(overlayDir, "binary.bin"), binaryContent);
+      fs.writeFileSync(
+        path.join(overlayClaudeDir, "binary.bin"),
+        binaryContent,
+      );
 
       const outcome = runOverlayStep({ entry, projectRoot: tmpDir });
 
@@ -198,14 +203,12 @@ describe("CLI", () => {
       const subDir = path.join(overlayDir, "blocked-dir");
       fs.mkdirSync(subDir, { recursive: true });
       fs.writeFileSync(path.join(subDir, "blocked-file.txt"), "blocked");
-      // Файл в корне — не требует создания дополнительного каталога
+      // Файл в корне overlay — копируется в project root, не требует создания каталога
       fs.writeFileSync(path.join(overlayDir, "ok-file.txt"), "ok content");
 
-      // Создаём файл (не каталог) по пути, где должен быть промежуточный каталог
-      const targetRoot = path.join(tmpDir, ".claude");
-      fs.mkdirSync(targetRoot, { recursive: true });
+      // Создаём файл (не каталог) по пути, где должен быть промежуточный каталог в project root
       fs.writeFileSync(
-        path.join(targetRoot, "blocked-dir"),
+        path.join(tmpDir, "blocked-dir"),
         "I am a file, not a directory",
       );
 
@@ -217,11 +220,8 @@ describe("CLI", () => {
       // Ровно один файл скопирован: ok-file.txt (blocked-dir/blocked-file.txt не скопирован)
       expect(outcome.writtenCount).toBe(1);
 
-      // Проверяем побочный эффект: ok-file.txt успешно скопирован
-      const okFile = fs.readFileSync(
-        path.join(targetRoot, "ok-file.txt"),
-        "utf-8",
-      );
+      // Проверяем побочный эффект: ok-file.txt успешно скопирован в project root
+      const okFile = fs.readFileSync(path.join(tmpDir, "ok-file.txt"), "utf-8");
       expect(okFile).toBe("ok content");
     });
 
@@ -235,9 +235,8 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(overlayDir, "fail-file.txt"), "will fail");
       fs.writeFileSync(path.join(overlayDir, "ok-file.txt"), "will succeed");
 
-      // Создаём каталог на пути целевого файла — copyFile в каталог провалится
-      const targetRoot = path.join(tmpDir, ".claude");
-      fs.mkdirSync(path.join(targetRoot, "fail-file.txt"), { recursive: true });
+      // Создаём каталог на пути целевого файла в project root — copyFile в каталог провалится
+      fs.mkdirSync(path.join(tmpDir, "fail-file.txt"), { recursive: true });
 
       const outcome = runOverlayStep({ entry, projectRoot: tmpDir });
 
@@ -247,11 +246,8 @@ describe("CLI", () => {
       // Ровно один файл скопирован: ok-file.txt (fail-file.txt не скопирован)
       expect(outcome.writtenCount).toBe(1);
 
-      // Проверяем побочный эффект: ok-file.txt успешно скопирован
-      const okFile = fs.readFileSync(
-        path.join(targetRoot, "ok-file.txt"),
-        "utf-8",
-      );
+      // Проверяем побочный эффект: ok-file.txt успешно скопирован в project root
+      const okFile = fs.readFileSync(path.join(tmpDir, "ok-file.txt"), "utf-8");
       expect(okFile).toBe("will succeed");
     });
   });
