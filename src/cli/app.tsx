@@ -35,7 +35,7 @@ import type {
 import { createInstructionsTranspiler } from "../instructions-transpiler/index.js";
 import { createSkillsTranspiler } from "../skills-transpiler/index.js";
 import { createAgentsTranspiler } from "../agents-transpiler/index.js";
-import { buildVariables } from "../interpolation/index.js";
+import { buildVariables, loadDotenv } from "../interpolation/index.js";
 import type { ProjectBackupOutcome } from "./init-files.js";
 
 // Re-export resolveDeps for backward compatibility (tests import from app.js)
@@ -818,6 +818,10 @@ function TranspileView({
       }
     }
 
+    // Spec: docs/specs/interpolation.md § Расширение команды transpile шаг 2a
+    // Загрузка .env один раз перед циклом по адаптерам
+    loadDotenv(projectRoot);
+
     const results: {
       adapterId: string;
       outcomes: TranspilerStepOutcome[];
@@ -890,7 +894,7 @@ function TranspileView({
       }
 
       // Overlay
-      steps.push(runOverlayStep({ entry, projectRoot }));
+      steps.push(runOverlayStep({ entry, projectRoot, variables }));
 
       results.push({ adapterId: entry.id, outcomes: steps });
     }

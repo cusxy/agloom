@@ -193,6 +193,334 @@ describe("CLI", () => {
       },
     );
 
+    // --- Шаг 7: интерполяция текстового файла с расширением из whitelist ---
+    // Если variables передан И расширение файла входит в INTERPOLATABLE_EXTENSIONS →
+    // прочитать UTF-8, interpolate(), записать UTF-8
+    it("интерполирует текстовые файлы с расширением из whitelist при наличии variables", () => {
+      const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
+
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      fs.mkdirSync(overlayDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(overlayDir, "config.md"),
+        "Root: ${agloom:ROOT_DIR}",
+      );
+
+      const variables: Record<string, string> = { ROOT_DIR: ".claude" };
+      const env: Record<string, string> = {};
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        variables,
+        env,
+      });
+
+      expect(outcome.writtenCount).toBe(1);
+      expect(outcome.errors).toEqual([]);
+
+      const content = fs.readFileSync(path.join(tmpDir, "config.md"), "utf-8");
+      expect(content).toBe("Root: .claude");
+    });
+
+    // --- Шаг 7: интерполяция работает для всех расширений из INTERPOLATABLE_EXTENSIONS ---
+    it("интерполирует файлы с расширениями .json, .yml, .yaml, .txt, .toml, .xml, .html, .svg, .jsonc, .jsonl", () => {
+      const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
+
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      fs.mkdirSync(overlayDir, { recursive: true });
+
+      const extensions = [
+        ".json",
+        ".yml",
+        ".yaml",
+        ".txt",
+        ".toml",
+        ".xml",
+        ".html",
+        ".svg",
+        ".jsonc",
+        ".jsonl",
+      ];
+      for (const ext of extensions) {
+        fs.writeFileSync(
+          path.join(overlayDir, `file${ext}`),
+          "dir: ${agloom:ROOT_DIR}",
+        );
+      }
+
+      const variables: Record<string, string> = { ROOT_DIR: ".claude" };
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        variables,
+        env: {},
+      });
+
+      expect(outcome.writtenCount).toBe(extensions.length);
+      expect(outcome.errors).toEqual([]);
+
+      for (const ext of extensions) {
+        const content = fs.readFileSync(
+          path.join(tmpDir, `file${ext}`),
+          "utf-8",
+        );
+        expect(content).toBe("dir: .claude");
+      }
+    });
+
+    // --- Шаг 7: case-insensitive сравнение расширений ---
+    it("выполняет case-insensitive сравнение расширений при интерполяции", () => {
+      const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
+
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      fs.mkdirSync(overlayDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(overlayDir, "FILE.MD"),
+        "Root: ${agloom:ROOT_DIR}",
+      );
+      fs.writeFileSync(
+        path.join(overlayDir, "config.Json"),
+        '{"root": "${agloom:ROOT_DIR}"}',
+      );
+
+      const variables: Record<string, string> = { ROOT_DIR: ".claude" };
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        variables,
+        env: {},
+      });
+
+      expect(outcome.writtenCount).toBe(2);
+      expect(outcome.errors).toEqual([]);
+
+      const md = fs.readFileSync(path.join(tmpDir, "FILE.MD"), "utf-8");
+      expect(md).toBe("Root: .claude");
+
+      const json = fs.readFileSync(path.join(tmpDir, "config.Json"), "utf-8");
+      expect(json).toBe('{"root": ".claude"}');
+    });
+
+    // --- Шаг 7: интерполяция с env переменными ---
+    it("интерполирует ${env:NAME} в overlay-файлах при наличии env параметра", () => {
+      const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
+
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      fs.mkdirSync(overlayDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(overlayDir, "config.yml"),
+        "project: ${env:MY_PROJECT}",
+      );
+
+      const variables: Record<string, string> = {};
+      const env: Record<string, string> = { MY_PROJECT: "agloom" };
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        variables,
+        env,
+      });
+
+      expect(outcome.writtenCount).toBe(1);
+      expect(outcome.errors).toEqual([]);
+
+      const content = fs.readFileSync(path.join(tmpDir, "config.yml"), "utf-8");
+      expect(content).toBe("project: agloom");
+    });
+
+    // --- Шаг 8: файлы с расширением не из whitelist копируются побайтово ---
+    it("копирует файлы с расширением не из whitelist побайтово даже при наличии variables", () => {
+      const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
+
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      fs.mkdirSync(overlayDir, { recursive: true });
+
+      // Файл с расширением .bin не в whitelist — содержимое с ${agloom:...} должно сохраниться
+      const contentWithInterpolation = "Root: ${agloom:ROOT_DIR}";
+      fs.writeFileSync(
+        path.join(overlayDir, "data.bin"),
+        contentWithInterpolation,
+      );
+
+      const variables: Record<string, string> = { ROOT_DIR: ".claude" };
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        variables,
+        env: {},
+      });
+
+      expect(outcome.writtenCount).toBe(1);
+      expect(outcome.errors).toEqual([]);
+
+      // Содержимое НЕ интерполировано — скопировано побайтово
+      const copied = fs.readFileSync(path.join(tmpDir, "data.bin"), "utf-8");
+      expect(copied).toBe(contentWithInterpolation);
+    });
+
+    // --- Шаг 8: бинарные файлы копируются побайтово при наличии variables ---
+    it("копирует бинарные файлы побайтово даже при наличии variables", () => {
+      const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
+
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      fs.mkdirSync(overlayDir, { recursive: true });
+
+      const binaryContent = Buffer.from([
+        0x00, 0x01, 0xff, 0xfe, 0x89, 0x50, 0x4e, 0x47,
+      ]);
+      fs.writeFileSync(path.join(overlayDir, "image.png"), binaryContent);
+
+      const variables: Record<string, string> = { ROOT_DIR: ".claude" };
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        variables,
+        env: {},
+      });
+
+      expect(outcome.writtenCount).toBe(1);
+      expect(outcome.errors).toEqual([]);
+
+      const copied = fs.readFileSync(path.join(tmpDir, "image.png"));
+      expect(Buffer.compare(copied, binaryContent)).toBe(0);
+    });
+
+    // --- Обратная совместимость: если variables не передан → все файлы побайтово ---
+    it("копирует все файлы побайтово без интерполяции, если variables не передан", () => {
+      const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
+
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      fs.mkdirSync(overlayDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(overlayDir, "config.md"),
+        "Root: ${agloom:ROOT_DIR}",
+      );
+
+      // Вызов без variables — обратная совместимость
+      const outcome = runOverlayStep({ entry, projectRoot: tmpDir });
+
+      expect(outcome.writtenCount).toBe(1);
+      expect(outcome.errors).toEqual([]);
+
+      // Содержимое НЕ интерполировано
+      const content = fs.readFileSync(path.join(tmpDir, "config.md"), "utf-8");
+      expect(content).toBe("Root: ${agloom:ROOT_DIR}");
+    });
+
+    // --- Расширение 7a: InterpolationError → добавить в errors, продолжить ---
+    it("добавляет ошибку интерполяции в errors и продолжает с оставшимися файлами", () => {
+      const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
+
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      fs.mkdirSync(overlayDir, { recursive: true });
+
+      // Файл с неизвестной переменной — вызовет InterpolationError
+      fs.writeFileSync(
+        path.join(overlayDir, "bad.md"),
+        "Value: ${agloom:NONEXISTENT}",
+      );
+      // Файл с валидной переменной — должен быть обработан успешно
+      fs.writeFileSync(
+        path.join(overlayDir, "good.md"),
+        "Root: ${agloom:ROOT_DIR}",
+      );
+
+      const variables: Record<string, string> = { ROOT_DIR: ".claude" };
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        variables,
+        env: {},
+      });
+
+      // Один файл записан успешно, один с ошибкой
+      expect(outcome.writtenCount).toBe(1);
+      expect(outcome.errors).toHaveLength(1);
+      expect(outcome.errors[0]).toMatch(/Interpolation failed for/);
+      expect(outcome.errors[0]).toMatch(/bad\.md/);
+
+      // good.md успешно интерполирован
+      const goodContent = fs.readFileSync(
+        path.join(tmpDir, "good.md"),
+        "utf-8",
+      );
+      expect(goodContent).toBe("Root: .claude");
+    });
+
+    // --- Расширение 7a: формат ошибки содержит относительный путь и причину ---
+    it('формирует ошибку интерполяции в формате "Interpolation failed for {путь}: {причина}"', () => {
+      const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
+
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      const nestedDir = path.join(overlayDir, "docs");
+      fs.mkdirSync(nestedDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(nestedDir, "readme.md"),
+        "Missing: ${agloom:UNKNOWN_VAR}",
+      );
+
+      const variables: Record<string, string> = {};
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        variables,
+        env: {},
+      });
+
+      expect(outcome.errors).toHaveLength(1);
+      // Проверяем формат: "Interpolation failed for docs/readme.md: Unknown agloom variable: UNKNOWN_VAR"
+      expect(outcome.errors[0]).toContain("Interpolation failed for");
+      expect(outcome.errors[0]).toContain(path.join("docs", "readme.md"));
+      expect(outcome.errors[0]).toContain(
+        "Unknown agloom variable: UNKNOWN_VAR",
+      );
+    });
+
+    // --- Шаг 7+8: смешанный сценарий — текстовые интерполируются, бинарные копируются ---
+    it("интерполирует текстовые файлы и побайтово копирует бинарные в одном overlay", () => {
+      const entry = createTestEntry({ id: "claude", targetRoot: ".claude" });
+
+      const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
+      fs.mkdirSync(overlayDir, { recursive: true });
+
+      // Текстовый файл — интерполируется
+      fs.writeFileSync(
+        path.join(overlayDir, "readme.md"),
+        "Dir: ${agloom:ROOT_DIR}",
+      );
+      // Бинарный файл — побайтово
+      const binaryContent = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+      fs.writeFileSync(path.join(overlayDir, "icon.png"), binaryContent);
+
+      const variables: Record<string, string> = { ROOT_DIR: ".claude" };
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        variables,
+        env: {},
+      });
+
+      expect(outcome.writtenCount).toBe(2);
+      expect(outcome.errors).toEqual([]);
+
+      // Текстовый файл интерполирован
+      const md = fs.readFileSync(path.join(tmpDir, "readme.md"), "utf-8");
+      expect(md).toBe("Dir: .claude");
+
+      // Бинарный файл скопирован побайтово
+      const png = fs.readFileSync(path.join(tmpDir, "icon.png"));
+      expect(Buffer.compare(png, binaryContent)).toBe(0);
+    });
+
     // --- Расширение 5a: ошибка создания промежуточного каталога ---
     // → добавить сообщение в errors, продолжить с оставшимися файлами
     it("добавляет ошибку в errors и продолжает с оставшимися файлами при ошибке создания промежуточного каталога", () => {

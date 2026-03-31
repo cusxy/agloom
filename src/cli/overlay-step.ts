@@ -6,6 +6,25 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { AdapterRegistryEntry, TranspilerStepOutcome } from "./types.js";
+import { interpolate, InterpolationError } from "../interpolation/index.js";
+
+/**
+ * Whitelist расширений для интерполяции.
+ * Spec: docs/specs/provider-overlay.md § Whitelist расширений для интерполяции
+ */
+const INTERPOLATABLE_EXTENSIONS = [
+  ".md",
+  ".txt",
+  ".json",
+  ".jsonc",
+  ".jsonl",
+  ".xml",
+  ".html",
+  ".svg",
+  ".toml",
+  ".yml",
+  ".yaml",
+];
 
 /** Параметры шага overlay. */
 interface OverlayStepParams {
@@ -13,6 +32,10 @@ interface OverlayStepParams {
   entry: AdapterRegistryEntry;
   /** Абсолютный путь к корню проекта. */
   projectRoot: string;
+  /** Карта agloom-переменных. Если передан, интерполяция выполняется для файлов из whitelist. */
+  variables?: Record<string, string>;
+  /** Объект окружения для разрешения ${env:VAR}. */
+  env?: Record<string, string | undefined>;
 }
 
 /**
@@ -64,7 +87,7 @@ function discoverFiles(dir: string): string[] {
 export function runOverlayStep(
   params: OverlayStepParams,
 ): TranspilerStepOutcome {
-  const { entry, projectRoot } = params;
+  const { entry, projectRoot, variables, env } = params;
   const errors: string[] = [];
   let writtenCount = 0;
 
@@ -104,14 +127,40 @@ export function runOverlayStep(
       continue;
     }
 
-    // Шаг 6: скопировать файл побайтово
-    try {
-      fs.copyFileSync(filePath, targetPath);
-      writtenCount++;
-    } catch (err) {
-      // Расширение 6a: ошибка копирования
-      const error = err instanceof Error ? err : new Error(String(err));
-      errors.push(error.message);
+    // Шаги 7-8: интерполяция или побайтовое копирование
+    const ext = path.extname(filePath).toLowerCase();
+    const shouldInterpolate =
+      variables !== undefined && INTERPOLATABLE_EXTENSIONS.includes(ext);
+
+    if (shouldInterpolate) {
+      // Шаг 7: прочитать UTF-8, interpolate(), записать UTF-8
+      try {
+        const content = fs.readFileSync(filePath, "utf-8");
+        const result = interpolate(content, variables, env);
+        fs.writeFileSync(targetPath, result, "utf-8");
+        writtenCount++;
+      } catch (err) {
+        if (err instanceof InterpolationError) {
+          // Расширение 7a: InterpolationError → добавить в errors
+          errors.push(
+            `Interpolation failed for ${relativePath}: ${err.message}`,
+          );
+        } else {
+          // Расширение 7b: I/O-ошибка чтения/записи
+          const error = err instanceof Error ? err : new Error(String(err));
+          errors.push(error.message);
+        }
+      }
+    } else {
+      // Шаг 8: скопировать файл побайтово
+      try {
+        fs.copyFileSync(filePath, targetPath);
+        writtenCount++;
+      } catch (err) {
+        // Расширение 8a: ошибка копирования
+        const error = err instanceof Error ? err : new Error(String(err));
+        errors.push(error.message);
+      }
     }
   }
 
