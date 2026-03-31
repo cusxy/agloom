@@ -3,8 +3,8 @@ summary: Протокол создания и валидации skill-орке�
 description: Design-time протокол — структура SKILL.md, формат фаз, связь skill с агентами
 blueprint: schemas/draft/doc.schema.yml
 relates:
-  - .claude/docs/cycling/cycle-design-protocol.md
-  - .claude/docs/cycling/orchestrator-protocol.md
+  - .agloom/docs/cycling/cycle-design-protocol.md
+  - .agloom/docs/cycling/orchestrator-protocol.md
 ---
 
 # Протокол создания и валидации skill-оркестраторов
@@ -16,7 +16,7 @@ Design-time протокол для создания, изменения и ва
 
 ## Структура SKILL.md
 
-Каждый файл skill-оркестратор (`.claude/skills/<name>/SKILL.md`) ДОЛЖЕН
+Каждый файл skill-оркестратор (`.agloom/skills/<name>/SKILL.md`) ДОЛЖЕН
 содержать следующие секции:
 
 | Секция              | Обязательность | Описание                         |
@@ -95,7 +95,7 @@ DoD описывает postconditions завершения цикла. Типи�
 ## Связь skill с агентами
 
 - Имена агентов в таблице фаз SKILL.md ДОЛЖНЫ совпадать с `name` в YAML frontmatter определений агентов.
-- Каждый агент из таблицы фаз ДОЛЖЕН иметь определение в `.claude/agents/<agent-name>.md`.
+- Каждый агент из таблицы фаз ДОЛЖЕН иметь определение в `.agloom/agents/<agent-name>.md`.
 - `artifacts` исполнителя одной фазы ДОЛЖЕН соответствовать `scope` reviewer той же фазы.
 - В многофазных циклах: `artifacts` фазы N ДОЛЖНЫ соответствовать `scope` фазы N+1.
 

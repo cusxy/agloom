@@ -1,6 +1,5 @@
 ---
 name: spec-reviewer
-model: opus
 description: Ревью спецификаций (quality gate фазы Specify).
 ---
 
@@ -16,8 +15,8 @@ description: Ревью спецификаций (quality gate фазы Specify)
 
 Перед началом работы прочитай:
 
-- [agent-protocol.md](../docs/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
-- [spec-format.md](../skills/spec-cycle/docs/spec-format.md) — формат операций и правила написания спецификаций.
+- [agent-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
+- [spec-format.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/spec-cycle/docs/spec-format.md) — формат операций и правила написания спецификаций.
 
 ## Входные параметры
 
@@ -38,10 +37,9 @@ reviewer и исполнителем обеспечивает независим
 - `dor-1`: Scope содержит хотя бы один файл.
 - `dor-2`: Файлы спецификаций из scope найдены и прочитаны целиком.
 - `dor-3`: Для каждого файла прочитан `index.md` из той же папки.
-- `dor-4`: Прочитан `CLAUDE.md`.
-- `dor-5`: Прочитаны файлы из `relates` в front matter.
-- `dor-6`: Если есть `maps_to` — прочитан соответствующий код.
-- `dor-7`: Context содержит достаточно информации для ревью: цель спецификации
+- `dor-4`: Прочитаны файлы из `relates` в front matter.
+- `dor-5`: Если есть `maps_to` — прочитан соответствующий код.
+- `dor-6`: Context содержит достаточно информации для ревью: цель спецификации
   и ожидаемое поведение понятны из файлов scope или context.
 
 ## Definition of Done
@@ -61,9 +59,8 @@ reviewer и исполнителем обеспечивает независим
 
 ### S1. Непротиворечивость
 
-- Типы полей, имена, enum-значения совпадают между файлами (database/index.md, backend/\*.md, CLAUDE.md).
+- Типы полей, имена, enum-значения совпадают между файлами (database/index.md, backend/\*.md).
 - Описания одних и тех же сущностей, эндпоинтов, бизнес-правил не расходятся между документами.
-- Спецификации соответствуют конвенциям из CLAUDE.md.
 - Спецификация соответствует коду (optional/required в DTO, типы параметров, имена методов).
 
 **Pass-пример:** Спецификация `order-management/create-order.md` описывает поле `total_amount`
@@ -77,13 +74,12 @@ reviewer и исполнителем обеспечивает независим
 ### S2. Полнота
 
 - Каждая операция содержит все секции, требуемые типом операции
-  (см. [Типы операций](../skills/spec-cycle/docs/spec-format.md#типы-операций), загрузить соответствующий файл типа):
+  (см. [Типы операций](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/spec-cycle/docs/spec-format.md#типы-операций), загрузить соответствующий файл типа):
   - `service:endpoint` — формат ответа (поля, типы), контекст доступа.
   - `library:method` — возвращаемое значение, исключения.
   - `cli:command` — аргументы, вывод, exit codes.
   - `cli:command-ext` — новые аргументы/шаги, изменения вывода и exit codes.
 - Описано поведение при всех условиях, включая ошибочные.
-- Новые сущности и модули отражены в CLAUDE.md.
 - Front matter заполнен корректно: `type`, `summary`, `description`, и поля, соответствующие типу.
 
 **Pass-пример:** Операция `createOrder` (тип `service:endpoint`) содержит секции Вход
@@ -152,7 +148,7 @@ reviewer и исполнителем обеспечивает независим
 
 ## Формат вывода
 
-Формат сообщений (preconditions, result) определён в [Выход](../docs/cycling/agent-protocol.md#выход).
+Формат сообщений (preconditions, result) определён в [Выход](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md#выход).
 
 Каждый критерий проверки (S1–S5) — отдельный finding с `id` равным идентификатору
 критерия. Дополнительные замечания используют `id: general`.

@@ -5,8 +5,8 @@ description: >-
   общие для агентов и skill-оркестраторов
 blueprint: schemas/draft/doc.schema.yml
 relates:
-  - .claude/docs/cycling/agent-design-protocol.md
-  - .claude/docs/cycling/orchestrator-design-protocol.md
+  - .agloom/docs/cycling/agent-design-protocol.md
+  - .agloom/docs/cycling/orchestrator-design-protocol.md
 ---
 
 # Общие правила проектирования определений
@@ -31,8 +31,8 @@ relates:
 
 Контексты применения:
 
-- **Описания агентов** (`.claude/agents/`) — для градации обязательности правил и ограничений агента.
-- **Skills** (`.claude/skills/`) — для градации обязательности правил оркестрации.
+- **Описания агентов** (`.agloom/agents/`) — для градации обязательности правил и ограничений агента.
+- **Skills** (`.agloom/skills/`) — для градации обязательности правил оркестрации.
 
 ## Тон и стиль
 
@@ -77,7 +77,7 @@ Runtime-определения (агенты, skills) НЕ ДОЛЖНЫ ссыл
 
 Ссылки на другие файлы в SKILL.md ДОЛЖНЫ использовать относительные markdown-ссылки (`[текст](путь.md)`),
 потому что такие ссылки возможно валидировать на корректность.
-Исключение: шаблоны и паттерны путей (например, `.claude/skills/<cycle-name>/SKILL.md`).
+Исключение: шаблоны и паттерны путей (например, `.agloom/skills/<cycle-name>/SKILL.md`).
 
 ### Атомарность пунктов DoR/DoD
 

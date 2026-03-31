@@ -16,7 +16,7 @@ blueprint: schemas/draft/skill.schema.yml
 
 Тебе ТРЕБУЕТСЯ прочитать перед началом работы:
 
-- Протокол оркестрации: [orchestrator-protocol.md](../../docs/cycling/orchestrator-protocol.md).
+- Протокол оркестрации: [orchestrator-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-protocol.md).
 
 ## Сценарий
 
@@ -28,7 +28,7 @@ blueprint: schemas/draft/skill.schema.yml
 
 ### Определение scope
 
-- Новый цикл → `.claude/skills/<cycle-name>/SKILL.md` + `.claude/agents/<agent-name>.md`
+- Новый цикл → `${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/<cycle-name>/SKILL.md` + `${agloom:PROJECT_DIR}/${agloom:AGLOOM_AGENTS_DIR}/<agent-name>.md`
   для каждого агента из таблицы фаз.
 - Обновление существующего цикла → существующие файлы skill и/или агентов.
 
@@ -37,7 +37,7 @@ blueprint: schemas/draft/skill.schema.yml
 Перед запуском цикла проверь:
 
 - `dor-1`: Проведено уточнение требований (pre-cycle clarification) по процедуре
-  из раздела [Уточнение требований](../../docs/cycling/orchestrator-protocol.md#уточнение-требований-pre-cycle-clarification).
+  из раздела [Уточнение требований](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-protocol.md#уточнение-требований-pre-cycle-clarification).
 - `dor-2`: Определена цель цикла (из запроса пользователя): создание нового или обновление существующего.
 - `dor-3`: Определены фазы цикла и агенты (исполнители + reviewers).
 - `dor-4`: Определены целевые пути файлов (skill + агенты).
@@ -52,7 +52,7 @@ blueprint: schemas/draft/skill.schema.yml
 - `dod-3`: Форматирование Markdown: `pnpm run fmt:md` выполнен без ошибок.
 - `dod-4`: Валидация документов: `doc:frontmatter` и `doc:references` пройдены без ошибок.
 - `dod-5`: Пользователь подтвердил завершение цикла (human-in-the-loop,
-  см. [Валидация на границах фаз](../../docs/cycling/orchestrator-protocol.md#валидация-на-границах-фаз-human-in-the-loop)).
+  см. [Валидация на границах фаз](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-protocol.md#валидация-на-границах-фаз-human-in-the-loop)).
 - `dod-6`: Сводка результатов выведена.
 
 ## Сводка

@@ -5,9 +5,9 @@ description: >-
   и программной инженерией, обзор индустриального ландшафта
 blueprint: schemas/draft/research.schema.yml
 relates:
-  - .claude/docs/agent-sop-patterns.md
-  - .claude/docs/dor-dod-criteria.md
-  - .claude/skills/spec-cycle/SKILL.md
+  - .agloom/docs/agent-sop-patterns.md
+  - .agloom/docs/dor-dod-criteria.md
+  - .agloom/skills/spec-cycle/SKILL.md
 ---
 
 # Исследование: агентский пайплайн как программа
@@ -16,7 +16,7 @@ relates:
 
 ## Контекст исследования
 
-Система spec-cycle (`.claude/skills/spec-cycle/`) оркестрирует 6 агентов в цикле specify -> test -> implement
+Система spec-cycle (`.agloom/skills/spec-cycle/`) оркестрирует 6 агентов в цикле specify -> test -> implement
 с quality gates между фазами. В процессе развития системы обнаружено, что её структура воспроизводит паттерны
 программной инженерии: SKILL.md = main loop, агенты = классы с конструкторами и контрактами, документация = shared
 libraries. Исследование анализирует точность этих аналогий, сопоставляет с индустриальным ландшафтом и определяет

@@ -1,6 +1,5 @@
 ---
 name: test-reviewer
-model: opus
 description: Ревью тестов (quality gate фазы Test).
 ---
 
@@ -18,8 +17,8 @@ description: Ревью тестов (quality gate фазы Test).
 
 Перед началом работы прочитай:
 
-- [agent-protocol.md](../docs/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
-- [spec-format.md](../skills/spec-cycle/docs/spec-format.md) — формат операций в спецификациях.
+- [agent-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
+- [spec-format.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/spec-cycle/docs/spec-format.md) — формат операций в спецификациях.
 
 ## Входные параметры
 
@@ -130,7 +129,7 @@ reviewer и исполнителем обеспечивает независим
 
 ## Формат вывода
 
-Формат сообщений (preconditions, result) определён в [Выход](../docs/cycling/agent-protocol.md#выход).
+Формат сообщений (preconditions, result) определён в [Выход](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md#выход).
 
 Каждый критерий проверки (T1–T4) — отдельный finding с `id` равным идентификатору
 критерия. Дополнительные замечания используют `id: general`.

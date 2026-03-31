@@ -27,7 +27,7 @@ frontmatter:
       type: array
       items:
         type: string
-        pattern: "^(docs|apps|packages|\\.claude)/"
+        pattern: "^(docs|apps|packages|\\.agloom)/"
       description: Связанные документы (кросс-ссылки)
     maps_to:
       type: array

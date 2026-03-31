@@ -5,7 +5,7 @@ description: >-
   применения к агентам проекта
 blueprint: schemas/draft/research.schema.yml
 relates:
-  - .claude/docs/spec-driven-testing.md
+  - .agloom/docs/spec-driven-testing.md
 ---
 
 # Исследование: паттерны Agent SOP для агентов spec-cycle
@@ -15,7 +15,7 @@ relates:
 ## Контекст исследования
 
 Проект использует цикл spec-driven development с 6 агентами (spec-writer, spec-reviewer, test-deriver,
-test-reviewer, spec-implementer, impl-reviewer), описанными в `.claude/agents/`. Агенты управляются
+test-reviewer, spec-implementer, impl-reviewer), описанными в `.agloom/agents/`. Агенты управляются
 оркестратором ([SKILL.md](../skills/spec-cycle/SKILL.md)) и следуют общему протоколу
 ([agent-protocol.md](cycling/agent-protocol.md)).
 
@@ -337,7 +337,6 @@ DoR ТРЕБУЕТСЯ отклонить запуск. Если маркер о
 ## Артефакты
 
 - Файл спецификации (`docs/`): создание нового или обновление существующего.
-- `CLAUDE.md`: обновление списка файлов при создании нового файла спецификации.
 ```
 
 **Пример для test-deriver:**
@@ -373,7 +372,7 @@ DoR ТРЕБУЕТСЯ отклонить запуск. Если маркер о
 **Что.** Уточнить в `agent-protocol.md` → «Тон и стиль», что правило третьего лица
 распространяется на **спецификации продукта** (выход агента), а не на описания агентов.
 
-**Где.** `.claude/docs/cycling/agent-protocol.md`.
+**Где.** `.agloom/docs/cycling/agent-protocol.md`.
 
 **До:**
 
@@ -390,16 +389,16 @@ DoR ТРЕБУЕТСЯ отклонить запуск. Если маркер о
 потому что третье лицо устраняет неоднозначность адресата и делает спецификацию
 пригодной для механического извлечения тестов.
 
-Описания агентов (`.claude/agents/`) используют второе лицо («Ты ТРЕБУЕТСЯ...»,
+Описания агентов (`.agloom/agents/`) используют второе лицо («Ты ТРЕБУЕТСЯ...»,
 «Ты ЗАПРЕЩАЕТСЯ...»), потому что instruction-tuned модели оптимизированы следовать
-директивным инструкциям во втором лице (см. .claude/docs/agent-sop-patterns.md § 1.7).
+директивным инструкциям во втором лице (см. .agloom/docs/agent-sop-patterns.md § 1.7).
 ```
 
 ## Часть 3. Неприменимые паттерны
 
 | Паттерн SOP                    | Причина неприменимости                                                                      |
 | ------------------------------ | ------------------------------------------------------------------------------------------- |
-| Формат `.sop.md`               | Проект использует Claude Code agents (`.claude/agents/`), формат уже определён              |
+| Формат `.sop.md`               | Проект использует Claude Code agents (`.agloom/agents/`), формат уже определён              |
 | Parameters                     | Агенты получают вход через протокол (scope + context), формализация дублировала бы протокол |
 | Mode (interactive/auto)        | Разделение ролей (исполнитель/reviewer) заменяет параметрический режим                      |
 | MCP-сервер                     | Проект работает в single-tool environment (Claude Code)                                     |

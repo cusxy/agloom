@@ -15,7 +15,7 @@ blueprint: schemas/draft/skill.schema.yml
 
 Тебе ТРЕБУЕТСЯ прочитать перед началом работы:
 
-- Протокол оркестрации: [orchestrator-protocol.md](../../docs/cycling/orchestrator-protocol.md).
+- Протокол оркестрации: [orchestrator-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-protocol.md).
 
 ## Сценарий
 
@@ -48,7 +48,7 @@ blueprint: schemas/draft/skill.schema.yml
 Перед запуском цикла проверь:
 
 - `dor-1`: Проведено уточнение требований (pre-cycle clarification) по процедуре
-  из [Уточнение требований](../../docs/cycling/orchestrator-protocol.md#уточнение-требований-pre-cycle-clarification).
+  из [Уточнение требований](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-protocol.md#уточнение-требований-pre-cycle-clarification).
 - `dor-2`: Scope содержит хотя бы один spec-файл (существующий или путь для нового).
 - `dor-3`: Для существующих spec-файлов: файлы найдены и доступны для чтения.
 - `dor-4`: Пайплайн валидации проходит в режиме проверки (check):
@@ -71,7 +71,7 @@ blueprint: schemas/draft/skill.schema.yml
   3. `pnpm run lint` — нет ошибок линтинга.
   4. `pnpm run test` — тесты проходят (0 failures).
 - `dod-4`: Пользователь подтвердил завершение цикла (human-in-the-loop,
-  см. [Валидация на границах фаз](../../docs/cycling/orchestrator-protocol.md#валидация-на-границах-фаз-human-in-the-loop)).
+  см. [Валидация на границах фаз](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-protocol.md#валидация-на-границах-фаз-human-in-the-loop)).
 - `dod-5`: Сводка результатов выведена.
 
 ## Сводка

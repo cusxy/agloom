@@ -6,8 +6,8 @@ description: >-
   версионирование, каналы стабильности
 blueprint: schemas/draft/research.schema.yml
 relates:
-  - .claude/docs/markdown-organization-research.md
-  - .claude/docs/agent-as-program.md
+  - .agloom/docs/markdown-organization-research.md
+  - .agloom/docs/agent-as-program.md
 ---
 
 # Исследование: мета-схема документов
@@ -18,7 +18,7 @@ relates:
 
 Исследование [markdown-organization-research.md](markdown-organization-research.md) определило потребность в формализованной
 системе типизации markdown-документов. Текущее состояние: 4 типа документов (`index`, `spec`, `doc`,
-`research`) описаны в прозе CLAUDE.md, валидация не автоматизирована.
+`research`) описаны в прозе AGLOOM.md, валидация не автоматизирована.
 
 Цель: спроектировать мета-схему — формальный vocabulary для описания типов markdown-документов,
 с версионированием и возможностью автоматической валидации.
@@ -357,7 +357,7 @@ draft/workflow  ──graduation──→  v1/workflow
 schemas/
 ├── meta-schema.json               # JSON Schema: vocabulary определений типов
 │                                   #   $schema: draft/2020-12
-│                                   #   $id: urn:acorn:schemas:meta-schema:v1
+│                                   #   $id: urn:agloom:schemas:meta-schema:v1
 ├── draft/                          # Greenfield: новые типы без stable baseline
 │   └── workflow.schema.yml         #   Нет version / version: "0.0.0"
 ├── v1/                             # Stable: major version 1
@@ -393,7 +393,7 @@ meta-schema.json                      Уровень 0: vocabulary
 schemas/v1/*.schema.yml               Уровень 1: определения типов
   │ blueprint (конвенция)            Определяют правила для markdown-
   ▼                                   документов конкретного типа
-docs/**/*.md, .claude/**/*.md         Уровень 2: документы
+docs/**/*.md, .agloom/**/*.md         Уровень 2: документы
 ```
 
 Каждый уровень валидируется уровнем выше. Механизм связи зависит от природы файла:
@@ -473,8 +473,8 @@ Prettier и markdownlint не зависят от типа документа.
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:acorn:schemas:meta-schema:v1",
-  "title": "Acorn Document Type Definition",
+  "$id": "urn:agloom:schemas:meta-schema:v1",
+  "title": "Agloom Document Type Definition",
   "description": "Meta-schema defining the vocabulary for markdown document type definitions",
 
   "type": "object",
@@ -817,7 +817,7 @@ frontmatter:
       type: array
       items:
         type: string
-        pattern: "^(docs|apps|packages|\\.claude)/"
+        pattern: "^(docs|apps|packages|\\.agloom)/"
       description: Связанные документы (кросс-ссылки)
     maps_to:
       type: array
@@ -1114,7 +1114,7 @@ blueprint: schemas/draft/workflow.schema.yml
 schemas/
 ├── meta-schema.json                 # JSON Schema: vocabulary определений типов
 │                                    #   $schema: draft/2020-12
-│                                    #   $id: urn:acorn:schemas:meta-schema:v1
+│                                    #   $id: urn:agloom:schemas:meta-schema:v1
 ├── draft/                           # Greenfield: новые типы без stable baseline
 │   └── *.schema.yml                 #   Нет version / version: "0.0.0"
 ├── v1/                              # Stable: major version 1
@@ -1211,7 +1211,7 @@ format (Prettier)
 ## Заключение
 
 | Решение                       | Выбор                                                                                    |
-| ----------------------------- | ---------------------------------------------------------------------------------------- |
+| ----------------------------- |------------------------------------------------------------------------------------------|
 | `$schema` для JSON/YAML       | Стандартное использование: meta-schema.json и \*.schema.yml                              |
 | Механизм для markdown         | `blueprint` — внутренняя конвенция, URI к определению типа                               |
 | Обоснование имени `blueprint` | Точная метафора (валидация, не scaffold); не перегружено; не присваивает чужую семантику |
@@ -1225,11 +1225,11 @@ format (Prettier)
 | Graduation из labs            | `v{N}/` (minor, backward-compatible) или `v{N+1}/` (breaking)                            |
 | Формат определений типов      | YAML с `$schema: ../meta-schema.json` (корректное использование $schema для YAML-данных) |
 | Формат мета-схемы             | JSON Schema draft/2020-12                                                                |
-| `$id` мета-схемы              | `urn:acorn:schemas:meta-schema:v1` (URN, не URL)                                         |
+| `$id` мета-схемы              | `urn:agloom:schemas:meta-schema:v1` (URN, не URL)                                        |
 | `blueprint` как мета-поле     | Не описывается в type definition; обрабатывается валидатором до начала валидации         |
 | AI review в type definition   | Секция `review`: `criteria` (structured pass/fail) + `guidance` (free-form) + `examples` |
 | Разделение review             | criteria → classification (высокая agreement), guidance → generation (высокая coverage)  |
-| Схемы заменяют document-types | `.claude/docs/document-types/` больше не нужны; все правила в `.claude/schemas/v1/`      |
+| Схемы заменяют document-types | `.agloom/docs/document-types/` больше не нужны; все правила в `.agloom/schemas/v1/`      |
 | Валидатор                     | Custom (gray-matter + ajv + custom logic + LLM для review)                               |
 | Миграция                      | Постепенная: `type` -> `blueprint`, оба поддерживаются параллельно                       |
 | `doc:validate`                | Точка агрегации: schema + structure + prose + links + [review]                           |

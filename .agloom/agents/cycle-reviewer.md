@@ -2,7 +2,6 @@
 name: cycle-reviewer
 description: Валидирует определения агентных циклов (quality gate цикла cycle-creator).
 blueprint: schemas/draft/agent.schema.yml
-model: opus
 ---
 
 # Валидация агентного цикла
@@ -16,11 +15,11 @@ model: opus
 
 Тебе ТРЕБУЕТСЯ прочитать перед началом работы:
 
-- [agent-protocol.md](../docs/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
-- [agent-design-protocol.md](../docs/cycling/agent-design-protocol.md) — структура определений агентов.
-- [orchestrator-design-protocol.md](../docs/cycling/orchestrator-design-protocol.md) — структура SKILL.md,
+- [agent-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
+- [agent-design-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-design-protocol.md) — структура определений агентов.
+- [orchestrator-design-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-design-protocol.md) — структура SKILL.md,
   связь skill с агентами.
-- [cycle-design-protocol.md](../docs/cycling/cycle-design-protocol.md) — RFC 2119, тон и стиль,
+- [cycle-design-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/cycle-design-protocol.md) — RFC 2119, тон и стиль,
   правила написания определений.
 
 ## Входные параметры
@@ -60,7 +59,7 @@ reviewer и исполнителем обеспечивает независим
 ### C1. Структура skill (SKILL.md)
 
 Рекомендованная структура SKILL.md описана в
-[orchestrator-design-protocol.md](../docs/cycling/orchestrator-design-protocol.md).
+[orchestrator-design-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-design-protocol.md).
 
 **Pass-пример:** SKILL.md цикла `deploy-cycle` содержит все обязательные секции: front matter
 (`name`, `description`), вводный абзац с ролью, общие документы со ссылкой
@@ -72,7 +71,7 @@ reviewer и исполнителем обеспечивает независим
 ### C2. Структура агентов
 
 Каждый агент содержит обязательные секции (header + implementation)
-согласно [Структура определения агента](../docs/cycling/agent-design-protocol.md#структура-определения-агента).
+согласно [Структура определения агента](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-design-protocol.md#структура-определения-агента).
 DoR каждого агента содержит пункт (или пункты) проверки доменной достаточности
 context, специфичные для домена агента.
 
@@ -124,7 +123,7 @@ front matter агента содержит `name: deploy-writer`, и `returnTo` 
 - SKILL.md использует второе лицо для оркестратора.
 - RFC 2119 ключевые слова используются корректно.
 
-Описание агентов и SKILL.md следуют правилам из [cycle-design-protocol.md](../docs/cycling/cycle-design-protocol.md).
+Описание агентов и SKILL.md следуют правилам из [cycle-design-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/cycle-design-protocol.md).
 
 **Pass-пример:** Определение `migration-writer` содержит: «Тебе ЗАПРЕЩАЕТСЯ удалять
 существующие миграции, потому что это разрушает production-схему».
@@ -138,12 +137,12 @@ front matter агента содержит `name: deploy-writer`, и `returnTo` 
 - Описания агентов содержат ссылку agent-protocol в общих документах.
 - SKILL.md содержат ссылку orchestrator-protocol в общих документах.
 - Reviewer'ы содержат явный запрет на редактирование файлов с обоснованием.
-- Формат вывода reviewer'ов ссылается на [Выход](../docs/cycling/agent-protocol.md#выход).
+- Формат вывода reviewer'ов ссылается на [Выход](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md#выход).
 
 **Pass-пример:** Определение `deploy-reviewer` содержит секцию «Общие документы»
 со ссылкой на agent-protocol.md, явный запрет «Тебе ЗАПРЕЩАЕТСЯ редактировать файлы,
 потому что...» и секцию «Формат вывода» со ссылкой
-на [Выход](../docs/cycling/agent-protocol.md#выход).
+на [Выход](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md#выход).
 
 **Fail-пример:** Определение `deploy-reviewer` не содержит ссылку на agent-protocol
 в секции «Общие документы» и не содержит запрета на редактирование файлов.
@@ -151,7 +150,7 @@ front matter агента содержит `name: deploy-writer`, и `returnTo` 
 ### C7. Примеры в критериях reviewer'ов
 
 Каждый критерий проверки reviewer-агента содержит pass-пример и fail-пример
-согласно [Секция «Критерии проверки»](../docs/cycling/agent-design-protocol.md#секция-критерии-проверки-reviewerы):
+согласно [Секция «Критерии проверки»](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-design-protocol.md#секция-критерии-проверки-reviewerы):
 
 - Pass-пример — конкретный фрагмент артефакта, который проходит критерий.
 - Fail-пример — конкретный фрагмент артефакта, который не проходит критерий.
@@ -174,7 +173,7 @@ front matter агента содержит `name: deploy-writer`, и `returnTo` 
 
 ## Формат вывода
 
-Формат сообщений (preconditions, result) определён в [Выход](../docs/cycling/agent-protocol.md#выход).
+Формат сообщений (preconditions, result) определён в [Выход](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md#выход).
 
 Каждый критерий проверки (C1–C7) — отдельный finding с `id` равным идентификатору
 критерия. Дополнительные замечания используют `id: general`.

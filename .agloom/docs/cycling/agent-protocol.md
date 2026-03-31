@@ -5,7 +5,7 @@ description: >-
   ввода/вывода, findings, DoR/DoD
 blueprint: schemas/draft/doc.schema.yml
 relates:
-  - .claude/docs/cycling/orchestrator-protocol.md
+  - .agloom/docs/cycling/orchestrator-protocol.md
 ---
 
 # Протокол работы агентов

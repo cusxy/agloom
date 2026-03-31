@@ -3,7 +3,7 @@ $schema: ../meta-schema.json
 name: agents-md
 version: '0.0.0'
 description: >
-  Файл инструкций уровня проекта для AI coding-агентов (CLAUDE.md, AGENTS.md).
+  Файл инструкций уровня проекта для AI coding-агентов (AGLOOM.md CLAUDE.md, AGENTS.md).
   Содержит команды, стек, конвенции и границы — только информацию, недоступную
   агенту из кода. Оптимальный размер: 60–200 строк. Основан на эмпирических данных
   ETH Zurich (arXiv:2602.11988) и рекомендациях Anthropic.
@@ -99,7 +99,7 @@ review:
         pass:
           - text: 'Денежные суммы: DECIMAL в PostgreSQL, строки в DTO, decimal.js для арифметики.'
             explanation: 'Конвенция проекта, отличающаяся от defaults'
-          - text: 'Один пакет: `pnpm --filter @acorn/server run build|lint|test`.'
+          - text: 'Один пакет: `pnpm --filter @agloom/server run build|lint|test`.'
             explanation: 'Имя скрипта и pipe-синтаксис — агент не знает без явного указания'
           - text: 'Пайплайн валидации: format → build → lint → test. ТРЕБУЕТСЯ выполнять в указанном порядке.'
             explanation: 'Порядок шагов валидации — поведенческая инструкция агенту'
@@ -111,7 +111,7 @@ review:
             explanation: 'Стратегия мокирования — методологическая инструкция'
           - text: 'Пользовательская сортировка: поле `position` с разреженной нумерацией (шаг 1000).'
             explanation: 'Специфика проекта (шаг 1000) — нельзя вывести из кода'
-          - text: 'Подробности: `.claude/skills/spec-cycle/SKILL.md`.'
+          - text: 'Подробности: `.agloom/skills/spec-cycle/SKILL.md`.'
             explanation: 'Ссылка на файл легитимизирована критерием I5'
           - text: 'Каждая папка в `docs/` содержит `index.md` — пререквизит для остальных файлов папки.'
             explanation: 'Поведенческая инструкция агенту'

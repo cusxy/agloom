@@ -1,13 +1,13 @@
 ---
 summary: Критерии качества инструкций для AI coding-агентов
 description: >-
-  Аудит влияния файлов инструкций (AGENTS.md, CLAUDE.md и аналогов) на
+  Аудит влияния файлов инструкций (AGLOOM.md, AGENTS.md, CLAUDE.md и аналогов) на
   качество работы AI coding-агентов. Критерии качества, рекомендуемая
   структура, антипаттерны и эмпирические данные.
 type: research
 relates:
-  - .claude/docs/agent-sop-patterns.md
-  - .claude/docs/ai-markdown-review-prompts.md
+  - .agloom/docs/agent-sop-patterns.md
+  - .agloom/docs/ai-markdown-review-prompts.md
 ---
 
 # Исследование: критерии качества инструкций для AI coding-агентов
@@ -19,7 +19,7 @@ relates:
 ### Проблема
 
 AI coding-агенты (Claude Code, Cursor, GitHub Copilot, Windsurf и другие) используют файлы
-инструкций уровня проекта (AGENTS.md, CLAUDE.md, `.cursorrules` и аналоги) для адаптации
+инструкций уровня проекта (AGLOOM.md, AGENTS.md, CLAUDE.md, `.cursorrules` и аналоги) для адаптации
 поведения к конкретной кодовой базе. Эти файлы содержат конвенции, архитектурные решения,
 команды сборки и ограничения, которые агент не может вывести из кода самостоятельно.
 
@@ -29,8 +29,8 @@ AI coding-агенты (Claude Code, Cursor, GitHub Copilot, Windsurf и дру�
 
 ### Мотивация
 
-Проект Acorn Budgeting активно использует файлы инструкций: `CLAUDE.md` для общего контекста,
-`.claude/agents/` для определения агентов spec-cycle, `.claude/skills/` для скиллов. Понимание
+Проект agloom активно использует файлы инструкций: `AGLOOM.md` для общего контекста,
+`.agloom/agents/` для определения агентов spec-cycle, `.agloom/skills/` для скиллов. Понимание
 критериев качества позволит:
 
 - оценить текущее состояние собственных инструкций;
@@ -97,7 +97,7 @@ AI coding-агенты (Claude Code, Cursor, GitHub Copilot, Windsurf и дру�
 - Для критичных правил использовать эмфазу: «IMPORTANT», «YOU MUST».
 - Хранить в git; итеративно улучшать при каждой ошибке агента
   («compounding engineering»).
-- Специализированные инструкции выносить в skills (`.claude/skills/`), которые загружаются
+- Специализированные инструкции выносить в skills (`.agloom/skills/`), которые загружаются
   по запросу и не раздувают контекст каждой сессии.
 
 **Плюсы:**
@@ -358,10 +358,10 @@ accuracy до +57% на LLaMA и +67% на GPT-4 (в совокупности с
 Для проектов с объёмными инструкциями — модульная структура с progressive disclosure:
 
 ```text
-CLAUDE.md                          # Корневой: < 200 строк
-├── .claude/skills/api/SKILL.md    # API-конвенции (on-demand)
-├── .claude/skills/db/SKILL.md     # Миграции и TypeORM (on-demand)
-└── .claude/agents/                # Агенты (isolated context)
+AGLOOM.md                          # Корневой: < 200 строк
+├── .agloom/skills/api/SKILL.md    # API-конвенции (on-demand)
+├── .agloom/skills/db/SKILL.md     # Миграции и TypeORM (on-demand)
+└── .agloom/agents/                # Агенты (isolated context)
 ```
 
 ### C5. Сопровождаемость: устойчивость к изменениям кода
@@ -556,7 +556,7 @@ React (frontend, планируется). Docker Compose для deployment.
 ## Тестирование
 
 - Фреймворк: Jest.
-- Запуск одного теста: `pnpm --filter @acorn/server run test -- --testPathPattern=<pattern>`
+- Запуск одного теста: `pnpm --filter @agloom/server run test -- --testPathPattern=<pattern>`
 - После изменений кода: запустить `pnpm run build && pnpm run lint && pnpm run test`.
 
 ## Границы
@@ -596,13 +596,13 @@ React (frontend, планируется). Docker Compose для deployment.
    оформлять как hooks, а не advisory-инструкции. Это устраняет зависимость от compliance
    модели.
 
-### Рекомендации для проекта Acorn Budgeting
+### Рекомендации для проекта Agloom
 
-Текущий `CLAUDE.md` проекта следует оценить по критериям C1–C8, с особым вниманием
-к C1 (релевантность) и C2 (лаконичность). Модульная архитектура (CLAUDE.md → skills →
+Текущий `AGLOOM.md` проекта следует оценить по критериям C1–C8, с особым вниманием
+к C1 (релевантность) и C2 (лаконичность). Модульная архитектура (AGLOOM.md → skills →
 agents) уже соответствует принципу progressive disclosure. Рекомендуемые действия:
 
-- Аудит CLAUDE.md по фильтрующему вопросу: «Может ли агент обнаружить это из кода?»
+- Аудит AGLOOM.md по фильтрующему вопросу: «Может ли агент обнаружить это из кода?»
 - Перенос специализированных инструкций в skills (если не перенесены).
 - Добавление hooks для детерминированных проверок (линтинг, форматирование).
 - Формализация границ (секция «что запрещено» с обоснованиями).

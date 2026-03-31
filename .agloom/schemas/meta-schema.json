@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:acorn:schemas:meta-schema:v1",
-  "title": "Acorn Document Type Definition",
+  "$id": "urn:agloom:schemas:meta-schema:v1",
+  "title": "Agloom Document Type Definition",
   "description": "Meta-schema defining the vocabulary for markdown document type definitions",
 
   "type": "object",

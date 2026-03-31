@@ -3,8 +3,8 @@ summary: Протокол создания и валидации агентов
 description: Design-time протокол — структура определений агентов, критерии проверки, валидация системы
 blueprint: schemas/draft/doc.schema.yml
 relates:
-  - .claude/docs/cycling/cycle-design-protocol.md
-  - .claude/docs/cycling/agent-protocol.md
+  - .agloom/docs/cycling/cycle-design-protocol.md
+  - .agloom/docs/cycling/agent-protocol.md
 ---
 
 # Протокол создания и валидации агентов

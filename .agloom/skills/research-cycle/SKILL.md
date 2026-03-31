@@ -15,7 +15,7 @@ blueprint: schemas/draft/skill.schema.yml
 
 Тебе ТРЕБУЕТСЯ прочитать перед началом работы:
 
-- Протокол оркестрации: [orchestrator-protocol.md](../../docs/cycling/orchestrator-protocol.md).
+- Протокол оркестрации: [orchestrator-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-protocol.md).
 
 ## Сценарий
 
@@ -28,14 +28,14 @@ blueprint: schemas/draft/skill.schema.yml
 ### Определение scope
 
 - Продуктовые решения → `docs/researches/<topic>.md`
-- Инфраструктура агентов / процессов → `.claude/docs/<topic>.md`
+- Инфраструктура агентов / процессов → `${agloom:PROJECT_DIR}/${agloom:ROOT_DIR}/docs/<topic>.md`
 
 ## Definition of Ready
 
 Перед запуском цикла проверь:
 
 - `dor-1`: Проведено уточнение требований (pre-cycle clarification) по процедуре
-  из [Уточнение требований](../../docs/cycling/orchestrator-protocol.md#уточнение-требований-pre-cycle-clarification).
+  из [Уточнение требований](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-protocol.md#уточнение-требований-pre-cycle-clarification).
 - `dor-2`: Определена тема исследования (из запроса пользователя или context).
 - `dor-3`: Определён целевой путь файла (существующий или новый).
 - `dor-4`: Для существующих файлов: файл найден и доступен для чтения.
@@ -50,7 +50,7 @@ blueprint: schemas/draft/skill.schema.yml
 - `dod-4`: Валидация документа: проверки doc-validator пройдены без ошибок
   (`doc:frontmatter`, `doc:structure`, `doc:references`, `doc:links`, `doc:prose`, `doc:review`).
 - `dod-5`: Пользователь подтвердил завершение цикла (human-in-the-loop,
-  см. [Валидация на границах фаз](../../docs/cycling/orchestrator-protocol.md#валидация-на-границах-фаз-human-in-the-loop)).
+  см. [Валидация на границах фаз](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/orchestrator-protocol.md#валидация-на-границах-фаз-human-in-the-loop)).
 - `dod-6`: Сводка результатов выведена.
 
 ## Сводка

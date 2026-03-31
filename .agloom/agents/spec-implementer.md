@@ -1,6 +1,5 @@
 ---
 name: spec-implementer
-model: opus
 description: >-
   Реализует код по спецификациям. Не редактирует
   спецификации и тесты.
@@ -19,8 +18,8 @@ spec → test → impl. Если обнаружишь ошибку в специ
 
 Перед началом работы прочитай:
 
-- [agent-protocol.md](../docs/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
-- [spec-format.md](../skills/spec-cycle/docs/spec-format.md) — формат операций в спецификациях.
+- [agent-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
+- [spec-format.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/spec-cycle/docs/spec-format.md) — формат операций в спецификациях.
 
 ## Входные параметры
 
@@ -113,7 +112,7 @@ TABLE`, RLS-политики).
 
 - `dor-9`: Хотя бы один тест падает (фаза red — есть что реализовывать).
 
-  **Pass-пример:** `pnpm --filter @acorn/server run test` показывает 3 failing
+  **Pass-пример:** `pnpm --filter @agloom/server run test` показывает 3 failing
   tests в `transfers.service.spec.ts` — есть конкретные сценарии для реализации.
 
   **Fail-пример:** все тесты проходят — либо тесты не были обновлены фазой test,
@@ -143,9 +142,9 @@ amount: string, currency: string, created_at: ISO 8601 }` — все поля
 Перед завершением проверь:
 
 - `dod-1`: Форматирование TypeScript: `pnpm run fmt:js` выполнен без ошибок.
-- `dod-2`: Код компилируется: `pnpm --filter @acorn/server run build` — успех.
-- `dod-3`: Линтинг: `pnpm --filter @acorn/server run lint` проходит без ошибок.
-- `dod-4`: Все тесты проходят: `pnpm --filter @acorn/server run test` — 0 failures.
+- `dod-2`: Код компилируется: `pnpm --filter @agloom/server run build` — успех.
+- `dod-3`: Линтинг: `pnpm --filter @agloom/server run lint` проходит без ошибок.
+- `dod-4`: Все тесты проходят: `pnpm --filter @agloom/server run test` — 0 failures.
 - `dod-5`: Тестовые файлы не были изменены (`git diff --name-only` не содержит `*.spec.ts`).
 - `dod-6`: `status` в front matter обновлён на `implemented`.
 
@@ -197,15 +196,15 @@ amount: string, currency: string, created_at: ISO 8601 }` — все поля
 После реализации:
 
 1. Отформатируй TypeScript: `pnpm run fmt:js`.
-2. Проверь, что код компилируется (`pnpm --filter @acorn/server run build`).
-3. Проверь линтинг: `pnpm --filter @acorn/server run lint`.
-4. Запусти тесты (`pnpm --filter @acorn/server run test`). Если тесты падают:
+2. Проверь, что код компилируется (`pnpm --filter @agloom/server run build`).
+3. Проверь линтинг: `pnpm --filter @agloom/server run lint`.
+4. Запусти тесты (`pnpm --filter @agloom/server run test`). Если тесты падают:
    - Проанализируй причину: ошибка в реализации или в тесте.
    - Если ошибка в реализации — исправь код и перезапусти тесты.
    - Если ошибка в тесте (тест не соответствует спецификации) — сообщи в отчёте.
      Тебе ЗАПРЕЩАЕТСЯ редактировать тесты, потому что это нарушает разделение фаз цикла.
 5. Обнови `status` в front matter реализованных спецификаций на `implemented`.
-6. Отправь result-сообщение в формате [Выход](../docs/cycling/agent-protocol.md#выход).
+6. Отправь result-сообщение в формате [Выход](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md#выход).
 
 ## Нештатные ситуации
 

@@ -27,5 +27,5 @@ breaking changes допускаются без церемонии до graduatio
 
 Определения типов основаны на:
 
-- `.claude/docs/document-meta-schema.md` — исследование мета-схемы
-- `CLAUDE.md` — конвенции проекта (front matter, структура документации)
+- `.agloom/docs/document-meta-schema.md` — исследование мета-схемы
+- `AGLOOM.md` — конвенции проекта (front matter, структура документации)

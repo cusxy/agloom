@@ -17,9 +17,9 @@ blueprint: schemas/draft/index.schema.yml
 
 | Категория    | Расположение                | Поля front matter                |
 | ------------ | --------------------------- | -------------------------------- |
-| Документация | `docs/`, `.claude/docs/`    | `summary`, `description`, `type` |
-| Агент        | `.claude/agents/`           | `name`, `model`, `description`   |
-| Скилл        | `.claude/skills/*/SKILL.md` | `name`, `description`            |
+| Документация | `docs/`, `.agloom/docs/`    | `summary`, `description`, `type` |
+| Агент        | `.agloom/agents/`           | `name`, `model`, `description`   |
+| Скилл        | `.agloom/skills/*/SKILL.md` | `name`, `description`            |
 
 ### Документационный front matter
 

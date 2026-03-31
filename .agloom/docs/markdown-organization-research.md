@@ -5,8 +5,8 @@ description: >-
   типизации, инструментов валидации и AI-ревью
 blueprint: schemas/draft/research.schema.yml
 relates:
-  - .claude/docs/agent-as-program.md
-  - .claude/docs/dor-dod-criteria.md
+  - .agloom/docs/agent-as-program.md
+  - .agloom/docs/dor-dod-criteria.md
 ---
 
 # Исследование: организация и валидация markdown-документации
@@ -15,10 +15,10 @@ relates:
 
 ## Контекст исследования
 
-Проект Acorn Budgeting содержит два слоя markdown-документации:
+Проект Agloom содержит два слоя markdown-документации:
 
 - **Продуктовые спецификации** (`docs/`) — что система делает
-- **Инфраструктура агентов** (`.claude/`) — как система разрабатывается
+- **Инфраструктура агентов** (`.agloom/`) — как система разрабатывается
 
 Каждый документ имеет YAML front matter с полем `type` (`index`, `spec`, `doc`, `research`), от которого зависит
 набор обязательных полей и структурные ограничения. По мере роста количества документов возникает потребность в:
@@ -52,17 +52,17 @@ _dia_ (через) + _taxis_ (расположение). Определяет ч
 
 Принят Canonical (Ubuntu), Cloudflare, Gatsby, Django и др.
 
-**Релевантность для Acorn:** средняя. Diataxis ориентирован на документацию для конечных пользователей
-продукта. Текущие документы Acorn — это спецификации для агентов и разработчиков, не пользовательская
+**Релевантность для Agloom:** средняя. Diataxis ориентирован на документацию для конечных пользователей
+продукта. Текущие документы Agloom — это спецификации для агентов и разработчиков, не пользовательская
 документация. Однако принцип разделения типов напрямую применим, и текущая система типов (`spec`, `doc`,
 `research`, `index`) фактически реализует аналогичный подход:
 
-| Acorn `type` | Ближайший аналог Diataxis | Различие                                           |
-| ------------ | ------------------------- | -------------------------------------------------- |
-| `spec`       | Reference (частично)      | Spec управляет имплементацией, не просто описывает |
-| `doc`        | Explanation               | Прямое соответствие                                |
-| `research`   | Explanation               | Глубже, с источниками и анализом                   |
-| `index`      | — (нет аналога)           | Структурный элемент, пререквизит папки             |
+| Agloom `type` | Ближайший аналог Diataxis | Различие                                           |
+|---------------| ------------------------- | -------------------------------------------------- |
+| `spec`        | Reference (частично)      | Spec управляет имплементацией, не просто описывает |
+| `doc`         | Explanation               | Прямое соответствие                                |
+| `research`    | Explanation               | Глубже, с источниками и анализом                   |
+| `index`       | — (нет аналога)           | Структурный элемент, пререквизит папки             |
 
 Источники:
 
@@ -112,7 +112,7 @@ $schema: urn:oasis:names:tc:dita:xsd:concept.xsd
 Это прямой прецедент: **markdown-документ объявляет свою схему через frontmatter**.
 На данный момент валидация по схеме не выполняется (только parsing hints), но паттерн установлен.
 
-**Релевантность для Acorn:** высокая концептуально. Идеи information typing и schema-driven
+**Релевантность для Agloom:** высокая концептуально. Идеи information typing и schema-driven
 validation из DITA — то, что нужно реализовать поверх markdown. LwDITA показывает, что индустрия
 движется в сторону `$schema` в frontmatter.
 
@@ -137,7 +137,7 @@ validation из DITA — то, что нужно реализовать пове
 - Статические генераторы (MkDocs, Docusaurus, Hugo) для публикации
 - ADR (Architectural Decision Records) для фиксации решений
 
-**Релевантность для Acorn:** проект уже следует этой философии.
+**Релевантность для Agloom:** проект уже следует этой философии.
 
 ### 1.4. Zettelkasten
 
@@ -282,7 +282,7 @@ VS Code обеспечивает автодополнение и inline-вали
 - GitHub Action валидатор
 - Audit trails в Markdown
 
-Это ближайший прецедент к задаче Acorn: **markdown-документы с типизированным frontmatter,
+Это ближайший прецедент к задаче Agloom: **markdown-документы с типизированным frontmatter,
 валидируемые по JSON Schema в CI/CD**. Structured MADR явно спроектирован для потребления
 AI-инструментами (фильтрация по frontmatter без парсинга прозы).
 
@@ -333,7 +333,7 @@ GitHub Docs определяет frontmatter schema в `lib/frontmatter.ts`. Т�
 | 5. Семантика             | Integration tests    | Ссылки, cross-references, consistency          | mdschema (links), custom   |
 | 6. Content review        | Code review          | Полнота, корректность, соответствие назначению | AI agent (LLM)             |
 
-Текущее покрытие в Acorn:
+Текущее покрытие в Agloom:
 
 - Уровень 1: **покрыт** (Prettier `fmt:md`, markdownlint)
 - Уровни 2–6: **не покрыты**
@@ -367,7 +367,7 @@ Vale — open-source линтер для прозы. Написан на Go, к�
 - **Custom styles** — организационные стандарты, tone of voice, терминология
 - **Интеграция**: VS Code, IntelliJ, Sublime, Git hooks, CI/CD (GitHub Action)
 
-Применимость для Acorn:
+Применимость для Agloom:
 
 - Валидация RFC 2119 keywords (ТРЕБУЕТСЯ, ЗАПРЕЩАЕТСЯ и т.д.) — проверка корректного
   использования в нужных контекстах
@@ -475,16 +475,16 @@ Open-source решение на Azure с агентным подходом:
 
 ### 5.2. Цепочка валидации
 
-В архитектуре Acorn (`.claude/schemas/`) присутствует трёхуровневая цепочка:
+В архитектуре Agloom (`.agloom/schemas/`) присутствует трёхуровневая цепочка:
 
 ```text
 Уровень 3: JSON Schema draft-2020-12 (официальная мета-схема IETF)
                валидирует ↓
-Уровень 2: meta-schema.json (vocabulary Acorn — «схема схем»)
+Уровень 2: meta-schema.json (vocabulary Agloom — «схема схем»)
                валидирует ↓
 Уровень 1: draft/*.schema.yml (определения типов документов)
                валидирует ↓
-Уровень 0: docs/**/*.md, .claude/**/*.md (сами документы)
+Уровень 0: docs/**/*.md, .agloom/**/*.md (сами документы)
 ```
 
 Каждый уровень уже **объявляет** свою мета-схему через `$schema`:
@@ -525,7 +525,7 @@ Open-source решение на Azure с агентным подходом:
 | TypeScript        | TypeScript compiler              | `.d.ts` type definitions | `.ts` код           |
 | SQL               | INFORMATION_SCHEMA               | DDL (CREATE TABLE)       | DML (INSERT/SELECT) |
 | DITA              | DITA architectural specification | DTD/XSD topic type       | XML topic           |
-| **Acorn schemas** | `meta-schema.json`               | `*.schema.yml`           | `*.md` frontmatter  |
+| **Agloom schemas** | `meta-schema.json`               | `*.schema.yml`           | `*.md` frontmatter  |
 
 ### 5.5. Pipeline с мета-валидацией
 
@@ -550,11 +550,11 @@ doc:meta       meta-schema.json корректна (check-jsonschema --check-met
 Альтернатива: `ajv-cli` (Node.js, npm) — ближе к стеку проекта, но требует
 конвертации YAML → JSON для schema.yml файлов.
 
-## Часть 6. Анализ применимости к Acorn
+## Часть 6. Анализ применимости к Agloom
 
 ### 6.1. Текущая система типов
 
-В CLAUDE.md определены 4 типа документов с полями frontmatter:
+В AGLOOM.md определены 4 типа документов с полями frontmatter:
 
 | Тип        | Обязательные поля                  | Опциональные     |
 | ---------- | ---------------------------------- | ---------------- |
@@ -565,7 +565,7 @@ doc:meta       meta-schema.json корректна (check-jsonschema --check-met
 
 Статусы (только `spec`): `draft`, `ready`, `implemented`, `outdated`.
 
-Это уже де-факто schema, но описанная в прозе CLAUDE.md, а не формально.
+Это уже де-факто schema, но описанная в прозе AGLOOM.md, а не формально.
 
 ### 6.2. Что можно формализовать
 

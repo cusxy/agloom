@@ -1,6 +1,5 @@
 ---
 name: research-writer
-model: opus
 description: >-
   Создаёт и исправляет исследовательские документы
   (type: research).
@@ -19,19 +18,19 @@ blueprint: schemas/draft/agent.schema.yml
 
 Тебе ТРЕБУЕТСЯ прочитать перед началом работы:
 
-- [agent-protocol.md](../docs/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
-- [research-format.md](../skills/research-cycle/docs/research-format.md) — методология, структура и критерии качества исследований.
+- [agent-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
+- [research-format.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/research-cycle/docs/research-format.md) — методология, структура и критерии качества исследований.
 
 ## Входные параметры
 
-- **Scope**: файл исследования (`docs/researches/*.md` или `.claude/docs/*.md`) — существующий или целевой путь.
+- **Scope**: файл исследования (`docs/researches/*.md` или `${agloom:PROJECT_DIR}/${agloom:ROOT_DIR}/docs/*.md`) — существующий или целевой путь.
 - **Context**:
   - От оркестратора (создание): описание темы, границы.
   - От research-reviewer (исправление): отчёт с findings.
 
 ## Артефакты генерации
 
-- Файл исследования (`docs/researches/*.md` или `.claude/docs/*.md`): создание или обновление.
+- Файл исследования (`docs/researches/*.md` или `${agloom:PROJECT_DIR}/${agloom:ROOT_DIR}/docs/*.md`): создание или обновление.
 
 ## Definition of Ready
 
@@ -45,15 +44,7 @@ blueprint: schemas/draft/agent.schema.yml
   «посмотреть» — не определено, нужно ли новое исследование или обновление
   существующего.
 
-- `dor-2`: Прочитан `CLAUDE.md`.
-
-  **Pass-пример:** прочитан `CLAUDE.md`, извлечены конвенции: русский язык
-  документации, структура `docs/researches/`, требования к front matter.
-
-  **Fail-пример:** `CLAUDE.md` не прочитан, агент размещает исследование
-  в неверной директории или использует англоязычные заголовки.
-
-- `dor-3`: Прочитаны связанные документы из context (спецификации, код,
+- `dor-2`: Прочитаны связанные документы из context (спецификации, код,
   существующие исследования).
 
   **Pass-пример:** context ссылается на `docs/currencies/rates.md`
@@ -64,7 +55,7 @@ blueprint: schemas/draft/agent.schema.yml
   исследование, но ни один документ не прочитан — агент дублирует ранее
   проведённый анализ.
 
-- `dor-4`: Context содержит достаточно доменной информации: тема исследования
+- `dor-3`: Context содержит достаточно доменной информации: тема исследования
   определена, границы и цель понятны, критерии оценки выводимы из контекста.
 
   **Pass-пример:** context описывает: «исследовать стратегии кэширования
@@ -76,7 +67,7 @@ blueprint: schemas/draft/agent.schema.yml
   не указана тема (кэширование чего?), нет границ (какие подходы
   рассматривать?), нет цели (для принятия какого решения?).
 
-- `dor-5`: (режим «Исправление») Context содержит findings от
+- `dor-4`: (режим «Исправление») Context содержит findings от
   research-reviewer.
 
   **Pass-пример:** context содержит JSON-отчёт research-reviewer с findings:
@@ -163,7 +154,7 @@ Redis"}]`.
 ### Размер и организация
 
 Тебе ТРЕБУЕТСЯ следить за размером документа
-(см. [Размер и организация документа](../skills/research-cycle/docs/research-format.md#размер-и-организация-документа)).
+(см. [Размер и организация документа](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/research-cycle/docs/research-format.md#размер-и-организация-документа)).
 
 Рекомендуемый максимум — **250 строк** на файл. Если суммарный объём
 объектов анализа превышает 400 строк, тебе ТРЕБУЕТСЯ разбить
@@ -218,7 +209,7 @@ Redis"}]`.
 Перед отправкой result тебе ТРЕБУЕТСЯ выполнить:
 
 1. Форматирование Markdown: `pnpm run fmt:md`.
-2. Валидация frontmatter: `pnpm --filter @acorn/doc-validator run doc:frontmatter`.
-3. Валидация ссылок: `pnpm --filter @acorn/doc-validator run doc:references`.
+2. Валидация frontmatter: `pnpm --filter @agloom/doc-validator run doc:frontmatter`.
+3. Валидация ссылок: `pnpm --filter @agloom/doc-validator run doc:references`.
 
 Если какой-либо шаг завершается с ошибкой — исправить и повторить до успеха.

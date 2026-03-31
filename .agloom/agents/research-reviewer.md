@@ -1,6 +1,5 @@
 ---
 name: research-reviewer
-model: opus
 description: Ревью исследований (quality gate цикла research-cycle).
 blueprint: schemas/draft/agent.schema.yml
 ---
@@ -17,8 +16,8 @@ blueprint: schemas/draft/agent.schema.yml
 
 Тебе ТРЕБУЕТСЯ прочитать перед началом работы:
 
-- [agent-protocol.md](../docs/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
-- [research-format.md](../skills/research-cycle/docs/research-format.md) — методология, структура и критерии качества исследований.
+- [agent-protocol.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md) — протокол работы агента (ввод/вывод, findings, DoR/DoD).
+- [research-format.md](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/research-cycle/docs/research-format.md) — методология, структура и критерии качества исследований.
 
 ## Входные параметры
 
@@ -35,9 +34,8 @@ blueprint: schemas/draft/agent.schema.yml
 
 - `dor-1`: Scope содержит хотя бы один файл.
 - `dor-2`: Файл исследования из scope найден и прочитан целиком.
-- `dor-3`: Прочитан `CLAUDE.md`.
-- `dor-4`: Прочитаны связанные документы из `relates` в front matter.
-- `dor-5`: Context содержит достаточно информации для ревью: тема исследования
+- `dor-3`: Прочитаны связанные документы из `relates` в front matter.
+- `dor-4`: Context содержит достаточно информации для ревью: тема исследования
   и ожидаемые границы понятны из файла scope или context.
 
 ## Definition of Done
@@ -61,7 +59,7 @@ blueprint: schemas/draft/agent.schema.yml
 - Обязательные секции присутствуют: «Контекст исследования», «Заключение».
 - Документ не превышает 250 строк. Если суммарный объём объектов анализа
   > 400 строк, исследование ДОЛЖНО быть разбито на индекс + per-object файлы
-  > (см. [Размер и организация документа](../skills/research-cycle/docs/research-format.md#размер-и-организация-документа)).
+  > (см. [Размер и организация документа](${agloom:PROJECT_DIR}/${agloom:AGLOOM_SKILLS_DIR}/research-cycle/docs/research-format.md#размер-и-организация-документа)).
 - При разбиении: per-object файлы содержат `relates` ссылку на индекс,
   индекс содержит ссылки на все per-object файлы.
 
@@ -194,7 +192,7 @@ arithmetic (IEEE 754-2008)» — WebSearch подтверждает утверж
 
 ## Формат вывода
 
-Формат сообщений (preconditions, result) определён в [Выход](../docs/cycling/agent-protocol.md#выход).
+Формат сообщений (preconditions, result) определён в [Выход](${agloom:PROJECT_DIR}/${agloom:AGLOOM_DOCS_DIR}/cycling/agent-protocol.md#выход).
 
 Каждый критерий проверки (D1–D6) — отдельный finding с `id` равным идентификатору
 критерия. Дополнительные замечания, не привязанные к конкретному критерию,

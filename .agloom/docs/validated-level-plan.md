@@ -5,9 +5,9 @@ description: >-
   от уровня Structured к уровню Validated
 blueprint: schemas/draft/doc.schema.yml
 relates:
-  - .claude/docs/agent-as-program.md
-  - .claude/docs/dor-dod-criteria.md
-  - .claude/skills/spec-cycle/SKILL.md
+  - .agloom/docs/agent-as-program.md
+  - .agloom/docs/dor-dod-criteria.md
+  - .agloom/skills/spec-cycle/SKILL.md
 ---
 
 # План перехода к уровню Validated
@@ -49,7 +49,7 @@ edge cases (фаза 4) и структуры системы (manifest, фаза
 
 #### Шаг 1.1. Manifest файл
 
-Создать `.claude/skills/spec-cycle/manifest.md` со списком компонентов.
+Создать `.agloom/skills/spec-cycle/manifest.md` со списком компонентов.
 
 **Содержимое:** реестр компонентов (оркестратор, агенты, общие документы)
 и граф переходов. Manifest — стабильное описание системы; аналитические
@@ -128,7 +128,7 @@ edge cases (фаза 4) и структуры системы (manifest, фаза
 
 **Цель.** Валидация согласованности интерфейсов между агентами.
 
-Реализуется командой `/validate-agents` (`.claude/skills/validate-agents/SKILL.md`),
+Реализуется командой `/validate-agents` (`.agloom/skills/validate-agents/SKILL.md`),
 которая выполняет три группы проверок: цепность DoD → DoR, совместимость
 артефактов на стыках, валидность returnTo.
 
@@ -595,7 +595,7 @@ use case приведёт к speculative design.
 - Минимальная структура: summary, description, maps_to, перечень операций
   (только заголовки, без Вход/Поведение/Расширения/Результат).
 - spec-reviewer, test-deriver, spec-implementer пропускают stub-спецификации.
-- Обновить CLAUDE.md → «Статусы» с описанием `stub`.
+- Обновить AGLOOM.md → «Статусы» с описанием `stub`.
 
 **Когда:** Level 4 (adoption). Реализовать совместно с #17 (транслятор
 код → спецификация) — stubs как промежуточный формат при постепенной
@@ -721,7 +721,7 @@ RAG pipeline и т.д.).
 
 #### #22. Research файлы → база знаний агентов
 
-**Суть.** Трансформировать `.claude/docs/` research файлы в промпты/знания,
+**Суть.** Трансформировать `.agloom/docs/` research файлы в промпты/знания,
 которые агенты используют для повышения качества работы.
 
 **Оценка.** Сейчас research файлы (`spec-driven-testing.md`, `agent-sop-patterns.md`,
