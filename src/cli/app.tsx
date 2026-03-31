@@ -835,11 +835,13 @@ function TranspileView({
       const instrAdapter = entry.instructions as {
         variables?: Record<string, string>;
       };
-      const agentsAdapter = entry.agents as {
-        variables?: Record<string, string>;
-      };
       instrAdapter.variables = variables;
-      agentsAdapter.variables = variables;
+      if (entry.agents) {
+        const agentsAdapter = entry.agents as {
+          variables?: Record<string, string>;
+        };
+        agentsAdapter.variables = variables;
+      }
 
       // variablesByAgentId для skills transpiler
       const variablesByAgentId: Record<string, Record<string, string>> = {
@@ -859,29 +861,33 @@ function TranspileView({
       );
 
       // Skills
-      steps.push(
-        runTranspileStep({
-          transpilerFactory: createSkillsTranspiler as Parameters<
-            typeof runTranspileStep
-          >[0]["transpilerFactory"],
-          adapter: entry.skills,
-          projectRoot,
-          name: "Skills",
-          variablesByAgentId,
-        }),
-      );
+      if (entry.skills) {
+        steps.push(
+          runTranspileStep({
+            transpilerFactory: createSkillsTranspiler as Parameters<
+              typeof runTranspileStep
+            >[0]["transpilerFactory"],
+            adapter: entry.skills,
+            projectRoot,
+            name: "Skills",
+            variablesByAgentId,
+          }),
+        );
+      }
 
       // Agents
-      steps.push(
-        runTranspileStep({
-          transpilerFactory: createAgentsTranspiler as Parameters<
-            typeof runTranspileStep
-          >[0]["transpilerFactory"],
-          adapter: entry.agents,
-          projectRoot,
-          name: "Agents",
-        }),
-      );
+      if (entry.agents) {
+        steps.push(
+          runTranspileStep({
+            transpilerFactory: createAgentsTranspiler as Parameters<
+              typeof runTranspileStep
+            >[0]["transpilerFactory"],
+            adapter: entry.agents,
+            projectRoot,
+            name: "Agents",
+          }),
+        );
+      }
 
       // Overlay
       steps.push(runOverlayStep({ entry, projectRoot }));

@@ -11,7 +11,7 @@ import type { AgentAdapter, AgentsTranspilerConfig } from "./types.js";
 // Barrel exports
 export { ClaudeAgentAdapter } from "./adapters/claude-adapter.js";
 export { OpenCodeAgentAdapter } from "./adapters/opencode-adapter.js";
-export { AgentsMdAgentAdapter } from "./adapters/agentsmd-adapter.js";
+
 export { AgentsTranspiler } from "./transpiler.js";
 export { transformContent } from "./transform-content.js";
 export { filterBody } from "./filter-body.js";

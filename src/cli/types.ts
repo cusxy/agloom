@@ -15,10 +15,10 @@ export interface AdapterRegistryEntry {
   description: string;
   /** Экземпляр адаптера для instructions-transpiler. */
   instructions: Adapter;
-  /** Экземпляр адаптера для skills-transpiler. */
-  skills: SkillAdapter;
-  /** Экземпляр адаптера для agents-transpiler. */
-  agents: AgentAdapter;
+  /** Экземпляр адаптера для skills-transpiler (null если адаптер не поддерживает skills). */
+  skills: SkillAdapter | null;
+  /** Экземпляр адаптера для agents-transpiler (null если адаптер не поддерживает agents). */
+  agents: AgentAdapter | null;
   /** Относительный путь к корневой директории agent-специфичных файлов. */
   targetRoot: string;
   /** Список относительных путей к файлам за пределами targetRoot, генерируемых транспилерами. */

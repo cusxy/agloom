@@ -12,12 +12,10 @@ import {
 import {
   ClaudeSkillAdapter,
   OpenCodeSkillAdapter,
-  AgentsMdSkillAdapter,
 } from "../../skills-transpiler/index.js";
 import {
   ClaudeAgentAdapter,
   OpenCodeAgentAdapter,
-  AgentsMdAgentAdapter,
 } from "../../agents-transpiler/index.js";
 
 describe("CLI", () => {
@@ -61,10 +59,10 @@ describe("CLI", () => {
       expect(agentsmd!.description).toBe(
         "AGENTS.md (Codex, OpenCode, KiloCode, ...)",
       );
-      // § cli.md § Состав реестра: AgentsMdAdapter, AgentsMdSkillAdapter, AgentsMdAgentAdapter
+      // § agentsmd транспилирует только instructions (AGLOOM.md → AGENTS.md)
       expect(agentsmd!.instructions).toBeInstanceOf(AgentsMdAdapter);
-      expect(agentsmd!.skills).toBeInstanceOf(AgentsMdSkillAdapter);
-      expect(agentsmd!.agents).toBeInstanceOf(AgentsMdAgentAdapter);
+      expect(agentsmd!.skills).toBeNull();
+      expect(agentsmd!.agents).toBeNull();
     });
   });
 

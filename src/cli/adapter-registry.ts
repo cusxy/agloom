@@ -12,12 +12,10 @@ import {
 import {
   ClaudeSkillAdapter,
   OpenCodeSkillAdapter,
-  AgentsMdSkillAdapter,
 } from "../skills-transpiler/index.js";
 import {
   ClaudeAgentAdapter,
   OpenCodeAgentAdapter,
-  AgentsMdAgentAdapter,
 } from "../agents-transpiler/index.js";
 import type { AdapterRegistryEntry } from "./types.js";
 
@@ -75,8 +73,8 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     id: "agentsmd",
     description: "AGENTS.md (Codex, OpenCode, KiloCode, ...)",
     instructions: new AgentsMdAdapter(allowedAgentIds),
-    skills: new AgentsMdSkillAdapter(),
-    agents: new AgentsMdAgentAdapter(),
+    skills: null,
+    agents: null,
     targetRoot: ".agents",
     targetFiles: ["AGENTS.md"],
     projectFiles: ["AGENTS.md"],

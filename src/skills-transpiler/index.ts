@@ -11,7 +11,7 @@ import type { SkillAdapter, SkillsTranspilerConfig } from "./types.js";
 // Barrel exports
 export { ClaudeSkillAdapter } from "./adapters/claude-adapter.js";
 export { OpenCodeSkillAdapter } from "./adapters/opencode-adapter.js";
-export { AgentsMdSkillAdapter } from "./adapters/agentsmd-adapter.js";
+
 export { SkillsTranspiler } from "./transpiler.js";
 export {
   SkillConfigError,
