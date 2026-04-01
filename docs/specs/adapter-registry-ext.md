@@ -39,10 +39,12 @@ maps_to:
   за пределами `targetRoot`, которые генерируются транспилерами
   (например, `["CLAUDE.md"]`). Массив МОЖЕТ быть пустым, если адаптер
   не генерирует файлов за пределами `targetRoot`.
-- `projectFiles` (array\<string>, обязательно) — имена файлов для рекурсивного
-  поиска в project tree при создании `.agloom/instructions/` бэкапа командой `init`
-  (например, `["CLAUDE.md", "CLAUDE.local.md"]`). Массив МОЖЕТ быть пустым,
-  если адаптер не имеет уникальных файлов в project tree.
+- `projectFiles` (array\<string>, обязательно) — имена agent-специфичных файлов,
+  принадлежащих данному адаптеру в project tree
+  (например, `["CLAUDE.md"]`). Используется командами `clean`
+  и `init` для определения файлов, относящихся к адаптеру.
+  Массив МОЖЕТ быть пустым, если адаптер не имеет уникальных файлов
+  в project tree.
 - `instructionsFile` (string | null, обязательно) — имя собственного файла
   инструкций агента (например, `"CLAUDE.md"`, `"AGENTS.md"`). Значение `null`
   означает, что агент НЕ ИМЕЕТ собственного формата файла инструкций.
@@ -56,7 +58,12 @@ maps_to:
   автоматическую зависимость от какого-либо адаптера.
 - `overlayImportPaths` (array\<string>, обязательно) — список путей относительно
   project root, которые импортируются в overlay при выполнении `init`. Каждый
-  элемент — файл или директория. Используется процедурой Init Overlay Files
+  элемент — файл, директория или glob-паттерн (например, `"**/CLAUDE.md"`).
+  Glob-паттерны ТРЕБУЕТСЯ резолвить через библиотеку `fast-glob`
+  с параметрами `cwd: projectRoot`, `dot: false`,
+  `ignore: ["**/node_modules/**"]`. Параметр `dot: false` исключает файлы
+  и директории, имя которых начинается с `.`. Используется процедурой
+  Init Overlay Files
   (см. `docs/specs/init-command.md` § Процедура Init Overlay Files).
 - `hidden` (boolean, обязательно) — признак скрытого адаптера.
   Скрытые адаптеры (`hidden: true`):
@@ -76,11 +83,11 @@ maps_to:
 `projectFiles`, `instructionsFile`, `dependsOn`, `overlayImportPaths`
 и `hidden` для каждой записи:
 
-| `id`         | `targetRoot`  | `targetFiles`   | `projectFiles`                     | `instructionsFile` | `dependsOn`    | `overlayImportPaths`              | `hidden` |
-| ------------ | ------------- | --------------- | ---------------------------------- | ------------------ | -------------- | --------------------------------- | -------- |
-| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` | `["CLAUDE.md", "CLAUDE.local.md"]` | `"CLAUDE.md"`      | `[]`           | `[".claude", "CLAUDE.md"]`        | `false`  |
-| `"opencode"` | `".opencode"` | `[]`            | `[]`                               | `null`             | `["agentsmd"]` | `[".opencode"]`                   | `false`  |
-| `"agentsmd"` | `".agents"`   | `["AGENTS.md"]` | `["AGENTS.md"]`                    | `"AGENTS.md"`      | `[]`           | `[".agents", "AGENTS.md"]`        | `true`   |
+| `id`         | `targetRoot`  | `targetFiles`   | `projectFiles`                        | `instructionsFile` | `dependsOn`    | `overlayImportPaths`                                   | `hidden` |
+| ------------ | ------------- | --------------- | ------------------------------------- | ------------------ | -------------- | ------------------------------------------------------ | -------- |
+| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` | `["CLAUDE.md"]`                       | `"CLAUDE.md"`      | `[]`           | `[".claude", "**/CLAUDE.md"]`                          | `false`  |
+| `"opencode"` | `".opencode"` | `[]`            | `[]`                                  | `null`             | `["agentsmd"]` | `[".opencode"]`                                        | `false`  |
+| `"agentsmd"` | `".agents"`   | `["AGENTS.md"]` | `["AGENTS.md", "AGENTS.override.md"]` | `"AGENTS.md"`      | `[]`           | `[".agents", "**/AGENTS.md", "**/AGENTS.override.md"]` | `true`   |
 
 ### Запись agentsmd
 

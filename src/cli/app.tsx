@@ -20,11 +20,7 @@ import { adapterRegistry } from "./adapter-registry.js";
 import { runTranspileStep } from "./transpile-step.js";
 import { runOverlayStep } from "./overlay-step.js";
 import { cleanFiles } from "./clean-files.js";
-import {
-  initFiles,
-  backupProjectFiles,
-  createConfigFile,
-} from "./init-files.js";
+import { initFiles, createConfigFile } from "./init-files.js";
 import { resolveAdaptersFromCLIArgs, loadConfig } from "./config.js";
 import type {
   AdapterRegistryEntry,
@@ -36,7 +32,6 @@ import { createInstructionsTranspiler } from "../instructions-transpiler/index.j
 import { createSkillsTranspiler } from "../skills-transpiler/index.js";
 import { createAgentsTranspiler } from "../agents-transpiler/index.js";
 import { buildVariables, loadDotenv } from "../interpolation/index.js";
-import type { ProjectBackupOutcome } from "./init-files.js";
 
 // Re-export resolveDeps for backward compatibility (tests import from app.js)
 export { resolveDeps } from "./resolve-deps.js";
@@ -610,10 +605,7 @@ function InitView({
       if (fs.existsSync(agloomDir)) {
         process.exitCode = 1;
         return {
-          backupOutcome:
-            ".agloom/ already exists. Use --force to reinitialize." as
-              | ProjectBackupOutcome
-              | string,
+          error: ".agloom/ already exists. Use --force to reinitialize.",
           overlayResults: [] as {
             entryId: string;
             outcome: InitOutcome | string;
@@ -630,28 +622,13 @@ function InitView({
         const message = err instanceof Error ? err.message : String(err);
         process.exitCode = 1;
         return {
-          backupOutcome: message as ProjectBackupOutcome | string,
+          error: message,
           overlayResults: [] as {
             entryId: string;
             outcome: InitOutcome | string;
           }[],
         };
       }
-    }
-
-    // Шаг 6: выполнить Backup Project Files
-    const backupResult = backupProjectFiles(projectRoot, force);
-
-    // Расширение 6a: Backup Project Files вернула строку — блокирующая ошибка
-    if (typeof backupResult === "string") {
-      process.exitCode = 1;
-      return {
-        backupOutcome: backupResult as ProjectBackupOutcome | string,
-        overlayResults: [] as {
-          entryId: string;
-          outcome: InitOutcome | string;
-        }[],
-      };
     }
 
     const results: { entryId: string; outcome: InitOutcome | string }[] = [];
@@ -663,7 +640,7 @@ function InitView({
 
       if (typeof result === "string") {
         hasError = true;
-        // Расширение 7a: строка-сообщение → exit code 1
+        // Расширение 6a: строка-сообщение → exit code 1
         break;
       } else if (result.errors.length > 0) {
         hasError = true;
@@ -671,44 +648,38 @@ function InitView({
     }
 
     // Set exit code
-    if (hasError || backupResult.errors.length > 0) {
+    if (hasError) {
       process.exitCode = 1;
     }
 
     return {
-      backupOutcome: backupResult as ProjectBackupOutcome | string,
+      error: null as string | null,
       overlayResults: results,
     };
   });
 
-  const { backupOutcome, overlayResults } = state;
+  const { error, overlayResults } = state;
 
-  // Расширение 5a: строковое сообщение от Backup Project Files
-  if (typeof backupOutcome === "string") {
-    return <Text>{backupOutcome}</Text>;
+  // Блокирующая ошибка (pre-check или config)
+  if (error) {
+    return <Text>{error}</Text>;
   }
 
-  // Вычислить общее количество overlay-файлов для вывода с ошибками
-  const totalOverlayCopied = overlayResults.reduce((sum, r) => {
+  // Вычислить общее количество overlay-файлов
+  const totalCopied = overlayResults.reduce((sum, r) => {
     if (typeof r.outcome !== "string") {
       return sum + r.outcome.copiedCount;
     }
     return sum;
   }, 0);
 
-  const hasAnyErrors =
-    (backupOutcome && backupOutcome.errors.length > 0) ||
-    overlayResults.some(
-      (r) =>
-        typeof r.outcome === "string" ||
-        (typeof r.outcome !== "string" && r.outcome.errors.length > 0),
-    );
+  const hasAnyErrors = overlayResults.some(
+    (r) =>
+      typeof r.outcome === "string" ||
+      (typeof r.outcome !== "string" && r.outcome.errors.length > 0),
+  );
 
-  const hasVisibleResults =
-    hasAnyErrors ||
-    totalOverlayCopied > 0 ||
-    (backupOutcome && backupOutcome.copiedCount > 0) ||
-    verbose;
+  const hasVisibleResults = hasAnyErrors || totalCopied > 0 || verbose;
 
   return (
     <Box flexDirection="column">
@@ -717,21 +688,6 @@ function InitView({
           <Text color="green">✓</Text> Initializing...
         </Text>
       )}
-      {backupOutcome && backupOutcome.errors.length > 0 && (
-        <Text>
-          {"  "}
-          <Text color="red">✗</Text> {backupOutcome.errors[0]}
-        </Text>
-      )}
-      {backupOutcome &&
-        backupOutcome.errors.length === 0 &&
-        (verbose || backupOutcome.copiedCount > 0) && (
-          <Text>
-            {"  "}
-            <Text color="green">✓</Text> {backupOutcome.copiedCount} project
-            files backed up to .agloom/instructions/
-          </Text>
-        )}
       {overlayResults.map((r) => {
         if (typeof r.outcome === "string") {
           return (
@@ -760,18 +716,11 @@ function InitView({
           </Text>
         );
       })}
-      {!verbose &&
-        !hasAnyErrors &&
-        totalOverlayCopied === 0 &&
-        (!backupOutcome || backupOutcome.copiedCount === 0) && (
-          <Text>Nothing to import.</Text>
-        )}
+      {!verbose && !hasAnyErrors && totalCopied === 0 && (
+        <Text>Nothing to import.</Text>
+      )}
       <Text> </Text>
-      <Text>
-        Done.{" "}
-        {totalOverlayCopied + (backupOutcome ? backupOutcome.copiedCount : 0)}{" "}
-        files copied.
-      </Text>
+      <Text>Done. {totalCopied} files copied.</Text>
     </Box>
   );
 }

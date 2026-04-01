@@ -88,11 +88,11 @@ describe("CLI", () => {
     });
 
     // --- Happy path: запись claude содержит поле projectFiles ---
-    // § Обновление реестра адаптеров, строка claude: projectFiles=["CLAUDE.md", "CLAUDE.local.md"]
-    it('запись "claude" содержит projectFiles ["CLAUDE.md", "CLAUDE.local.md"]', () => {
+    // § Обновление реестра адаптеров, строка claude: projectFiles=["CLAUDE.md"]
+    it('запись "claude" содержит projectFiles ["CLAUDE.md"]', () => {
       const claude = adapterRegistry.find((e) => e.id === "claude");
       expect(claude).toBeDefined();
-      expect(claude!.projectFiles).toEqual(["CLAUDE.md", "CLAUDE.local.md"]);
+      expect(claude!.projectFiles).toEqual(["CLAUDE.md"]);
     });
 
     // --- Happy path: запись opencode содержит поле projectFiles ---
@@ -106,13 +106,16 @@ describe("CLI", () => {
 
     // --- Happy path: запись agentsmd содержит поля targetRoot, targetFiles, projectFiles ---
     // § Обновление реестра адаптеров, строка agentsmd:
-    //   targetRoot=".agents", targetFiles=["AGENTS.md"], projectFiles=["AGENTS.md"]
-    it('запись "agentsmd" содержит targetRoot ".agents", targetFiles ["AGENTS.md"], projectFiles ["AGENTS.md"]', () => {
+    //   targetRoot=".agents", targetFiles=["AGENTS.md"], projectFiles=["AGENTS.md", "AGENTS.override.md"]
+    it('запись "agentsmd" содержит targetRoot ".agents", targetFiles ["AGENTS.md"], projectFiles ["AGENTS.md", "AGENTS.override.md"]', () => {
       const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmd).toBeDefined();
       expect(agentsmd!.targetRoot).toBe(".agents");
       expect(agentsmd!.targetFiles).toEqual(["AGENTS.md"]);
-      expect(agentsmd!.projectFiles).toEqual(["AGENTS.md"]);
+      expect(agentsmd!.projectFiles).toEqual([
+        "AGENTS.md",
+        "AGENTS.override.md",
+      ]);
     });
 
     // --- Happy path: запись claude содержит поле instructionsFile ---
