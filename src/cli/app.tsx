@@ -11,6 +11,7 @@ import React, { useState, useEffect } from "react";
 import { Text, Box, useApp } from "ink";
 import Spinner from "ink-spinner";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { marked } from "marked";
 // @ts-expect-error marked-terminal has no type declarations
@@ -60,6 +61,7 @@ function parseArgs(args: string[]): {
   clean: boolean;
   force: boolean;
   verbose: boolean;
+  refresh: boolean;
 } {
   let command: string | null = null;
   let helpTopic: string | null = null;
@@ -72,6 +74,7 @@ function parseArgs(args: string[]): {
   let clean = false;
   let force = false;
   let verbose = false;
+  let refresh = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -93,15 +96,21 @@ function parseArgs(args: string[]): {
       force = true;
     } else if (arg === "--verbose") {
       verbose = true;
+    } else if (arg === "--refresh") {
+      refresh = true;
     } else if (command === "help" && !arg.startsWith("-")) {
       // После распознавания help как команды, позиционный аргумент — topic
       helpTopic = arg;
+    } else if (command === "cache" && arg === "clean") {
+      // Subcommand: cache clean
+      command = "cache-clean";
     } else if (
       arg === "transpile" ||
       arg === "adapters" ||
       arg === "clean" ||
       arg === "init" ||
-      arg === "help"
+      arg === "help" ||
+      arg === "cache"
     ) {
       command = arg;
     } else if (arg.startsWith("-")) {
@@ -123,6 +132,7 @@ function parseArgs(args: string[]): {
     clean,
     force,
     verbose,
+    refresh,
   };
 }
 
@@ -1022,6 +1032,35 @@ function TranspileView({
   );
 }
 
+/**
+ * Spec: docs/specs/git-plugin-loading.md § Команда agloom cache clean
+ */
+function CacheCleanView(): React.ReactElement {
+  const [output] = useState(() => {
+    const cacheDir = path.join(os.homedir(), ".agloom", "cache", "plugins");
+
+    // Шаг 2: проверить существование
+    if (!fs.existsSync(cacheDir)) {
+      // Расширение 2a
+      return "Cache directory does not exist. Nothing to clean.";
+    }
+
+    // Шаг 3: рекурсивно удалить
+    try {
+      fs.rmSync(cacheDir, { recursive: true, force: true });
+    } catch (err) {
+      // Расширение 3a
+      const message = err instanceof Error ? err.message : String(err);
+      process.exitCode = 1;
+      return `Failed to clean cache: ${message}`;
+    }
+
+    return "Cache cleaned: ~/.agloom/cache/plugins/";
+  });
+
+  return <Text>{output}</Text>;
+}
+
 export function App({ args, projectRoot }: AppProps): React.ReactElement {
   const parsed = parseArgs(args);
   const root = projectRoot ?? process.cwd();
@@ -1160,6 +1199,23 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     );
   }
 
+  // § Команда cache clean
+  // Spec: docs/specs/git-plugin-loading.md § Команда agloom cache clean
+  if (parsed.command === "cache-clean") {
+    return <CacheCleanView />;
+  }
+
+  // § Команда cache (без subcommand) → трактовать как неизвестную
+  if (parsed.command === "cache") {
+    process.exitCode = 1;
+    return (
+      <Text>
+        Unknown command: cache. Run &apos;agloom --help&apos; to see available
+        commands.
+      </Text>
+    );
+  }
+
   // § Команда transpile
   if (parsed.command === "transpile") {
     // Resolve Adapters from CLI Args
@@ -1178,20 +1234,37 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     }
 
     // § plugin-loading.md § Расширение команды transpile шаги 3.1-3.3
-    // Извлечь pluginPaths из результата Load Config
+    // § git-plugin-loading.md § Расширение команды transpile
+    // Извлечь pluginEntries из результата Load Config
     let plugins: ResolvedPlugin[] = [];
     const configResult = loadConfig(root);
-    const pluginPaths = configResult?.pluginPaths ?? null;
+    const pluginEntries = configResult?.pluginEntries ?? null;
 
-    if (pluginPaths !== null && pluginPaths.length > 0) {
-      // Шаг 3.2: Resolve Plugins
+    if (pluginEntries !== null && pluginEntries.length > 0) {
+      // Шаг 3.2: Resolve Plugins с pluginEntries и forceRefresh
       try {
-        plugins = resolvePlugins({ pluginPaths, projectRoot: root });
+        plugins = resolvePlugins({
+          pluginEntries,
+          projectRoot: root,
+          forceRefresh: parsed.refresh,
+        });
       } catch (err) {
         // Расширение 3.2a: ошибка → exit code 1
         process.exitCode = 1;
         const message = err instanceof Error ? err.message : String(err);
         return <Text>{message}</Text>;
+      }
+    } else {
+      // Backward compatibility: try pluginPaths
+      const pluginPaths = configResult?.pluginPaths ?? null;
+      if (pluginPaths !== null && pluginPaths.length > 0) {
+        try {
+          plugins = resolvePlugins({ pluginPaths, projectRoot: root });
+        } catch (err) {
+          process.exitCode = 1;
+          const message = err instanceof Error ? err.message : String(err);
+          return <Text>{message}</Text>;
+        }
       }
     }
 

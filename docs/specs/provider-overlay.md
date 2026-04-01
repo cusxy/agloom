@@ -14,6 +14,7 @@ relates:
   - docs/specs/layer-model.md
   - docs/specs/plugin-manifest.md
   - docs/specs/plugin-loading.md
+  - docs/specs/patch-mechanism.md
 maps_to:
   - src/cli/
   - src/cli/types.ts

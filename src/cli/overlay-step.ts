@@ -61,10 +61,15 @@ interface OverlayStepParams {
 /**
  * Классифицирует файл по стратегии слияния.
  * Spec: docs/specs/layer-model.md § Определение стратегии для конкретного файла
+ * Spec: docs/specs/patch-mechanism.md § Определение стратегии для конкретного файла
  *
- * @returns "overlay" для merge-eligible файлов без .override, "override" для остальных.
+ * @returns "overlay" для merge-eligible файлов без .override/.patch,
+ *          "patch" для файлов с .patch и merge-eligible расширением,
+ *          "override" для остальных.
  */
-export function classifyFile(filename: string): "overlay" | "override" {
+export function classifyFile(
+  filename: string,
+): "overlay" | "override" | "patch" {
   const basename = path.basename(filename);
 
   // Правило 1: суффикс .override → override
@@ -72,13 +77,18 @@ export function classifyFile(filename: string): "overlay" | "override" {
     return "override";
   }
 
-  // Правило 2: merge-eligible расширение → overlay
+  // Правило 2: суффикс .patch + merge-eligible расширение → patch
   const ext = path.extname(basename).toLowerCase();
+  if (hasPatchSuffix(basename) && MERGE_ELIGIBLE_EXTENSIONS.includes(ext)) {
+    return "patch";
+  }
+
+  // Правило 3: merge-eligible расширение → overlay
   if (MERGE_ELIGIBLE_EXTENSIONS.includes(ext)) {
     return "overlay";
   }
 
-  // Правило 3: всё остальное → override
+  // Правило 4: всё остальное → override
   return "override";
 }
 
@@ -93,8 +103,36 @@ function hasOverrideSuffix(filename: string): boolean {
 }
 
 /**
- * Удаляет суффикс .override из имени файла (или пути).
+ * Проверяет наличие суффикса .patch перед финальным расширением.
+ * Spec: docs/specs/patch-mechanism.md § Обнаружение суффикса
+ */
+function hasPatchSuffix(filename: string): boolean {
+  const ext = path.extname(filename);
+  if (!ext) return false;
+  const withoutExt = filename.slice(0, -ext.length);
+  return withoutExt.endsWith(".patch");
+}
+
+/**
+ * Проверяет наличие обоих суффиксов .patch и .override в имени файла.
+ * Spec: docs/specs/patch-mechanism.md § Взаимоисключаемость с .override
+ */
+function hasBothPatchAndOverride(filename: string): boolean {
+  const basename = path.basename(filename);
+  const ext = path.extname(basename);
+  if (!ext) return false;
+  const withoutExt = basename.slice(0, -ext.length);
+  return (
+    (withoutExt.includes(".patch") && withoutExt.includes(".override")) ||
+    (withoutExt.endsWith(".patch") && withoutExt.includes(".override")) ||
+    (withoutExt.endsWith(".override") && withoutExt.includes(".patch"))
+  );
+}
+
+/**
+ * Удаляет суффикс .override или .patch из имени файла (или пути).
  * Spec: docs/specs/layer-model.md § Удаление суффикса при записи
+ * Spec: docs/specs/patch-mechanism.md § Удаление суффикса при записи
  */
 export function stripOverrideSuffix(filePath: string): string {
   const dir = path.dirname(filePath);
@@ -104,10 +142,18 @@ export function stripOverrideSuffix(filePath: string): string {
   if (!ext) return filePath;
 
   const withoutExt = basename.slice(0, -ext.length);
-  if (!withoutExt.endsWith(".override")) return filePath;
 
-  const stripped = withoutExt.slice(0, -".override".length) + ext;
-  return dir === "." ? stripped : path.join(dir, stripped);
+  if (withoutExt.endsWith(".override")) {
+    const stripped = withoutExt.slice(0, -".override".length) + ext;
+    return dir === "." ? stripped : path.join(dir, stripped);
+  }
+
+  if (withoutExt.endsWith(".patch")) {
+    const stripped = withoutExt.slice(0, -".patch".length) + ext;
+    return dir === "." ? stripped : path.join(dir, stripped);
+  }
+
+  return filePath;
 }
 
 /**
@@ -221,6 +267,523 @@ function discoverFiles(dir: string): string[] {
     }
   }
   return results;
+}
+
+// =============================================================================
+// Patch mechanism
+// Spec: docs/specs/patch-mechanism.md
+// =============================================================================
+
+/** Known patch markers in application order. */
+const PATCH_MARKERS = [
+  "$unset",
+  "$merge",
+  "$mergeBy",
+  "$set",
+  "$remove",
+  "$insertAt",
+  "$prepend",
+  "$append",
+] as const;
+
+/** Set for O(1) lookup. */
+const PATCH_MARKER_SET = new Set<string>(PATCH_MARKERS);
+
+/**
+ * Error class for patch validation errors.
+ * Thrown by applyPatch on validation failures; caught by overlay-step integration.
+ */
+class PatchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PatchError";
+  }
+}
+
+/**
+ * Deep equality check for $remove marker.
+ * Spec: docs/specs/patch-mechanism.md § $remove — Поведение
+ */
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return a === b;
+  if (typeof a !== typeof b) return false;
+
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((val, i) => deepEqual(val, b[i]));
+  }
+
+  if (isPlainObject(a) && isPlainObject(b)) {
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    if (keysA.length !== keysB.length) return false;
+    return keysA.every(
+      (key) =>
+        key in (b as Record<string, unknown>) && deepEqual(a[key], b[key]),
+    );
+  }
+
+  return false;
+}
+
+/**
+ * Checks if a plain object contains any key starting with `$`.
+ */
+function hasMarkerKeys(obj: Record<string, unknown>): boolean {
+  return Object.keys(obj).some((k) => k.startsWith("$"));
+}
+
+/**
+ * Validates forbidden marker combinations in a node.
+ * Spec: docs/specs/patch-mechanism.md § Ограничения комбинаций
+ */
+function validateMarkerCombinations(markers: string[], nodePath: string): void {
+  const markerSet = new Set(markers);
+  if (markerSet.has("$set") && markerSet.has("$merge")) {
+    throw new PatchError(`$set and $merge cannot be combined at '${nodePath}'`);
+  }
+  if (markerSet.has("$set") && markerSet.has("$mergeBy")) {
+    throw new PatchError(
+      `$set and $mergeBy cannot be combined at '${nodePath}'`,
+    );
+  }
+}
+
+/**
+ * Validates the value type of a marker.
+ * Spec: docs/specs/patch-mechanism.md § Валидация типа значения маркера
+ */
+function validateMarkerValue(
+  marker: string,
+  value: unknown,
+  nodePath: string,
+): void {
+  switch (marker) {
+    case "$append":
+      if (!Array.isArray(value))
+        throw new PatchError(`$append value must be array at '${nodePath}'`);
+      break;
+    case "$prepend":
+      if (!Array.isArray(value))
+        throw new PatchError(`$prepend value must be array at '${nodePath}'`);
+      break;
+    case "$remove":
+      if (!Array.isArray(value))
+        throw new PatchError(`$remove value must be array at '${nodePath}'`);
+      break;
+    case "$unset":
+      if (!Array.isArray(value) || !value.every((v) => typeof v === "string"))
+        throw new PatchError(
+          `$unset value must be array of strings at '${nodePath}'`,
+        );
+      break;
+    case "$merge":
+      if (!isPlainObject(value))
+        throw new PatchError(`$merge value must be object at '${nodePath}'`);
+      break;
+    case "$mergeBy":
+      if (!isPlainObject(value))
+        throw new PatchError(`$mergeBy value must be object at '${nodePath}'`);
+      {
+        const obj = value as Record<string, unknown>;
+        if (typeof obj.key !== "string")
+          throw new PatchError(`$mergeBy key must be string at '${nodePath}'`);
+        if (!Array.isArray(obj.items))
+          throw new PatchError(`$mergeBy items must be array at '${nodePath}'`);
+        // Validate each item
+        for (const item of obj.items as unknown[]) {
+          if (!isPlainObject(item))
+            throw new PatchError(
+              `$mergeBy items must contain objects at '${nodePath}'`,
+            );
+          if (!((obj.key as string) in (item as Record<string, unknown>)))
+            throw new PatchError(
+              `$mergeBy item missing key field '${obj.key}' at '${nodePath}'`,
+            );
+        }
+      }
+      break;
+    case "$insertAt":
+      if (!isPlainObject(value))
+        throw new PatchError(`$insertAt value must be object at '${nodePath}'`);
+      {
+        const obj = value as Record<string, unknown>;
+        if (typeof obj.index !== "number" || !Number.isInteger(obj.index))
+          throw new PatchError(
+            `$insertAt index must be integer at '${nodePath}'`,
+          );
+        if (!Array.isArray(obj.items))
+          throw new PatchError(
+            `$insertAt items must be array at '${nodePath}'`,
+          );
+      }
+      break;
+    // $set: any value is valid
+  }
+}
+
+/**
+ * Validates the target type for a marker.
+ * Spec: docs/specs/patch-mechanism.md § Валидация целевого типа
+ */
+function validateTargetType(
+  marker: string,
+  base: unknown,
+  nodePath: string,
+): void {
+  switch (marker) {
+    case "$append":
+    case "$prepend":
+    case "$remove":
+    case "$insertAt":
+      if (!Array.isArray(base))
+        throw new PatchError(
+          `${marker} requires array target at '${nodePath}'`,
+        );
+      break;
+    case "$unset":
+      if (!isPlainObject(base))
+        throw new PatchError(`$unset requires object target at '${nodePath}'`);
+      break;
+    case "$mergeBy":
+      if (!Array.isArray(base))
+        throw new PatchError(`$mergeBy requires array target at '${nodePath}'`);
+      break;
+  }
+}
+
+/**
+ * Applies $mergeBy logic to an array.
+ * Spec: docs/specs/patch-mechanism.md § $mergeBy — Поведение
+ */
+function applyMergeByToArray(
+  arr: unknown[],
+  mergeByVal: { key: string; items: Record<string, unknown>[] },
+): void {
+  for (const incoming of mergeByVal.items) {
+    const keyField = mergeByVal.key;
+    const incomingKeyVal = incoming[keyField];
+    let found = false;
+    for (let i = 0; i < arr.length; i++) {
+      const el = arr[i];
+      // Skip non-objects (extension 1a/4d)
+      if (!isPlainObject(el)) continue;
+      const existing = el as Record<string, unknown>;
+      if (existing[keyField] === incomingKeyVal) {
+        arr[i] = deepMerge(existing, incoming);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      arr.push(incoming);
+    }
+  }
+}
+
+/**
+ * Applies a single marker to a node.
+ * Spec: docs/specs/patch-mechanism.md § Применение маркера к узлу
+ */
+function applyMarker(
+  base: unknown,
+  marker: string,
+  value: unknown,
+  parentKey: string,
+  parent: Record<string, unknown>,
+  nodePath: string,
+): void {
+  validateMarkerValue(marker, value, nodePath);
+
+  switch (marker) {
+    case "$set":
+      parent[parentKey] = value;
+      break;
+
+    case "$unset": {
+      const target = parent[parentKey];
+      validateTargetType(marker, target, nodePath);
+      const obj = target as Record<string, unknown>;
+      for (const name of value as string[]) {
+        delete obj[name];
+      }
+      break;
+    }
+
+    case "$merge": {
+      const target = parent[parentKey];
+      if (target === undefined) {
+        parent[parentKey] = deepMerge({}, value as Record<string, unknown>);
+      } else if (isPlainObject(target)) {
+        parent[parentKey] = deepMerge(
+          target as Record<string, unknown>,
+          value as Record<string, unknown>,
+        );
+      } else {
+        // base is not object and not undefined — set to value
+        parent[parentKey] = value;
+      }
+      break;
+    }
+
+    case "$mergeBy": {
+      const mergeByVal = value as {
+        key: string;
+        items: Record<string, unknown>[];
+      };
+      let target = parent[parentKey];
+      if (target === undefined) {
+        // Create empty array, all items appended
+        parent[parentKey] = [...mergeByVal.items];
+        break;
+      }
+      // When target is an object (not array) and $merge is a sibling,
+      // find array properties within the object and apply mergeBy to them.
+      // Spec: "$merge applies to object-parent, $mergeBy to array-value"
+      if (isPlainObject(target)) {
+        const obj = target as Record<string, unknown>;
+        for (const objKey of Object.keys(obj)) {
+          if (!Array.isArray(obj[objKey])) continue;
+          const arr = obj[objKey] as unknown[];
+          // Check if this array contains objects with the key field
+          const hasMatchingObjects = arr.some(
+            (el) =>
+              isPlainObject(el) &&
+              mergeByVal.key in (el as Record<string, unknown>),
+          );
+          if (!hasMatchingObjects && arr.length > 0) continue;
+          applyMergeByToArray(arr, mergeByVal);
+        }
+        break;
+      }
+      validateTargetType(marker, target, nodePath);
+      applyMergeByToArray(target as unknown[], mergeByVal);
+      break;
+    }
+
+    case "$remove": {
+      const target = parent[parentKey];
+      if (target === undefined) break; // silent no-op
+      validateTargetType(marker, target, nodePath);
+      const arr = target as unknown[];
+      const toRemove = value as unknown[];
+      parent[parentKey] = arr.filter(
+        (el) => !toRemove.some((r) => deepEqual(el, r)),
+      );
+      break;
+    }
+
+    case "$insertAt": {
+      const insertVal = value as { index: number; items: unknown[] };
+      const target = parent[parentKey];
+      validateTargetType(marker, target, nodePath);
+      const arr = target as unknown[];
+      // Normalize index
+      let idx = insertVal.index;
+      if (idx < 0) {
+        idx = Math.max(0, arr.length + idx);
+      } else if (idx > arr.length) {
+        idx = arr.length;
+      }
+      arr.splice(idx, 0, ...insertVal.items);
+      break;
+    }
+
+    case "$prepend": {
+      const target = parent[parentKey];
+      validateTargetType(marker, target, nodePath);
+      const arr = target as unknown[];
+      arr.unshift(...(value as unknown[]));
+      break;
+    }
+
+    case "$append": {
+      const target = parent[parentKey];
+      validateTargetType(marker, target, nodePath);
+      const arr = target as unknown[];
+      arr.push(...(value as unknown[]));
+      break;
+    }
+  }
+}
+
+/** Result of applyPatch including warnings for non-fatal issues. */
+export interface ApplyPatchResult {
+  result: Record<string, unknown>;
+  warnings: string[];
+}
+
+/**
+ * Applies patch operations to base object.
+ * Spec: docs/specs/patch-mechanism.md § Процедура Apply Patch
+ *
+ * @param base Current state (parsed). undefined if target file doesn't exist.
+ * @param patch Parsed patch file content.
+ * @returns Modified base object (also accessible via .result for callers that need warnings).
+ * @throws PatchError on validation failures.
+ */
+export function applyPatch(
+  base: Record<string, unknown> | undefined,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const { result } = applyPatchWithWarnings(base, patch);
+  return result;
+}
+
+/**
+ * Applies patch operations and collects warnings.
+ * Spec: docs/specs/patch-mechanism.md § Обработка несуществующего целевого поля
+ */
+function applyPatchWithWarnings(
+  base: Record<string, unknown> | undefined,
+  patch: Record<string, unknown>,
+): ApplyPatchResult {
+  // Step 1: if base is undefined, initialize as {}
+  if (base === undefined) {
+    base = {};
+  }
+
+  const warnings: string[] = [];
+  applyPatchRecursive(base, patch, "root", { root: base }, "", warnings);
+  return { result: base, warnings };
+}
+
+/**
+ * Recursive patch application.
+ */
+function applyPatchRecursive(
+  base: unknown,
+  patch: Record<string, unknown>,
+  parentKey: string,
+  parent: Record<string, unknown>,
+  pathPrefix: string,
+  warnings: string[],
+): void {
+  // Collect markers and non-markers
+  const markers: string[] = [];
+  const navKeys: string[] = [];
+
+  for (const key of Object.keys(patch)) {
+    if (key.startsWith("$")) {
+      // Check for unknown markers
+      if (!PATCH_MARKER_SET.has(key)) {
+        throw new PatchError(
+          `Unknown patch marker '${key}' in ${pathPrefix || "root"}`,
+        );
+      }
+      markers.push(key);
+    } else {
+      navKeys.push(key);
+    }
+  }
+
+  // Validate forbidden combinations
+  if (markers.length > 0) {
+    validateMarkerCombinations(markers, pathPrefix || "root");
+  }
+
+  // Apply markers in fixed order
+  if (markers.length > 0) {
+    for (const marker of PATCH_MARKERS) {
+      if (!markers.includes(marker)) continue;
+      const value = patch[marker];
+      const currentVal = parent[parentKey];
+
+      // Handle non-existing target fields
+      // Spec: docs/specs/patch-mechanism.md § Обработка несуществующего целевого поля
+      if (currentVal === undefined) {
+        if (
+          marker === "$append" ||
+          marker === "$prepend" ||
+          marker === "$insertAt"
+        ) {
+          // Warning: field does not exist, skip operation
+          const fieldPath = pathPrefix || "root";
+          warnings.push(
+            `Patch target field '${fieldPath}' does not exist, skipping`,
+          );
+          continue;
+        }
+        if (marker === "$remove" || marker === "$unset") {
+          continue; // silent no-op
+        }
+        if (marker === "$merge") {
+          // Create empty object, then merge
+          validateMarkerValue(marker, value, pathPrefix || "root");
+          parent[parentKey] = deepMerge({}, value as Record<string, unknown>);
+          continue;
+        }
+        if (marker === "$mergeBy") {
+          // Create empty array, append all items
+          validateMarkerValue(marker, value, pathPrefix || "root");
+          const mbVal = value as { items: Record<string, unknown>[] };
+          parent[parentKey] = [...mbVal.items];
+          continue;
+        }
+        if (marker === "$set") {
+          parent[parentKey] = value;
+          continue;
+        }
+      }
+
+      applyMarker(
+        parent[parentKey],
+        marker,
+        value,
+        parentKey,
+        parent,
+        pathPrefix || "root",
+      );
+    }
+  }
+
+  // Handle navigation keys (non-marker keys)
+  for (const key of navKeys) {
+    const patchValue = patch[key];
+    const currentPath = pathPrefix ? `${pathPrefix}.${key}` : key;
+
+    // Step 7: if patch[key] is not an object — skip
+    if (!isPlainObject(patchValue)) {
+      continue;
+    }
+
+    const patchObj = patchValue as Record<string, unknown>;
+
+    // Ensure base[key] exists for navigation
+    const baseObj = parent[parentKey] as Record<string, unknown>;
+    if (baseObj[key] === undefined) {
+      // For navigation, we need to check if patch has markers that need the field
+      // Create intermediate object for navigation
+      if (hasMarkerKeys(patchObj)) {
+        // Check what markers are present — some create the field, some skip
+        const patchMarkers = Object.keys(patchObj).filter((k) =>
+          k.startsWith("$"),
+        );
+        const needsCreation = patchMarkers.some(
+          (m) => m === "$set" || m === "$merge" || m === "$mergeBy",
+        );
+        if (!needsCreation) {
+          // Only has markers that skip on undefined — still recurse
+          // to let those markers handle the undefined case
+        }
+      }
+      // For non-marker navigation, create intermediate object
+      if (!hasMarkerKeys(patchObj) && baseObj[key] === undefined) {
+        baseObj[key] = {};
+      }
+    }
+
+    // Recurse
+    applyPatchRecursive(
+      baseObj[key],
+      patchObj,
+      key,
+      baseObj,
+      currentPath,
+      warnings,
+    );
+  }
 }
 
 /**
@@ -360,8 +923,17 @@ function runMultiLayerOverlay(
       // Шаг 2.3: относительный путь внутри директории-источника
       const relativePath = path.relative(layer.overlayDir, filePath);
 
-      // Шаг 2.4: целевой относительный путь (с удалением .override)
+      // Шаг 2.4: целевой относительный путь (с удалением .override/.patch)
       const targetRelativePath = stripOverrideSuffix(relativePath);
+
+      // Check mutual exclusivity of .patch and .override
+      // Spec: docs/specs/patch-mechanism.md § Взаимоисключаемость с .override
+      if (hasBothPatchAndOverride(relativePath)) {
+        errors.push(
+          `File '${relativePath}' has both .patch and .override suffixes in layer ${layer.id}`,
+        );
+        continue;
+      }
 
       // Шаг 2.5: определить стратегию
       const strategy = classifyFile(relativePath);
@@ -373,7 +945,7 @@ function runMultiLayerOverlay(
 
       let content: string | null = null;
 
-      if (shouldInterpolate || strategy === "overlay") {
+      if (shouldInterpolate || strategy === "overlay" || strategy === "patch") {
         // Нужно прочитать файл как текст
         try {
           content = fs.readFileSync(filePath, "utf-8");
@@ -454,6 +1026,102 @@ function runMultiLayerOverlay(
             data: deepMerge(baseData, parsed),
             ext: fileExt,
           });
+        }
+      } else if (strategy === "patch") {
+        // Шаг 2.9: patch — parse patch file, get base, apply patch
+        // Spec: docs/specs/patch-mechanism.md § Расширение overlay-step
+        const patchFileExt = path.extname(relativePath).toLowerCase();
+        const targetExt = path.extname(targetRelativePath).toLowerCase();
+
+        // Parse patch file
+        let patchData: Record<string, unknown>;
+        try {
+          const result = parseContent(content!, patchFileExt);
+          if (result === null) {
+            errors.push(
+              `Patch parse failed for ${layer.id}:${relativePath}: unsupported format`,
+            );
+            continue;
+          }
+          patchData = result;
+        } catch (err) {
+          // Расширение 2.9a
+          const error = err instanceof Error ? err : new Error(String(err));
+          errors.push(
+            `Patch parse failed for ${layer.id}:${relativePath}: ${error.message}`,
+          );
+          continue;
+        }
+
+        // Get current state of target file
+        let baseData: Record<string, unknown> | undefined;
+        const existing = mergeState.get(targetRelativePath);
+        if (existing) {
+          if (existing.type === "merged") {
+            baseData = existing.data;
+          } else if (existing.type === "override") {
+            // Get content from override entry
+            let overrideContent: string | null = existing.content;
+            if (overrideContent === null && existing.sourcePath !== null) {
+              try {
+                overrideContent = fs.readFileSync(existing.sourcePath, "utf-8");
+              } catch (err) {
+                const error =
+                  err instanceof Error ? err : new Error(String(err));
+                errors.push(
+                  `Target parse failed for ${targetRelativePath}: ${error.message}`,
+                );
+                continue;
+              }
+            }
+            if (overrideContent !== null) {
+              try {
+                const parsed = parseContent(overrideContent, targetExt);
+                baseData = parsed ?? undefined;
+              } catch (err) {
+                const error =
+                  err instanceof Error ? err : new Error(String(err));
+                errors.push(
+                  `Target parse failed for ${targetRelativePath}: ${error.message}`,
+                );
+                continue;
+              }
+            }
+          }
+        } else {
+          // Read existing target file from filesystem
+          const targetPath = path.join(projectRoot, targetRelativePath);
+          if (fs.existsSync(targetPath) && fs.statSync(targetPath).isFile()) {
+            try {
+              const existingContent = fs.readFileSync(targetPath, "utf-8");
+              const parsed = parseContent(existingContent, targetExt);
+              baseData = parsed ?? undefined;
+            } catch (err) {
+              // Расширение 2.9b
+              const error = err instanceof Error ? err : new Error(String(err));
+              errors.push(
+                `Target parse failed for ${targetRelativePath}: ${error.message}`,
+              );
+              continue;
+            }
+          }
+        }
+
+        // Apply patch
+        try {
+          const patchResult = applyPatchWithWarnings(baseData, patchData);
+          // Add warnings to errors (non-fatal, e.g. missing target fields)
+          errors.push(...patchResult.warnings);
+          mergeState.set(targetRelativePath, {
+            type: "merged",
+            data: patchResult.result,
+            ext: targetExt || patchFileExt,
+          });
+        } catch (err) {
+          // Расширение 2.9c
+          const error = err instanceof Error ? err : new Error(String(err));
+          errors.push(error.message);
+          continue;
         }
       } else {
         // Шаг 2.8: override — сохранить содержимое или путь к файлу

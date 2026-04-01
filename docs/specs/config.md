@@ -13,6 +13,7 @@ relates:
   - docs/specs/clean-command.md
   - docs/specs/plugin-manifest.md
   - docs/specs/plugin-loading.md
+  - docs/specs/git-plugin-loading.md
 maps_to:
   - src/cli/
 ---

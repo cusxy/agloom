@@ -13,6 +13,7 @@ relates:
   - docs/specs/layer-model.md
   - docs/specs/provider-overlay.md
   - docs/specs/plugin-manifest.md
+  - docs/specs/git-plugin-loading.md
 maps_to:
   - src/cli/
 ---

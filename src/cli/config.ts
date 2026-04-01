@@ -11,6 +11,8 @@ import yaml from "js-yaml";
 import { adapterRegistry } from "./adapter-registry.js";
 import { resolveAdapter } from "./resolve-adapter.js";
 import { resolveDeps } from "./resolve-deps.js";
+import { parsePluginEntry } from "./resolve-plugins.js";
+import type { ParsedPluginEntry } from "./resolve-plugins.js";
 import type { AdapterRegistryEntry } from "./types.js";
 
 /** Результат загрузки конфигурационного файла. */
@@ -19,6 +21,8 @@ export interface LoadConfigResult {
   adapterIds: string[];
   /** Список путей к плагинам из конфига, или null если поле plugins отсутствует. */
   pluginPaths: string[] | null;
+  /** Список разобранных записей плагинов из конфига, или null. */
+  pluginEntries: ParsedPluginEntry[] | null;
 }
 
 /**
@@ -101,23 +105,93 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
   // Шаг 5: проверить наличие поля plugins
   // Расширение 5a: поле plugins отсутствует → pluginPaths = null
   let pluginPaths: string[] | null = null;
+  let pluginEntries: ParsedPluginEntry[] | null = null;
 
   if ("plugins" in config) {
     const plugins = config.plugins;
 
-    // Шаг 6: проверить, что plugins является массивом строк
-    // Расширение 6a: невалидный формат
-    if (
-      !Array.isArray(plugins) ||
-      !plugins.every((item) => typeof item === "string")
-    ) {
+    // Шаг 6 (git-plugin-loading): проверить, что plugins является массивом
+    // Каждый элемент может быть строкой, объектом LocalPluginEntry или GitPluginEntry
+    if (!Array.isArray(plugins)) {
       throw new Error("Invalid config: 'plugins' must be an array of strings.");
     }
 
-    pluginPaths = plugins as string[];
+    // Шаг 6.1: Parse Plugin Entry для каждого элемента
+    const entries: ParsedPluginEntry[] = [];
+    const paths: string[] = [];
+
+    for (const item of plugins) {
+      // Backward compatibility: non-string/non-object → old error message
+      if (
+        typeof item !== "string" &&
+        (typeof item !== "object" || item === null)
+      ) {
+        throw new Error(
+          "Invalid config: 'plugins' must be an array of strings.",
+        );
+      }
+
+      // Расширение 6.1a: Parse Plugin Entry вернул ошибку → пробросить
+      const parsed = parsePluginEntry(item);
+      entries.push(parsed);
+
+      if (parsed.type === "local") {
+        paths.push(parsed.path!);
+      }
+
+      // Шаг 6.2: валидация git-специфичных полей
+      if (parsed.type === "git") {
+        // Шаг 6.2.1: проверить URL
+        const url = parsed.url ?? "";
+        const isHttps = url.startsWith("https://");
+        const isSsh = url.startsWith("ssh://") || /^git@[^:]+:/.test(url);
+        if (!isHttps && !isSsh) {
+          throw new Error(
+            "Invalid config: plugin entry 'git' must be an HTTPS or SSH git URL.",
+          );
+        }
+
+        // Шаг 6.2.2: проверить ref
+        if (!parsed.ref || typeof parsed.ref !== "string") {
+          throw new Error(
+            "Invalid config: plugin entry 'ref' field is required and must be a non-empty string.",
+          );
+        }
+
+        // Шаг 6.2.3: проверить path
+        if (parsed.path != null) {
+          if (
+            typeof parsed.path !== "string" ||
+            parsed.path === "" ||
+            parsed.path.startsWith("/") ||
+            parsed.path.includes("..")
+          ) {
+            throw new Error(
+              "Invalid config: plugin entry 'path' must be a relative path without '..' components.",
+            );
+          }
+        }
+      }
+    }
+
+    pluginPaths =
+      paths.length > 0 || entries.some((e) => e.type === "local")
+        ? paths
+        : paths;
+    pluginEntries = entries;
+
+    // Backward compatibility: if all entries are local strings, also populate pluginPaths
+    // for old-style callers
+    if (entries.every((e) => e.type === "local")) {
+      pluginPaths = entries.map((e) => e.path!);
+    } else {
+      pluginPaths = entries
+        .filter((e) => e.type === "local")
+        .map((e) => e.path!);
+    }
   }
 
-  return { adapterIds: adapters as string[], pluginPaths };
+  return { adapterIds: adapters as string[], pluginPaths, pluginEntries };
 }
 
 /**

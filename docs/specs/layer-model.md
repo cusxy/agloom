@@ -15,6 +15,7 @@ relates:
   - docs/specs/adapter-registry-ext.md
   - docs/specs/plugin-manifest.md
   - docs/specs/plugin-loading.md
+  - docs/specs/patch-mechanism.md
 maps_to:
   - src/cli/overlay-step.ts
   - src/cli/
