@@ -80,7 +80,11 @@ export class InstructionsTranspiler {
    * Записывает результаты транспиляции в файловую систему.
    * Spec: § Запись результатов
    */
-  writeResults(results: TranspileResult[]): WriteResult {
+  writeResults(
+    results: TranspileResult[],
+    options?: { targetRoot?: string },
+  ): WriteResult {
+    const writeRoot = options?.targetRoot ?? this.projectRoot;
     const written: string[] = [];
     const errors: WriteError[] = [];
 
@@ -109,7 +113,7 @@ export class InstructionsTranspiler {
 
     // Шаг 4: записать каждый уникальный файл
     for (const file of filesToWrite) {
-      const absolutePath = path.join(this.projectRoot, file.relativePath);
+      const absolutePath = path.join(writeRoot, file.relativePath);
 
       try {
         // Создать промежуточные каталоги при необходимости

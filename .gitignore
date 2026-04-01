@@ -1,41 +1,6 @@
-# Dependencies
-node_modules/
-
-# Build output
-dist/
-out/
-
-# AGENTS.md generated
-AGENTS.md
-AGENTS.local.md
-AGENTS.override.md
-
-# Claude Code generated
-.claude/
-CLAUDE.md
-CLAUDE.local.md
-
-# Codex generated
-.codex/
-.agents/
-
-# Cursor generated
-.cursor/
-
-# Gemini generated
-.gemini/
-GEMINI.md
-
-# KiloCode generated
-.kilocode/
-kilocode.json
-
-# OpenCode generated
-.opencode/
-opencode.json
-
-# Agloom (local instructions)
-AGLOOM.local.md
+# OS
+.DS_Store
+Thumbs.db
 
 # IDE
 .idea/
@@ -44,9 +9,51 @@ AGLOOM.local.md
 *.swo
 *~
 
-# OS
-.DS_Store
-Thumbs.db
+# Dependencies
+node_modules/
 
-# Lock files (pnpm is primary)
-package-lock.json
+# Build output
+dist/
+out/
+
+# Agloom (local instructions)
+AGLOOM.local.md
+
+# AGENTS.md generated
+AGENTS.md
+AGENTS.override.md
+!.agloom/**/AGENTS
+
+# Claude Code generated
+.claude/
+CLAUDE.md
+!.agloom/**/.claude
+!.agloom/**/CALUDE.md
+
+# Codex generated
+.codex/
+.agents/
+!.agloom/**/.codex
+!.agloom/**/.agents
+
+# Cursor generated
+.cursor/
+!.agloom/**/.cursor
+
+# Gemini generated
+.gemini/
+GEMINI.md
+!.agloom/**/.gemini
+!.agloom/**/GEMINI.md
+
+# KiloCode generated
+.kilocode/
+kilocode.json
+!.agloom/**/.kilocode
+!.agloom/**/kilocode.json
+
+# OpenCode generated
+.opencode/
+opencode.json
+!.agloom/**/.opencode
+!.agloom/**/opencode.json

@@ -80,7 +80,11 @@ export class AgentsTranspiler {
    * Записывает результаты транспиляции в файловую систему.
    * Spec: § Запись результатов
    */
-  writeResults(results: AgentTranspileResult[]): AgentWriteResult {
+  writeResults(
+    results: AgentTranspileResult[],
+    options?: { targetRoot?: string },
+  ): AgentWriteResult {
+    const writeRoot = options?.targetRoot ?? this.projectRoot;
     const written: string[] = [];
     const errors: AgentWriteError[] = [];
 
@@ -96,7 +100,7 @@ export class AgentsTranspiler {
 
       // Шаг 2: записать каждый файл
       for (const file of result.files) {
-        const absolutePath = path.join(this.projectRoot, file.relativePath);
+        const absolutePath = path.join(writeRoot, file.relativePath);
 
         try {
           // Создать промежуточные каталоги при необходимости

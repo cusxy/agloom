@@ -16,6 +16,7 @@ relates:
   - docs/specs/init-command.md
   - docs/specs/config.md
   - docs/specs/help-command.md
+  - docs/specs/plugin-loading.md
 maps_to:
   - src/cli/
 ---

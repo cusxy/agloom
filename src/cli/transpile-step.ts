@@ -1,8 +1,11 @@
 /**
  * Шаг транспиляции — общий паттерн выполнения одного транспилера.
  * Spec: docs/specs/cli.md § Шаг транспиляции
+ * Spec: docs/specs/plugin-loading.md § Расширение процедуры «Шаг транспиляции»
  */
 
+import * as fs from "node:fs";
+import * as path from "node:path";
 import type { TranspilerStepOutcome } from "./types.js";
 
 /** Параметры шага транспиляции. */
@@ -12,7 +15,9 @@ interface TranspileStepParams {
     transpile: () => unknown[];
     writeResults: (
       results: unknown[],
-      variablesByAgentId?: Record<string, Record<string, string>>,
+      variablesByAgentIdOrOptions?:
+        | Record<string, Record<string, string>>
+        | { targetRoot: string },
     ) => {
       written: string[];
       errors: { message: string }[];
@@ -26,6 +31,11 @@ interface TranspileStepParams {
   name: "Instructions" | "Skills" | "Agents";
   /** Карта переменных по agentId для интерполяции (skills transpiler). */
   variablesByAgentId?: Record<string, Record<string, string>>;
+  /**
+   * Абсолютный путь к корню источника для discover и transform.
+   * Spec: docs/specs/plugin-loading.md § Расширение процедуры «Шаг транспиляции»
+   */
+  sourceRoot?: string;
 }
 
 /**
@@ -42,22 +52,72 @@ interface TranspileStepParams {
  * Расширение 2a: transpile() выбрасывает исключение →
  * TranspilerStepOutcome с writtenCount: 0 и [exception.message] в errors.
  */
+/**
+ * При наличии sourceRoot (плагин), создаёт временный symlink
+ * <sourceRoot>/.agloom → <sourceRoot>, чтобы транспилеры skills/agents
+ * обнаруживали файлы в <sourceRoot>/agents/ и <sourceRoot>/skills/
+ * через стандартный путь <projectRoot>/.agloom/agents/.
+ *
+ * Spec: docs/specs/plugin-manifest.md — плагин хранит agents/, skills/
+ * на верхнем уровне (без .agloom/ prefix).
+ */
+function withPluginSymlink<T>(sourceRoot: string, fn: () => T): T {
+  const symlinkPath = path.join(sourceRoot, ".agloom");
+  const needsSymlink = !fs.existsSync(symlinkPath);
+
+  if (needsSymlink) {
+    try {
+      fs.symlinkSync(sourceRoot, symlinkPath, "dir");
+    } catch {
+      // Если symlink не удаётся создать — выполняем без него
+      return fn();
+    }
+  }
+
+  try {
+    return fn();
+  } finally {
+    if (needsSymlink) {
+      try {
+        fs.unlinkSync(symlinkPath);
+      } catch {
+        // Best-effort cleanup
+      }
+    }
+  }
+}
+
 export function runTranspileStep(
   params: TranspileStepParams,
 ): TranspilerStepOutcome {
-  const { transpilerFactory, adapter, projectRoot, name, variablesByAgentId } =
-    params;
+  const {
+    transpilerFactory,
+    adapter,
+    projectRoot,
+    name,
+    variablesByAgentId,
+    sourceRoot,
+  } = params;
 
   // Шаг 1: создать экземпляр транспилера
+  // Spec: docs/specs/plugin-loading.md § Расширение процедуры «Шаг транспиляции» шаг 1
+  // При наличии sourceRoot, транспилер создаётся с sourceRoot для discover/transform
   const transpiler = transpilerFactory({
-    projectRoot,
+    projectRoot: sourceRoot ?? projectRoot,
     adapters: [adapter],
   });
 
   // Шаг 2: вызвать transpile()
+  // При наличии sourceRoot, создать временный .agloom symlink для discover
   let transpileResults: unknown[];
   try {
-    transpileResults = transpiler.transpile();
+    if (sourceRoot) {
+      transpileResults = withPluginSymlink(sourceRoot, () =>
+        transpiler.transpile(),
+      );
+    } else {
+      transpileResults = transpiler.transpile();
+    }
   } catch (err) {
     // Расширение 2a: transpile() выбрасывает исключение
     const error = err instanceof Error ? err : new Error(String(err));
@@ -69,10 +129,18 @@ export function runTranspileStep(
   }
 
   // Шаг 3: вызвать writeResults()
-  const writeResult = transpiler.writeResults(
-    transpileResults,
-    variablesByAgentId,
-  );
+  // Spec: docs/specs/plugin-loading.md § Расширение процедуры «Шаг транспиляции» шаг 3
+  // При наличии sourceRoot, writeResults вызывается с { targetRoot: projectRoot }
+  let writeResult: { written: string[]; errors: { message: string }[] };
+  if (sourceRoot) {
+    writeResult = transpiler.writeResults(transpileResults, {
+      targetRoot: projectRoot,
+    });
+  } else if (variablesByAgentId) {
+    writeResult = transpiler.writeResults(transpileResults, variablesByAgentId);
+  } else {
+    writeResult = transpiler.writeResults(transpileResults);
+  }
 
   // Шаг 4: writtenCount = writeResult.written.length
   const writtenCount = writeResult.written.length;

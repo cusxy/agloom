@@ -42,7 +42,9 @@ describe("CLI", () => {
       );
 
       const result = loadConfig(tmpDir);
-      expect(result).toEqual(["claude"]);
+      expect(result).not.toBeNull();
+      expect(result!.adapterIds).toEqual(["claude"]);
+      expect(result!.pluginPaths).toBeNull();
     });
 
     // --- Happy path: несколько адаптеров ---
@@ -56,7 +58,9 @@ describe("CLI", () => {
       );
 
       const result = loadConfig(tmpDir);
-      expect(result).toEqual(["claude", "opencode"]);
+      expect(result).not.toBeNull();
+      expect(result!.adapterIds).toEqual(["claude", "opencode"]);
+      expect(result!.pluginPaths).toBeNull();
     });
 
     // --- Расширение 1a: файл не существует → null ---

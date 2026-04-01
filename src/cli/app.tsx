@@ -32,6 +32,10 @@ import { createInstructionsTranspiler } from "../instructions-transpiler/index.j
 import { createSkillsTranspiler } from "../skills-transpiler/index.js";
 import { createAgentsTranspiler } from "../agents-transpiler/index.js";
 import { buildVariables, loadDotenv } from "../interpolation/index.js";
+import { resolvePlugins } from "./resolve-plugins.js";
+import type { ResolvedPlugin } from "./resolve-plugins.js";
+import { buildLayers } from "./plugin-layers.js";
+import { aggregateOutcomes } from "./plugin-aggregate.js";
 
 // Re-export resolveDeps for backward compatibility (tests import from app.js)
 export { resolveDeps } from "./resolve-deps.js";
@@ -388,11 +392,11 @@ function AdaptersView({
     } else {
       // Без --all: Load Config
       try {
-        const adapterIds = loadConfig(projectRoot);
-        if (adapterIds !== null) {
+        const configResult = loadConfig(projectRoot);
+        if (configResult !== null) {
           // Конфиг найден — показать активные
           heading = "Active adapters:";
-          entries = adapterIds
+          entries = configResult.adapterIds
             .map((id) => adapterRegistry.find((e) => e.id === id)!)
             .filter(Boolean);
         } else {
@@ -731,12 +735,14 @@ function TranspileView({
   clean,
   verbose,
   singleAdapter,
+  plugins = [],
 }: {
   entries: AdapterRegistryEntry[];
   projectRoot: string;
   clean?: boolean;
   verbose?: boolean;
   singleAdapter?: string;
+  plugins?: ResolvedPlugin[];
 }): React.ReactElement {
   const { exit } = useApp();
   const [cleanOutcome, setCleanOutcome] = useState<CleanOutcome | null>(null);
@@ -778,8 +784,6 @@ function TranspileView({
 
     // Шаг 5: для каждой записи из упорядоченного списка
     for (const entry of entries) {
-      const steps: TranspilerStepOutcome[] = [];
-
       // Spec: docs/specs/interpolation.md § Расширение команды transpile
       // Построить карту переменных для текущей записи
       const variables = buildVariables(entry, adapterRegistry, projectRoot);
@@ -801,8 +805,66 @@ function TranspileView({
         [entry.id]: variables,
       };
 
-      // Instructions
-      steps.push(
+      // § plugin-loading.md § Расширение команды transpile шаги 4.2-4.5
+      // Собрать outcomes по типам шагов для агрегации
+      const outcomeGroups: TranspilerStepOutcome[][] = [];
+
+      // Шаг 4.2: для каждого плагина
+      for (const plugin of plugins) {
+        const pluginOutcomes: TranspilerStepOutcome[] = [];
+
+        // 4.2.1: Instructions
+        pluginOutcomes.push(
+          runTranspileStep({
+            transpilerFactory: createInstructionsTranspiler as Parameters<
+              typeof runTranspileStep
+            >[0]["transpilerFactory"],
+            adapter: entry.instructions,
+            projectRoot,
+            name: "Instructions",
+            sourceRoot: plugin.path,
+          }),
+        );
+
+        // 4.2.2: Skills
+        if (entry.skills) {
+          pluginOutcomes.push(
+            runTranspileStep({
+              transpilerFactory: createSkillsTranspiler as Parameters<
+                typeof runTranspileStep
+              >[0]["transpilerFactory"],
+              adapter: entry.skills,
+              projectRoot,
+              name: "Skills",
+              variablesByAgentId,
+              sourceRoot: plugin.path,
+            }),
+          );
+        }
+
+        // 4.2.3: Agents
+        if (entry.agents) {
+          pluginOutcomes.push(
+            runTranspileStep({
+              transpilerFactory: createAgentsTranspiler as Parameters<
+                typeof runTranspileStep
+              >[0]["transpilerFactory"],
+              adapter: entry.agents,
+              projectRoot,
+              name: "Agents",
+              sourceRoot: plugin.path,
+            }),
+          );
+        }
+
+        outcomeGroups.push(pluginOutcomes);
+      }
+
+      // Шаги 4.3-4.5: локальный проект
+      const localOutcomes: TranspilerStepOutcome[] = [];
+
+      // 4.3: Instructions
+      localOutcomes.push(
         runTranspileStep({
           transpilerFactory: createInstructionsTranspiler as Parameters<
             typeof runTranspileStep
@@ -813,9 +875,9 @@ function TranspileView({
         }),
       );
 
-      // Skills
+      // 4.4: Skills
       if (entry.skills) {
-        steps.push(
+        localOutcomes.push(
           runTranspileStep({
             transpilerFactory: createSkillsTranspiler as Parameters<
               typeof runTranspileStep
@@ -828,9 +890,9 @@ function TranspileView({
         );
       }
 
-      // Agents
+      // 4.5: Agents
       if (entry.agents) {
-        steps.push(
+        localOutcomes.push(
           runTranspileStep({
             transpilerFactory: createAgentsTranspiler as Parameters<
               typeof runTranspileStep
@@ -842,8 +904,18 @@ function TranspileView({
         );
       }
 
-      // Overlay
-      steps.push(runOverlayStep({ entry, projectRoot, variables }));
+      outcomeGroups.push(localOutcomes);
+
+      // Агрегация outcomes по типу шага
+      const steps = aggregateOutcomes(outcomeGroups);
+
+      // Шаг 4.6-4.7: формирование layers и overlay
+      const layers = buildLayers({
+        plugins,
+        projectRoot,
+        entryId: entry.id,
+      });
+      steps.push(runOverlayStep({ entry, projectRoot, variables, layers }));
 
       results.push({ adapterId: entry.id, outcomes: steps });
     }
@@ -1105,6 +1177,24 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       return <Text>{message}</Text>;
     }
 
+    // § plugin-loading.md § Расширение команды transpile шаги 3.1-3.3
+    // Извлечь pluginPaths из результата Load Config
+    let plugins: ResolvedPlugin[] = [];
+    const configResult = loadConfig(root);
+    const pluginPaths = configResult?.pluginPaths ?? null;
+
+    if (pluginPaths !== null && pluginPaths.length > 0) {
+      // Шаг 3.2: Resolve Plugins
+      try {
+        plugins = resolvePlugins({ pluginPaths, projectRoot: root });
+      } catch (err) {
+        // Расширение 3.2a: ошибка → exit code 1
+        process.exitCode = 1;
+        const message = err instanceof Error ? err.message : String(err);
+        return <Text>{message}</Text>;
+      }
+    }
+
     return (
       <TranspileView
         entries={entries}
@@ -1112,6 +1202,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
         clean={parsed.clean}
         verbose={parsed.verbose}
         singleAdapter={parsed.agent ?? undefined}
+        plugins={plugins}
       />
     );
   }

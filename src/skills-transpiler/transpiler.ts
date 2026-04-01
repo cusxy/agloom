@@ -84,8 +84,28 @@ export class SkillsTranspiler {
    */
   writeResults(
     results: SkillTranspileResult[],
-    variablesByAgentId?: Record<string, Record<string, string>>,
+    variablesByAgentIdOrOptions?:
+      | Record<string, Record<string, string>>
+      | { targetRoot: string },
   ): SkillWriteResult {
+    // Determine if second argument is variablesByAgentId or options with targetRoot
+    let variablesByAgentId: Record<string, Record<string, string>> | undefined;
+    let writeRoot = this.projectRoot;
+
+    if (variablesByAgentIdOrOptions !== undefined) {
+      if (
+        "targetRoot" in variablesByAgentIdOrOptions &&
+        typeof variablesByAgentIdOrOptions.targetRoot === "string"
+      ) {
+        writeRoot = variablesByAgentIdOrOptions.targetRoot;
+      } else {
+        variablesByAgentId = variablesByAgentIdOrOptions as Record<
+          string,
+          Record<string, string>
+        >;
+      }
+    }
+
     const written: string[] = [];
     const errors: SkillWriteError[] = [];
 
@@ -115,7 +135,7 @@ export class SkillsTranspiler {
       // Шаг 2: для каждого файла
       for (const file of result.files) {
         const sourceAbsolute = path.join(this.projectRoot, file.sourcePath);
-        const destAbsolute = path.join(this.projectRoot, file.relativePath);
+        const destAbsolute = path.join(writeRoot, file.relativePath);
 
         // Определить, нужна ли интерполяция для данного файла
         const isMd = path.extname(file.sourcePath).toLowerCase() === ".md";

@@ -11,6 +11,9 @@ relates:
   - docs/specs/cli.md
   - docs/specs/adapter-registry-ext.md
   - docs/specs/interpolation.md
+  - docs/specs/layer-model.md
+  - docs/specs/plugin-manifest.md
+  - docs/specs/plugin-loading.md
 maps_to:
   - src/cli/
   - src/cli/types.ts

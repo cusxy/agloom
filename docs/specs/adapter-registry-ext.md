@@ -12,6 +12,7 @@ relates:
   - docs/specs/interpolation.md
   - docs/specs/init-command.md
   - docs/specs/config.md
+  - docs/specs/plugin-manifest.md
 maps_to:
   - src/cli/
 ---

@@ -13,15 +13,26 @@ import { resolveAdapter } from "./resolve-adapter.js";
 import { resolveDeps } from "./resolve-deps.js";
 import type { AdapterRegistryEntry } from "./types.js";
 
+/** Результат загрузки конфигурационного файла. */
+export interface LoadConfigResult {
+  /** Список идентификаторов адаптеров из конфига. */
+  adapterIds: string[];
+  /** Список путей к плагинам из конфига, или null если поле plugins отсутствует. */
+  pluginPaths: string[] | null;
+}
+
 /**
  * Процедура Load Config — загрузка и валидация конфигурационного файла.
  *
+ * Spec: docs/specs/config.md § Процедура Load Config
+ * Spec: docs/specs/plugin-loading.md § Расширение процедуры Load Config
+ *
  * @param projectRoot — абсолютный путь к корню проекта.
- * @returns Список идентификаторов адаптеров из конфига, или null если файл не существует.
+ * @returns Объект с adapterIds и pluginPaths, или null если файл не существует.
  * @throws Error при невалидном YAML, отсутствующем/невалидном поле adapters,
- *   неизвестном или скрытом адаптере.
+ *   неизвестном или скрытом адаптере, невалидном поле plugins.
  */
-export function loadConfig(projectRoot: string): string[] | null {
+export function loadConfig(projectRoot: string): LoadConfigResult | null {
   const configPath = path.join(projectRoot, ".agloom", "config.yml");
 
   // Шаг 1: Попытаться прочитать файл
@@ -87,7 +98,26 @@ export function loadConfig(projectRoot: string): string[] | null {
     }
   }
 
-  return adapters as string[];
+  // Шаг 5: проверить наличие поля plugins
+  // Расширение 5a: поле plugins отсутствует → pluginPaths = null
+  let pluginPaths: string[] | null = null;
+
+  if ("plugins" in config) {
+    const plugins = config.plugins;
+
+    // Шаг 6: проверить, что plugins является массивом строк
+    // Расширение 6a: невалидный формат
+    if (
+      !Array.isArray(plugins) ||
+      !plugins.every((item) => typeof item === "string")
+    ) {
+      throw new Error("Invalid config: 'plugins' must be an array of strings.");
+    }
+
+    pluginPaths = plugins as string[];
+  }
+
+  return { adapterIds: adapters as string[], pluginPaths };
 }
 
 /**
@@ -150,10 +180,10 @@ export function resolveAdaptersFromCLIArgs(options: {
   }
 
   // Шаг 4: Load Config
-  const adapterIds = loadConfig(projectRoot);
+  const configResult = loadConfig(projectRoot);
 
   // Расширение 4a: Load Config вернул null
-  if (adapterIds === null) {
+  if (configResult === null) {
     if (command !== "init") {
       throw new Error(
         "No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.",
@@ -166,5 +196,5 @@ export function resolveAdaptersFromCLIArgs(options: {
   }
 
   // Шаг 5: Resolve Adapters from Config
-  return resolveAdaptersFromConfig(adapterIds);
+  return resolveAdaptersFromConfig(configResult.adapterIds);
 }
