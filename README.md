@@ -1,5 +1,7 @@
 # agloom
 
+> **⚠️ Warning:** This project is in active development and experimentation. Its API is unstable and may introduce breaking changes at any time. Use at your own risk.
+
 Transpile canonical agent configurations across AI coding assistants.
 
 Write your instructions, skills, and agent definitions once — agloom generates the correct config files for each target (Claude Code, OpenCode, Agents.md, and more).
