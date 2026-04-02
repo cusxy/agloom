@@ -10,9 +10,14 @@ import type { AgentDefinition } from "./types.js";
 
 /**
  * Обнаруживает все определения агентов в проекте.
+ * @param projectRoot - абсолютный путь к корню проекта.
+ * @param agloomDir - относительный путь к agloom-директории (default: ".agloom").
  */
-export function discover(projectRoot: string): AgentDefinition[] {
-  const agentsDir = path.join(projectRoot, ".agloom", "agents");
+export function discover(
+  projectRoot: string,
+  agloomDir: string = ".agloom",
+): AgentDefinition[] {
+  const agentsDir = path.join(projectRoot, agloomDir, "agents");
 
   // Шаг 1: проверить наличие каталога .agloom/agents/
   // Расширение 1a: каталог не существует → пустой массив
@@ -45,7 +50,7 @@ export function discover(projectRoot: string): AgentDefinition[] {
     }
 
     // Шаг 4: прочитать содержимое каждого .md файла
-    const relativePath = path.join(".agloom", "agents", entry.name);
+    const relativePath = path.join(agloomDir, "agents", entry.name);
     const absolutePath = path.join(agentsDir, entry.name);
 
     let content: string;

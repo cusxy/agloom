@@ -22,8 +22,10 @@ describe("ClaudeAgentAdapter", () => {
       expect(adapter.agentId).toBe("claude");
     });
 
-    // --- Happy path: шаги 1–3 — трансформация и замена пути ---
-    it("трансформирует содержимое для claude и заменяет .agloom/agents/ на .claude/agents/", () => {
+    // --- Спецификация: § Claude Code адаптер, шаг 2 ---
+    // "Сформировать AgentOutputFile с definition.relativePath в качестве relativePath"
+    // Ремаппинг выполняется транспилером, НЕ адаптером.
+    it("трансформирует содержимое для claude и возвращает definition.relativePath без ремаппинга", () => {
       const adapter = new ClaudeAgentAdapter();
 
       const rawContent = [
@@ -50,7 +52,8 @@ describe("ClaudeAgentAdapter", () => {
       ]);
 
       expect(files).toHaveLength(1);
-      expect(files[0].relativePath).toBe(".claude/agents/code-reviewer.md");
+      // Адаптер возвращает definition.relativePath (без ремаппинга)
+      expect(files[0].relativePath).toBe(".agloom/agents/code-reviewer.md");
 
       // Содержимое трансформировано для claude
       expect(files[0].content).toContain("permissionMode: plan");
@@ -60,15 +63,16 @@ describe("ClaudeAgentAdapter", () => {
       expect(files[0].content).not.toContain("override:");
     });
 
-    // --- Трансформация: шаг 2 — замена префикса пути ---
-    it("заменяет префикс .agloom/agents/ на .claude/agents/ в relativePath", () => {
+    // --- Спецификация: § Claude Code адаптер, шаг 2 ---
+    // Адаптер возвращает definition.relativePath as-is
+    it("возвращает definition.relativePath в качестве relativePath (ремаппинг делает транспилер)", () => {
       const adapter = new ClaudeAgentAdapter();
 
       const files = adapter.transpile([
         makeDefinition("test-agent", "---\nname: test-agent\n---\nBody."),
       ]);
 
-      expect(files[0].relativePath).toBe(".claude/agents/test-agent.md");
+      expect(files[0].relativePath).toBe(".agloom/agents/test-agent.md");
     });
 
     // --- Happy path: обработка нескольких определений ---
@@ -82,8 +86,8 @@ describe("ClaudeAgentAdapter", () => {
 
       expect(files).toHaveLength(2);
       const paths = files.map((f) => f.relativePath);
-      expect(paths).toContain(".claude/agents/agent-a.md");
-      expect(paths).toContain(".claude/agents/agent-b.md");
+      expect(paths).toContain(".agloom/agents/agent-a.md");
+      expect(paths).toContain(".agloom/agents/agent-b.md");
     });
 
     // --- Расширение 1a: transformContent выбрасывает AgentTransformError → пробросить ---

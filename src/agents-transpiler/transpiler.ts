@@ -17,10 +17,16 @@ import type {
 export class AgentsTranspiler {
   private readonly projectRoot: string;
   private readonly adapters: AgentAdapter[];
+  private readonly agloomDir: string;
 
-  constructor(projectRoot: string, adapters: AgentAdapter[]) {
+  constructor(
+    projectRoot: string,
+    adapters: AgentAdapter[],
+    agloomDir: string = ".agloom",
+  ) {
     this.projectRoot = projectRoot;
     this.adapters = adapters;
+    this.agloomDir = agloomDir;
   }
 
   /**
@@ -28,7 +34,7 @@ export class AgentsTranspiler {
    * Spec: § Обнаружение определений агентов
    */
   discover(): AgentDefinition[] {
-    return discover(this.projectRoot);
+    return discover(this.projectRoot, this.agloomDir);
   }
 
   /**
@@ -45,15 +51,25 @@ export class AgentsTranspiler {
     }
 
     // Шаг 2: для каждого адаптера вызвать transpile(definitions)
-    // Шаг 3: собрать результаты
+    // Шаг 3: ремаппинг relativePath
+    // Шаг 4: собрать результаты
+    const sourcePrefix = path.join(this.agloomDir, "agents");
     const results: AgentTranspileResult[] = [];
 
     for (const adapter of this.adapters) {
       try {
         const files = adapter.transpile(definitions);
+
+        // Шаг 3: ремаппинг relativePath для каждого AgentOutputFile
+        const remappedFiles = files.map((file) => {
+          const suffix = file.relativePath.substring(sourcePrefix.length);
+          const relativePath = adapter.targetDir + suffix;
+          return { ...file, relativePath };
+        });
+
         results.push({
           agentId: adapter.agentId,
-          files,
+          files: remappedFiles,
           errors: [],
         });
       } catch (err) {

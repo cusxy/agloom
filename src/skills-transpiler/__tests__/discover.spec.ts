@@ -14,7 +14,7 @@ import { SkillDiscoverError } from "../errors.js";
 function createStubAdapter(agentId: string) {
   return {
     agentId,
-    transpile: () => [],
+    targetDir: `.${agentId}/skills`,
   };
 }
 

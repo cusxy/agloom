@@ -18,10 +18,16 @@ import type {
 export class SkillsTranspiler {
   private readonly projectRoot: string;
   private readonly adapters: SkillAdapter[];
+  private readonly agloomDir: string;
 
-  constructor(projectRoot: string, adapters: SkillAdapter[]) {
+  constructor(
+    projectRoot: string,
+    adapters: SkillAdapter[],
+    agloomDir: string = ".agloom",
+  ) {
     this.projectRoot = projectRoot;
     this.adapters = adapters;
+    this.agloomDir = agloomDir;
   }
 
   /**
@@ -29,7 +35,7 @@ export class SkillsTranspiler {
    * Spec: § Обнаружение skill-пакетов
    */
   discover(): SkillPackage[] {
-    return discover(this.projectRoot);
+    return discover(this.projectRoot, this.agloomDir);
   }
 
   /**
@@ -45,33 +51,28 @@ export class SkillsTranspiler {
       return [];
     }
 
-    // Шаг 2: для каждого адаптера вызвать transpile(packages)
-    // Шаг 3: собрать результаты
+    // Шаг 2: для каждого адаптера выполнить маппинг путей
+    const sourcePrefix = path.join(this.agloomDir, "skills");
     const results: SkillTranspileResult[] = [];
 
     for (const adapter of this.adapters) {
-      try {
-        const files = adapter.transpile(packages);
-        results.push({
-          agentId: adapter.agentId,
-          files,
-          errors: [],
-        });
-      } catch (err) {
-        // Расширение 2a: адаптер выбросил исключение
-        const error = err instanceof Error ? err : new Error(String(err));
-        results.push({
-          agentId: adapter.agentId,
-          files: [],
-          errors: [
-            {
-              agentId: adapter.agentId,
-              message: error.message,
-              cause: error,
-            },
-          ],
-        });
-      }
+      const outputFiles = packages.flatMap((pkg) =>
+        pkg.files.map((filePath) => {
+          // Заменить префикс <agloomDir>/skills/ на <adapter.targetDir>/
+          const suffix = filePath.substring(sourcePrefix.length);
+          const relativePath = adapter.targetDir + suffix;
+          return {
+            relativePath,
+            sourcePath: filePath,
+          };
+        }),
+      );
+
+      results.push({
+        agentId: adapter.agentId,
+        files: outputFiles,
+        errors: [],
+      });
     }
 
     return results;
@@ -84,27 +85,13 @@ export class SkillsTranspiler {
    */
   writeResults(
     results: SkillTranspileResult[],
-    variablesByAgentIdOrOptions?:
-      | Record<string, Record<string, string>>
-      | { targetRoot: string },
+    options?: {
+      targetRoot?: string;
+      variablesByAgentId?: Record<string, Record<string, string>>;
+    },
   ): SkillWriteResult {
-    // Determine if second argument is variablesByAgentId or options with targetRoot
-    let variablesByAgentId: Record<string, Record<string, string>> | undefined;
-    let writeRoot = this.projectRoot;
-
-    if (variablesByAgentIdOrOptions !== undefined) {
-      if (
-        "targetRoot" in variablesByAgentIdOrOptions &&
-        typeof variablesByAgentIdOrOptions.targetRoot === "string"
-      ) {
-        writeRoot = variablesByAgentIdOrOptions.targetRoot;
-      } else {
-        variablesByAgentId = variablesByAgentIdOrOptions as Record<
-          string,
-          Record<string, string>
-        >;
-      }
-    }
+    const variablesByAgentId = options?.variablesByAgentId;
+    const writeRoot = options?.targetRoot ?? this.projectRoot;
 
     const written: string[] = [];
     const errors: SkillWriteError[] = [];
@@ -119,7 +106,7 @@ export class SkillsTranspiler {
         continue;
       }
 
-      // Расширение 2c: variablesByAgentId передан, но ключ agentId отсутствует
+      // Расширение 3c: variablesByAgentId передан, но ключ agentId отсутствует
       if (
         variablesByAgentId !== undefined &&
         !(result.agentId in variablesByAgentId)
@@ -132,7 +119,7 @@ export class SkillsTranspiler {
         continue;
       }
 
-      // Шаг 2: для каждого файла
+      // Шаг 3: для каждого файла
       for (const file of result.files) {
         const sourceAbsolute = path.join(this.projectRoot, file.sourcePath);
         const destAbsolute = path.join(writeRoot, file.relativePath);
@@ -157,7 +144,7 @@ export class SkillsTranspiler {
             fs.writeFileSync(destAbsolute, interpolated, "utf-8");
             written.push(file.relativePath);
           } catch (err) {
-            // Расширение 2d: InterpolationError → SkillWriteError
+            // Расширение 3d: InterpolationError → SkillWriteError
             if (err instanceof InterpolationError) {
               errors.push(
                 new SkillWriteError(
@@ -166,7 +153,7 @@ export class SkillsTranspiler {
               );
               continue;
             }
-            // Расширение 2a/2b: ошибка чтения или записи
+            // Расширение 3a/3b: ошибка чтения или записи
             errors.push(
               new SkillWriteError(
                 `Failed to write ${file.relativePath}: ${(err as Error).message}`,
@@ -176,7 +163,7 @@ export class SkillsTranspiler {
         } else {
           // Побайтовое копирование (не-.md файлы или variablesByAgentId не передан)
 
-          // Расширение 2a: исходный файл не существует или недоступен
+          // Расширение 3a: исходный файл не существует или недоступен
           try {
             fs.accessSync(sourceAbsolute, fs.constants.R_OK);
           } catch (err) {
@@ -198,7 +185,7 @@ export class SkillsTranspiler {
 
             written.push(file.relativePath);
           } catch (err) {
-            // Расширение 2b: ошибка записи целевого файла
+            // Расширение 3b: ошибка записи целевого файла
             errors.push(
               new SkillWriteError(
                 `Failed to write ${file.relativePath}: ${(err as Error).message}`,

@@ -22,8 +22,10 @@ describe("OpenCodeAgentAdapter", () => {
       expect(adapter.agentId).toBe("opencode");
     });
 
-    // --- Happy path: шаги 1–3 — трансформация и замена пути ---
-    it("трансформирует содержимое для opencode и заменяет .agloom/agents/ на .opencode/agents/", () => {
+    // --- Спецификация: § OpenCode адаптер, шаг 2 ---
+    // "Сформировать AgentOutputFile с definition.relativePath в качестве relativePath"
+    // Ремаппинг выполняется транспилером, НЕ адаптером.
+    it("трансформирует содержимое для opencode и возвращает definition.relativePath без ремаппинга", () => {
       const adapter = new OpenCodeAgentAdapter();
 
       const rawContent = [
@@ -51,7 +53,8 @@ describe("OpenCodeAgentAdapter", () => {
       ]);
 
       expect(files).toHaveLength(1);
-      expect(files[0].relativePath).toBe(".opencode/agents/code-reviewer.md");
+      // Адаптер возвращает definition.relativePath (без ремаппинга)
+      expect(files[0].relativePath).toBe(".agloom/agents/code-reviewer.md");
 
       // Содержимое трансформировано для opencode
       expect(files[0].content).toContain("model: anthropic/claude-sonnet-4-5");
@@ -62,15 +65,16 @@ describe("OpenCodeAgentAdapter", () => {
       expect(files[0].content).not.toContain("override:");
     });
 
-    // --- Трансформация: шаг 2 — замена префикса пути ---
-    it("заменяет префикс .agloom/agents/ на .opencode/agents/ в relativePath", () => {
+    // --- Спецификация: § OpenCode адаптер, шаг 2 ---
+    // Адаптер возвращает definition.relativePath as-is
+    it("возвращает definition.relativePath в качестве relativePath (ремаппинг делает транспилер)", () => {
       const adapter = new OpenCodeAgentAdapter();
 
       const files = adapter.transpile([
         makeDefinition("test-agent", "---\nname: test-agent\n---\nBody."),
       ]);
 
-      expect(files[0].relativePath).toBe(".opencode/agents/test-agent.md");
+      expect(files[0].relativePath).toBe(".agloom/agents/test-agent.md");
     });
 
     // --- Happy path: обработка нескольких определений ---
@@ -84,8 +88,8 @@ describe("OpenCodeAgentAdapter", () => {
 
       expect(files).toHaveLength(2);
       const paths = files.map((f) => f.relativePath);
-      expect(paths).toContain(".opencode/agents/agent-a.md");
-      expect(paths).toContain(".opencode/agents/agent-b.md");
+      expect(paths).toContain(".agloom/agents/agent-a.md");
+      expect(paths).toContain(".agloom/agents/agent-b.md");
     });
 
     // --- Расширение 1a: transformContent выбрасывает AgentTransformError → пробросить ---

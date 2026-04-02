@@ -39,7 +39,11 @@ function isAgentAdapter(value: unknown): value is AgentAdapter {
     return false;
   }
   const obj = value as Record<string, unknown>;
-  return typeof obj.agentId === "string" && typeof obj.transpile === "function";
+  return (
+    typeof obj.agentId === "string" &&
+    typeof obj.targetDir === "string" &&
+    typeof obj.transpile === "function"
+  );
 }
 
 /**
@@ -88,5 +92,9 @@ export function createAgentsTranspiler(
   }
 
   // Шаг 5: создать экземпляр
-  return new AgentsTranspiler(config.projectRoot, config.adapters);
+  return new AgentsTranspiler(
+    config.projectRoot,
+    config.adapters,
+    config.agloomDir,
+  );
 }

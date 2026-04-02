@@ -334,5 +334,160 @@ describe("AgentsTranspiler", () => {
       // Результат: writeResult.written содержит целевой путь
       expect(writeResult.written).toContain(".claude/agents/simple.md");
     });
+    // --- IT-AGENT-07: Pipeline с agloomDir="." ---
+    it('IT-AGENT-07: обнаруживает определения агентов в agents/ при agloomDir = "."', () => {
+      // Вход: создать структуру плагина
+      const agentsDir = path.join(tmpDir, "agents");
+      fs.mkdirSync(agentsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(agentsDir, "reviewer.md"),
+        "---\nname: reviewer\nmodel: sonnet\n---\nPlugin agent instructions.",
+      );
+
+      // Поведение: шаги 1–3
+      const transpiler = createAgentsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [new ClaudeAgentAdapter()],
+        agloomDir: ".",
+      });
+      const results = transpiler.transpile();
+      const writeResult = transpiler.writeResults(results);
+
+      // Шаг 4: writeResult.errors — пустой массив
+      expect(writeResult.errors).toHaveLength(0);
+
+      // Шаг 5: прочитать целевой файл
+      const outputContent = fs.readFileSync(
+        path.join(tmpDir, ".claude", "agents", "reviewer.md"),
+        "utf-8",
+      );
+
+      // Шаг 6: парсинг frontmatter
+      const parsed = matter(outputContent);
+
+      // Шаг 7: frontmatter содержит name: "reviewer"
+      expect(parsed.data.name).toBe("reviewer");
+
+      // Шаг 8: frontmatter содержит model: "sonnet"
+      expect(parsed.data.model).toBe("sonnet");
+
+      // Шаг 9: body содержит "Plugin agent instructions."
+      expect(parsed.content).toContain("Plugin agent instructions.");
+
+      // Результат: writeResult.written содержит целевой путь
+      expect(writeResult.written).toContain(".claude/agents/reviewer.md");
+    });
+
+    // --- IT-AGENT-08: Pipeline с writeResults targetRoot ---
+    it("IT-AGENT-08: writeResults записывает файлы в targetRoot с override-трансформацией", () => {
+      // Вход: создать sourceDir и targetDir
+      const sourceDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "agl-agents-source-"),
+      );
+      const targetDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "agl-agents-target-"),
+      );
+
+      try {
+        const agentsDir = path.join(sourceDir, "agents");
+        fs.mkdirSync(agentsDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(agentsDir, "coder.md"),
+          "---\nname: coder\nmodel: opus\noverride:\n  claude:\n    permissionMode: plan\n---\nSource agent instructions.",
+        );
+
+        // Поведение: шаги 1–3
+        const transpiler = createAgentsTranspiler({
+          projectRoot: sourceDir,
+          adapters: [new ClaudeAgentAdapter()],
+          agloomDir: ".",
+        });
+        const results = transpiler.transpile();
+        const writeResult = transpiler.writeResults(results, {
+          targetRoot: targetDir,
+        });
+
+        // Шаг 4: writeResult.errors — пустой массив
+        expect(writeResult.errors).toHaveLength(0);
+
+        // Шаг 5: прочитать целевой файл из targetDir
+        const outputContent = fs.readFileSync(
+          path.join(targetDir, ".claude", "agents", "coder.md"),
+          "utf-8",
+        );
+
+        // Шаг 6: парсинг frontmatter
+        const parsed = matter(outputContent);
+
+        // Шаг 7: frontmatter содержит name: "coder"
+        expect(parsed.data.name).toBe("coder");
+
+        // Шаг 8: frontmatter содержит permissionMode: "plan"
+        expect(parsed.data.permissionMode).toBe("plan");
+
+        // Шаг 9: frontmatter НЕ содержит ключ override
+        expect(parsed.data).not.toHaveProperty("override");
+
+        // Шаг 10: body содержит "Source agent instructions."
+        expect(parsed.content).toContain("Source agent instructions.");
+
+        // Шаг 11: файл НЕ существует в sourceDir
+        expect(
+          fs.existsSync(path.join(sourceDir, ".claude", "agents", "coder.md")),
+        ).toBe(false);
+
+        // Результат: writeResult.written содержит целевой путь
+        expect(writeResult.written).toContain(".claude/agents/coder.md");
+      } finally {
+        fs.rmSync(sourceDir, { recursive: true, force: true });
+        fs.rmSync(targetDir, { recursive: true, force: true });
+      }
+    });
+
+    // --- IT-AGENT-09: Pipeline с agloomDir="." — ремаппинг relativePath ---
+    it('IT-AGENT-09: ремаппинг relativePath из ./agents/ в .claude/agents/ при agloomDir = "."', () => {
+      // Вход: создать структуру агента в плагине (agloomDir=".")
+      // Спецификация: docs/specs/integration-tests.md § IT-AGENT-09
+      // Тест проверяет ремаппинг префикса ./agents/ -> .claude/agents/
+      // Discover читает только прямых потомков agents/, поэтому используем
+      // плоскую структуру для проверки ремаппинга.
+      const agentsDir = path.join(tmpDir, "agents");
+      fs.mkdirSync(agentsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(agentsDir, "nested-agent.md"),
+        "---\nname: nested-agent\nmodel: sonnet\n---\nNested agent instructions.",
+      );
+
+      // Поведение: шаги 1–2
+      const transpiler = createAgentsTranspiler({
+        projectRoot: tmpDir,
+        adapters: [new ClaudeAgentAdapter()],
+        agloomDir: ".",
+      });
+      const results = transpiler.transpile();
+
+      // Шаг 3: relativePath ремаппинг выполнен
+      // Префикс ./agents/ заменён на .claude/agents/
+      expect(results[0].files[0].relativePath).toBe(
+        ".claude/agents/nested-agent.md",
+      );
+
+      // Шаги 4–5
+      const writeResult = transpiler.writeResults(results);
+      expect(writeResult.errors).toHaveLength(0);
+
+      // Шаг 6: прочитать целевой файл
+      const outputContent = fs.readFileSync(
+        path.join(tmpDir, ".claude", "agents", "nested-agent.md"),
+        "utf-8",
+      );
+      const parsed = matter(outputContent);
+
+      // Шаг 7: body содержит "Nested agent instructions."
+      expect(parsed.content).toContain("Nested agent instructions.");
+
+      // Результат: writeResult.written содержит целевой путь
+      expect(writeResult.written).toContain(".claude/agents/nested-agent.md");
+    });
   });
 });

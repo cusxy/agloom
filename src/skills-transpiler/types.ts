@@ -53,8 +53,8 @@ export interface SkillWriteResult {
 export interface SkillAdapter {
   /** Уникальный идентификатор агента. */
   readonly agentId: string;
-  /** Генерирует agent-specific файлы из skill-пакетов. */
-  transpile(packages: SkillPackage[]): SkillOutputFile[];
+  /** Путь к целевому каталогу относительно projectRoot. */
+  readonly targetDir: string;
 }
 
 /** Конфигурация транспилера. */
@@ -63,4 +63,6 @@ export interface SkillsTranspilerConfig {
   projectRoot: string;
   /** Массив адаптеров для целевых агентов. */
   adapters: SkillAdapter[];
+  /** Относительный путь к agloom-директории внутри projectRoot. Default: ".agloom". */
+  agloomDir?: string;
 }

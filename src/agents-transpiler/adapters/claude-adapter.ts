@@ -3,9 +3,11 @@
  * Spec: docs/specs/agents-transpiler.md § Claude Code адаптер
  *
  * agentId: "claude"
+ * targetDir: ".claude/agents"
  *
  * Правила генерации:
- * - .agloom/agents/<name>.md → .claude/agents/<name>.md
+ * - Адаптер возвращает relativePath = definition.relativePath (без ремаппинга).
+ * - Ремаппинг выполняется транспилером (см. § Транспиляция, шаг 3).
  */
 
 import { transformContent } from "../transform-content.js";
@@ -17,6 +19,7 @@ import type {
 
 export class ClaudeAgentAdapter implements AgentAdapter {
   readonly agentId = "claude";
+  readonly targetDir = ".claude/agents";
   /** Карта переменных интерполяции (устанавливается CLI перед transpile). */
   variables?: Record<string, string>;
 
@@ -31,14 +34,9 @@ export class ClaudeAgentAdapter implements AgentAdapter {
         this.variables,
       );
 
-      // Шаг 2: замена префикса .agloom/agents/ на .claude/agents/
-      const relativePath = def.relativePath.replace(
-        ".agloom/agents/",
-        ".claude/agents/",
-      );
-
-      // Шаг 3: формирование AgentOutputFile
-      output.push({ relativePath, content });
+      // Шаг 2: сформировать AgentOutputFile с definition.relativePath
+      // Ремаппинг relativePath выполняется транспилером (§ Транспиляция, шаг 3)
+      output.push({ relativePath: def.relativePath, content });
     }
 
     return output;

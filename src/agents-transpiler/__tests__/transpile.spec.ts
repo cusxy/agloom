@@ -10,14 +10,24 @@ import { AgentDiscoverError } from "../errors.js";
 
 /**
  * Стаб-адаптер, возвращающий предсказуемые файлы.
+ * Адаптер возвращает definition.relativePath (без ремаппинга).
+ * Ремаппинг выполняется транспилером.
  */
 function createStubAdapter(
   agentId: string,
+  targetDir: string,
   transpileFn?: (definitions: any[]) => any[],
 ) {
   return {
     agentId,
-    transpile: transpileFn ?? (() => []),
+    targetDir,
+    transpile:
+      transpileFn ??
+      ((defs: any[]) =>
+        defs.map((d: any) => ({
+          relativePath: d.relativePath,
+          content: `Transformed: ${d.rawContent}`,
+        }))),
   };
 }
 
@@ -33,8 +43,8 @@ describe("AgentsTranspiler", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
-    // --- Happy path: шаги 1–3 — полный цикл транспиляции ---
-    it("выполняет полный цикл: discover → adapter.transpile(definitions) → собрать результаты", () => {
+    // --- Happy path: шаги 1–4 — полный цикл транспиляции ---
+    it("выполняет полный цикл: discover → adapter.transpile(definitions) → ремаппинг → собрать результаты", () => {
       const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(
@@ -42,18 +52,8 @@ describe("AgentsTranspiler", () => {
         "---\nname: code-reviewer\n---\nBody.",
       );
 
-      const adapter1 = createStubAdapter("adapter-a", (defs) =>
-        defs.map((d) => ({
-          relativePath: `.adapter-a/agents/${d.name}.md`,
-          content: `Transformed for A: ${d.rawContent}`,
-        })),
-      );
-      const adapter2 = createStubAdapter("adapter-b", (defs) =>
-        defs.map((d) => ({
-          relativePath: `.adapter-b/agents/${d.name}.md`,
-          content: `Transformed for B: ${d.rawContent}`,
-        })),
-      );
+      const adapter1 = createStubAdapter("adapter-a", ".adapter-a/agents");
+      const adapter2 = createStubAdapter("adapter-b", ".adapter-b/agents");
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
@@ -67,11 +67,18 @@ describe("AgentsTranspiler", () => {
       const resultA = results.find((r) => r.agentId === "adapter-a");
       expect(resultA).toBeDefined();
       expect(resultA!.files).toHaveLength(1);
+      // Транспилер ремаппит relativePath: .agloom/agents/ → .adapter-a/agents/
+      expect(resultA!.files[0].relativePath).toBe(
+        ".adapter-a/agents/code-reviewer.md",
+      );
       expect(resultA!.errors).toHaveLength(0);
 
       const resultB = results.find((r) => r.agentId === "adapter-b");
       expect(resultB).toBeDefined();
       expect(resultB!.files).toHaveLength(1);
+      expect(resultB!.files[0].relativePath).toBe(
+        ".adapter-b/agents/code-reviewer.md",
+      );
       expect(resultB!.errors).toHaveLength(0);
     });
 
@@ -81,7 +88,7 @@ describe("AgentsTranspiler", () => {
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
-        adapters: [createStubAdapter("claude")],
+        adapters: [createStubAdapter("claude", ".claude/agents")],
       });
 
       const results = transpiler.transpile();
@@ -97,7 +104,7 @@ describe("AgentsTranspiler", () => {
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
-        adapters: [createStubAdapter("claude")],
+        adapters: [createStubAdapter("claude", ".claude/agents")],
       });
 
       try {
@@ -118,17 +125,13 @@ describe("AgentsTranspiler", () => {
 
       const failingAdapter = {
         agentId: "failing",
+        targetDir: ".failing/agents",
         transpile: () => {
           throw new Error("Adapter internal failure");
         },
       };
 
-      const successAdapter = createStubAdapter("success", (defs) =>
-        defs.map((d) => ({
-          relativePath: `success/${d.name}.md`,
-          content: d.rawContent,
-        })),
-      );
+      const successAdapter = createStubAdapter("success", ".success/agents");
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,

@@ -36,7 +36,7 @@ function isSkillAdapter(value: unknown): value is SkillAdapter {
     return false;
   }
   const obj = value as Record<string, unknown>;
-  return typeof obj.agentId === "string" && typeof obj.transpile === "function";
+  return typeof obj.agentId === "string" && typeof obj.targetDir === "string";
 }
 
 /**
@@ -85,5 +85,9 @@ export function createSkillsTranspiler(
   }
 
   // Шаг 5: создать экземпляр
-  return new SkillsTranspiler(config.projectRoot, config.adapters);
+  return new SkillsTranspiler(
+    config.projectRoot,
+    config.adapters,
+    config.agloomDir,
+  );
 }

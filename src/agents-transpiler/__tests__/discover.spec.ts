@@ -14,6 +14,7 @@ import { AgentDiscoverError } from "../errors.js";
 function createStubAdapter(agentId: string) {
   return {
     agentId,
+    targetDir: `.${agentId}/agents`,
     transpile: () => [],
   };
 }

@@ -23,7 +23,7 @@ describe("SkillsTranspiler", () => {
     });
 
     // --- Happy path: шаги 1–3 — полный цикл транспиляции ---
-    it("выполняет полный цикл: discover → adapter.transpile(SkillPackage[]) → собрать результаты", () => {
+    it("выполняет полный цикл: discover → маппинг путей через targetDir → собрать результаты", () => {
       // Arrange: создаём skill-пакет
       const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
@@ -98,49 +98,6 @@ describe("SkillsTranspiler", () => {
       } finally {
         fs.chmodSync(skillsDir, 0o755);
       }
-    });
-
-    // --- Расширение 2a: адаптер выбрасывает исключение ---
-    it("создаёт SkillTranspileResult с ошибкой при исключении адаптера и продолжает остальные", () => {
-      // Arrange: создаём skill-пакет
-      const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
-      fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# My Skill");
-
-      const failingAdapter = {
-        agentId: "failing",
-        transpile: () => {
-          throw new Error("Adapter internal failure");
-        },
-      };
-
-      const transpiler = createSkillsTranspiler({
-        projectRoot: tmpDir,
-        adapters: [failingAdapter, new ClaudeSkillAdapter()],
-      });
-
-      // Act
-      const results = transpiler.transpile();
-
-      // Assert: результаты для обоих адаптеров
-      expect(results).toHaveLength(2);
-
-      // Failing adapter — с ошибкой
-      const failingResult = results.find((r) => r.agentId === "failing");
-      expect(failingResult).toBeDefined();
-      expect(failingResult!.files).toHaveLength(0);
-      expect(failingResult!.errors).toHaveLength(1);
-      expect(failingResult!.errors[0].message).toContain(
-        "Adapter internal failure",
-      );
-      expect(failingResult!.errors[0].agentId).toBe("failing");
-      expect(failingResult!.errors[0].cause).toBeInstanceOf(Error);
-
-      // Claude adapter — успешно
-      const claudeResult = results.find((r) => r.agentId === "claude");
-      expect(claudeResult).toBeDefined();
-      expect(claudeResult!.errors).toHaveLength(0);
-      expect(claudeResult!.files.length).toBeGreaterThan(0);
     });
   });
 });

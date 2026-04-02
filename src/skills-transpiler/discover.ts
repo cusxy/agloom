@@ -10,9 +10,14 @@ import type { SkillPackage } from "./types.js";
 
 /**
  * Обнаруживает все skill-пакеты в проекте.
+ * @param projectRoot - абсолютный путь к корню проекта.
+ * @param agloomDir - относительный путь к agloom-директории (default: ".agloom").
  */
-export function discover(projectRoot: string): SkillPackage[] {
-  const skillsDir = path.join(projectRoot, ".agloom", "skills");
+export function discover(
+  projectRoot: string,
+  agloomDir: string = ".agloom",
+): SkillPackage[] {
+  const skillsDir = path.join(projectRoot, agloomDir, "skills");
 
   // Шаг 1: проверить наличие каталога .agloom/skills/
   // Расширение 1a: каталог не существует → пустой массив
@@ -48,7 +53,7 @@ export function discover(projectRoot: string): SkillPackage[] {
     }
 
     // Шаг 4: рекурсивно получить список всех файлов в подкаталоге
-    const directoryPath = path.join(".agloom", "skills", entry.name);
+    const directoryPath = path.join(agloomDir, "skills", entry.name);
     const files = collectFiles(dirPath, directoryPath, projectRoot);
 
     // Шаг 5: сформировать SkillPackage

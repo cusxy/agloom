@@ -53,6 +53,8 @@ export interface AgentWriteResult {
 export interface AgentAdapter {
   /** Уникальный идентификатор агента. */
   readonly agentId: string;
+  /** Путь к целевому каталогу относительно projectRoot. */
+  readonly targetDir: string;
   /** Генерирует agent-specific файлы из определений агентов. */
   transpile(definitions: AgentDefinition[]): AgentOutputFile[];
 }
@@ -63,4 +65,6 @@ export interface AgentsTranspilerConfig {
   projectRoot: string;
   /** Массив адаптеров для целевых агентов. */
   adapters: AgentAdapter[];
+  /** Относительный путь к agloom-директории внутри projectRoot. Default: ".agloom". */
+  agloomDir?: string;
 }
