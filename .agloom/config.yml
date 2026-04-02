@@ -5,4 +5,4 @@ adapters:
   - claude
   - opencode
 plugins:
-  - git@github.com:cusxy/skill-cycling#v2.0.1
+  - git@github.com:cusxy/skill-cycling
