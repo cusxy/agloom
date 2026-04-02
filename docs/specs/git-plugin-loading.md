@@ -35,15 +35,19 @@ maps_to:
   (HTTPS или SSH URL) в конфигурационном файле.
 - **Локальный плагин** — плагин, источник которого указан как путь
   в файловой системе. Определён в `docs/specs/plugin-loading.md`.
-- **Ref** — ссылка Git: тег, имя ветки или полный commit SHA (40 hex-символов).
+- **Ref** — ссылка Git: тег, имя ветки, полный commit SHA (40 hex-символов)
+  или `null` (отсутствует). При `null` разрешается в HEAD (default branch).
 - **Resolved SHA** — полный commit SHA (40 hex-символов), однозначно
   идентифицирующий состояние репозитория.
 - **Mutable ref** — ref, указывающий на разные коммиты в разные моменты
-  времени (имя ветки).
+  времени (имя ветки). HEAD также является mutable ref.
 - **Immutable ref** — ref, стабильно указывающий на один коммит
   (тег или полный commit SHA). Тег определяется как ref, который
   НЕ является 40-hex SHA, но `git ls-remote` возвращает точное
   совпадение по `refs/tags/<ref>`.
+- **Git URL** — строка, являющаяся URL git-репозитория. Определяется
+  по наличию хотя бы одного из признаков: содержит `://`, начинается
+  с `git@`, заканчивается на `.git`.
 
 ## Унифицированный формат записи плагина
 
@@ -55,9 +59,12 @@ maps_to:
 
 Каждый элемент массива `plugins` ДОЛЖЕН быть одним из:
 
-- **Строка** — автодетект типа по наличию символа `#`:
+- **Строка** — автодетект типа:
   - Если строка содержит `#` — git-плагин (разбор по процедуре
     Parse Plugin Entry, см. § Процедура Parse Plugin Entry).
+  - Если строка НЕ содержит `#`, но является Git URL
+    (см. § Функция isGitUrl) — git-плагин без ref
+    (`ref: null`).
   - Иначе — локальный путь к плагину. Обрабатывается по текущей
     логике (см. `docs/specs/plugin-loading.md`).
 - **Объект `LocalPluginEntry`** — запись локального плагина:
@@ -68,8 +75,9 @@ maps_to:
   - `git` (string, обязательно) — URL git-репозитория. ДОЛЖЕН быть
     валидным HTTPS URL (начинается с `https://`) или SSH URL
     (формат `git@<host>:<owner>/<repo>` или `ssh://`).
-  - `ref` (string, обязательно) — Git ref: тег, имя ветки
-    или полный commit SHA (40 hex-символов).
+  - `ref` (string, опционально) — Git ref: тег, имя ветки
+    или полный commit SHA (40 hex-символов). При отсутствии —
+    разрешается в HEAD (default branch).
   - `path` (string, опционально) — относительный путь к подпапке
     внутри репозитория, содержащей плагин. Путь ДОЛЖЕН быть
     относительным (без ведущего `/`). Путь НЕ ДОЛЖЕН содержать
@@ -77,11 +85,16 @@ maps_to:
 
 Строковый формат git-плагина:
 
-- Без subpath: `<url>#<ref>` — пример: `https://github.com/org/repo#v1.0.0`.
-- С subpath (Terraform-style `//`):
+- С ref: `<url>#<ref>` — пример: `https://github.com/org/repo#v1.0.0`.
+- С ref и subpath (Terraform-style `//`):
   `<url>//<path>#<ref>` — пример:
   `https://github.com/org/repo//plugins/eslint#v1.0.0`.
-- SSH: `git@github.com:org/repo#main`.
+- SSH с ref: `git@github.com:org/repo#main`.
+- Без ref (автодетект Git URL): `<url>` — пример:
+  `https://github.com/org/repo`. Ref разрешается в HEAD.
+- Без ref с subpath: `<url>//<path>` — пример:
+  `https://github.com/org/repo//plugins/eslint`. Ref разрешается в HEAD.
+- SSH без ref: `git@github.com:org/repo`.
 
 Пример конфигурации:
 
@@ -89,12 +102,17 @@ maps_to:
 plugins:
   - ../local-plugin # строка — локальный
   - path: ../local-plugin # объект — локальный
-  - https://github.com/org/repo#v1.0.0 # строка — git
-  - https://github.com/org/repo//plugins/eslint#v1.0.0 # строка — git с subpath
-  - git@github.com:org/repo#main # строка — git SSH
-  - git: https://github.com/org/repo # объект — git
+  - https://github.com/org/repo#v1.0.0 # строка — git с ref
+  - https://github.com/org/repo//plugins/eslint#v1.0.0 # строка — git с subpath и ref
+  - git@github.com:org/repo#main # строка — git SSH с ref
+  - https://github.com/org/repo # строка — git без ref (HEAD)
+  - https://github.com/org/repo//plugins/eslint # строка — git с subpath без ref (HEAD)
+  - git@github.com:org/repo # строка — git SSH без ref (HEAD)
+  - https://github.com/org/repo.git # строка — git без ref (HEAD, .git суффикс)
+  - git: https://github.com/org/repo # объект — git с ref
     ref: v1.0.0
     path: plugins/eslint
+  - git: https://github.com/org/repo # объект — git без ref (HEAD)
 ```
 
 ## Тип LocalPluginEntry
@@ -104,7 +122,8 @@ plugins:
 ## Тип GitPluginEntry
 
 - `git` (string) — URL git-репозитория.
-- `ref` (string) — Git ref (тег, ветка или commit SHA).
+- `ref` (string | null) — Git ref (тег, ветка или commit SHA).
+  `null` если не указан — разрешается в HEAD (default branch).
 - `path` (string | null) — относительный путь к подпапке
   (`null` если не указан).
 
@@ -119,6 +138,18 @@ plugins:
   `null` для `"local"`).
 - `ref` (string | null) — Git ref (только для `"git"`,
   `null` для `"local"`).
+
+## Функция isGitUrl
+
+Определяет, является ли строка Git URL. Строка является Git URL,
+если выполняется хотя бы одно из условий:
+
+- Строка содержит `://` (HTTPS или SSH протокол).
+- Строка начинается с `git@` (SSH shorthand).
+- Строка заканчивается на `.git`.
+
+Функция возвращает `true` если хотя бы одно условие выполнено,
+`false` иначе.
 
 ## Процедура Parse Plugin Entry (cli:procedure)
 
@@ -136,7 +167,16 @@ plugins:
    перейти к шагу 5; если `entry` является объектом с полем `git` —
    перейти к шагу 6.
 2. Проверить, содержит ли строка символ `#`.
-3. Если строка НЕ содержит `#` — вернуть
+3. Если строка НЕ содержит `#`:
+   3.1. Вызвать `isGitUrl(entry)` (см. § Функция isGitUrl).
+   3.2. Если результат `true` — проверить, содержит ли `entry`
+   `//` (два слеша подряд), исключая `://` в начале протокола.
+   3.2.1. Если `entry` содержит `//` — разбить: часть до `//` = git URL,
+   часть после `//` = subpath. Вернуть
+   `{ type: "git", url: gitUrl, ref: null, path: subpath }`.
+   3.2.2. Если `entry` НЕ содержит `//` — вернуть
+   `{ type: "git", url: entry, ref: null, path: null }`.
+   3.3. Если результат `false` — вернуть
    `{ type: "local", path: entry, url: null, ref: null }`.
 4. Если строка содержит `#` — разбить по последнему `#`:
    часть до = URL-часть, часть после = ref.
@@ -148,13 +188,13 @@ plugins:
    subpath = `null`.
    4.4. Вернуть `{ type: "git", url: gitUrl, ref: ref, path: subpath }`.
 5. Вернуть `{ type: "local", path: entry.path, url: null, ref: null }`.
-6. Вернуть `{ type: "git", url: entry.git, ref: entry.ref, path: entry.path ?? null }`.
+6. Вернуть `{ type: "git", url: entry.git, ref: entry.ref ?? null, path: entry.path ?? null }`.
 
 **Расширения:**
 
 1a. `entry` не является ни строкой, ни объектом, или является объектом
 без полей `path` и `git` →
-`Error("Invalid config: each 'plugins' entry must be a string, an object with 'path' field, or an object with 'git' and 'ref' fields.")`.
+`Error("Invalid config: each 'plugins' entry must be a string, an object with 'path' field, or an object with 'git' field.")`.
 
 4a. Ref-часть (после `#`) является пустой строкой →
 `Error("Invalid config: git plugin ref must not be empty in '{entry}'.")`.
@@ -186,7 +226,8 @@ plugins:
 6.2. Если результат имеет `type: "git"` — валидировать git-специфичные поля:
 6.2.1. Проверить, что значение `url` начинается с `https://`,
 `ssh://` или соответствует паттерну `git@<host>:`.
-6.2.2. Проверить, что значение `ref` является непустой строкой.
+6.2.2. Если значение `ref` не равно `null` — проверить,
+что значение является непустой строкой.
 6.2.3. Если поле `path` присутствует — проверить, что значение
 является непустой строкой, не начинается с `/`
 и не содержит компонентов `..`.
@@ -198,8 +239,9 @@ plugins:
 6.2.1a. Значение `url` не является валидным Git URL →
 `Error("Invalid config: plugin entry 'git' must be an HTTPS or SSH git URL.")`.
 
-6.2.2a. Поле `ref` отсутствует или не является непустой строкой →
-`Error("Invalid config: plugin entry 'ref' field is required and must be a non-empty string.")`.
+6.2.2a. Значение `ref` не равно `null` и не является непустой строкой
+(например, пустая строка `""`) →
+`Error("Invalid config: plugin entry 'ref' must be a non-empty string or absent.")`.
 
 6.2.3a. Значение `path` не является непустой строкой,
 начинается с `/` или содержит `..` →
@@ -267,6 +309,10 @@ refs:
     sha: abc123def456789012345678901234567890abcd
     resolvedAt: "2026-04-02T10:30:00Z"
     mutable: true
+  HEAD:
+    sha: abc123def456789012345678901234567890abcd
+    resolvedAt: "2026-04-02T10:30:00Z"
+    mutable: true
   v1.0.0:
     sha: def456789012345678901234567890abcdef1234
     resolvedAt: "2026-04-01T08:00:00Z"
@@ -277,8 +323,8 @@ refs:
 
 - `sha` (string) — полный commit SHA (40 hex-символов).
 - `resolvedAt` (string) — ISO 8601 timestamp момента разрешения.
-- `mutable` (boolean) — `true` для веток, `false` для тегов
-  и commit SHA.
+- `mutable` (boolean) — `true` для веток и HEAD, `false` для тегов
+  и commit SHA. HEAD всегда является mutable ref.
 
 Файл `refs.yml` создаётся при первом обращении к репозиторию
 и обновляется при каждом разрешении ref.
@@ -308,7 +354,9 @@ cache:
 **Вход:**
 
 - `gitUrl` (string, обязательно) — URL git-репозитория.
-- `ref` (string, обязательно) — Git ref (тег, ветка или commit SHA).
+- `ref` (string | null, обязательно) — Git ref (тег, ветка,
+  commit SHA или `null`). При `null` — разрешается в HEAD
+  (default branch).
 - `forceRefresh` (boolean, обязательно) — принудительное обновление
   mutable refs (игнорировать TTL).
 
@@ -316,6 +364,7 @@ cache:
 
 1. Вычислить `urlHash` по алгоритму хеширования URL
    (см. § Алгоритм хеширования URL).
+   1b. Если `ref` равен `null` — установить `ref` = `"HEAD"`.
 2. Определить тип ref:
    2.1. Если `ref` является полным commit SHA (40 hex-символов,
    regex `^[0-9a-f]{40}$`) — классифицировать как immutable.
@@ -373,7 +422,8 @@ stderr содержит сообщение об аутентификации;
 
 - `gitUrl` (string, обязательно) — URL git-репозитория.
 - `resolvedSha` (string, обязательно) — commit SHA для checkout.
-- `ref` (string, обязательно) — исходный ref из конфига.
+- `ref` (string, обязательно) — исходный ref (после нормализации:
+  `"HEAD"` если исходный ref был `null`).
 - `urlHash` (string, обязательно) — хеш URL для структуры кеша.
 
 **Поведение:**
@@ -383,11 +433,14 @@ stderr содержит сообщение об аутентификации;
 2. Если целевой путь уже существует — вернуть путь (кеш hit).
 3. Создать временную директорию для клонирования.
 4. Определить стратегию клонирования по типу ref:
-   4.1. Если `ref` НЕ является полным commit SHA
-   (40 hex-символов) — выполнить
+   4.1. Если `ref` равен `"HEAD"` — выполнить
+   `git clone --depth 1 <gitUrl> <tmpDir>` (без `--branch`,
+   клонирует default branch). Перейти к шагу 6.
+   4.2. Если `ref` НЕ является полным commit SHA
+   (40 hex-символов) и НЕ равен `"HEAD"` — выполнить
    `git clone --depth 1 --branch <ref> <gitUrl> <tmpDir>`.
    Перейти к шагу 6.
-   4.2. Если `ref` является полным commit SHA — выполнить
+   4.3. Если `ref` является полным commit SHA — выполнить
    `git clone --filter=blob:none <gitUrl> <tmpDir>`.
 5. Выполнить `git -C <tmpDir> checkout <resolvedSha>`.
 6. Создать промежуточные каталоги для целевого пути кеша.
@@ -396,22 +449,26 @@ stderr содержит сообщение об аутентификации;
 
 **Расширения:**
 
-4.1a. Команда `git clone --depth 1 --branch` завершилась
+4.1a. Команда `git clone --depth 1` (без `--branch`)
+завершилась с ненулевым exit code → удалить временную директорию;
+`Error("Failed to clone '<gitUrl>': <stderr>")`.
+
+4.2a. Команда `git clone --depth 1 --branch` завершилась
 с ненулевым exit code → удалить временную директорию;
 `Error("Failed to clone '<gitUrl>': <stderr>")`.
 
-4.2a. Команда `git clone --filter=blob:none` завершилась
+4.3a. Команда `git clone --filter=blob:none` завершилась
 с ненулевым exit code → выполнить fallback:
 удалить временную директорию, выполнить
 `git clone <gitUrl> <tmpDir>`,
 выполнить `git -C <tmpDir> checkout <resolvedSha>`.
 Перейти к шагу 6.
 
-4.2a.1. Команда `git clone` (fallback) завершилась
+4.3a.1. Команда `git clone` (fallback) завершилась
 с ненулевым exit code → удалить временную директорию;
 `Error("Failed to clone '<gitUrl>': <stderr>")`.
 
-4.2a.2. Команда `git checkout` (после fallback clone)
+4.3a.2. Команда `git checkout` (после fallback clone)
 завершилась с ненулевым exit code → удалить временную
 директорию;
 `Error("Failed to checkout '<resolvedSha>' from '<gitUrl>': <stderr>")`.
@@ -628,9 +685,9 @@ Cache cleaned: ~/.agloom/cache/plugins/
 
 - Git URL невалиден (расширение 6.2.1a процедуры Load Config).
 - Ref не найден (расширение 5b процедуры Resolve Git Ref).
-- Clone завершился с ошибкой (расширения 4.1a, 4.2a.1 процедуры
-  Clone Git Repository).
-- Checkout завершился с ошибкой (расширения 5a, 4.2a.2 процедуры
+- Clone завершился с ошибкой (расширения 4.1a, 4.2a, 4.3a.1
+  процедуры Clone Git Repository).
+- Checkout завершился с ошибкой (расширения 5a, 4.3a.2 процедуры
   Clone Git Repository).
 - Ошибка авторизации (см. § Ошибки авторизации).
 - Подпапка `path` не существует в репозитории (расширение 2.12a

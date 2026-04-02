@@ -151,10 +151,13 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
           );
         }
 
-        // Шаг 6.2.2: проверить ref
-        if (!parsed.ref || typeof parsed.ref !== "string") {
+        // Шаг 6.2.2: проверить ref (опционально — null допустим)
+        if (
+          parsed.ref != null &&
+          (typeof parsed.ref !== "string" || parsed.ref === "")
+        ) {
           throw new Error(
-            "Invalid config: plugin entry 'ref' field is required and must be a non-empty string.",
+            "Invalid config: plugin entry 'ref' must be a non-empty string or absent.",
           );
         }
 

@@ -232,7 +232,7 @@ describe("CLI", () => {
       };
 
       expect(() => parsePluginEntry({ name: "something" })).toThrow(
-        "Invalid config: each 'plugins' entry must be a string, an object with 'path' field, or an object with 'git' and 'ref' fields.",
+        "Invalid config: each 'plugins' entry must be a string, an object with 'path' field, or an object with 'git' field.",
       );
     });
 
@@ -244,7 +244,7 @@ describe("CLI", () => {
       };
 
       expect(() => parsePluginEntry(42)).toThrow(
-        "Invalid config: each 'plugins' entry must be a string, an object with 'path' field, or an object with 'git' and 'ref' fields.",
+        "Invalid config: each 'plugins' entry must be a string, an object with 'path' field, or an object with 'git' field.",
       );
     });
 
@@ -270,6 +270,121 @@ describe("CLI", () => {
       expect(() => parsePluginEntry("#v1.0.0")).toThrow(
         /Invalid config: git plugin URL must not be empty/,
       );
+    });
+
+    // --- Happy path: git@ URL без # → type: "git", ref: null ---
+    // § Поведение шаг 3.1-3.2: строка НЕ содержит #, isGitUrl возвращает true → git с ref: null
+    // § Функция isGitUrl: начинается с git@ → true
+    it("при git@ URL без # возвращает type: git с ref: null", async () => {
+      const { parsePluginEntry } = (await import("../resolve-plugins.js")) as {
+        parsePluginEntry: (entry: string | Record<string, unknown>) => {
+          type: string;
+          path: string | null;
+          url: string | null;
+          ref: string | null;
+        };
+      };
+
+      const result = parsePluginEntry("git@github.com:org/repo");
+
+      expect(result).toEqual({
+        type: "git",
+        url: "git@github.com:org/repo",
+        ref: null,
+        path: null,
+      });
+    });
+
+    // --- Happy path: https:// URL без # → type: "git", ref: null ---
+    // § Поведение шаг 3.1-3.2: строка НЕ содержит #, isGitUrl возвращает true (содержит ://)
+    it("при https:// URL без # возвращает type: git с ref: null", async () => {
+      const { parsePluginEntry } = (await import("../resolve-plugins.js")) as {
+        parsePluginEntry: (entry: string | Record<string, unknown>) => {
+          type: string;
+          path: string | null;
+          url: string | null;
+          ref: string | null;
+        };
+      };
+
+      const result = parsePluginEntry("https://github.com/org/repo");
+
+      expect(result).toEqual({
+        type: "git",
+        url: "https://github.com/org/repo",
+        ref: null,
+        path: null,
+      });
+    });
+
+    // --- Happy path: URL с .git суффиксом без # → type: "git", ref: null ---
+    // § Поведение шаг 3.1-3.2: строка НЕ содержит #, isGitUrl возвращает true (заканчивается на .git)
+    it("при URL с .git суффиксом без # возвращает type: git с ref: null", async () => {
+      const { parsePluginEntry } = (await import("../resolve-plugins.js")) as {
+        parsePluginEntry: (entry: string | Record<string, unknown>) => {
+          type: string;
+          path: string | null;
+          url: string | null;
+          ref: string | null;
+        };
+      };
+
+      const result = parsePluginEntry("https://github.com/org/repo.git");
+
+      expect(result).toEqual({
+        type: "git",
+        url: "https://github.com/org/repo.git",
+        ref: null,
+        path: null,
+      });
+    });
+
+    // --- Happy path: git URL без # с // subpath → git с subpath и ref: null ---
+    // § Поведение шаг 3.1-3.2: строка без # + isGitUrl true, содержит // → subpath
+    it("при git URL без # с // subpath возвращает git с subpath и ref: null", async () => {
+      const { parsePluginEntry } = (await import("../resolve-plugins.js")) as {
+        parsePluginEntry: (entry: string | Record<string, unknown>) => {
+          type: string;
+          path: string | null;
+          url: string | null;
+          ref: string | null;
+        };
+      };
+
+      const result = parsePluginEntry(
+        "https://github.com/org/repo//plugins/eslint",
+      );
+
+      expect(result).toEqual({
+        type: "git",
+        url: "https://github.com/org/repo",
+        ref: null,
+        path: "plugins/eslint",
+      });
+    });
+
+    // --- Happy path: объект { git: "..." } без ref → type: "git", ref: null ---
+    // § Поведение шаг 6: entry.ref ?? null → ref: null при отсутствии поля ref
+    it("при объекте с полем git без ref возвращает type: git с ref: null", async () => {
+      const { parsePluginEntry } = (await import("../resolve-plugins.js")) as {
+        parsePluginEntry: (entry: string | Record<string, unknown>) => {
+          type: string;
+          path: string | null;
+          url: string | null;
+          ref: string | null;
+        };
+      };
+
+      const result = parsePluginEntry({
+        git: "https://github.com/org/repo",
+      });
+
+      expect(result).toEqual({
+        type: "git",
+        url: "https://github.com/org/repo",
+        ref: null,
+        path: null,
+      });
     });
 
     // --- Граничное условие: строка с несколькими # → разбить по последнему ---
@@ -379,10 +494,10 @@ describe("CLI", () => {
       );
     });
 
-    // --- Расширение 6.2.2a: ref отсутствует ---
-    // § git-plugin-loading.md § Расширение процедуры Load Config § Новые расширения 6.2.2a:
-    // Error("Invalid config: plugin entry 'ref' field is required and must be a non-empty string.")
-    it("при объекте git без ref выбрасывает ошибку о обязательности ref", () => {
+    // --- Happy path: объект git без ref → ref: null (опциональный) ---
+    // § git-plugin-loading.md § Тип GitPluginEntry: ref (string, опционально)
+    // § git-plugin-loading.md § Поведение шаг 6: entry.ref ?? null
+    it("при объекте git без ref принимает конфигурацию без ошибки (ref: null)", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(
@@ -395,9 +510,11 @@ describe("CLI", () => {
         ].join("\n") + "\n",
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        "Invalid config: plugin entry 'ref' field is required and must be a non-empty string.",
-      );
+      const result = loadConfig(tmpDir);
+      expect(result).not.toBeNull();
+      const entries = (result as unknown as { pluginEntries: unknown[] })
+        .pluginEntries;
+      expect(entries).toHaveLength(1);
     });
 
     // --- Расширение 6.2.3a: path с .. ---
@@ -569,6 +686,57 @@ describe("CLI", () => {
       process.env.HOME = originalHome;
       fs.rmSync(tmpDir, { recursive: true, force: true });
       vi.restoreAllMocks();
+    });
+
+    // --- Happy path: ref: null → нормализуется в "HEAD" ---
+    // § Поведение шаг 1b: Если ref равен null — установить ref = "HEAD"
+    // § Поведение шаг 5: git ls-remote <gitUrl> HEAD
+    it("при ref: null нормализует в HEAD и вызывает git ls-remote с HEAD", async () => {
+      const childProcess = await import("node:child_process");
+      const resolvedSha = "abc123def456789012345678901234567890abcd";
+      let capturedCmd: string | undefined;
+
+      vi.spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (typeof cmd === "string" && cmd.includes("ls-remote")) {
+          capturedCmd = cmd;
+          return Buffer.from(`${resolvedSha}\tHEAD\n`);
+        }
+        throw new Error(`Unexpected command: ${cmd}`);
+      });
+
+      const { resolveGitRef, hashGitUrl } =
+        (await import("../resolve-plugins.js")) as {
+          resolveGitRef: (params: {
+            gitUrl: string;
+            ref: string | null;
+            forceRefresh: boolean;
+          }) => { resolvedSha: string; cachePath: string };
+          hashGitUrl: (url: string) => string;
+        };
+
+      // Создаём директорию кеша для resolved SHA
+      const urlHash = hashGitUrl("https://github.com/org/repo");
+      const cacheDir = path.join(
+        tmpDir,
+        ".agloom",
+        "cache",
+        "plugins",
+        urlHash,
+        resolvedSha,
+      );
+      fs.mkdirSync(cacheDir, { recursive: true });
+
+      const result = resolveGitRef({
+        gitUrl: "https://github.com/org/repo",
+        ref: null,
+        forceRefresh: false,
+      });
+
+      expect(result.resolvedSha).toBe(resolvedSha);
+      // ls-remote должен быть вызван с HEAD
+      expect(capturedCmd).toBeDefined();
+      expect(capturedCmd).toContain("ls-remote");
+      expect(capturedCmd).toContain("HEAD");
     });
 
     // --- Happy path: immutable ref (40-hex SHA) → без ls-remote ---
@@ -1094,8 +1262,44 @@ describe("CLI", () => {
       vi.restoreAllMocks();
     });
 
+    // --- Happy path: ref="HEAD" → --depth 1 без --branch ---
+    // § Поведение шаг 4.1: ref равен "HEAD" → git clone --depth 1 без --branch
+    it("при ref равном HEAD использует --depth 1 без --branch для клонирования", async () => {
+      const childProcess = await import("node:child_process");
+      const commands: string[] = [];
+      const execSyncSpy = vi
+        .spyOn(childProcess, "execSync")
+        .mockImplementation((cmd: string) => {
+          commands.push(cmd);
+          return Buffer.from("");
+        });
+
+      const { cloneGitRepository } =
+        (await import("../resolve-plugins.js")) as {
+          cloneGitRepository: (params: {
+            gitUrl: string;
+            resolvedSha: string;
+            ref: string;
+            urlHash: string;
+          }) => { cachePath: string };
+        };
+
+      cloneGitRepository({
+        gitUrl: "https://github.com/org/repo",
+        resolvedSha: "abc123def456789012345678901234567890abcd",
+        ref: "HEAD",
+        urlHash: "abcdef0123456789",
+      });
+
+      // Должен вызвать git clone --depth 1 без --branch
+      const cloneCmd = commands.find((c) => c.includes("git clone"));
+      expect(cloneCmd).toBeDefined();
+      expect(cloneCmd).toContain("--depth 1");
+      expect(cloneCmd).not.toContain("--branch");
+    });
+
     // --- Happy path: тег/ветка → --depth 1 --branch ---
-    // § Поведение шаг 4.1: ref НЕ является commit SHA → git clone --depth 1 --branch <ref>
+    // § Поведение шаг 4.2: ref НЕ является commit SHA и НЕ равен "HEAD" → git clone --depth 1 --branch <ref>
     it("при ref не являющемся SHA использует --depth 1 --branch для клонирования", async () => {
       const childProcess = await import("node:child_process");
       const execSyncSpy = vi

@@ -46,6 +46,20 @@ export interface ParsedPluginEntry {
 }
 
 // =====================================================================
+// isGitUrl
+// Spec: docs/specs/git-plugin-loading.md § Функция isGitUrl
+// =====================================================================
+
+/**
+ * Определяет, является ли строка Git URL.
+ * Строка является Git URL, если содержит ://, начинается с git@,
+ * или заканчивается на .git.
+ */
+export function isGitUrl(str: string): boolean {
+  return str.includes("://") || str.startsWith("git@") || str.endsWith(".git");
+}
+
+// =====================================================================
 // parsePluginEntry
 // Spec: docs/specs/git-plugin-loading.md § Процедура Parse Plugin Entry
 // =====================================================================
@@ -60,7 +74,26 @@ export function parsePluginEntry(
   if (typeof entry === "string") {
     // Шаг 2: проверить наличие #
     if (!entry.includes("#")) {
-      // Шаг 3: нет # → local
+      // Шаг 3: нет # → проверить isGitUrl
+      // Шаг 3.1: вызвать isGitUrl
+      if (isGitUrl(entry)) {
+        // Шаг 3.2: проверить наличие // (исключая :// в протоколе)
+        const protocolEnd = entry.indexOf("://");
+        const searchStart = protocolEnd >= 0 ? protocolEnd + 3 : 0;
+        const doubleSlashIndex = entry.indexOf("//", searchStart);
+
+        if (doubleSlashIndex >= 0) {
+          // Шаг 3.2.1: разбить по //
+          const gitUrl = entry.slice(0, doubleSlashIndex);
+          const subpath = entry.slice(doubleSlashIndex + 2);
+          return { type: "git", url: gitUrl, ref: null, path: subpath };
+        }
+
+        // Шаг 3.2.2: нет // → git без subpath
+        return { type: "git", url: entry, ref: null, path: null };
+      }
+
+      // Шаг 3.3: не git URL → local
       return { type: "local", path: entry, url: null, ref: null };
     }
 
@@ -131,7 +164,7 @@ export function parsePluginEntry(
 
   // Расширение 1a: невалидный вход
   throw new Error(
-    "Invalid config: each 'plugins' entry must be a string, an object with 'path' field, or an object with 'git' and 'ref' fields.",
+    "Invalid config: each 'plugins' entry must be a string, an object with 'path' field, or an object with 'git' field.",
   );
 }
 
@@ -318,13 +351,16 @@ interface RefsYml {
  */
 export function resolveGitRef(params: {
   gitUrl: string;
-  ref: string;
+  ref: string | null;
   forceRefresh: boolean;
 }): { resolvedSha: string; cachePath: string } {
-  const { gitUrl, ref, forceRefresh } = params;
+  const { gitUrl, forceRefresh } = params;
 
   // Шаг 1: вычислить urlHash
   const urlHash = hashGitUrl(gitUrl);
+
+  // Шаг 1b: если ref равен null — установить ref = "HEAD"
+  const ref = params.ref ?? "HEAD";
 
   const cacheBase = path.join(
     os.homedir(),
@@ -534,8 +570,30 @@ export function cloneGitRepository(params: {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agloom-clone-"));
 
   try {
-    if (!isSha) {
-      // Шаг 4.1: тег/ветка → --depth 1 --branch
+    if (ref === "HEAD") {
+      // Шаг 4.1: ref === "HEAD" → --depth 1 без --branch (клонирует default branch)
+      try {
+        childProcess.execSync(`git clone --depth 1 ${gitUrl} ${tmpDir}`, {
+          env: gitEnv,
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      } catch (err) {
+        // Расширение 4.1a: clone ошибка
+        const error = err as Error & { stderr?: Buffer | string };
+        const stderr = error.stderr
+          ? typeof error.stderr === "string"
+            ? error.stderr
+            : error.stderr.toString()
+          : error.message;
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        } catch {
+          // best effort
+        }
+        throw new Error(`Failed to clone '${gitUrl}': ${stderr.trim()}`);
+      }
+    } else if (!isSha) {
+      // Шаг 4.2: тег/ветка (не SHA, не HEAD) → --depth 1 --branch
       try {
         childProcess.execSync(
           `git clone --depth 1 --branch ${ref} ${gitUrl} ${tmpDir}`,
@@ -545,14 +603,13 @@ export function cloneGitRepository(params: {
           },
         );
       } catch (err) {
-        // Расширение 4.1a: clone ошибка
+        // Расширение 4.2a: clone ошибка
         const error = err as Error & { stderr?: Buffer | string };
         const stderr = error.stderr
           ? typeof error.stderr === "string"
             ? error.stderr
             : error.stderr.toString()
           : error.message;
-        // Удалить временную директорию
         try {
           fs.rmSync(tmpDir, { recursive: true, force: true });
         } catch {
@@ -790,7 +847,7 @@ export function resolvePlugins(
       // Шаг 2.10: Resolve Git Ref
       const gitRefResult = resolveGitRef({
         gitUrl: entry.url!,
-        ref: entry.ref!,
+        ref: entry.ref,
         forceRefresh,
       });
 
