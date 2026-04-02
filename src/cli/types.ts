@@ -61,7 +61,7 @@ export interface InitOutcome {
 /** Результат одного шага транспиляции. */
 export interface TranspilerStepOutcome {
   /** Отображаемое имя шага. */
-  name: "Instructions" | "Skills" | "Agents" | "Overlay";
+  name: "Instructions" | "Skills" | "Agents" | "Docs" | "Schemas" | "Overlay";
   /** Количество успешно записанных файлов. */
   writtenCount: number;
   /** Сообщения об ошибках (пустой массив при отсутствии). */

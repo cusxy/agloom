@@ -32,6 +32,11 @@ import type {
 import { createInstructionsTranspiler } from "../instructions-transpiler/index.js";
 import { createSkillsTranspiler } from "../skills-transpiler/index.js";
 import { createAgentsTranspiler } from "../agents-transpiler/index.js";
+import {
+  createResourceTranspiler,
+  createResourceAdapter,
+} from "../docs-transpiler/index.js";
+import type { ResourceType } from "../docs-transpiler/index.js";
 import { buildVariables, loadDotenv } from "../interpolation/index.js";
 import { resolvePlugins } from "./resolve-plugins.js";
 import type { ResolvedPlugin } from "./resolve-plugins.js";
@@ -739,6 +744,26 @@ function InitView({
   );
 }
 
+/**
+ * Создаёт фабричную функцию транспилера ресурсов, привязанную к типу ресурса.
+ * Spec: docs/specs/docs-transpiler.md § Расширение шага транспиляции
+ */
+function createResourceTranspilerFactory(resourceType: ResourceType) {
+  return (config: {
+    projectRoot: string;
+    adapters: unknown[];
+    agloomDir?: string;
+  }) =>
+    createResourceTranspiler({
+      projectRoot: config.projectRoot,
+      adapters: config.adapters as Parameters<
+        typeof createResourceTranspiler
+      >[0]["adapters"],
+      resourceType,
+      agloomDir: config.agloomDir,
+    });
+}
+
 function TranspileView({
   entries,
   projectRoot,
@@ -816,8 +841,16 @@ function TranspileView({
       };
 
       // § plugin-loading.md § Расширение команды transpile шаги 4.2-4.5
+      // § docs-transpiler.md § Расширение команды transpile шаги 4.2.4-4.2.5, 4.6-4.7
       // Собрать outcomes по типам шагов для агрегации
       const outcomeGroups: TranspilerStepOutcome[][] = [];
+
+      // § docs-transpiler.md § Создание адаптеров в команде transpile
+      // Создать docsAdapter и schemasAdapter один раз перед циклом по плагинам
+      const docsAdapter = createResourceAdapter(entry, "docs");
+      const schemasAdapter = createResourceAdapter(entry, "schemas");
+      const docsFactory = createResourceTranspilerFactory("docs");
+      const schemasFactory = createResourceTranspilerFactory("schemas");
 
       // Шаг 4.2: для каждого плагина
       for (const plugin of plugins) {
@@ -867,6 +900,38 @@ function TranspileView({
           );
         }
 
+        // 4.2.4: Docs (plugin)
+        if (docsAdapter !== null) {
+          pluginOutcomes.push(
+            runTranspileStep({
+              transpilerFactory: docsFactory as Parameters<
+                typeof runTranspileStep
+              >[0]["transpilerFactory"],
+              adapter: docsAdapter,
+              projectRoot,
+              name: "Docs",
+              variablesByAgentId,
+              sourceRoot: plugin.path,
+            }),
+          );
+        }
+
+        // 4.2.5: Schemas (plugin)
+        if (schemasAdapter !== null) {
+          pluginOutcomes.push(
+            runTranspileStep({
+              transpilerFactory: schemasFactory as Parameters<
+                typeof runTranspileStep
+              >[0]["transpilerFactory"],
+              adapter: schemasAdapter,
+              projectRoot,
+              name: "Schemas",
+              variablesByAgentId,
+              sourceRoot: plugin.path,
+            }),
+          );
+        }
+
         outcomeGroups.push(pluginOutcomes);
       }
 
@@ -910,6 +975,36 @@ function TranspileView({
             adapter: entry.agents,
             projectRoot,
             name: "Agents",
+          }),
+        );
+      }
+
+      // 4.6: Docs (local project)
+      if (docsAdapter !== null) {
+        localOutcomes.push(
+          runTranspileStep({
+            transpilerFactory: docsFactory as Parameters<
+              typeof runTranspileStep
+            >[0]["transpilerFactory"],
+            adapter: docsAdapter,
+            projectRoot,
+            name: "Docs",
+            variablesByAgentId,
+          }),
+        );
+      }
+
+      // 4.7: Schemas (local project)
+      if (schemasAdapter !== null) {
+        localOutcomes.push(
+          runTranspileStep({
+            transpilerFactory: schemasFactory as Parameters<
+              typeof runTranspileStep
+            >[0]["transpilerFactory"],
+            adapter: schemasAdapter,
+            projectRoot,
+            name: "Schemas",
+            variablesByAgentId,
           }),
         );
       }
