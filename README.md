@@ -70,15 +70,30 @@ agloom adapters
 
 ## How it works
 
-agloom has three transpiler modules that run in sequence:
+agloom has five transpiler modules that run in sequence:
 
 1. **Instructions Transpiler** — converts `.agloom/instructions/*.md` into the agent's instruction file format
-2. **Skills Transpiler** — converts `.agloom/skills/*.md` into agent-specific skill configs
-3. **Agents Transpiler** — converts `.agloom/agents/*.md` into sub-agent definitions
+2. **Skills Transpiler** — converts `.agloom/skills/` into agent-specific skill configs
+3. **Agents Transpiler** — converts `.agloom/agents/` into sub-agent definitions
+4. **Docs Transpiler** — copies `.agloom/docs/` to agent-specific documentation directories
+5. **Schemas Transpiler** — copies `.agloom/schemas/` to agent-specific schema directories
 
 Each module uses an **adapter** that knows how to write output for its target agent. The adapter system is extensible — you can add support for new agents by implementing the adapter interface.
 
 Instructions support **agent-specific blocks** — sections that are only included when transpiling for a particular adapter.
+
+### Plugins
+
+agloom supports **plugins** — reusable packages of agents, skills, docs, and schemas that can be shared across projects. Plugins are loaded from local paths or git repositories.
+
+```yaml
+# .agloom/config.yml
+plugins:
+  - git@github.com:user/my-plugin
+  - ../local-plugin
+```
+
+Plugins go through the same transpilation pipeline as local `.agloom/` content and are merged into the project's output.
 
 ### Configuration
 

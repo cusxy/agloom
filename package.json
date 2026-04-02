@@ -1,6 +1,6 @@
 {
   "name": "agloom",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Transpile canonical agent configurations across AI coding assistants (Claude Code, OpenCode, Agents.md, and more)",
   "type": "module",
   "license": "Apache-2.0",
