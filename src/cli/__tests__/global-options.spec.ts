@@ -215,5 +215,39 @@ describe("CLI", () => {
 
       unmount();
     });
+
+    // --- § Неизвестная команда + --help ---
+    // Spec: cli.md § Неизвестная команда:
+    // "Наличие флага --help в аргументах НЕ ДОЛЖНО подавлять ошибку
+    //  неизвестной команды. Приоритет ошибки неизвестной команды ДОЛЖЕН
+    //  быть выше, чем отображение глобальной справки --help."
+    it("при неизвестной команде с --help отображает ошибку команды, а не справку", () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["non_exists_command", "--help"] }),
+      );
+
+      const output = lastFrame()!;
+
+      // Должна отображаться ошибка неизвестной команды, не глобальная справка
+      expect(output).toContain("Unknown command: non_exists_command");
+      expect(output).not.toContain("Commands:");
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    it("при неизвестной команде с --help в начале отображает ошибку команды", () => {
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["--help", "non_exists_command"] }),
+      );
+
+      const output = lastFrame()!;
+
+      // Даже если --help идёт первым, неизвестная команда имеет приоритет
+      expect(output).toContain("Unknown command: non_exists_command");
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
   });
 });

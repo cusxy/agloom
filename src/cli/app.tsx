@@ -48,10 +48,7 @@ import {
 import { buildLayers } from "./plugin-layers.js";
 import { aggregateOutcomes } from "./plugin-aggregate.js";
 import { createMarkdownTools } from "@agloom/markdown-tools";
-import type {
-  FormatResult,
-  CheckResult,
-} from "@agloom/markdown-tools";
+import type { FormatResult, CheckResult } from "@agloom/markdown-tools";
 import fg from "fast-glob";
 
 // Re-export resolveDeps for backward compatibility (tests import from app.js)
@@ -71,7 +68,7 @@ function parseArgs(args: string[]): {
   unknownCommand: string | null;
   unknownFlag: string | null;
   agent: string | null;
-  glob: string | null;
+  globs: string[];
   all: boolean;
   help: boolean;
   version: boolean;
@@ -86,7 +83,7 @@ function parseArgs(args: string[]): {
   let unknownCommand: string | null = null;
   let unknownFlag: string | null = null;
   let agent: string | null = null;
-  let glob: string | null = null;
+  const globs: string[] = [];
   let all = false;
   let help = false;
   let version = false;
@@ -125,7 +122,7 @@ function parseArgs(args: string[]): {
       helpTopic = arg;
     } else if (command === "format" && !arg.startsWith("-")) {
       // После распознавания format как команды, позиционный аргумент — glob
-      glob = arg;
+      globs.push(arg);
     } else if (command === "cache" && arg === "clean") {
       // Subcommand: cache clean
       command = "cache-clean";
@@ -152,7 +149,7 @@ function parseArgs(args: string[]): {
     unknownCommand,
     unknownFlag,
     agent,
-    glob,
+    globs,
     all,
     help,
     version,
@@ -606,7 +603,7 @@ function CleanEntriesView({
 function FormatHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agloom format [--check] [&lt;glob&gt;]</Text>
+      <Text>Usage: agloom format [--check] [--all] [&lt;file|glob&gt;...]</Text>
       <Text> </Text>
       <Text>Format and lint project files (Markdown, JSON, YAML, TOML).</Text>
       <Text> </Text>
@@ -614,6 +611,9 @@ function FormatHelpView(): React.ReactElement {
       <Text>
         {"  "}--check{"  "}Check files without modifying (exit code 1 if
         unformatted)
+      </Text>
+      <Text>
+        {"  "}--all{"    "}Format all supported files in the project
       </Text>
     </Box>
   );
@@ -625,26 +625,43 @@ function FormatHelpView(): React.ReactElement {
 function FormatView({
   projectRoot,
   check,
-  glob,
+  globs,
+  all,
 }: {
   projectRoot: string;
   check: boolean;
-  glob: string | null;
+  globs: string[];
+  all: boolean;
 }): React.ReactElement {
   const { exit } = useApp();
+  // § Расширение 1a: --all и <file|glob>... взаимоисключающие (sync check)
+  const conflictError =
+    all && globs.length > 0 ? "Cannot use --all with file arguments." : null;
+
   const [status, setStatus] = useState<
     | { phase: "running" }
     | { phase: "done"; result: FormatResult | CheckResult; isCheck: boolean }
     | { phase: "error"; message: string }
     | { phase: "empty" }
-  >({ phase: "running" });
+  >(() =>
+    conflictError
+      ? { phase: "error", message: conflictError }
+      : { phase: "running" },
+  );
 
   // Exit after final render (same pattern as TranspileView)
   useEffect(() => {
     if (status.phase !== "running") exit();
   }, [status, exit]);
 
+  // Set exit code synchronously for conflict error
+  if (conflictError) {
+    process.exitCode = 1;
+  }
+
   useEffect(() => {
+    if (conflictError) return;
+
     (async () => {
       try {
         // § Команда format шаг 3-4: определить glob-паттерны и раскрыть
@@ -652,7 +669,14 @@ function FormatView({
           ".agloom/**/*.{md,mdx,json,yaml,yml,toml}",
           "**/AGLOOM.md",
         ];
-        const patterns = glob ? [glob] : defaultPatterns;
+        let patterns: string[];
+        if (all) {
+          patterns = ["**/*.{md,mdx,json,yaml,yml,toml}"];
+        } else if (globs.length > 0) {
+          patterns = globs;
+        } else {
+          patterns = defaultPatterns;
+        }
         const ignore = [
           "**/node_modules/**",
           "**/.git/**",
@@ -738,7 +762,7 @@ function FormatView({
         });
       }
     })();
-  }, [projectRoot, check, glob]);
+  }, [projectRoot, check, globs, all, conflictError]);
 
   if (status.phase === "running") {
     return (
@@ -772,8 +796,7 @@ function FormatView({
     if (!hasFailures && !hasErrors) {
       return (
         <Text>
-          <Text color="green">✓</Text> All {r.checkedCount} files are
-          formatted.
+          <Text color="green">✓</Text> All {r.checkedCount} files are formatted.
         </Text>
       );
     }
@@ -787,7 +810,10 @@ function FormatView({
               formatting:
             </Text>
             {r.failures.map((f, i) => (
-              <Text key={i}>{"  "}{f}</Text>
+              <Text key={i}>
+                {"  "}
+                {f}
+              </Text>
             ))}
           </>
         )}
@@ -796,7 +822,10 @@ function FormatView({
             <Text> </Text>
             <Text>Errors:</Text>
             {r.errors.map((e, i) => (
-              <Text key={i}>{"  "}{e}</Text>
+              <Text key={i}>
+                {"  "}
+                {e}
+              </Text>
             ))}
           </>
         )}
@@ -823,7 +852,10 @@ function FormatView({
         {r.errors.length} errors.
       </Text>
       {r.errors.map((e, i) => (
-        <Text key={i}>{"  "}{e}</Text>
+        <Text key={i}>
+          {"  "}
+          {e}
+        </Text>
       ))}
     </Box>
   );
@@ -1514,7 +1546,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
   }
 
   // § Неизвестная команда
-  if (parsed.unknownCommand && !parsed.help) {
+  if (parsed.unknownCommand) {
     process.exitCode = 1;
     return (
       <Text>
@@ -1581,7 +1613,8 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       <FormatView
         projectRoot={root}
         check={parsed.check}
-        glob={parsed.glob}
+        globs={parsed.globs}
+        all={parsed.all}
       />
     );
   }
