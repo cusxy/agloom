@@ -13,6 +13,7 @@ relates:
   - docs/specs/init-command.md
   - docs/specs/config.md
   - docs/specs/plugin-manifest.md
+  - docs/specs/mcp-transpiler.md
 maps_to:
   - src/cli/
 ---

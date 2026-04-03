@@ -13,6 +13,7 @@ relates:
   - docs/specs/adapter-registry-ext.md
   - docs/specs/plugin-loading.md
   - docs/specs/plugin-values.md
+  - docs/specs/mcp-transpiler.md
 maps_to:
   - src/cli/
 ---

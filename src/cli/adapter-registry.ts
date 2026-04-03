@@ -17,6 +17,10 @@ import {
   ClaudeAgentAdapter,
   OpenCodeAgentAdapter,
 } from "../agents-transpiler/index.js";
+import {
+  ClaudeMcpAdapter,
+  OpenCodeMcpAdapter,
+} from "../mcp-transpiler/index.js";
 import type { AdapterRegistryEntry } from "./types.js";
 
 /**
@@ -37,6 +41,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new ClaudeAdapter(allowedAgentIds),
     skills: new ClaudeSkillAdapter(),
     agents: new ClaudeAgentAdapter(),
+    mcp: new ClaudeMcpAdapter(),
     targetRoot: ".claude",
     targetFiles: ["CLAUDE.md"],
     projectFiles: ["CLAUDE.md"],
@@ -57,6 +62,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new OpenCodeAdapter(),
     skills: new OpenCodeSkillAdapter(),
     agents: new OpenCodeAgentAdapter(),
+    mcp: new OpenCodeMcpAdapter(),
     targetRoot: ".opencode",
     targetFiles: [],
     projectFiles: [],
@@ -77,6 +83,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new AgentsMdAdapter(allowedAgentIds),
     skills: null,
     agents: null,
+    mcp: null,
     targetRoot: ".agents",
     targetFiles: ["AGENTS.md"],
     projectFiles: ["AGENTS.md", "AGENTS.override.md"],

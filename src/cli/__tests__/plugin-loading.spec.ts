@@ -21,6 +21,10 @@ function writePluginYaml(pluginDir: string, yamlContent: string): void {
   fs.writeFileSync(path.join(pluginDir, "plugin.yml"), yamlContent);
 }
 
+/** Минимальный валидный plugin.yml. */
+const _VALID_MANIFEST =
+  "name: test-plugin\nversion: 1.0.0\ndescription: Test plugin\nauthor:\n  name: Test\n  email: test@test.com\n";
+
 function validManifest(name: string): string {
   return `name: ${name}\nversion: 1.0.0\ndescription: Plugin ${name}\nauthor:\n  name: Test\n  email: test@test.com\n`;
 }

@@ -601,7 +601,7 @@ describe("Модель слоёв", () => {
         "settings.json": JSON.stringify({ rulers: [100] }),
       });
 
-      runOverlayStep({
+      const _outcome = runOverlayStep({
         entry,
         projectRoot: tmpDir,
         layers: [
