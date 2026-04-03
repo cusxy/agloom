@@ -31,19 +31,23 @@
     "build": "turbo run build && tsc",
     "test": "turbo run test && vitest run",
     "test:watch": "vitest",
-    "fmt:js": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "lint": "eslint \"src/**/*.{ts,tsx}\""
+    "fmt": "turbo run fmt && prettier --write \"src/**/*.{ts,tsx}\"",
+    "fmt:check": "turbo run fmt:check && prettier --check \"src/**/*.{ts,tsx}\"",
+    "lint": "turbo run lint && eslint \"src/**/*.{ts,tsx}\""
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/semver": "^7.7.1",
     "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
     "ink-testing-library": "^4.0.0",
     "prettier": "^3.5.3",
     "turbo": "^2.5.4",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.58.0",
     "vitest": "^3.1.1"
   },
   "dependencies": {

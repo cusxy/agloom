@@ -8,7 +8,6 @@ import * as os from "node:os";
 import {
   createInstructionsTranspiler,
   ClaudeAdapter,
-  OpenCodeAdapter,
   AgentsMdAdapter,
 } from "../index.js";
 

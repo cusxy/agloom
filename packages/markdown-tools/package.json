@@ -7,7 +7,10 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint .",
+    "fmt": "prettier --write \"src/**/*.ts\"",
+    "fmt:check": "prettier --check \"src/**/*.ts\""
   },
   "dependencies": {
     "markdownlint-cli2": "^0.17.2",
@@ -15,7 +18,11 @@
     "prettier-plugin-toml": "^2.0.6"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.58.0",
     "vitest": "^3.1.1"
   }
 }

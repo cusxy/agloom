@@ -208,10 +208,6 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
       }
     }
 
-    pluginPaths =
-      paths.length > 0 || entries.some((e) => e.type === "local")
-        ? paths
-        : paths;
     pluginEntries = entries;
 
     // Backward compatibility: if all entries are local strings, also populate pluginPaths

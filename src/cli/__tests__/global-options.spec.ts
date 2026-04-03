@@ -79,7 +79,7 @@ describe("CLI", () => {
       const { lastFrame: helpFrame, unmount: unmountHelp } = render(
         React.createElement(App, { args: ["--help"] }),
       );
-      const helpOutput = helpFrame()!;
+      const _helpOutput = helpFrame()!;
       unmountHelp();
 
       const { lastFrame: emptyFrame, unmount: unmountEmpty } = render(

@@ -87,7 +87,11 @@ async function resolvePrettierConfig(
   const nativeConfig = await prettier.resolveConfig(filePath);
   if (nativeConfig) {
     // Level 2 overrides level 1, level 3 overrides all
-    return { ...DEFAULT_PRETTIER_CONFIG, ...nativeConfig, ...prettierOverrides };
+    return {
+      ...DEFAULT_PRETTIER_CONFIG,
+      ...nativeConfig,
+      ...prettierOverrides,
+    };
   }
   // No native config: level 1 + level 3
   return { ...DEFAULT_PRETTIER_CONFIG, ...prettierOverrides };

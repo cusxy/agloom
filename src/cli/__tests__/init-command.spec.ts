@@ -188,7 +188,7 @@ describe("CLI", () => {
         { timeout: 5000 },
       );
 
-      const output = lastFrame()!;
+      lastFrame()!;
       expect(process.exitCode).toBeUndefined();
 
       // Побочный эффект: корневой CLAUDE.md скопирован через glob **/CLAUDE.md

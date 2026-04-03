@@ -1,7 +1,7 @@
 // interpolate.spec.ts
 // Спецификация: docs/specs/interpolation.md § Интерполяция контента
 
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { interpolate } from "../interpolate.js";
 import { InterpolationError } from "../errors.js";
 

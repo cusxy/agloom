@@ -7,6 +7,15 @@
     },
     "test": {
       "dependsOn": ["^build"]
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "fmt": {
+      "cache": false
+    },
+    "fmt:check": {
+      "cache": false
     }
   }
 }
