@@ -3,6 +3,7 @@
   "version": "0.4.0",
   "description": "Transpile canonical agent configurations across AI coding assistants (Claude Code, OpenCode, Agents.md, and more)",
   "type": "module",
+  "packageManager": "pnpm@10.29.1",
   "license": "Apache-2.0",
   "author": "Nikita Gorbunov <cusxies@gmail.com>",
   "repository": {
@@ -27,8 +28,8 @@
     "agloom": "dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc",
-    "test": "vitest run",
+    "build": "turbo run build && tsc",
+    "test": "turbo run test && vitest run",
     "test:watch": "vitest",
     "fmt:js": "prettier --write \"src/**/*.{ts,tsx}\"",
     "lint": "eslint \"src/**/*.{ts,tsx}\""
@@ -41,10 +42,12 @@
     "eslint": "^10.1.0",
     "ink-testing-library": "^4.0.0",
     "prettier": "^3.5.3",
+    "turbo": "^2.5.4",
     "typescript": "^5.7.3",
     "vitest": "^3.1.1"
   },
   "dependencies": {
+    "@agloom/markdown-tools": "workspace:*",
     "chalk": "^5.6.2",
     "dotenv": "^17.3.1",
     "fast-glob": "^3.3.3",

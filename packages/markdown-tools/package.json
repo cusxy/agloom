@@ -1,0 +1,21 @@
+{
+  "name": "@agloom/markdown-tools",
+  "version": "0.0.1",
+  "description": "Markdown formatting and linting tools for agloom",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "markdownlint-cli2": "^0.17.2",
+    "prettier": "^3.5.3",
+    "prettier-plugin-toml": "^2.0.6"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.1.1"
+  }
+}

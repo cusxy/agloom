@@ -18,6 +18,7 @@ relates:
   - docs/specs/help-command.md
   - docs/specs/plugin-loading.md
   - docs/specs/docs-transpiler.md
+  - docs/specs/format.md
 maps_to:
   - src/cli/
 ---

@@ -18,6 +18,7 @@ Vitest for tests. gray-matter for YAML frontmatter parsing.
 CLI tool that transpiles canonical AGLOOM.md files into agent-specific formats (CLAUDE.md, AGENTS.md, etc.).
 
 Three transpiler modules with identical structure:
+
 - `src/instructions-transpiler/` — AGLOOM.md → CLAUDE.md / AGENTS.md
 - `src/skills-transpiler/` — .agloom/skills/ → .claude/skills/, etc.
 - `src/agents-transpiler/` — .agloom/agents/ → .claude/agents/, etc.
@@ -26,6 +27,7 @@ Each transpiler has: discover → transform → write pipeline.
 Adapter registry at `src/cli/adapter-registry.ts` — 3 adapters: claude, opencode, agentsmd.
 
 <!-- agent:claude -->
+
 ## Specs
 
 Specifications live in `docs/specs/`. You MUST read the relevant spec before modifying a module.
@@ -35,6 +37,7 @@ Specifications live in `docs/specs/`. You MUST read the relevant spec before mod
 This project uses spec-driven development with cycling agents.
 Protocols: `.agloom/overlays/claude/docs/cycling/`.
 Skills: spec-cycle, research-cycle, bugfix-cycle.
+
 <!-- /agent:claude -->
 
 ## Conventions

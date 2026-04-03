@@ -5,6 +5,7 @@
  * Spec: docs/specs/init-command.md § Команда init
  * Spec: docs/specs/adapter-registry-ext.md § Процедура Resolve Adapter
  * Spec: docs/specs/help-command.md § Команда help
+ * Spec: docs/specs/format.md § Команда format
  */
 
 import React, { useState, useEffect } from "react";
@@ -46,6 +47,12 @@ import {
 } from "./resolve-plugin-values.js";
 import { buildLayers } from "./plugin-layers.js";
 import { aggregateOutcomes } from "./plugin-aggregate.js";
+import { createMarkdownTools } from "@agloom/markdown-tools";
+import type {
+  FormatResult,
+  CheckResult,
+} from "@agloom/markdown-tools";
+import fg from "fast-glob";
 
 // Re-export resolveDeps for backward compatibility (tests import from app.js)
 export { resolveDeps } from "./resolve-deps.js";
@@ -64,6 +71,7 @@ function parseArgs(args: string[]): {
   unknownCommand: string | null;
   unknownFlag: string | null;
   agent: string | null;
+  glob: string | null;
   all: boolean;
   help: boolean;
   version: boolean;
@@ -71,12 +79,14 @@ function parseArgs(args: string[]): {
   force: boolean;
   verbose: boolean;
   refresh: boolean;
+  check: boolean;
 } {
   let command: string | null = null;
   let helpTopic: string | null = null;
   let unknownCommand: string | null = null;
   let unknownFlag: string | null = null;
   let agent: string | null = null;
+  let glob: string | null = null;
   let all = false;
   let help = false;
   let version = false;
@@ -84,6 +94,7 @@ function parseArgs(args: string[]): {
   let force = false;
   let verbose = false;
   let refresh = false;
+  let check = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -107,9 +118,14 @@ function parseArgs(args: string[]): {
       verbose = true;
     } else if (arg === "--refresh") {
       refresh = true;
+    } else if (arg === "--check") {
+      check = true;
     } else if (command === "help" && !arg.startsWith("-")) {
       // После распознавания help как команды, позиционный аргумент — topic
       helpTopic = arg;
+    } else if (command === "format" && !arg.startsWith("-")) {
+      // После распознавания format как команды, позиционный аргумент — glob
+      glob = arg;
     } else if (command === "cache" && arg === "clean") {
       // Subcommand: cache clean
       command = "cache-clean";
@@ -119,7 +135,8 @@ function parseArgs(args: string[]): {
       arg === "clean" ||
       arg === "init" ||
       arg === "help" ||
-      arg === "cache"
+      arg === "cache" ||
+      arg === "format"
     ) {
       command = arg;
     } else if (arg.startsWith("-")) {
@@ -135,6 +152,7 @@ function parseArgs(args: string[]): {
     unknownCommand,
     unknownFlag,
     agent,
+    glob,
     all,
     help,
     version,
@@ -142,6 +160,7 @@ function parseArgs(args: string[]): {
     force,
     verbose,
     refresh,
+    check,
   };
 }
 
@@ -168,6 +187,9 @@ function HelpView(): React.ReactElement {
       </Text>
       <Text>
         {"  "}clean {"       "}Remove generated agent-specific files
+      </Text>
+      <Text>
+        {"  "}format {"      "}Format and lint project files
       </Text>
       <Text>
         {"  "}help {"        "}Show help topics or display a specific help topic
@@ -574,6 +596,235 @@ function CleanEntriesView({
       )}
       <Text> </Text>
       <Text>Done. {totalRemoved} files removed.</Text>
+    </Box>
+  );
+}
+
+/**
+ * Spec: docs/specs/format.md § Расширение --help
+ */
+function FormatHelpView(): React.ReactElement {
+  return (
+    <Box flexDirection="column">
+      <Text>Usage: agloom format [--check] [&lt;glob&gt;]</Text>
+      <Text> </Text>
+      <Text>Format and lint project files (Markdown, JSON, YAML, TOML).</Text>
+      <Text> </Text>
+      <Text>Options:</Text>
+      <Text>
+        {"  "}--check{"  "}Check files without modifying (exit code 1 if
+        unformatted)
+      </Text>
+    </Box>
+  );
+}
+
+/**
+ * Spec: docs/specs/format.md § Команда format, § TUI-отображение, § Exit codes
+ */
+function FormatView({
+  projectRoot,
+  check,
+  glob,
+}: {
+  projectRoot: string;
+  check: boolean;
+  glob: string | null;
+}): React.ReactElement {
+  const { exit } = useApp();
+  const [status, setStatus] = useState<
+    | { phase: "running" }
+    | { phase: "done"; result: FormatResult | CheckResult; isCheck: boolean }
+    | { phase: "error"; message: string }
+    | { phase: "empty" }
+  >({ phase: "running" });
+
+  // Exit after final render (same pattern as TranspileView)
+  useEffect(() => {
+    if (status.phase !== "running") exit();
+  }, [status, exit]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // § Команда format шаг 3-4: определить glob-паттерны и раскрыть
+        const defaultPatterns = [
+          ".agloom/**/*.{md,mdx,json,yaml,yml,toml}",
+          "**/AGLOOM.md",
+        ];
+        const patterns = glob ? [glob] : defaultPatterns;
+        const ignore = [
+          "**/node_modules/**",
+          "**/.git/**",
+          "**/dist/**",
+          "**/build/**",
+          "**/coverage/**",
+          "**/.next/**",
+          "**/.turbo/**",
+          "**/.cache/**",
+        ];
+
+        const filePaths = await fg(patterns, {
+          cwd: projectRoot,
+          absolute: true,
+          ignore,
+          dot: true,
+        });
+
+        // § Расширение 4a: нет файлов
+        if (filePaths.length === 0) {
+          setStatus({ phase: "empty" });
+          return;
+        }
+
+        // § Команда format шаг 5: прочитать config.yml
+        let prettierOverrides: Record<string, unknown> = {};
+        let markdownlintOverrides: Record<string, unknown> = {};
+        const configPath = path.join(projectRoot, ".agloom", "config.yml");
+        if (fs.existsSync(configPath)) {
+          try {
+            const yaml = await import("js-yaml");
+            const raw = fs.readFileSync(configPath, "utf-8");
+            const parsed = yaml.load(raw) as Record<string, unknown> | null;
+            if (parsed && typeof parsed === "object") {
+              if (parsed.prettier && typeof parsed.prettier === "object") {
+                prettierOverrides = parsed.prettier as Record<string, unknown>;
+              }
+              if (
+                parsed.markdownlint &&
+                typeof parsed.markdownlint === "object"
+              ) {
+                markdownlintOverrides = parsed.markdownlint as Record<
+                  string,
+                  unknown
+                >;
+              }
+            }
+          } catch {
+            // § Расширение 5b: невалидный YAML
+            process.exitCode = 1;
+            setStatus({
+              phase: "error",
+              message: "Error parsing .agloom/config.yml",
+            });
+            return;
+          }
+        }
+
+        // § Команда format шаг 6: создать экземпляр
+        const tools = createMarkdownTools({
+          projectRoot,
+          prettierOverrides,
+          markdownlintOverrides,
+        });
+
+        // § Команда format шаг 7-8: вызвать check или format
+        if (check) {
+          const result = await tools.check(filePaths);
+          const hasFailures =
+            result.failures.length > 0 || result.errors.length > 0;
+          if (hasFailures) process.exitCode = 1;
+          setStatus({ phase: "done", result, isCheck: true });
+        } else {
+          const result = await tools.format(filePaths);
+          if (result.errors.length > 0) process.exitCode = 1;
+          setStatus({ phase: "done", result, isCheck: false });
+        }
+      } catch (err) {
+        process.exitCode = 1;
+        setStatus({
+          phase: "error",
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    })();
+  }, [projectRoot, check, glob]);
+
+  if (status.phase === "running") {
+    return (
+      <Text>
+        <Spinner type="dots" />{" "}
+        {check ? "Checking files…" : "Formatting files…"}
+      </Text>
+    );
+  }
+
+  if (status.phase === "empty") {
+    return <Text>No files found.</Text>;
+  }
+
+  if (status.phase === "error") {
+    return (
+      <Text>
+        <Text color="red">✗</Text> {status.message}
+      </Text>
+    );
+  }
+
+  // § TUI-отображение
+  const { result, isCheck } = status;
+
+  if (isCheck) {
+    const r = result as CheckResult;
+    const hasFailures = r.failures.length > 0;
+    const hasErrors = r.errors.length > 0;
+
+    if (!hasFailures && !hasErrors) {
+      return (
+        <Text>
+          <Text color="green">✓</Text> All {r.checkedCount} files are
+          formatted.
+        </Text>
+      );
+    }
+
+    return (
+      <Box flexDirection="column">
+        {hasFailures && (
+          <>
+            <Text>
+              <Text color="red">✗</Text> {r.failures.length} files need
+              formatting:
+            </Text>
+            {r.failures.map((f, i) => (
+              <Text key={i}>{"  "}{f}</Text>
+            ))}
+          </>
+        )}
+        {hasErrors && (
+          <>
+            <Text> </Text>
+            <Text>Errors:</Text>
+            {r.errors.map((e, i) => (
+              <Text key={i}>{"  "}{e}</Text>
+            ))}
+          </>
+        )}
+      </Box>
+    );
+  }
+
+  // Format mode
+  const r = result as FormatResult;
+  const hasErrors = r.errors.length > 0;
+
+  if (!hasErrors) {
+    return (
+      <Text>
+        <Text color="green">✓</Text> Formatted {r.formattedCount} files.
+      </Text>
+    );
+  }
+
+  return (
+    <Box flexDirection="column">
+      <Text>
+        <Text color="red">✗</Text> Formatted {r.formattedCount} files with{" "}
+        {r.errors.length} errors.
+      </Text>
+      {r.errors.map((e, i) => (
+        <Text key={i}>{"  "}{e}</Text>
+      ))}
     </Box>
   );
 }
@@ -1247,6 +1498,11 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     return <AdaptersHelpView />;
   }
 
+  // § format --help (Spec: docs/specs/format.md § Расширение --help)
+  if (parsed.command === "format" && parsed.help) {
+    return <FormatHelpView />;
+  }
+
   // § help --help (Spec: docs/specs/help-command.md § Справка)
   if (parsed.command === "help" && parsed.help) {
     return <HelpCommandHelpView />;
@@ -1315,6 +1571,17 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
         createConfig={createConfig}
         configAdapterIds={configAdapterIds}
         verbose={parsed.verbose}
+      />
+    );
+  }
+
+  // § Команда format (Spec: docs/specs/format.md § Команда format)
+  if (parsed.command === "format") {
+    return (
+      <FormatView
+        projectRoot={root}
+        check={parsed.check}
+        glob={parsed.glob}
       />
     );
   }
