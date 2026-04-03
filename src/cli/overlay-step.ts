@@ -536,7 +536,7 @@ function applyMarker(
         key: string;
         items: Record<string, unknown>[];
       };
-      let target = parent[parentKey];
+      const target = parent[parentKey];
       if (target === undefined) {
         // Create empty array, all items appended
         parent[parentKey] = [...mergeByVal.items];

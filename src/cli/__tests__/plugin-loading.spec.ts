@@ -22,7 +22,7 @@ function writePluginYaml(pluginDir: string, yamlContent: string): void {
 }
 
 /** Минимальный валидный plugin.yml. */
-const VALID_MANIFEST =
+const _VALID_MANIFEST =
   "name: test-plugin\nversion: 1.0.0\ndescription: Test plugin\nauthor:\n  name: Test\n  email: test@test.com\n";
 
 function validManifest(name: string): string {

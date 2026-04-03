@@ -1279,7 +1279,7 @@ describe("CLI", () => {
     it("при ref равном HEAD использует --depth 1 без --branch для клонирования", async () => {
       const childProcess = await import("node:child_process");
       const commands: string[] = [];
-      const execSyncSpy = vi
+      const _execSyncSpy = vi
         .spyOn(childProcess, "execSync")
         .mockImplementation((cmd: string) => {
           commands.push(cmd);

@@ -19,7 +19,7 @@ function createWriteOptionsSpy() {
     options?: Record<string, unknown>;
   }> = [];
 
-  const factory = (config: {
+  const factory = (_config: {
     projectRoot: string;
     adapters: unknown[];
     agloomDir?: string;

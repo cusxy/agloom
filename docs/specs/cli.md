@@ -19,6 +19,7 @@ relates:
   - docs/specs/plugin-loading.md
   - docs/specs/docs-transpiler.md
   - docs/specs/format.md
+  - docs/specs/mcp-transpiler.md
 maps_to:
   - src/cli/
 ---

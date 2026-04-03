@@ -37,6 +37,7 @@ import {
   createResourceTranspiler,
   createResourceAdapter,
 } from "../docs-transpiler/index.js";
+import { createMcpTranspiler } from "../mcp-transpiler/index.js";
 import type { ResourceType } from "../docs-transpiler/index.js";
 import { buildVariables, loadDotenv } from "../interpolation/index.js";
 import { resolvePlugins } from "./resolve-plugins.js";
@@ -1207,6 +1208,23 @@ function TranspileView({
           );
         }
 
+        // 4.2.MCP: MCP (plugin)
+        if (entry.mcp !== null) {
+          pluginOutcomes.push(
+            runTranspileStep({
+              transpilerFactory: createMcpTranspiler as Parameters<
+                typeof runTranspileStep
+              >[0]["transpilerFactory"],
+              adapter: entry.mcp,
+              projectRoot,
+              name: "MCP",
+              variablesByAgentId,
+              valuesByAgentId: pluginValuesByAgentId,
+              sourceRoot: plugin.path,
+            }),
+          );
+        }
+
         // 4.2.4: Docs (plugin)
         if (docsAdapter !== null) {
           pluginOutcomes.push(
@@ -1302,6 +1320,22 @@ function TranspileView({
             adapter: entry.agents,
             projectRoot,
             name: "Agents",
+          }),
+        );
+      }
+
+      // 4.5.5: MCP (local project)
+      if (entry.mcp !== null) {
+        localOutcomes.push(
+          runTranspileStep({
+            transpilerFactory: createMcpTranspiler as Parameters<
+              typeof runTranspileStep
+            >[0]["transpilerFactory"],
+            adapter: entry.mcp,
+            projectRoot,
+            name: "MCP",
+            variablesByAgentId,
+            valuesByAgentId: localValuesByAgentId,
           }),
         );
       }
