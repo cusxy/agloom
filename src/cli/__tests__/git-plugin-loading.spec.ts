@@ -79,6 +79,7 @@ describe("CLI", () => {
         path: "../local-plugin",
         url: null,
         ref: null,
+        values: null,
       });
     });
 
@@ -102,6 +103,7 @@ describe("CLI", () => {
         url: "https://github.com/org/repo",
         ref: "v1.0.0",
         path: null,
+        values: null,
       });
     });
 
@@ -126,6 +128,7 @@ describe("CLI", () => {
         url: "https://github.com/org/repo",
         ref: "v1.0.0",
         path: "plugins/eslint",
+        values: null,
       });
     });
 
@@ -148,6 +151,7 @@ describe("CLI", () => {
         url: "git@github.com:org/repo",
         ref: "main",
         path: null,
+        values: null,
       });
     });
 
@@ -170,6 +174,7 @@ describe("CLI", () => {
         path: "../local-plugin",
         url: null,
         ref: null,
+        values: null,
       });
     });
 
@@ -195,6 +200,7 @@ describe("CLI", () => {
         url: "https://github.com/org/repo",
         ref: "v1.0.0",
         path: null,
+        values: null,
       });
     });
 
@@ -221,6 +227,7 @@ describe("CLI", () => {
         url: "https://github.com/org/repo",
         ref: "v1.0.0",
         path: "plugins/eslint",
+        values: null,
       });
     });
 
@@ -292,6 +299,7 @@ describe("CLI", () => {
         url: "git@github.com:org/repo",
         ref: null,
         path: null,
+        values: null,
       });
     });
 
@@ -314,6 +322,7 @@ describe("CLI", () => {
         url: "https://github.com/org/repo",
         ref: null,
         path: null,
+        values: null,
       });
     });
 
@@ -336,6 +345,7 @@ describe("CLI", () => {
         url: "https://github.com/org/repo.git",
         ref: null,
         path: null,
+        values: null,
       });
     });
 
@@ -360,6 +370,7 @@ describe("CLI", () => {
         url: "https://github.com/org/repo",
         ref: null,
         path: "plugins/eslint",
+        values: null,
       });
     });
 
@@ -384,6 +395,7 @@ describe("CLI", () => {
         url: "https://github.com/org/repo",
         ref: null,
         path: null,
+        values: null,
       });
     });
 

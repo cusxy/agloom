@@ -22,6 +22,7 @@ export class ClaudeAgentAdapter implements AgentAdapter {
   readonly targetDir = ".claude/agents";
   /** Карта переменных интерполяции (устанавливается CLI перед transpile). */
   variables?: Record<string, string>;
+  values?: Record<string, string>;
 
   transpile(definitions: AgentDefinition[]): AgentOutputFile[] {
     const output: AgentOutputFile[] = [];
@@ -32,6 +33,7 @@ export class ClaudeAgentAdapter implements AgentAdapter {
         def.rawContent,
         "claude",
         this.variables,
+        this.values,
       );
 
       // Шаг 2: сформировать AgentOutputFile с definition.relativePath

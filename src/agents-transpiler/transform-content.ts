@@ -28,6 +28,7 @@ export function transformContent(
   rawContent: string,
   agentId: string,
   variables?: Record<string, string>,
+  values?: Record<string, string>,
 ): string {
   // Шаг 1: парсинг frontmatter
   let parsed: matter.GrayMatterFile<string>;
@@ -103,7 +104,7 @@ export function transformContent(
   // Spec: docs/specs/interpolation.md § Расширение transformContent Agents Transpiler
   if (variables !== undefined) {
     try {
-      result = interpolate(result, variables);
+      result = interpolate(result, variables, undefined, values);
     } catch (err) {
       // Расширение 11a: InterpolationError → AgentTransformError
       if (err instanceof InterpolationError) {

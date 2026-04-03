@@ -17,6 +17,7 @@ relates:
   - docs/specs/cli.md
   - docs/specs/provider-overlay.md
   - docs/specs/docs-transpiler.md
+  - docs/specs/plugin-values.md
 maps_to:
   - src/interpolation/
 ---

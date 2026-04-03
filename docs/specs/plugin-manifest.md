@@ -12,6 +12,7 @@ relates:
   - docs/specs/provider-overlay.md
   - docs/specs/adapter-registry-ext.md
   - docs/specs/plugin-loading.md
+  - docs/specs/plugin-values.md
 maps_to:
   - src/cli/
 ---

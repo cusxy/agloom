@@ -17,11 +17,16 @@ import type { LayerSource } from "./overlay-step.js";
  * @returns Упорядоченный массив LayerSource.
  */
 export function buildLayers(params: {
-  plugins: { name: string; path: string }[];
+  plugins: {
+    name: string;
+    path: string;
+    resolvedValues?: Record<string, string>;
+  }[];
   projectRoot: string;
   entryId: string;
+  localValues?: Record<string, string>;
 }): LayerSource[] {
-  const { plugins, projectRoot, entryId } = params;
+  const { plugins, projectRoot, entryId, localValues } = params;
   const layers: LayerSource[] = [];
 
   // Шаг 1: для каждого плагина
@@ -29,6 +34,7 @@ export function buildLayers(params: {
     layers.push({
       id: plugin.name,
       overlayDir: path.join(plugin.path, "overlays", entryId) + "/",
+      values: plugin.resolvedValues,
     });
   }
 
@@ -36,6 +42,7 @@ export function buildLayers(params: {
   layers.push({
     id: "local",
     overlayDir: path.join(projectRoot, ".agloom", "overlays", entryId) + "/",
+    values: localValues,
   });
 
   return layers;

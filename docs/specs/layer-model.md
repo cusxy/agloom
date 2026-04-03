@@ -16,6 +16,7 @@ relates:
   - docs/specs/plugin-manifest.md
   - docs/specs/plugin-loading.md
   - docs/specs/patch-mechanism.md
+  - docs/specs/plugin-values.md
 maps_to:
   - src/cli/overlay-step.ts
   - src/cli/

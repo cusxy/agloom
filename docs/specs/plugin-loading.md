@@ -15,6 +15,7 @@ relates:
   - docs/specs/plugin-manifest.md
   - docs/specs/git-plugin-loading.md
   - docs/specs/docs-transpiler.md
+  - docs/specs/plugin-values.md
 maps_to:
   - src/cli/
 ---

@@ -40,6 +40,10 @@ import type { ResourceType } from "../docs-transpiler/index.js";
 import { buildVariables, loadDotenv } from "../interpolation/index.js";
 import { resolvePlugins } from "./resolve-plugins.js";
 import type { ResolvedPlugin } from "./resolve-plugins.js";
+import {
+  resolvePluginValues,
+  resolveLocalValues,
+} from "./resolve-plugin-values.js";
 import { buildLayers } from "./plugin-layers.js";
 import { aggregateOutcomes } from "./plugin-aggregate.js";
 
@@ -771,13 +775,15 @@ function TranspileView({
   verbose,
   singleAdapter,
   plugins = [],
+  localValues = {},
 }: {
   entries: AdapterRegistryEntry[];
   projectRoot: string;
   clean?: boolean;
   verbose?: boolean;
   singleAdapter?: string;
-  plugins?: ResolvedPlugin[];
+  plugins?: (ResolvedPlugin & { resolvedValues?: Record<string, string> })[];
+  localValues?: Record<string, string>;
 }): React.ReactElement {
   const { exit } = useApp();
   const [cleanOutcome, setCleanOutcome] = useState<CleanOutcome | null>(null);
@@ -826,11 +832,13 @@ function TranspileView({
       // Установить переменные на адаптерах instructions и agents
       const instrAdapter = entry.instructions as {
         variables?: Record<string, string>;
+        values?: Record<string, string>;
       };
       instrAdapter.variables = variables;
       if (entry.agents) {
         const agentsAdapter = entry.agents as {
           variables?: Record<string, string>;
+          values?: Record<string, string>;
         };
         agentsAdapter.variables = variables;
       }
@@ -856,6 +864,21 @@ function TranspileView({
       for (const plugin of plugins) {
         const pluginOutcomes: TranspilerStepOutcome[] = [];
 
+        // § plugin-values.md: per-plugin valuesByAgentId
+        const pluginValuesByAgentId: Record<
+          string,
+          Record<string, string>
+        > = plugin.resolvedValues ? { [entry.id]: plugin.resolvedValues } : {};
+
+        // Установить values на адаптерах для текущего плагина
+        instrAdapter.values = plugin.resolvedValues;
+        if (entry.agents) {
+          const agentsAdapterValues = entry.agents as {
+            values?: Record<string, string>;
+          };
+          agentsAdapterValues.values = plugin.resolvedValues;
+        }
+
         // 4.2.1: Instructions
         pluginOutcomes.push(
           runTranspileStep({
@@ -880,6 +903,7 @@ function TranspileView({
               projectRoot,
               name: "Skills",
               variablesByAgentId,
+              valuesByAgentId: pluginValuesByAgentId,
               sourceRoot: plugin.path,
             }),
           );
@@ -911,6 +935,7 @@ function TranspileView({
               projectRoot,
               name: "Docs",
               variablesByAgentId,
+              valuesByAgentId: pluginValuesByAgentId,
               sourceRoot: plugin.path,
             }),
           );
@@ -927,6 +952,7 @@ function TranspileView({
               projectRoot,
               name: "Schemas",
               variablesByAgentId,
+              valuesByAgentId: pluginValuesByAgentId,
               sourceRoot: plugin.path,
             }),
           );
@@ -937,6 +963,23 @@ function TranspileView({
 
       // Шаги 4.3-4.5: локальный проект
       const localOutcomes: TranspilerStepOutcome[] = [];
+
+      // § plugin-values.md: local valuesByAgentId
+      const localValuesByAgentId: Record<
+        string,
+        Record<string, string>
+      > = Object.keys(localValues).length > 0
+        ? { [entry.id]: localValues }
+        : {};
+
+      // Установить values на адаптерах для локального проекта
+      instrAdapter.values = localValues;
+      if (entry.agents) {
+        const agentsAdapterValues = entry.agents as {
+          values?: Record<string, string>;
+        };
+        agentsAdapterValues.values = localValues;
+      }
 
       // 4.3: Instructions
       localOutcomes.push(
@@ -961,6 +1004,7 @@ function TranspileView({
             projectRoot,
             name: "Skills",
             variablesByAgentId,
+            valuesByAgentId: localValuesByAgentId,
           }),
         );
       }
@@ -990,6 +1034,7 @@ function TranspileView({
             projectRoot,
             name: "Docs",
             variablesByAgentId,
+            valuesByAgentId: localValuesByAgentId,
           }),
         );
       }
@@ -1005,6 +1050,7 @@ function TranspileView({
             projectRoot,
             name: "Schemas",
             variablesByAgentId,
+            valuesByAgentId: localValuesByAgentId,
           }),
         );
       }
@@ -1016,9 +1062,14 @@ function TranspileView({
 
       // Шаг 4.6-4.7: формирование layers и overlay
       const layers = buildLayers({
-        plugins,
+        plugins: plugins.map((p) => ({
+          name: p.name,
+          path: p.path,
+          resolvedValues: p.resolvedValues,
+        })),
         projectRoot,
         entryId: entry.id,
+        localValues,
       });
       steps.push(runOverlayStep({ entry, projectRoot, variables, layers }));
 
@@ -1363,6 +1414,40 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       }
     }
 
+    // § plugin-values.md § Расширение команды transpile шаги 3.4-3.6
+    // Resolve local values
+    let localResolvedValues: Record<string, string> = {};
+    const configVariables = configResult?.configVariables ?? null;
+    try {
+      localResolvedValues = resolveLocalValues(
+        configVariables,
+        process.env as Record<string, string | undefined>,
+      );
+    } catch (err) {
+      process.exitCode = 1;
+      const message = err instanceof Error ? err.message : String(err);
+      return <Text>{message}</Text>;
+    }
+
+    // Resolve plugin values
+    let resolvedPlugins: (ResolvedPlugin & {
+      resolvedValues: Record<string, string>;
+    })[];
+    try {
+      resolvedPlugins = plugins.map((plugin) => {
+        const resolvedValues = resolvePluginValues(
+          plugin.manifest.variables,
+          plugin.values,
+          process.env as Record<string, string | undefined>,
+        );
+        return { ...plugin, resolvedValues };
+      });
+    } catch (err) {
+      process.exitCode = 1;
+      const message = err instanceof Error ? err.message : String(err);
+      return <Text>{message}</Text>;
+    }
+
     return (
       <TranspileView
         entries={entries}
@@ -1370,7 +1455,8 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
         clean={parsed.clean}
         verbose={parsed.verbose}
         singleAdapter={parsed.agent ?? undefined}
-        plugins={plugins}
+        plugins={resolvedPlugins}
+        localValues={localResolvedValues}
       />
     );
   }

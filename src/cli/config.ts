@@ -23,6 +23,11 @@ export interface LoadConfigResult {
   pluginPaths: string[] | null;
   /** Список разобранных записей плагинов из конфига, или null. */
   pluginEntries: ParsedPluginEntry[] | null;
+  /** Нормализованная карта переменных локального проекта, или null. */
+  configVariables: Record<
+    string,
+    import("./plugin-manifest.js").VariableDeclaration
+  > | null;
 }
 
 /**
@@ -131,6 +136,32 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
         );
       }
 
+      // Шаг 6.3: валидация values в объектных форматах
+      if (typeof item === "object" && item !== null && !Array.isArray(item)) {
+        const obj = item as Record<string, unknown>;
+        if ("values" in obj) {
+          const values = obj.values;
+          if (
+            typeof values !== "object" ||
+            values === null ||
+            Array.isArray(values)
+          ) {
+            throw new Error(
+              "Invalid config: plugin 'values' must be an object.",
+            );
+          }
+          for (const [vKey, vVal] of Object.entries(
+            values as Record<string, unknown>,
+          )) {
+            if (typeof vVal !== "string") {
+              throw new Error(
+                `Invalid config: plugin 'values' entry '${vKey}' must be a string.`,
+              );
+            }
+          }
+        }
+      }
+
       // Расширение 6.1a: Parse Plugin Entry вернул ошибку → пробросить
       const parsed = parsePluginEntry(item);
       entries.push(parsed);
@@ -194,7 +225,108 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
     }
   }
 
-  return { adapterIds: adapters as string[], pluginPaths, pluginEntries };
+  // Шаг 7-9: обработка variables
+  let configVariables: Record<
+    string,
+    import("./plugin-manifest.js").VariableDeclaration
+  > | null = null;
+
+  if ("variables" in config) {
+    const rawVariables = config.variables;
+
+    // Шаг 8: проверить, что variables — объект
+    if (
+      typeof rawVariables !== "object" ||
+      rawVariables === null ||
+      Array.isArray(rawVariables)
+    ) {
+      throw new Error("Invalid config: 'variables' must be an object.");
+    }
+
+    configVariables = {};
+
+    for (const [key, value] of Object.entries(
+      rawVariables as Record<string, unknown>,
+    )) {
+      // Шаг 9.1: строка → нормализовать
+      if (typeof value === "string") {
+        configVariables[key] = {
+          description: "",
+          required: false,
+          default: value,
+          sensitive: false,
+        };
+        continue;
+      }
+
+      // Шаг 9.2: объект → валидировать поля
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        throw new Error(
+          `Invalid config: variable '${key}' must be a string or an object.`,
+        );
+      }
+
+      const varObj = value as Record<string, unknown>;
+
+      // 9.2.1: description
+      let description = "";
+      if (varObj.description != null) {
+        if (typeof varObj.description !== "string") {
+          throw new Error(
+            `Invalid config: variable '${key}' field 'description' must be a string.`,
+          );
+        }
+        description = varObj.description;
+      }
+
+      // 9.2.2: required
+      let required = false;
+      if (varObj.required != null) {
+        if (typeof varObj.required !== "boolean") {
+          throw new Error(
+            `Invalid config: variable '${key}' field 'required' must be a boolean.`,
+          );
+        }
+        required = varObj.required;
+      }
+
+      // 9.2.3: default
+      let defaultValue: string | null = null;
+      if (varObj.default != null) {
+        if (typeof varObj.default !== "string") {
+          throw new Error(
+            `Invalid config: variable '${key}' field 'default' must be a string.`,
+          );
+        }
+        defaultValue = varObj.default;
+      }
+
+      // 9.2.4: sensitive
+      let sensitive = false;
+      if (varObj.sensitive != null) {
+        if (typeof varObj.sensitive !== "boolean") {
+          throw new Error(
+            `Invalid config: variable '${key}' field 'sensitive' must be a boolean.`,
+          );
+        }
+        sensitive = varObj.sensitive;
+      }
+
+      configVariables[key] = {
+        description,
+        required,
+        default: defaultValue,
+        sensitive,
+      };
+    }
+  }
+
+  return {
+    adapterIds: adapters as string[],
+    pluginPaths,
+    pluginEntries,
+    configVariables,
+  };
 }
 
 /**

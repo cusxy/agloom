@@ -18,6 +18,8 @@ export class AgentsMdAdapter implements Adapter {
   private readonly allowedAgentIds?: string[];
   /** Карта переменных интерполяции (устанавливается CLI перед transpile). */
   variables?: Record<string, string>;
+  /** Resolved values для интерполяции ${values:*}. */
+  values?: Record<string, string>;
 
   constructor(allowedAgentIds?: string[]) {
     this.allowedAgentIds = allowedAgentIds;
@@ -38,6 +40,7 @@ export class AgentsMdAdapter implements Adapter {
         "agentsmd",
         this.allowedAgentIds,
         this.variables,
+        this.values,
       );
 
       // Шаг 3: заменить AGLOOM.md → AGENTS.md

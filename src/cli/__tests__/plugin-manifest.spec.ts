@@ -83,6 +83,7 @@ keywords:
         },
         homepage: "https://github.com/example/my-eslint-config",
         keywords: ["eslint", "config"],
+        variables: null,
       });
     });
 

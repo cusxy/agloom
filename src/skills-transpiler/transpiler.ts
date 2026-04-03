@@ -88,9 +88,11 @@ export class SkillsTranspiler {
     options?: {
       targetRoot?: string;
       variablesByAgentId?: Record<string, Record<string, string>>;
+      valuesByAgentId?: Record<string, Record<string, string>>;
     },
   ): SkillWriteResult {
     const variablesByAgentId = options?.variablesByAgentId;
+    const valuesByAgentId = options?.valuesByAgentId;
     const writeRoot = options?.targetRoot ?? this.projectRoot;
 
     const written: string[] = [];
@@ -126,7 +128,9 @@ export class SkillsTranspiler {
 
         // Определить, нужна ли интерполяция для данного файла
         const isMd = path.extname(file.sourcePath).toLowerCase() === ".md";
-        const shouldInterpolate = variablesByAgentId !== undefined && isMd;
+        const shouldInterpolate =
+          (variablesByAgentId !== undefined || valuesByAgentId !== undefined) &&
+          isMd;
 
         if (shouldInterpolate) {
           // Интерполяция .md файлов
@@ -134,7 +138,9 @@ export class SkillsTranspiler {
             const content = fs.readFileSync(sourceAbsolute, "utf-8");
             const interpolated = interpolate(
               content,
-              variablesByAgentId![result.agentId],
+              variablesByAgentId?.[result.agentId] ?? {},
+              undefined,
+              valuesByAgentId?.[result.agentId],
             );
 
             // Создать промежуточные каталоги при необходимости

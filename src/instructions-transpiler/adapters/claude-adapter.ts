@@ -19,6 +19,8 @@ export class ClaudeAdapter implements Adapter {
   private readonly allowedAgentIds?: string[];
   /** Карта переменных интерполяции (устанавливается CLI перед transpile). */
   variables?: Record<string, string>;
+  /** Resolved values для интерполяции ${values:*}. */
+  values?: Record<string, string>;
 
   constructor(allowedAgentIds?: string[]) {
     this.allowedAgentIds = allowedAgentIds;
@@ -43,6 +45,7 @@ export class ClaudeAdapter implements Adapter {
         "claude",
         this.allowedAgentIds,
         this.variables,
+        this.values,
       );
 
       // Шаг 3-4: заменить имя файла

@@ -21,22 +21,25 @@ export function interpolate(
   content: string,
   variables: Record<string, string>,
   env?: Record<string, string | undefined>,
+  values?: Record<string, string>,
 ): string {
   const resolvedEnv =
     env ?? (process.env as Record<string, string | undefined>);
+  const resolvedValues = values ?? {};
 
-  // Один проход: обрабатываем escaped и non-escaped паттерны для agloom и env
-  // Regex: match \${agloom:NAME} or \${env:NAME} (escaped), or ${agloom:NAME} or ${env:NAME}
+  // Один проход: обрабатываем escaped и non-escaped паттерны для agloom, env и values
+  // Regex: match \${agloom:NAME}, \${env:NAME}, \${values:NAME} (escaped),
+  // or ${agloom:NAME}, ${env:NAME}, ${values:NAME}
   // NAME = one or more chars not containing }
   return content.replace(
-    /\\(\$\{(?:agloom|env):[^}]+\})|\$\{(agloom|env):([^}]+)\}/g,
+    /\\(\$\{(?:agloom|env|values):[^}]+\})|\$\{(agloom|env|values):([^}]+)\}/g,
     (
       match,
       escaped: string | undefined,
       namespace: string | undefined,
       name: string | undefined,
     ) => {
-      // Шаги 2-3: escaped — потребить backslash, вернуть литерал
+      // Шаги 2-3, 6: escaped — потребить backslash, вернуть литерал
       if (escaped !== undefined) {
         return escaped;
       }
@@ -62,7 +65,16 @@ export function interpolate(
         return value;
       }
 
-      // Шаг 6: не соответствует — сохранить
+      // Шаг 7: ${values:NAME}
+      if (namespace === "values") {
+        if (!(name! in resolvedValues)) {
+          // Расширение 7a
+          throw new InterpolationError(`Unknown values variable: ${name}`);
+        }
+        return resolvedValues[name!];
+      }
+
+      // Шаг 8: не соответствует — сохранить
       return match;
     },
   );

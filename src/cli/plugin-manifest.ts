@@ -13,6 +13,14 @@ export interface PluginAuthor {
   url: string | null;
 }
 
+/** Декларация одной переменной плагина. */
+export interface VariableDeclaration {
+  description: string;
+  required: boolean;
+  default: string | null;
+  sensitive: boolean;
+}
+
 /** Валидированный манифест плагина. */
 export interface PluginManifest {
   name: string;
@@ -22,6 +30,7 @@ export interface PluginManifest {
   author: PluginAuthor;
   homepage: string | null;
   keywords: string[];
+  variables: Record<string, VariableDeclaration> | null;
 }
 
 const NAME_REGEX = /^[a-z]([a-z0-9]|(-(?!-)))*[a-z0-9]$|^[a-z]$/;
@@ -177,6 +186,79 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
     keywords = data.keywords as string[];
   }
 
+  // Step 12-14: проверить variables
+  let variables: Record<string, VariableDeclaration> | null = null;
+
+  if (data.variables != null) {
+    // Step 13: проверить, что variables — объект
+    if (typeof data.variables !== "object" || Array.isArray(data.variables)) {
+      throw new Error(
+        "Invalid plugin manifest: 'variables' must be an object.",
+      );
+    }
+
+    const rawVars = data.variables as Record<string, unknown>;
+    variables = {};
+
+    for (const [key, value] of Object.entries(rawVars)) {
+      // Step 14.1: проверить, что значение — объект
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        throw new Error(
+          `Invalid plugin manifest: variable '${key}' must be an object.`,
+        );
+      }
+
+      const varObj = value as Record<string, unknown>;
+
+      // Step 14.2: проверить description
+      if (!isNonEmptyString(varObj.description)) {
+        throw new Error(
+          `Invalid plugin manifest: variable '${key}' must have a non-empty 'description'.`,
+        );
+      }
+
+      // Step 14.3: проверить required
+      let required = false;
+      if (varObj.required != null) {
+        if (typeof varObj.required !== "boolean") {
+          throw new Error(
+            `Invalid plugin manifest: variable '${key}' field 'required' must be a boolean.`,
+          );
+        }
+        required = varObj.required;
+      }
+
+      // Step 14.4: проверить default
+      let defaultValue: string | null = null;
+      if (varObj.default != null) {
+        if (typeof varObj.default !== "string") {
+          throw new Error(
+            `Invalid plugin manifest: variable '${key}' field 'default' must be a string.`,
+          );
+        }
+        defaultValue = varObj.default;
+      }
+
+      // Step 14.5: проверить sensitive
+      let sensitive = false;
+      if (varObj.sensitive != null) {
+        if (typeof varObj.sensitive !== "boolean") {
+          throw new Error(
+            `Invalid plugin manifest: variable '${key}' field 'sensitive' must be a boolean.`,
+          );
+        }
+        sensitive = varObj.sensitive;
+      }
+
+      variables[key] = {
+        description: varObj.description,
+        required,
+        default: defaultValue,
+        sensitive,
+      };
+    }
+  }
+
   return {
     name,
     version: versionStr,
@@ -189,5 +271,6 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
     },
     homepage,
     keywords,
+    variables,
   };
 }

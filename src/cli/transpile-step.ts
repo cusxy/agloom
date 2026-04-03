@@ -34,6 +34,8 @@ interface TranspileStepParams {
   name: "Instructions" | "Skills" | "Agents" | "Docs" | "Schemas";
   /** Карта переменных по agentId для интерполяции (skills transpiler). */
   variablesByAgentId?: Record<string, Record<string, string>>;
+  /** Карта resolved values по agentId для интерполяции ${values:*}. */
+  valuesByAgentId?: Record<string, Record<string, string>>;
   /**
    * Абсолютный путь к корню источника для discover и transform.
    * Spec: docs/specs/plugin-loading.md § Расширение процедуры «Шаг транспиляции»
@@ -68,6 +70,7 @@ export function runTranspileStep(
     projectRoot,
     name,
     variablesByAgentId,
+    valuesByAgentId,
     sourceRoot,
   } = params;
 
@@ -107,23 +110,19 @@ export function runTranspileStep(
   // При наличии sourceRoot, writeResults вызывается с targetRoot: projectRoot
   // Spec: docs/specs/docs-transpiler.md § Изменения в поведении
   // Docs/Schemas: variablesByAgentId передаётся вместе с targetRoot
-  let writeResult: { written: string[]; errors: { message: string }[] };
-  if (sourceRoot && variablesByAgentId) {
-    writeResult = transpiler.writeResults(transpileResults, {
-      targetRoot: projectRoot,
-      variablesByAgentId,
-    });
-  } else if (sourceRoot) {
-    writeResult = transpiler.writeResults(transpileResults, {
-      targetRoot: projectRoot,
-    });
-  } else if (variablesByAgentId) {
-    writeResult = transpiler.writeResults(transpileResults, {
-      variablesByAgentId,
-    });
-  } else {
-    writeResult = transpiler.writeResults(transpileResults);
-  }
+  const writeOptions: {
+    targetRoot?: string;
+    variablesByAgentId?: Record<string, Record<string, string>>;
+    valuesByAgentId?: Record<string, Record<string, string>>;
+  } = {};
+  if (sourceRoot) writeOptions.targetRoot = projectRoot;
+  if (variablesByAgentId) writeOptions.variablesByAgentId = variablesByAgentId;
+  if (valuesByAgentId) writeOptions.valuesByAgentId = valuesByAgentId;
+
+  const writeResult =
+    Object.keys(writeOptions).length > 0
+      ? transpiler.writeResults(transpileResults, writeOptions)
+      : transpiler.writeResults(transpileResults);
 
   // Шаг 4: writtenCount = writeResult.written.length
   const writtenCount = writeResult.written.length;

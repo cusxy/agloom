@@ -13,6 +13,7 @@ relates:
   - docs/specs/config.md
   - docs/specs/layer-model.md
   - docs/specs/cli.md
+  - docs/specs/plugin-values.md
 maps_to:
   - src/cli/
 ---

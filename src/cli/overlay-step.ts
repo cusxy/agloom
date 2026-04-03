@@ -42,6 +42,8 @@ export interface LayerSource {
   id: string;
   /** Абсолютный путь к директории overlay данного источника. */
   overlayDir: string;
+  /** Resolved values для интерполяции ${values:*} данного слоя. */
+  values?: Record<string, string>;
 }
 
 /** Параметры шага overlay. */
@@ -56,6 +58,8 @@ interface OverlayStepParams {
   env?: Record<string, string | undefined>;
   /** Упорядоченный список источников слоёв. Последний элемент имеет наивысший приоритет. */
   layers?: LayerSource[];
+  /** Resolved values для интерполяции ${values:*} (legacy mode). */
+  values?: Record<string, string>;
 }
 
 /**
@@ -796,7 +800,7 @@ function applyPatchRecursive(
 export function runOverlayStep(
   params: OverlayStepParams,
 ): TranspilerStepOutcome {
-  const { entry, projectRoot, variables, env, layers } = params;
+  const { entry, projectRoot, variables, env, layers, values } = params;
 
   // Если layers передан — используем multi-layer режим
   if (layers !== undefined) {
@@ -804,7 +808,7 @@ export function runOverlayStep(
   }
 
   // Режим обратной совместимости: единственный источник — .agloom/overlays/<entry.id>/
-  return runLegacyOverlay(entry, projectRoot, variables, env);
+  return runLegacyOverlay(entry, projectRoot, variables, env, values);
 }
 
 /**
@@ -816,6 +820,7 @@ function runLegacyOverlay(
   projectRoot: string,
   variables?: Record<string, string>,
   env?: Record<string, string | undefined>,
+  values?: Record<string, string>,
 ): TranspilerStepOutcome {
   const errors: string[] = [];
   let writtenCount = 0;
@@ -854,7 +859,7 @@ function runLegacyOverlay(
     if (shouldInterpolate) {
       try {
         const content = fs.readFileSync(filePath, "utf-8");
-        const result = interpolate(content, variables, env);
+        const result = interpolate(content, variables, env, values);
         fs.writeFileSync(targetPath, result, "utf-8");
         writtenCount++;
       } catch (err) {
@@ -957,7 +962,7 @@ function runMultiLayerOverlay(
 
         if (shouldInterpolate) {
           try {
-            content = interpolate(content, variables!, env);
+            content = interpolate(content, variables!, env, layer.values);
           } catch (err) {
             if (err instanceof InterpolationError) {
               // Расширение 2.6a

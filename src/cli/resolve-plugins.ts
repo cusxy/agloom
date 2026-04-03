@@ -35,6 +35,8 @@ export interface ResolvedPlugin {
   gitUrl: string | null;
   /** Исходный ref из конфига для git-плагинов, null для локальных. */
   gitRef: string | null;
+  /** Значения из values plugin entry в config.yml, null если не указан. */
+  values: Record<string, string> | null;
 }
 
 /** Результат процедуры Parse Plugin Entry. */
@@ -43,6 +45,7 @@ export interface ParsedPluginEntry {
   path: string | null;
   url: string | null;
   ref: string | null;
+  values: Record<string, string> | null;
 }
 
 // =====================================================================
@@ -86,15 +89,21 @@ export function parsePluginEntry(
           // Шаг 3.2.1: разбить по //
           const gitUrl = entry.slice(0, doubleSlashIndex);
           const subpath = entry.slice(doubleSlashIndex + 2);
-          return { type: "git", url: gitUrl, ref: null, path: subpath };
+          return {
+            type: "git",
+            url: gitUrl,
+            ref: null,
+            path: subpath,
+            values: null,
+          };
         }
 
         // Шаг 3.2.2: нет // → git без subpath
-        return { type: "git", url: entry, ref: null, path: null };
+        return { type: "git", url: entry, ref: null, path: null, values: null };
       }
 
       // Шаг 3.3: не git URL → local
-      return { type: "local", path: entry, url: null, ref: null };
+      return { type: "local", path: entry, url: null, ref: null, values: null };
     }
 
     // Шаг 4: есть # → разбить по последнему #
@@ -135,7 +144,7 @@ export function parsePluginEntry(
     }
 
     // Шаг 4.4: вернуть git entry
-    return { type: "git", url: gitUrl, ref, path: subpath };
+    return { type: "git", url: gitUrl, ref, path: subpath, values: null };
   }
 
   if (typeof entry === "object" && entry !== null && !Array.isArray(entry)) {
@@ -148,6 +157,7 @@ export function parsePluginEntry(
         url: obj.git as string,
         ref: (obj.ref as string) ?? null,
         path: (obj.path as string) ?? null,
+        values: (obj.values as Record<string, string>) ?? null,
       };
     }
 
@@ -158,6 +168,7 @@ export function parsePluginEntry(
         path: obj.path as string,
         url: null,
         ref: null,
+        values: (obj.values as Record<string, string>) ?? null,
       };
     }
   }
@@ -772,6 +783,7 @@ export function resolvePlugins(
       path: p,
       url: null,
       ref: null,
+      values: null,
     }));
   }
 
@@ -840,6 +852,7 @@ export function resolvePlugins(
         resolvedSha: null,
         gitUrl: null,
         gitRef: null,
+        values: entry.values,
       });
     } else {
       // Шаг 2.0b: обработать как git-плагин
@@ -912,6 +925,7 @@ export function resolvePlugins(
         resolvedSha: gitRefResult.resolvedSha,
         gitUrl: entry.url,
         gitRef: entry.ref,
+        values: entry.values,
       });
     }
   }
