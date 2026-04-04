@@ -14,6 +14,7 @@ relates:
   - docs/specs/plugin-loading.md
   - docs/specs/plugin-values.md
   - docs/specs/mcp-transpiler.md
+  - docs/specs/permissions-transpiler.md
 maps_to:
   - src/cli/
 ---

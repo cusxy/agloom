@@ -19,6 +19,7 @@ relates:
   - docs/specs/interpolation.md
   - docs/specs/config.md
   - docs/specs/plugin-manifest.md
+  - docs/specs/permissions-transpiler.md
 maps_to:
   - src/mcp-transpiler/
 ---

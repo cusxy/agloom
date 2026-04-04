@@ -7,6 +7,7 @@ import type { Adapter } from "../instructions-transpiler/index.js";
 import type { SkillAdapter } from "../skills-transpiler/index.js";
 import type { AgentAdapter } from "../agents-transpiler/index.js";
 import type { McpAdapter } from "../mcp-transpiler/index.js";
+import type { PermissionsAdapter } from "../permissions-transpiler/index.js";
 
 /** Запись реестра адаптеров. */
 export interface AdapterRegistryEntry {
@@ -22,6 +23,8 @@ export interface AdapterRegistryEntry {
   agents: AgentAdapter | null;
   /** Экземпляр MCP-адаптера (null если адаптер не поддерживает MCP-транспиляцию). */
   mcp: McpAdapter | null;
+  /** Экземпляр Permissions-адаптера (null если адаптер не поддерживает Permissions-транспиляцию). */
+  permissions: PermissionsAdapter | null;
   /** Относительный путь к корневой директории agent-специфичных файлов. */
   targetRoot: string;
   /** Список относительных путей к файлам за пределами targetRoot, генерируемых транспилерами. */
@@ -71,6 +74,7 @@ export interface TranspilerStepOutcome {
     | "Docs"
     | "Schemas"
     | "MCP"
+    | "Permissions"
     | "Overlay";
   /** Количество успешно записанных файлов. */
   writtenCount: number;

@@ -1,17 +1,16 @@
 /**
- * MCP Transpiler — основной класс.
- * Spec: docs/specs/mcp-transpiler.md
+ * Permissions Transpiler — основной класс.
+ * Spec: docs/specs/permissions-transpiler.md
  */
 
 import * as fs from "node:fs";
 import * as path from "node:path";
 import yaml from "js-yaml";
-import { interpolate } from "../interpolation/index.js";
 import { DiscoverError, WriteError } from "./errors.js";
-import { validateCanonicalContent } from "./validate.js";
+import { validatePermissionsContent } from "./validate.js";
 import type {
-  McpAdapter,
-  McpCanonicalFile,
+  PermissionsAdapter,
+  PermissionsCanonicalFile,
   TranspileResult,
   WriteResult,
 } from "./types.js";
@@ -45,14 +44,14 @@ function deepMerge(
   return result;
 }
 
-export class McpTranspiler {
+export class PermissionsTranspiler {
   private readonly projectRoot: string;
-  private readonly adapters: McpAdapter[];
+  private readonly adapters: PermissionsAdapter[];
   private readonly agloomDir: string;
 
   constructor(
     projectRoot: string,
-    adapters: McpAdapter[],
+    adapters: PermissionsAdapter[],
     agloomDir: string = ".agloom",
   ) {
     this.projectRoot = projectRoot;
@@ -61,12 +60,20 @@ export class McpTranspiler {
   }
 
   /**
-   * Обнаруживает канонический MCP-файл в проекте.
+   * Обнаруживает канонический permissions-файл в проекте.
    * Spec: § Обнаружение канонического файла
    */
-  discover(): McpCanonicalFile | null {
-    const ymlPath = path.join(this.projectRoot, this.agloomDir, "mcp.yml");
-    const jsonPath = path.join(this.projectRoot, this.agloomDir, "mcp.json");
+  discover(): PermissionsCanonicalFile | null {
+    const ymlPath = path.join(
+      this.projectRoot,
+      this.agloomDir,
+      "permissions.yml",
+    );
+    const jsonPath = path.join(
+      this.projectRoot,
+      this.agloomDir,
+      "permissions.json",
+    );
 
     // Шаги 1-2: проверить наличие файлов
     const ymlExists = fs.existsSync(ymlPath);
@@ -74,9 +81,8 @@ export class McpTranspiler {
 
     // Расширение 3a: оба файла существуют
     if (ymlExists && jsonExists) {
-      const dir = this.agloomDir;
       throw new DiscoverError(
-        `Both ${dir}/mcp.yml and ${dir}/mcp.json exist. Remove one to resolve the conflict.`,
+        "Both .agloom/permissions.yml and .agloom/permissions.json exist. Remove one to resolve the conflict.",
       );
     }
 
@@ -89,7 +95,7 @@ export class McpTranspiler {
     const filePath = isYaml ? ymlPath : jsonPath;
     const relativePath = path.join(
       this.agloomDir,
-      isYaml ? "mcp.yml" : "mcp.json",
+      isYaml ? "permissions.yml" : "permissions.json",
     );
 
     // Шаг 4: прочитать содержимое
@@ -111,7 +117,7 @@ export class McpTranspiler {
       } catch (err) {
         // Расширение 5a
         throw new DiscoverError(
-          `Failed to parse .agloom/mcp.yml: ${(err as Error).message}`,
+          `Failed to parse .agloom/permissions.yml: ${(err as Error).message}`,
         );
       }
     } else {
@@ -120,16 +126,16 @@ export class McpTranspiler {
       } catch (err) {
         // Расширение 5b
         throw new DiscoverError(
-          `Failed to parse .agloom/mcp.json: ${(err as Error).message}`,
+          `Failed to parse .agloom/permissions.json: ${(err as Error).message}`,
         );
       }
     }
 
-    // Шаг 6: сформировать McpCanonicalFile
+    // Шаг 6: сформировать PermissionsCanonicalFile
     return {
       relativePath,
       format: isYaml ? "yaml" : "json",
-      content: parsed as McpCanonicalFile["content"],
+      content: parsed as PermissionsCanonicalFile["content"],
     };
   }
 
@@ -147,12 +153,9 @@ export class McpTranspiler {
     }
 
     // Шаг 2: валидировать содержимое
-    validateCanonicalContent(canonicalFile.content);
+    validatePermissionsContent(canonicalFile.content);
 
-    // Шаг 3: Интерполяция отложена до writeResults, где доступны
-    // variablesByAgentId и valuesByAgentId. Здесь не выполняется.
-
-    // Шаги 4-5: для каждого адаптера вызвать transpile, собрать результаты
+    // Шаг 3-4: для каждого адаптера вызвать transpile, собрать результаты
     const results: TranspileResult[] = [];
 
     for (const adapter of this.adapters) {
@@ -164,7 +167,7 @@ export class McpTranspiler {
           errors: [],
         });
       } catch (err) {
-        // Расширение 4a: адаптер выбросил исключение
+        // Расширение 3a: адаптер выбросил исключение
         const error = err instanceof Error ? err : new Error(String(err));
         results.push({
           agentId: adapter.agentId,
@@ -191,8 +194,6 @@ export class McpTranspiler {
     results: TranspileResult[],
     options?: {
       targetRoot?: string;
-      variablesByAgentId?: Record<string, Record<string, string>>;
-      valuesByAgentId?: Record<string, Record<string, string>>;
     },
   ): WriteResult {
     const written: string[] = [];
@@ -211,29 +212,7 @@ export class McpTranspiler {
         continue;
       }
 
-      // Resolve variables and values for this adapter's agentId
-      const vars = options?.variablesByAgentId?.[result.agentId] ?? {};
-      const vals = options?.valuesByAgentId?.[result.agentId] ?? {};
-
-      for (const rawFile of result.files) {
-        // Interpolate content with agloom vars, env, and values
-        let interpolatedContent: string;
-        try {
-          interpolatedContent = interpolate(
-            rawFile.content,
-            vars,
-            undefined,
-            vals,
-          );
-        } catch (err) {
-          errors.push(
-            new WriteError(
-              `Interpolation failed for ${rawFile.relativePath}: ${(err as Error).message}`,
-            ),
-          );
-          continue;
-        }
-        const file = { ...rawFile, content: interpolatedContent };
+      for (const file of result.files) {
         if (mergedFiles.has(file.relativePath)) {
           // Deep merge для JSON
           if (file.relativePath.endsWith(".json")) {

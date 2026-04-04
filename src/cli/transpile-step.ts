@@ -31,7 +31,14 @@ interface TranspileStepParams {
   /** Абсолютный путь к корню проекта. */
   projectRoot: string;
   /** Имя шага. */
-  name: "Instructions" | "Skills" | "Agents" | "Docs" | "Schemas" | "MCP";
+  name:
+    | "Instructions"
+    | "Skills"
+    | "Agents"
+    | "Docs"
+    | "Schemas"
+    | "MCP"
+    | "Permissions";
   /** Карта переменных по agentId для интерполяции (skills transpiler). */
   variablesByAgentId?: Record<string, Record<string, string>>;
   /** Карта resolved values по agentId для интерполяции ${values:*}. */

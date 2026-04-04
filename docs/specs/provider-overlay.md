@@ -16,6 +16,7 @@ relates:
   - docs/specs/plugin-loading.md
   - docs/specs/patch-mechanism.md
   - docs/specs/plugin-values.md
+  - docs/specs/permissions-transpiler.md
 maps_to:
   - src/cli/
   - src/cli/types.ts

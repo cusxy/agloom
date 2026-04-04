@@ -38,6 +38,7 @@ import {
   createResourceAdapter,
 } from "../docs-transpiler/index.js";
 import { createMcpTranspiler } from "../mcp-transpiler/index.js";
+import { createPermissionsTranspiler } from "../permissions-transpiler/index.js";
 import type { ResourceType } from "../docs-transpiler/index.js";
 import { buildVariables, loadDotenv } from "../interpolation/index.js";
 import { resolvePlugins } from "./resolve-plugins.js";
@@ -1225,6 +1226,21 @@ function TranspileView({
           );
         }
 
+        // 4.2.Permissions: Permissions (plugin)
+        if (entry.permissions !== null) {
+          pluginOutcomes.push(
+            runTranspileStep({
+              transpilerFactory: createPermissionsTranspiler as Parameters<
+                typeof runTranspileStep
+              >[0]["transpilerFactory"],
+              adapter: entry.permissions,
+              projectRoot,
+              name: "Permissions",
+              sourceRoot: plugin.path,
+            }),
+          );
+        }
+
         // 4.2.4: Docs (plugin)
         if (docsAdapter !== null) {
           pluginOutcomes.push(
@@ -1336,6 +1352,20 @@ function TranspileView({
             name: "MCP",
             variablesByAgentId,
             valuesByAgentId: localValuesByAgentId,
+          }),
+        );
+      }
+
+      // 4.6: Permissions (local project)
+      if (entry.permissions !== null) {
+        localOutcomes.push(
+          runTranspileStep({
+            transpilerFactory: createPermissionsTranspiler as Parameters<
+              typeof runTranspileStep
+            >[0]["transpilerFactory"],
+            adapter: entry.permissions,
+            projectRoot,
+            name: "Permissions",
           }),
         );
       }
