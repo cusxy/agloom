@@ -1778,6 +1778,10 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       }
     }
 
+    // Загрузка .env перед разрешением значений плагинов,
+    // чтобы ${env:*} ссылки в values могли использовать переменные из .env
+    loadDotenv(root);
+
     // § plugin-values.md § Расширение команды transpile шаги 3.4-3.6
     // Resolve local values
     let localResolvedValues: Record<string, string> = {};

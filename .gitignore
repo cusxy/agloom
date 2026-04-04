@@ -16,6 +16,12 @@ node_modules/
 dist/
 out/
 
+# Chache
+.turbo
+
+# Environment
+.env
+
 # Agloom (local instructions)
 AGLOOM.local.md
 
@@ -26,8 +32,10 @@ AGENTS.override.md
 
 # Claude Code generated
 .claude/
+.mcp.json
 CLAUDE.md
 !.agloom/**/.claude
+!.agloom/**/.mcp.json
 !.agloom/**/CALUDE.md
 
 # Codex generated
