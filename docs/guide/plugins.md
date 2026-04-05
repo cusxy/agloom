@@ -1,7 +1,9 @@
 ---
 title: Plugins
 description: How to use and create plugins for sharing configurations
-order: 6
+prev: skills-and-agents
+next: overlays
+sidebar_position: 6
 ---
 
 # Plugins
@@ -10,11 +12,9 @@ This guide teaches you how to use existing plugins and create your own.
 
 ## What Are Plugins
 
-Plugins are reusable packages of skills, agents, docs, schemas, instructions,
-and overlays. They let you share AI agent configurations across projects.
+Plugins are reusable packages of skills, agents, docs, schemas, instructions, and overlays. They let you share AI agent configurations across projects.
 
-A plugin is a directory containing a `plugin.yml` manifest and an `.agloom/`-like
-structure. Plugins can be loaded from local paths or git repositories.
+A plugin is a directory containing a `plugin.yml` manifest and an `.agloom/`-like structure. Plugins can be loaded from local paths or git repositories.
 
 ## Using a Plugin
 
@@ -33,8 +33,7 @@ plugins:
   - https://github.com/user/another-plugin
 ```
 
-You can pin a specific ref (branch, tag, or commit) and point to a subdirectory
-within the repo:
+You can pin a specific ref (branch, tag, or commit) and point to a subdirectory within the repo:
 
 ```yaml
 plugins:
@@ -42,8 +41,7 @@ plugins:
   - git@github.com:user/monorepo#main//packages/agloom-plugin
 ```
 
-The `#ref` suffix specifies the git ref. The `//path` suffix specifies a
-subdirectory within the repository.
+The `#ref` suffix specifies the git ref. The `//path` suffix specifies a subdirectory within the repository.
 
 ### From a Local Path
 
@@ -75,8 +73,7 @@ The object form lets you specify `ref`, `path`, and `values` (see below).
 
 ## Plugin Values
 
-Plugins can declare variables that consumers must (or may) provide. Values are
-passed through the `values` field in the plugin entry.
+Plugins can declare variables that consumers must (or may) provide. Values are passed through the `values` field in the plugin entry.
 
 For example, if a plugin declares a `team_name` variable:
 
@@ -108,9 +105,7 @@ plugins:
       api_token: "${env:TEAM_API_TOKEN}"
 ```
 
-Sensitive variables (declared with `sensitive: true` in the plugin manifest)
-**must** use `${env:VAR}` -- inline values are rejected to prevent accidental
-commits of secrets.
+Sensitive variables (declared with `sensitive: true` in the plugin manifest) **must** use `${env:VAR}` -- inline values are rejected to prevent accidental commits of secrets.
 
 See [Variables](variables.md) for more on how interpolation works.
 
@@ -162,13 +157,11 @@ variables:
     default: "#engineering"
 ```
 
-See [reference/plugin-manifest](../reference/plugin-manifest.md) for the full
-manifest format.
+See [reference/plugin-manifest](../reference/plugin-manifest.md) for the full manifest format.
 
 ## Plugin Caching
 
-Git plugins are cached locally in `~/.agloom/cache/plugins/`. On subsequent
-transpile runs, Agloom uses the cached version instead of cloning again.
+Git plugins are cached locally in `~/.agloom/cache/plugins/`. On subsequent transpile runs, Agloom uses the cached version instead of cloning again.
 
 To force a fresh clone:
 
@@ -184,10 +177,6 @@ agloom cache clean
 
 ## How Plugins Merge
 
-Plugins go through the same transpilation pipeline as your local `.agloom/`
-content. Their instructions, skills, agents, docs, schemas, and overlays are
-merged into the final output.
+Plugins go through the same transpilation pipeline as your local `.agloom/` content. Their instructions, skills, agents, docs, schemas, and overlays are merged into the final output.
 
-The merge order follows the plugin declaration order in `config.yml`. Plugins
-listed first have lower priority -- later plugins and the local project can
-override earlier ones. The local project always has the highest priority.
+The merge order follows the plugin declaration order in `config.yml`. Plugins listed first have lower priority -- later plugins and the local project can override earlier ones. The local project always has the highest priority.

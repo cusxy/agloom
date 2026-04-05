@@ -1,7 +1,9 @@
 ---
 title: Configuration File
 description: Complete reference for .agloom/config.yml format, fields, and validation
-order: 2
+prev: cli
+next: plugin-manifest
+sidebar_position: 2
 ---
 
 # Configuration File

@@ -1,7 +1,8 @@
 ---
 title: CLI Commands
 description: Complete reference for all Agloom CLI commands, options, and exit codes
-order: 1
+next: config
+sidebar_position: 1
 ---
 
 # CLI Commands

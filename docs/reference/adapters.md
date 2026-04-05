@@ -1,7 +1,9 @@
 ---
 title: Adapters
 description: Reference for all available adapters, capabilities, and dependencies
-order: 4
+prev: plugin-manifest
+next: interpolation
+sidebar_position: 4
 ---
 
 # Adapters

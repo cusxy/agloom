@@ -1,7 +1,9 @@
 ---
 title: Patch Operations
 description: Reference for all patch operations used in .patch overlay files
-order: 6
+prev: interpolation
+next: transpilers
+sidebar_position: 6
 ---
 
 # Patch Operations

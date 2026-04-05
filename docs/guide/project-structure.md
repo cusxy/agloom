@@ -1,18 +1,18 @@
 ---
 title: Project Structure
 description: Anatomy of the .agloom/ directory and generated output files
-order: 3
+prev: getting-started
+next: instructions
+sidebar_position: 3
 ---
 
 # Project Structure
 
-This guide explains the layout of the `.agloom/` directory and how it maps to
-generated output files.
+This guide explains the layout of the `.agloom/` directory and how it maps to generated output files.
 
 ## Canonical Directory
 
-The `.agloom/` directory is the single source of truth for your project's AI
-agent configuration. Here is the full structure:
+The `.agloom/` directory is the single source of truth for your project's AI agent configuration. Here is the full structure:
 
 ```
 .agloom/
@@ -36,38 +36,23 @@ agent configuration. Here is the full structure:
 
 ### What Each Part Does
 
-**`config.yml`** -- project configuration. Lists which adapters to use, which
-plugins to load, and project-level variables. This is the only required file.
+**`config.yml`** -- project configuration. Lists which adapters to use, which plugins to load, and project-level variables. This is the only required file.
 
-**`instructions/`** -- contains `AGLOOM.md`, the canonical instructions file.
-This is where you write project conventions, stack descriptions, and coding
-guidelines that AI agents should follow.
+**`instructions/`** -- contains `AGLOOM.md`, the canonical instructions file. This is where you write project conventions, stack descriptions, and coding guidelines that AI agents should follow.
 
-**`skills/`** -- reusable action definitions. Each skill is a directory
-containing a `SKILL.md` file and any supporting files. Skills are copied to each
-adapter's skill directory during transpilation.
+**`skills/`** -- reusable action definitions. Each skill is a directory containing a `SKILL.md` file and any supporting files. Skills are copied to each adapter's skill directory during transpilation.
 
-**`agents/`** -- sub-agent definitions. Each agent is a single `.md` file with
-YAML frontmatter describing the agent's role, model, and tools.
+**`agents/`** -- sub-agent definitions. Each agent is a single `.md` file with YAML frontmatter describing the agent's role, model, and tools.
 
-**`docs/`** -- documentation files that agents can reference. Copied to each
-adapter's docs directory.
+**`docs/`** -- documentation files that agents can reference. Copied to each adapter's docs directory.
 
-**`schemas/`** -- JSON or OpenAPI schema files. Copied to each adapter's schemas
-directory.
+**`schemas/`** -- JSON or OpenAPI schema files. Copied to each adapter's schemas directory.
 
-**`mcp.yml`** -- MCP (Model Context Protocol) server configuration. Transpiled
-into adapter-specific formats (`.mcp.json` for Claude, `opencode.json` for
-OpenCode). See [reference/transpilers](../reference/transpilers.md) for details.
+**`mcp.yml`** -- MCP (Model Context Protocol) server configuration. Transpiled into adapter-specific formats (`.mcp.json` for Claude, `opencode.json` for OpenCode). See [reference/transpilers](../reference/transpilers.md) for details.
 
-**`permissions.yml`** -- agent permissions configuration. Transpiled into
-adapter-specific formats. See
-[reference/transpilers](../reference/transpilers.md) for details.
+**`permissions.yml`** -- agent permissions configuration. Transpiled into adapter-specific formats. See [reference/transpilers](../reference/transpilers.md) for details.
 
-**`overlays/`** -- per-adapter override files. Files placed here are copied
-directly to the project root after transpilation. Use overlays for
-adapter-specific config that does not fit the canonical format. See
-[Overlays](overlays.md) for details.
+**`overlays/`** -- per-adapter override files. Files placed here are copied directly to the project root after transpilation. Use overlays for adapter-specific config that does not fit the canonical format. See [Overlays](overlays.md) for details.
 
 ## Generated Files
 
@@ -82,20 +67,15 @@ Each adapter generates different output files. Here is what you get:
 | `codex`    | `.agents/skills/`, `.codex/agents/`                      |
 | `gemini`   | `GEMINI.md`, `.gemini/skills/`, `.gemini/agents/`, `.gemini/docs/`, `.gemini/schemas/` |
 
-Note that `agentsmd` is a hidden adapter -- you do not configure it directly.
-It is included automatically when you use `opencode`, `kilocode`, or `codex`
-(which depend on it for `AGENTS.md` generation).
+Note that `agentsmd` is a hidden adapter -- you do not configure it directly. It is included automatically when you use `opencode`, `kilocode`, or `codex` (which depend on it for `AGENTS.md` generation).
 
 ## Important Rule
 
-**Never edit generated files directly.** Always edit the canonical files in
-`.agloom/` and run `agloom transpile`. Generated files are overwritten on every
-transpile run.
+**Never edit generated files directly.** Always edit the canonical files in `.agloom/` and run `agloom transpile`. Generated files are overwritten on every transpile run.
 
 ## .gitignore
 
-It is recommended to **commit** the `.agloom/` directory to version control and
-**add generated files** to `.gitignore`:
+It is recommended to **commit** the `.agloom/` directory to version control and **add generated files** to `.gitignore`:
 
 ```gitignore
 # Generated by agloom
@@ -106,5 +86,4 @@ GEMINI.md
 opencode.json
 ```
 
-This way, your team shares the canonical source and each developer generates
-output locally.
+This way, your team shares the canonical source and each developer generates output locally.

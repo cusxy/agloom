@@ -1,22 +1,20 @@
 ---
 title: Skills and Agents
 description: How to create reusable skills and sub-agent definitions
-order: 5
+prev: instructions
+next: plugins
+sidebar_position: 5
 ---
 
 # Skills and Agents
 
-This guide teaches you how to create skills (reusable actions) and agents
-(sub-agent definitions) in Agloom.
+This guide teaches you how to create skills (reusable actions) and agents (sub-agent definitions) in Agloom.
 
 ## What Are Skills
 
-Skills are reusable action definitions stored in `.agloom/skills/`. Each skill
-is a directory containing a `SKILL.md` file and any number of supporting files
-(helpers, templates, data).
+Skills are reusable action definitions stored in `.agloom/skills/`. Each skill is a directory containing a `SKILL.md` file and any number of supporting files (helpers, templates, data).
 
-During transpilation, skill directories are copied to each adapter's skill
-directory (e.g., `.claude/skills/`, `.opencode/skills/`).
+During transpilation, skill directories are copied to each adapter's skill directory (e.g., `.claude/skills/`, `.opencode/skills/`).
 
 ## Creating a Skill
 
@@ -46,10 +44,7 @@ Review the provided code changes for:
 Provide feedback as a numbered list of findings.
 ```
 
-The frontmatter fields (`name`, `description`, etc.) are passed through to each
-adapter without modification. Agloom does not validate or transform skill
-content -- it copies files as-is (with interpolation for `.md` files; see
-[Variables](variables.md)).
+The frontmatter fields (`name`, `description`, etc.) are passed through to each adapter without modification. Agloom does not validate or transform skill content -- it copies files as-is (with interpolation for `.md` files; see [Variables](variables.md)).
 
 Step 3: Optionally add supporting files:
 
@@ -75,13 +70,9 @@ Step 4: Run `agloom transpile`. The skill appears in each adapter's directory:
 
 ## What Are Agents
 
-Agents are sub-agent definitions stored in `.agloom/agents/`. Each agent is a
-single `.md` file with YAML frontmatter describing the agent's role, model, and
-available tools.
+Agents are sub-agent definitions stored in `.agloom/agents/`. Each agent is a single `.md` file with YAML frontmatter describing the agent's role, model, and available tools.
 
-During transpilation, agent files are transformed (frontmatter overrides are
-applied, agent-specific blocks are filtered) and written to each adapter's
-agents directory.
+During transpilation, agent files are transformed (frontmatter overrides are applied, agent-specific blocks are filtered) and written to each adapter's agents directory.
 
 ## Creating an Agent
 
@@ -109,13 +100,9 @@ Focus on actionable feedback. Do not nitpick style issues that a linter
 would catch.
 ```
 
-The `override` block lets you customize frontmatter fields per adapter. In this
-example, when transpiling for OpenCode, the `model` field is replaced with
-`anthropic/claude-sonnet-4-5` and `temperature: 0.1` is added. The `override`
-key itself is removed from the output.
+The `override` block lets you customize frontmatter fields per adapter. In this example, when transpiling for OpenCode, the `model` field is replaced with `anthropic/claude-sonnet-4-5` and `temperature: 0.1` is added. The `override` key itself is removed from the output.
 
-Step 2: Run `agloom transpile`. The agent file appears in each adapter's
-directory:
+Step 2: Run `agloom transpile`. The agent file appears in each adapter's directory:
 
 ```
 .claude/agents/reviewer.md
@@ -137,8 +124,7 @@ Not all adapters support skills and agents:
 | `gemini`   | Yes    | Yes    |
 | `agentsmd` | No     | No     |
 
-The `agentsmd` adapter only handles instruction files (`AGENTS.md`). It does
-not have its own skills or agents directories.
+The `agentsmd` adapter only handles instruction files (`AGENTS.md`). It does not have its own skills or agents directories.
 
 ## Example
 

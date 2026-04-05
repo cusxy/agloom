@@ -1,7 +1,9 @@
 ---
 title: Plugin Manifest
 description: Complete reference for plugin.yml format, fields, and validation rules
-order: 3
+prev: config
+next: adapters
+sidebar_position: 3
 ---
 
 # Plugin Manifest

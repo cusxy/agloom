@@ -1,7 +1,9 @@
 ---
 title: Interpolation
 description: Complete reference for variable interpolation syntax, namespaces, and resolution
-order: 5
+prev: adapters
+next: patch-operations
+sidebar_position: 5
 ---
 
 # Interpolation

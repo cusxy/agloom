@@ -1,7 +1,8 @@
 ---
 title: Transpilers
 description: Reference for all transpiler modules, pipeline order, and overlay step
-order: 7
+prev: patch-operations
+sidebar_position: 7
 ---
 
 # Transpilers
@@ -23,7 +24,7 @@ Steps 1--5 run independently for each adapter. Step 6 (overlay) applies after al
 
 ## Instructions Transpiler
 
-**Source:** `.agloom/instructions/AGLOOM.md` (root) and `**/AGLOOM.md` (directory-level)
+**Source:** `AGLOOM.md` in the project root and `**/AGLOOM.md` in subdirectories
 
 **Operation:** Transforms content -- parses YAML frontmatter, applies per-agent override fields, filters agent-specific sections in the Markdown body.
 

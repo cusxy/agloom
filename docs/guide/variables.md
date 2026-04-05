@@ -1,19 +1,17 @@
 ---
 title: Variables and Interpolation
 description: How to use variables and interpolation in canonical files
-order: 8
+prev: overlays
+sidebar_position: 8
 ---
 
 # Variables and Interpolation
 
-This guide teaches you how to use variables for dynamic content in your
-canonical files.
+This guide teaches you how to use variables for dynamic content in your canonical files.
 
 ## What Is Interpolation
 
-Interpolation is the substitution of variable references with their values
-during transpilation. When Agloom encounters a pattern like `${agloom:VAR}` in
-your files, it replaces it with the actual value before writing the output.
+Interpolation is the substitution of variable references with their values during transpilation. When Agloom encounters a pattern like `${agloom:VAR}` in your files, it replaces it with the actual value before writing the output.
 
 ## Variable Namespaces
 
@@ -21,8 +19,7 @@ Agloom supports three variable namespaces:
 
 ### `${agloom:VAR}` -- Agloom Variables
 
-These are adapter-dependent path variables. They resolve to different values
-depending on which adapter is being transpiled.
+These are adapter-dependent path variables. They resolve to different values depending on which adapter is being transpiled.
 
 **Dynamic variables** (change per adapter):
 
@@ -76,9 +73,7 @@ Project: ${env:PROJECT_NAME}
 API endpoint: ${env:API_URL}
 ```
 
-Agloom automatically loads a `.env` file from your project root (if it exists)
-before transpilation. Variables defined in `process.env` take precedence over
-`.env` values.
+Agloom automatically loads a `.env` file from your project root (if it exists) before transpilation. Variables defined in `process.env` take precedence over `.env` values.
 
 If the referenced variable is not defined, transpilation fails with an error.
 
@@ -98,8 +93,7 @@ These values come from two sources:
 2. **Project variables** -- resolved from the `variables` section of
    `config.yml` (see below).
 
-Each plugin receives only its own resolved values -- plugins cannot access each
-other's values.
+Each plugin receives only its own resolved values -- plugins cannot access each other's values.
 
 ## Project Variables
 
@@ -152,8 +146,7 @@ The full form supports these fields:
 
 ## .env File
 
-Agloom loads a `.env` file from the project root before transpilation. This
-file follows the standard `dotenv` format:
+Agloom loads a `.env` file from the project root before transpilation. This file follows the standard `dotenv` format:
 
 ```bash
 # .env
@@ -161,8 +154,7 @@ PROJECT_NAME=my-app
 API_KEY=secret-key-123
 ```
 
-Variables from `.env` are available through `${env:VAR}` in instructions,
-skills, agents, overlays, and variable defaults.
+Variables from `.env` are available through `${env:VAR}` in instructions, skills, agents, overlays, and variable defaults.
 
 If `.env` does not exist, Agloom silently continues without it.
 
@@ -182,8 +174,7 @@ Binary files and non-interpolatable extensions are always copied as-is.
 
 ## Escaping
 
-To include a literal `${agloom:VAR}` in your output (without interpolation),
-prefix with a backslash:
+To include a literal `${agloom:VAR}` in your output (without interpolation), prefix with a backslash:
 
 ```markdown
 Use \${agloom:SKILLS_DIR} to reference the skills directory.
@@ -193,8 +184,7 @@ This outputs the literal text `${agloom:SKILLS_DIR}`.
 
 ## Example
 
-Here is an end-to-end example: declaring a variable in config, using it in a
-skill, and seeing the result after transpile.
+Here is an end-to-end example: declaring a variable in config, using it in a skill, and seeing the result after transpile.
 
 **Step 1:** Declare the variable in `config.yml`:
 
@@ -221,8 +211,7 @@ Deploy the application for the ${values:team_name} team.
 Artifacts are stored in `${agloom:DOCS_DIR}/deployments/`.
 ```
 
-**Step 3:** Run `agloom transpile`. The output in
-`.claude/skills/deploy/SKILL.md`:
+**Step 3:** Run `agloom transpile`. The output in `.claude/skills/deploy/SKILL.md`:
 
 ```markdown
 ---
@@ -237,5 +226,4 @@ Deploy the application for the platform team.
 Artifacts are stored in `.claude/docs/deployments/`.
 ```
 
-The `${values:team_name}` was replaced with `"platform"` and
-`${agloom:DOCS_DIR}` was replaced with `.claude/docs`.
+The `${values:team_name}` was replaced with `"platform"` and `${agloom:DOCS_DIR}` was replaced with `.claude/docs`.
