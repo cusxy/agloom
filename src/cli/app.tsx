@@ -1145,7 +1145,7 @@ function createResourceTranspilerFactory(resourceType: ResourceType) {
     });
 }
 
-function TranspileView({
+export function TranspileView({
   entries,
   projectRoot,
   clean,

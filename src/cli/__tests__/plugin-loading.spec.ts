@@ -810,20 +810,15 @@ describe("CLI", () => {
     // файла ДОЛЖНА быть добавлена в массив errors соответствующего
     // TranspilerStepOutcome, после чего обработка оставшихся файлов
     // ДОЛЖНА продолжиться.
-    it("при ошибке транспиляции файла плагина продолжает обработку остальных файлов и собирает ошибку в errors", { timeout: 15000 }, async () => {
-      // Настраиваем проект с конфигом и двумя плагинами.
-      // Плагин A содержит невалидный AGLOOM.md (вызывает ошибку транспиляции),
-      // плагин B и локальный проект содержат валидные файлы.
-      const configDir = path.join(tmpDir, ".agloom");
-      fs.mkdirSync(configDir, { recursive: true });
-
+    //
+    // Оптимизация: рендерим TranspileView напрямую с минимальным адаптером
+    // (только instructions + agents), чтобы избежать 25+ runTranspileStep
+    // вызовов через полный App → loadConfig → resolvePlugins пайплайн.
+    it("при ошибке транспиляции файла плагина продолжает обработку остальных файлов и собирает ошибку в errors", async () => {
       const pluginA = path.join(tmpDir, "plugin-a");
       const pluginB = path.join(tmpDir, "plugin-b");
       fs.mkdirSync(pluginA, { recursive: true });
       fs.mkdirSync(pluginB, { recursive: true });
-
-      writePluginYaml(pluginA, validManifest("plugin-a"));
-      writePluginYaml(pluginB, validManifest("plugin-b"));
 
       // Плагин A: создаём agents/ как файл вместо каталога — agents transpiler
       // выбросит исключение при discover (расширение 2a шага транспиляции).
@@ -837,36 +832,46 @@ describe("CLI", () => {
       // Локальный проект: валидный AGLOOM.md
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "Local project instructions.");
 
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        `adapters:\n  - claude\nplugins:\n  - ${pluginA}\n  - ${pluginB}\n`,
-      );
-
       const React = await import("react");
       const { render } = await import("ink-testing-library");
-      const { App } = await import("../app.js");
+      const { TranspileView } = await import("../app.js");
+      const { adapterRegistry } = await import("../adapter-registry.js");
+
+      const claudeEntry = adapterRegistry.find((e) => e.id === "claude")!;
+      // Минимальный адаптер: только instructions + agents (всё остальное null)
+      const minimalEntry = {
+        ...claudeEntry,
+        skills: null,
+        commands: null,
+        mcp: null,
+        permissions: null,
+        paths: { agents: claudeEntry.paths.agents },
+      };
+
+      const plugins = [
+        { name: "plugin-a", path: pluginA, manifest: { name: "plugin-a" }, resolvedSha: null, gitUrl: null, gitRef: null, values: null, resolvedValues: {} },
+        { name: "plugin-b", path: pluginB, manifest: { name: "plugin-b" }, resolvedSha: null, gitUrl: null, gitRef: null, values: null, resolvedValues: {} },
+      ];
 
       const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile"],
+        React.createElement(TranspileView as React.FC<Record<string, unknown>>, {
+          entries: [minimalEntry],
           projectRoot: tmpDir,
+          plugins,
         }),
       );
 
       await vi.waitFor(
         () => {
           const frame = lastFrame();
-          // Должно завершиться (Failed. или Done.) — процесс не останавливается
-          // на ошибке уровня 2
           expect(frame).toMatch(/Failed\.|Done\./);
         },
-        { timeout: 10000 },
+        { timeout: 5000 },
       );
 
       const output = lastFrame()!;
 
       // Ошибка уровня 2 не останавливает процесс: транспиляция завершается
-      // (не зависает и не прерывается на первом плагине)
       expect(output).toMatch(/files written\./);
 
       // Файлы из плагина B и локального проекта обработаны несмотря
@@ -886,13 +891,9 @@ describe("CLI", () => {
     // Ошибки overlay-файлов плагина собираются в errors, обработка продолжается.
     // § layer-model.md § Новые расширения 2.6a, 2.7a:
     // Ошибка интерполяции/парсинга файла → добавить в errors, продолжить.
-    it("при ошибке overlay-файла плагина собирает ошибку в errors и продолжает с остальными слоями", { timeout: 15000 }, async () => {
-      const configDir = path.join(tmpDir, ".agloom");
-      fs.mkdirSync(configDir, { recursive: true });
-
+    it("при ошибке overlay-файла плагина собирает ошибку в errors и продолжает с остальными слоями", async () => {
       const pluginDir = path.join(tmpDir, "broken-overlay-plugin");
       fs.mkdirSync(pluginDir, { recursive: true });
-      writePluginYaml(pluginDir, validManifest("broken-overlay-plugin"));
 
       // Overlay плагина: файл с невалидной интерполяцией
       const pluginOverlay = path.join(pluginDir, "overlays", "claude");
@@ -900,23 +901,37 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(pluginOverlay, "bad-interp.md"), "Value: ${agloom:NONEXISTENT_VARIABLE}");
 
       // Overlay локального проекта: валидный файл
-      const localOverlay = path.join(configDir, "overlays", "claude");
+      const localOverlay = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(localOverlay, { recursive: true });
       fs.writeFileSync(path.join(localOverlay, "good-file.txt"), "Good local overlay content.");
 
       // Локальный проект
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "Local instructions.");
 
-      fs.writeFileSync(path.join(configDir, "config.yml"), `adapters:\n  - claude\nplugins:\n  - ${pluginDir}\n`);
-
       const React = await import("react");
       const { render } = await import("ink-testing-library");
-      const { App } = await import("../app.js");
+      const { TranspileView } = await import("../app.js");
+      const { adapterRegistry } = await import("../adapter-registry.js");
+
+      const claudeEntry = adapterRegistry.find((e) => e.id === "claude")!;
+      const minimalEntry = {
+        ...claudeEntry,
+        skills: null,
+        commands: null,
+        mcp: null,
+        permissions: null,
+        paths: { agents: claudeEntry.paths.agents },
+      };
+
+      const plugins = [
+        { name: "broken-overlay-plugin", path: pluginDir, manifest: { name: "broken-overlay-plugin" }, resolvedSha: null, gitUrl: null, gitRef: null, values: null, resolvedValues: {} },
+      ];
 
       const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile"],
+        React.createElement(TranspileView as React.FC<Record<string, unknown>>, {
+          entries: [minimalEntry],
           projectRoot: tmpDir,
+          plugins,
         }),
       );
 
@@ -925,7 +940,7 @@ describe("CLI", () => {
           const frame = lastFrame();
           expect(frame).toMatch(/Failed\.|Done\./);
         },
-        { timeout: 10000 },
+        { timeout: 5000 },
       );
 
       const output = lastFrame()!;
