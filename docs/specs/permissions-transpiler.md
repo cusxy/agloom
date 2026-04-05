@@ -4,9 +4,10 @@ description: >
   Библиотека для транспиляции канонической конфигурации разрешений
   (.agloom/permissions.yml или .agloom/permissions.json) в agent-specific
   файлы. Генерирует секцию permissions в .claude/settings.json для Claude Code
-  и секцию permission в opencode.json для OpenCode. Поддерживает секции
-  shell, mcp, file с семантикой first-match-wins в каноническом формате
-  и инверсией порядка для last-match-wins адаптеров. Расширяется через адаптеры.
+  и секцию permission в opencode.json для OpenCode. Каждая секция (shell, mcp,
+  file) -- упорядоченный массив пар pattern:action с семантикой first-match-wins
+  в каноническом формате и инверсией порядка для last-match-wins адаптеров.
+  Расширяется через адаптеры.
 type: spec
 status: implemented
 relates:
@@ -56,42 +57,35 @@ agent-specific файлы -- производные артефакты, гене
 Все секции опциональны. При отсутствии всех секций канонический файл
 считается пустым (не является ошибкой).
 
-- `shell` (object, опционально) -- правила для shell-команд.
-  - `allow` (array\<string>, опционально, default: `[]`) -- паттерны
-    разрешённых shell-команд (выполнять без подтверждения).
-  - `ask` (array\<string>, опционально, default: `[]`) -- паттерны
-    shell-команд, требующих подтверждения пользователя.
-  - `deny` (array\<string>, опционально, default: `[]`) -- паттерны
-    запрещённых shell-команд.
-- `mcp` (object, опционально) -- правила для MCP-инструментов.
-  - `allow` (array\<string>, опционально, default: `[]`) -- паттерны
-    разрешённых MCP-инструментов (выполнять без подтверждения).
-  - `ask` (array\<string>, опционально, default: `[]`) -- паттерны
-    MCP-инструментов, требующих подтверждения пользователя.
-  - `deny` (array\<string>, опционально, default: `[]`) -- паттерны
-    запрещённых MCP-инструментов.
-- `file` (object, опционально) -- правила доступа к файлам.
-  - `deny` (array\<string>, опционально, default: `[]`) -- паттерны
-    запрещённых путей.
-  - `read` (array\<string>, опционально, default: `[]`) -- паттерны
-    путей с доступом на чтение.
-  - `write` (array\<string>, опционально, default: `[]`) -- паттерны
-    путей с доступом на чтение и запись.
+Каждая секция -- упорядоченный массив правил. Каждое правило --
+объект с ровно одним ключом (паттерн) и значением (действие).
+
+- `shell` (array\<PermissionRule>, опционально) -- правила для shell-команд.
+  Каждый элемент -- объект `{ "<pattern>": "<action>" }`.
+  - `pattern` (string) -- нативный glob-паттерн shell-команды.
+  - `action` (string: "allow" | "ask" | "deny") -- действие.
+- `mcp` (array\<PermissionRule>, опционально) -- правила для MCP-инструментов.
+  Каждый элемент -- объект `{ "<pattern>": "<action>" }`.
+  - `pattern` (string) -- паттерн в формате `<server>:<tool>`.
+  - `action` (string: "allow" | "ask" | "deny") -- действие.
+- `file` (array\<PermissionRule>, опционально) -- правила доступа к файлам.
+  Каждый элемент -- объект `{ "<pattern>": "<action>" }`.
+  - `pattern` (string) -- glob-паттерн пути к файлу.
+  - `action` (string: "deny" | "read" | "write") -- действие.
 
 ### Нотация shell-паттернов
 
-Shell-паттерны используют формат `<command>:<args-glob>`:
-
-- `command` -- имя команды или путь (например, `ls`, `git status`,
-  `./gradlew`).
-- `args-glob` -- glob-паттерн аргументов (`*` для любых аргументов).
+Shell-паттерны -- нативные glob-паттерны, сопоставляемые с полной
+строкой команды (команда + аргументы). Разделитель `:` между командой
+и аргументами НЕ используется.
 
 Примеры:
 
-- `"ls:*"` -- команда `ls` с любыми аргументами.
-- `"git status:*"` -- команда `git status` с любыми аргументами.
-- `"./gradlew:*"` -- команда `./gradlew` с любыми аргументами.
-- `"*:*"` -- любая команда с любыми аргументами.
+- `"git push *"` -- команда `git push` с любыми аргументами.
+- `"./gradlew *"` -- команда `./gradlew` с любыми аргументами.
+- `"git status *"` -- команда `git status` с любыми аргументами.
+- `"* --version"` -- любая команда с аргументом `--version`.
+- `"*"` -- любая команда с любыми аргументами.
 
 ### Нотация MCP-паттернов
 
@@ -110,50 +104,76 @@ MCP-паттерны используют формат `<server>:<tool>`:
 
 ```yaml
 shell:
-  allow:
-    - "./gradlew:*"
-    - "ls:*"
-    - "git status:*"
-  ask:
-    - "npm:*"
-  deny:
-    - "*:*"
+  - "git push *": deny
+  - "./gradlew *": allow
+  - "ls *": allow
+  - "git status *": allow
+  - "npm *": ask
+  - "*": deny
 mcp:
-  allow:
-    - "bitbucket:get_pull_request"
-    - "jenkins:get_build"
-  ask:
-    - "bitbucket:*"
-    - "jenkins:*"
-  deny:
-    - "*:*"
+  - "untrusted-server:*": deny
+  - "bitbucket:get_pull_request": allow
+  - "jenkins:get_build": allow
+  - "bitbucket:*": ask
+  - "jenkins:*": ask
+  - "*:*": deny
 file:
-  deny:
-    - "**/.env"
-  read:
-    - "src/**"
-  write:
-    - "src/**/*.ts"
+  - "**/.env": deny
+  - "src/**/*.ts": write
+  - "src/**": read
 ```
 
 ### Пример канонического файла (JSON)
 
 ```json
 {
-  "shell": {
-    "allow": ["./gradlew:*", "ls:*", "git status:*"],
-    "ask": ["npm:*"],
-    "deny": ["*:*"]
-  },
-  "mcp": {
-    "allow": ["bitbucket:get_pull_request", "jenkins:get_build"],
-    "ask": ["bitbucket:*", "jenkins:*"],
-    "deny": ["*:*"]
-  }
+  "shell": [
+    { "git push *": "deny" },
+    { "./gradlew *": "allow" },
+    { "ls *": "allow" },
+    { "git status *": "allow" },
+    { "npm *": "ask" },
+    { "*": "deny" }
+  ],
+  "mcp": [
+    { "untrusted-server:*": "deny" },
+    { "bitbucket:get_pull_request": "allow" },
+    { "jenkins:get_build": "allow" },
+    { "bitbucket:*": "ask" },
+    { "jenkins:*": "ask" },
+    { "*:*": "deny" }
+  ],
+  "file": [
+    { "**/.env": "deny" },
+    { "src/**/*.ts": "write" },
+    { "src/**": "read" }
+  ]
 }
 ```
 
 ## Типы данных
+
+### PermissionRule
+
+Единичное правило разрешений -- объект с ровно одним ключом.
+
+- Ключ (string) -- паттерн.
+- Значение (string) -- действие.
+
+### ShellPermissionRule
+
+- Ключ (string) -- нативный glob-паттерн shell-команды.
+- Значение (string: "allow" | "ask" | "deny") -- действие.
+
+### McpPermissionRule
+
+- Ключ (string) -- паттерн в формате `<server>:<tool>`.
+- Значение (string: "allow" | "ask" | "deny") -- действие.
+
+### FilePermissionRule
+
+- Ключ (string) -- glob-паттерн пути к файлу.
+- Значение (string: "deny" | "read" | "write") -- действие.
 
 ### PermissionsCanonicalFile
 
@@ -167,27 +187,9 @@ file:
 
 Распарсенное содержимое канонического файла.
 
-- `shell` (ShellPermissions | undefined) -- правила для shell-команд.
-- `mcp` (McpPermissions | undefined) -- правила для MCP-инструментов.
-- `file` (FilePermissions | undefined) -- правила доступа к файлам.
-
-### ShellPermissions
-
-- `allow` (array\<string>) -- паттерны разрешённых shell-команд.
-- `ask` (array\<string>) -- паттерны shell-команд, требующих подтверждения.
-- `deny` (array\<string>) -- паттерны запрещённых shell-команд.
-
-### McpPermissions
-
-- `allow` (array\<string>) -- паттерны разрешённых MCP-инструментов.
-- `ask` (array\<string>) -- паттерны MCP-инструментов, требующих подтверждения.
-- `deny` (array\<string>) -- паттерны запрещённых MCP-инструментов.
-
-### FilePermissions
-
-- `deny` (array\<string>) -- паттерны запрещённых путей.
-- `read` (array\<string>) -- паттерны путей с доступом на чтение.
-- `write` (array\<string>) -- паттерны путей с доступом на чтение и запись.
+- `shell` (array\<ShellPermissionRule> | undefined) -- правила для shell-команд.
+- `mcp` (array\<McpPermissionRule> | undefined) -- правила для MCP-инструментов.
+- `file` (array\<FilePermissionRule> | undefined) -- правила доступа к файлам.
 
 ### PermissionsOutputFile
 
@@ -340,42 +342,29 @@ file:
 1. Проверить, что `content` является объектом.
 2. Проверить, что `content` содержит только допустимые ключи
    (`shell`, `mcp`, `file`).
-3. Если поле `shell` присутствует -- валидировать структуру:
-   3.1. Проверить, что значение является объектом.
-   3.2. Проверить, что содержит только допустимые ключи
-   (`allow`, `ask`, `deny`).
-   3.3. Если поле `allow` присутствует -- проверить, что значение
-   является массивом строк.
-   3.4. Если поле `ask` присутствует -- проверить, что значение
-   является массивом строк.
-   3.5. Если поле `deny` присутствует -- проверить, что значение
-   является массивом строк.
-   3.6. Для каждого элемента `allow`, `ask` и `deny` -- проверить,
-   что строка соответствует формату `<command>:<args-glob>`
-   (содержит ровно один разделитель `:`).
-4. Если поле `mcp` присутствует -- валидировать структуру:
-   4.1. Проверить, что значение является объектом.
-   4.2. Проверить, что содержит только допустимые ключи
-   (`allow`, `ask`, `deny`).
-   4.3. Если поле `allow` присутствует -- проверить, что значение
-   является массивом строк.
-   4.4. Если поле `ask` присутствует -- проверить, что значение
-   является массивом строк.
-   4.5. Если поле `deny` присутствует -- проверить, что значение
-   является массивом строк.
-   4.6. Для каждого элемента `allow`, `ask` и `deny` -- проверить,
-   что строка соответствует формату `<server>:<tool>`
-   (содержит ровно один разделитель `:`).
-5. Если поле `file` присутствует -- валидировать структуру:
-   5.1. Проверить, что значение является объектом.
-   5.2. Проверить, что содержит только допустимые ключи
-   (`deny`, `read`, `write`).
-   5.3. Если поле `deny` присутствует -- проверить, что значение
-   является массивом строк.
-   5.4. Если поле `read` присутствует -- проверить, что значение
-   является массивом строк.
-   5.5. Если поле `write` присутствует -- проверить, что значение
-   является массивом строк.
+3. Если поле `shell` присутствует -- валидировать как упорядоченный
+   массив правил:
+   3.1. Проверить, что значение является массивом.
+   3.2. Для каждого элемента массива -- проверить, что элемент
+   является объектом с ровно одним ключом.
+   3.3. Для каждого элемента -- проверить, что значение (действие)
+   является строкой из множества `{"allow", "ask", "deny"}`.
+4. Если поле `mcp` присутствует -- валидировать как упорядоченный
+   массив правил:
+   4.1. Проверить, что значение является массивом.
+   4.2. Для каждого элемента массива -- проверить, что элемент
+   является объектом с ровно одним ключом.
+   4.3. Для каждого элемента -- проверить, что значение (действие)
+   является строкой из множества `{"allow", "ask", "deny"}`.
+   4.4. Для каждого элемента -- проверить, что ключ (паттерн)
+   содержит ровно один разделитель `:` (формат `<server>:<tool>`).
+5. Если поле `file` присутствует -- валидировать как упорядоченный
+   массив правил:
+   5.1. Проверить, что значение является массивом.
+   5.2. Для каждого элемента массива -- проверить, что элемент
+   является объектом с ровно одним ключом.
+   5.3. Для каждого элемента -- проверить, что значение (действие)
+   является строкой из множества `{"deny", "read", "write"}`.
 
 **Расширения:**
 
@@ -385,58 +374,38 @@ file:
 2a. `content` содержит неизвестный ключ --
 `TransformError("Unknown key '{key}' in permissions config. Allowed keys: shell, mcp, file")`.
 
-3a. Значение `shell` не является объектом --
-`TransformError("'shell' must be an object")`.
+3a. Значение `shell` не является массивом --
+`TransformError("'shell' must be an array of permission rules")`.
 
-3b. `shell` содержит неизвестный ключ --
-`TransformError("Unknown key '{key}' in 'shell'. Allowed keys: allow, ask, deny")`.
+3b. Элемент `shell` не является объектом или содержит не ровно один ключ --
+`TransformError("Each rule in 'shell' must be an object with exactly one key (pattern) and one value (action)")`.
 
-3c. Поле `shell.allow` присутствует, но не является массивом строк --
-`TransformError("'shell.allow' must be an array of strings")`.
+3c. Значение (действие) элемента `shell` не входит
+в множество `{"allow", "ask", "deny"}` --
+`TransformError("Invalid action '{action}' in 'shell' rule '{pattern}'. Allowed actions: allow, ask, deny")`.
 
-3d. Поле `shell.ask` присутствует, но не является массивом строк --
-`TransformError("'shell.ask' must be an array of strings")`.
+4a. Значение `mcp` не является массивом --
+`TransformError("'mcp' must be an array of permission rules")`.
 
-3e. Поле `shell.deny` присутствует, но не является массивом строк --
-`TransformError("'shell.deny' must be an array of strings")`.
+4b. Элемент `mcp` не является объектом или содержит не ровно один ключ --
+`TransformError("Each rule in 'mcp' must be an object with exactly one key (pattern) and one value (action)")`.
 
-3f. Элемент `shell.allow`, `shell.ask` или `shell.deny` не соответствует
-формату `<command>:<args-glob>` --
-`TransformError("Invalid shell pattern '{pattern}': must match format '<command>:<args-glob>'")`.
+4c. Значение (действие) элемента `mcp` не входит
+в множество `{"allow", "ask", "deny"}` --
+`TransformError("Invalid action '{action}' in 'mcp' rule '{pattern}'. Allowed actions: allow, ask, deny")`.
 
-4a. Значение `mcp` не является объектом --
-`TransformError("'mcp' must be an object")`.
-
-4b. `mcp` содержит неизвестный ключ --
-`TransformError("Unknown key '{key}' in 'mcp'. Allowed keys: allow, ask, deny")`.
-
-4c. Поле `mcp.allow` присутствует, но не является массивом строк --
-`TransformError("'mcp.allow' must be an array of strings")`.
-
-4d. Поле `mcp.ask` присутствует, но не является массивом строк --
-`TransformError("'mcp.ask' must be an array of strings")`.
-
-4e. Поле `mcp.deny` присутствует, но не является массивом строк --
-`TransformError("'mcp.deny' must be an array of strings")`.
-
-4f. Элемент `mcp.allow`, `mcp.ask` или `mcp.deny` не соответствует
-формату `<server>:<tool>` --
+4d. Ключ (паттерн) элемента `mcp` не содержит ровно один разделитель `:` --
 `TransformError("Invalid MCP pattern '{pattern}': must match format '<server>:<tool>'")`.
 
-5a. Значение `file` не является объектом --
-`TransformError("'file' must be an object")`.
+5a. Значение `file` не является массивом --
+`TransformError("'file' must be an array of permission rules")`.
 
-5b. `file` содержит неизвестный ключ --
-`TransformError("Unknown key '{key}' in 'file'. Allowed keys: deny, read, write")`.
+5b. Элемент `file` не является объектом или содержит не ровно один ключ --
+`TransformError("Each rule in 'file' must be an object with exactly one key (pattern) and one value (action)")`.
 
-5c. Поле `file.deny` присутствует, но не является массивом строк --
-`TransformError("'file.deny' must be an array of strings")`.
-
-5d. Поле `file.read` присутствует, но не является массивом строк --
-`TransformError("'file.read' must be an array of strings")`.
-
-5e. Поле `file.write` присутствует, но не является массивом строк --
-`TransformError("'file.write' must be an array of strings")`.
+5c. Значение (действие) элемента `file` не входит
+в множество `{"deny", "read", "write"}` --
+`TransformError("Invalid action '{action}' in 'file' rule '{pattern}'. Allowed actions: deny, read, write")`.
 
 **Результат:**
 
@@ -487,14 +456,17 @@ Claude Code -- правила с действием `ask` пропускаютс
 
 ### Трансформация shell-правил для Claude
 
-Каждое shell-правило из канонического формата `<command>:<args-glob>`
-ТРЕБУЕТСЯ трансформировать в формат Claude Code `Bash(<command>:<args-glob>)`.
+Каждый shell-паттерн из канонического формата ТРЕБУЕТСЯ обернуть
+в формат Claude Code `Bash(<pattern>)`. Паттерн передаётся as-is,
+без трансформации разделителей.
 
 Примеры:
 
-- `"ls:*"` → `"Bash(ls:*)"`
-- `"./gradlew:*"` → `"Bash(./gradlew:*)"`
-- `"git status:*"` → `"Bash(git status:*)"`
+- `"git push *"` -> `"Bash(git push *)"`
+- `"./gradlew *"` -> `"Bash(./gradlew *)"`
+- `"git status *"` -> `"Bash(git status *)"`
+- `"* --version"` -> `"Bash(* --version)"`
+- `"*"` -> `"Bash(*)"`
 
 ### Трансформация MCP-правил для Claude
 
@@ -504,8 +476,8 @@ Claude Code -- правила с действием `ask` пропускаютс
 
 Примеры:
 
-- `"bitbucket:get_pull_request"` → `"mcp__bitbucket__get_pull_request"`
-- `"bitbucket:*"` → `"mcp__bitbucket__*"`
+- `"bitbucket:get_pull_request"` -> `"mcp__bitbucket__get_pull_request"`
+- `"bitbucket:*"` -> `"mcp__bitbucket__*"`
 
 ### transpile
 
@@ -519,38 +491,44 @@ Claude Code -- правила с действием `ask` пропускаютс
 
 1. Создать пустой объект `permissions` с полями `allow` и `deny`
    (оба -- пустые массивы).
-2. Если `file.content.shell` присутствует:
-   2.1. Для каждого элемента `shell.allow` -- трансформировать
-   в формат Claude (см. "Трансформация shell-правил для Claude")
+2. Если `file.content.shell` присутствует -- итерировать массив правил:
+   2.1. Для каждого правила с действием `allow` -- трансформировать
+   паттерн в формат Claude (см. "Трансформация shell-правил для Claude")
    и добавить в `permissions.allow`.
-   2.2. Если `shell.ask` непуст -- эмитировать предупреждение
+   2.2. Для каждого правила с действием `deny` -- трансформировать
+   паттерн в формат Claude и добавить в `permissions.deny`.
+   2.3. Подсчитать количество правил с действием `ask`.
+   Если количество больше нуля -- эмитировать предупреждение
    в `stderr`: `"Warning: Claude Code does not support 'ask' action. {N} shell rule(s) skipped."`,
-   где `{N}` -- количество элементов в `shell.ask`.
-   2.3. Для каждого элемента `shell.deny` -- трансформировать
-   в формат Claude и добавить в `permissions.deny`.
-3. Если `file.content.mcp` присутствует:
-   3.1. Для каждого элемента `mcp.allow` -- трансформировать
-   в формат Claude (см. "Трансформация MCP-правил для Claude")
+   где `{N}` -- количество правил с действием `ask`.
+3. Если `file.content.mcp` присутствует -- итерировать массив правил:
+   3.1. Для каждого правила с действием `allow` -- трансформировать
+   паттерн в формат Claude (см. "Трансформация MCP-правил для Claude")
    и добавить в `permissions.allow`.
-   3.2. Если `mcp.ask` непуст -- эмитировать предупреждение
+   3.2. Для каждого правила с действием `deny` -- трансформировать
+   паттерн в формат Claude и добавить в `permissions.deny`.
+   3.3. Подсчитать количество правил с действием `ask`.
+   Если количество больше нуля -- эмитировать предупреждение
    в `stderr`: `"Warning: Claude Code does not support 'ask' action. {N} mcp rule(s) skipped."`,
-   где `{N}` -- количество элементов в `mcp.ask`.
-   3.3. Для каждого элемента `mcp.deny` -- трансформировать
-   в формат Claude и добавить в `permissions.deny`.
+   где `{N}` -- количество правил с действием `ask`.
 4. Если `file.content.file` присутствует -- эмитировать предупреждение
    в `stderr`: `"Warning: Claude Code does not support file permissions. 'file' section ignored."`.
 5. Удалить пустые массивы: если `permissions.allow` пуст -- удалить
    ключ `allow`; если `permissions.deny` пуст -- удалить ключ `deny`.
-6. Сформировать объект `output` с ключом `"permissions"`,
+6. Проверить, что объект `permissions` непуст (содержит хотя бы один
+   ключ `allow` или `deny`).
+7. Сформировать объект `output` с ключом `"permissions"`,
    содержащим `permissions`.
-7. Сериализовать `output` в JSON с отступом 2 пробела
+8. Сериализовать `output` в JSON с отступом 2 пробела
    и завершающим переводом строки.
-8. Сформировать `PermissionsOutputFile`
+9. Сформировать `PermissionsOutputFile`
    с `relativePath: ".claude/settings.json"`.
 
 **Расширения:**
 
-Нет расширений.
+6a. Объект `permissions` пуст (не содержит ни `allow`, ни `deny`) --
+сформировать `output` как пустой объект `{}` (без ключа `"permissions"`).
+Продолжить с шагом 8.
 
 **Результат:**
 
@@ -558,20 +536,25 @@ Claude Code -- правила с действием `ask` пропускаютс
 
 ### Пример выходного файла (.claude/settings.json)
 
-Для канонического файла из примера выше правила `shell.ask`
-и `mcp.ask` пропускаются с предупреждением:
+Для канонического файла из примера выше правила с действием `ask`
+пропускаются с предупреждением:
 
 ```json
 {
   "permissions": {
     "allow": [
-      "Bash(./gradlew:*)",
-      "Bash(ls:*)",
-      "Bash(git status:*)",
+      "Bash(./gradlew *)",
+      "Bash(ls *)",
+      "Bash(git status *)",
       "mcp__bitbucket__get_pull_request",
       "mcp__jenkins__get_build"
     ],
-    "deny": ["Bash(*:*)", "mcp__*__*"]
+    "deny": [
+      "Bash(git push *)",
+      "Bash(*)",
+      "mcp__untrusted-server__*",
+      "mcp__*__*"
+    ]
   }
 }
 ```
@@ -616,21 +599,9 @@ OpenCode использует семантику **last-match-wins**. При т�
 OpenCode: last-match-wins (последнее совпавшее правило побеждает).
 
 Для сохранения эквивалентной семантики при транспиляции ТРЕБУЕТСЯ
-инвертировать порядок правил. Правила из `allow`, `ask` и `deny`
-ТРЕБУЕТСЯ объединить в единый массив с действиями и развернуть:
-наиболее специфичные правила (allow для конкретных инструментов)
-оказываются последними и побеждают при last-match-wins.
-
-Алгоритм инверсии для тройки (allow, ask, deny):
-
-1. Сформировать массив пар `(pattern, action)` из `allow`, `ask`
-   и `deny` в порядке объявления в каноническом файле.
-   Порядок: сначала элементы `allow` (с действием `"allow"`),
-   затем элементы `ask` (с действием `"ask"`),
-   затем элементы `deny` (с действием `"deny"`).
-2. Развернуть массив (`reverse`).
-3. Записать результат как объект, где ключ -- паттерн,
-   значение -- действие.
+инвертировать порядок массива правил (`reverse`). Поскольку
+канонический формат уже является упорядоченным массивом пар
+pattern:action, инверсия выполняется простым разворотом массива.
 
 ### Трансформация shell-правил для OpenCode
 
@@ -638,17 +609,15 @@ OpenCode представляет shell-правила как объект `bash
 внутри `permission`, где ключ -- паттерн команды, значение -- действие
 (`"allow"`, `"deny"`, `"ask"`).
 
-Каждое shell-правило из канонического формата `<command>:<args-glob>`
-ТРЕБУЕТСЯ трансформировать: разделитель `:` заменяется на пробел ` `.
+Shell-паттерны из канонического формата передаются as-is
+(нативные глобы совпадают с форматом OpenCode).
 
 Примеры:
 
-- `"ls:*"` → `"ls *"`
-- `"./gradlew:*"` → `"./gradlew *"`
-- `"*:*"` → `"*"`
-
-Специальный случай: паттерн `"*:*"` ТРЕБУЕТСЯ трансформировать в `"*"`
-(без пробела).
+- `"git push *"` -> `"git push *"`
+- `"./gradlew *"` -> `"./gradlew *"`
+- `"* --version"` -> `"* --version"`
+- `"*"` -> `"*"`
 
 ### Трансформация MCP-правил для OpenCode
 
@@ -659,8 +628,8 @@ OpenCode представляет MCP-правила как плоские кл�
 
 Примеры:
 
-- `"bitbucket:get_pull_request"` → `"bitbucket_get_pull_request"`
-- `"bitbucket:*"` → `"bitbucket_*"`
+- `"bitbucket:get_pull_request"` -> `"bitbucket_get_pull_request"`
+- `"bitbucket:*"` -> `"bitbucket_*"`
 
 ### Трансформация file-правил для OpenCode
 
@@ -672,23 +641,9 @@ File-правила из канонического формата переда�
 
 Маппинг действий:
 
-- `deny` → `"deny"`
-- `read` → `"read"`
-- `write` → `"write"`
-
-### Инверсия для file-секции
-
-File-секция содержит три списка (`deny`, `read`, `write`) вместо двух
-(`allow`, `deny`). Алгоритм инверсии для file-секции:
-
-1. Сформировать массив пар `(pattern, action)` из `deny`, `read`
-   и `write` в порядке объявления в каноническом файле.
-   Порядок: сначала элементы `deny` (с действием `"deny"`),
-   затем `read` (с действием `"read"`), затем `write`
-   (с действием `"write"`).
-2. Развернуть массив (`reverse`).
-3. Записать результат как объект, где ключ -- паттерн,
-   значение -- действие.
+- `deny` -> `"deny"`
+- `read` -> `"read"`
+- `write` -> `"write"`
 
 ### transpile
 
@@ -702,28 +657,21 @@ File-секция содержит три списка (`deny`, `read`, `write`)
 
 1. Создать пустой объект `permission`.
 2. Если `file.content.mcp` присутствует:
-   2.1. Сформировать массив пар `(pattern, action)` из `mcp.allow`,
-   `mcp.ask` и `mcp.deny` (см. "Инверсия порядка правил").
-   2.2. Развернуть массив.
-   2.3. Для каждой пары -- трансформировать паттерн
+   2.1. Развернуть массив MCP-правил (`reverse`).
+   2.2. Для каждого правила -- трансформировать паттерн
    (см. "Трансформация MCP-правил для OpenCode")
    и добавить в `permission` как ключ-значение.
 3. Если `file.content.shell` присутствует:
-   3.1. Сформировать массив пар `(pattern, action)` из `shell.allow`,
-   `shell.ask` и `shell.deny` (см. "Инверсия порядка правил").
-   3.2. Развернуть массив.
-   3.3. Создать объект `bash`.
-   3.4. Для каждой пары -- трансформировать паттерн
-   (см. "Трансформация shell-правил для OpenCode")
+   3.1. Развернуть массив shell-правил (`reverse`).
+   3.2. Создать объект `bash`.
+   3.3. Для каждого правила -- передать паттерн as-is
    и добавить в `bash` как ключ-значение.
-   3.5. Добавить `bash` в `permission`.
+   3.4. Добавить `bash` в `permission`.
 4. Если `file.content.file` присутствует:
-   4.1. Сформировать массив пар `(pattern, action)` из `file.deny`,
-   `file.read` и `file.write` (см. "Инверсия для file-секции").
-   4.2. Развернуть массив.
-   4.3. Создать объект `file`.
-   4.4. Для каждой пары -- добавить в `file` как ключ-значение.
-   4.5. Добавить `file` в `permission`.
+   4.1. Развернуть массив file-правил (`reverse`).
+   4.2. Создать объект `file`.
+   4.3. Для каждого правила -- добавить в `file` как ключ-значение.
+   4.4. Добавить `file` в `permission`.
 5. Сформировать объект `output` с ключом `"permission"`,
    содержащим `permission`.
 6. Сериализовать `output` в JSON с отступом 2 пробела
@@ -751,16 +699,18 @@ File-секция содержит три списка (`deny`, `read`, `write`)
     "bitbucket_*": "ask",
     "jenkins_get_build": "allow",
     "bitbucket_get_pull_request": "allow",
+    "untrusted-server_*": "deny",
     "bash": {
       "*": "deny",
       "npm *": "ask",
       "git status *": "allow",
       "ls *": "allow",
-      "./gradlew *": "allow"
+      "./gradlew *": "allow",
+      "git push *": "deny"
     },
     "file": {
-      "src/**/*.ts": "write",
       "src/**": "read",
+      "src/**/*.ts": "write",
       "**/.env": "deny"
     }
   }
@@ -917,6 +867,14 @@ Permissions-конфигурация плагина участвует в мод
 | `.agloom/permissions.yml`  | `<plugin>/permissions.yml`  |
 | `.agloom/permissions.json` | `<plugin>/permissions.json` |
 
+## Обратная совместимость
+
+Старый формат канонического файла (группировка по действиям:
+`shell: { allow: [...], ask: [...], deny: [...] }`) НЕ поддерживается.
+При обнаружении старого формата валидация ДОЛЖНА завершиться ошибкой
+(расширение 3a: `"'shell' must be an array of permission rules"`).
+Миграция со старого формата на новый выполняется вручную.
+
 ## Вне scope
 
 Следующие аспекты НЕ ВХОДЯТ в scope данной спецификации:
@@ -928,3 +886,5 @@ Permissions-конфигурация плагина участвует в мод
 - Валидация существования MCP-серверов, указанных в MCP-правилах.
 - Wildcard-расширение паттернов (паттерны передаются адаптерам as-is,
   без glob-expansion).
+- Автоматическая миграция со старого формата (группировка по действиям)
+  на новый (ordered list).

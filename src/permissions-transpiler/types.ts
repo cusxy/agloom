@@ -3,44 +3,29 @@
  * Spec: docs/specs/permissions-transpiler.md § Типы данных
  */
 
-/** Правила для shell-команд. */
-export interface ShellPermissions {
-  /** Паттерны разрешённых shell-команд. */
-  allow: string[];
-  /** Паттерны shell-команд, требующих подтверждения. */
-  ask: string[];
-  /** Паттерны запрещённых shell-команд. */
-  deny: string[];
-}
+/**
+ * Единичное правило разрешений -- объект с ровно одним ключом.
+ * Ключ -- паттерн, значение -- действие.
+ */
+export type PermissionRule = Record<string, string>;
 
-/** Правила для MCP-инструментов. */
-export interface McpPermissions {
-  /** Паттерны разрешённых MCP-инструментов. */
-  allow: string[];
-  /** Паттерны MCP-инструментов, требующих подтверждения. */
-  ask: string[];
-  /** Паттерны запрещённых MCP-инструментов. */
-  deny: string[];
-}
+/** Правило для shell-команд: { "<pattern>": "allow" | "ask" | "deny" }. */
+export type ShellPermissionRule = PermissionRule;
 
-/** Правила доступа к файлам. */
-export interface FilePermissions {
-  /** Паттерны запрещённых путей. */
-  deny: string[];
-  /** Паттерны путей с доступом на чтение. */
-  read: string[];
-  /** Паттерны путей с доступом на чтение и запись. */
-  write: string[];
-}
+/** Правило для MCP-инструментов: { "<server>:<tool>": "allow" | "ask" | "deny" }. */
+export type McpPermissionRule = PermissionRule;
+
+/** Правило доступа к файлам: { "<pattern>": "deny" | "read" | "write" }. */
+export type FilePermissionRule = PermissionRule;
 
 /** Распарсенное содержимое канонического файла. */
 export interface PermissionsCanonicalContent {
   /** Правила для shell-команд. */
-  shell?: ShellPermissions;
+  shell?: ShellPermissionRule[];
   /** Правила для MCP-инструментов. */
-  mcp?: McpPermissions;
+  mcp?: McpPermissionRule[];
   /** Правила доступа к файлам. */
-  file?: FilePermissions;
+  file?: FilePermissionRule[];
 }
 
 /** Результат обнаружения канонического файла. */

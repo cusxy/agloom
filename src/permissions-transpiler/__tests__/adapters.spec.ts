@@ -9,6 +9,7 @@ import type { PermissionsCanonicalFile } from "../types.js";
 
 /**
  * Создаёт PermissionsCanonicalFile для тестирования адаптеров.
+ * Новый формат: секции -- упорядоченные массивы пар { pattern: action }.
  */
 function makeCanonicalFile(
   content: PermissionsCanonicalFile["content"],
@@ -33,17 +34,13 @@ describe("ClaudePermissionsAdapter", () => {
   });
 
   describe("transpile", () => {
-    // --- Happy path: шаги 1-8 -- генерация .claude/settings.json ---
-    it("генерирует .claude/settings.json с полем permissions", () => {
+    // --- Happy path: шаги 1-9 -- генерация .claude/settings.json (новый формат ordered list) ---
+    it("генерирует .claude/settings.json с полем permissions из ordered list", () => {
       const adapter = new ClaudePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["ls:*"],
-            ask: [],
-            deny: ["*:*"],
-          },
+          shell: [{ "ls *": "allow" }, { "*": "deny" }],
         }),
       );
 
@@ -52,29 +49,33 @@ describe("ClaudePermissionsAdapter", () => {
 
       const parsed = JSON.parse(files[0].content);
       expect(parsed.permissions).toBeDefined();
-      expect(parsed.permissions.allow).toContain("Bash(ls:*)");
-      expect(parsed.permissions.deny).toContain("Bash(*:*)");
+      expect(parsed.permissions.allow).toContain("Bash(ls *)");
+      expect(parsed.permissions.deny).toContain("Bash(*)");
     });
 
-    // --- Трансформация: shell-правила -- Bash() обёртка ---
-    it("трансформирует shell-правила в формат Bash(<command>:<args-glob>)", () => {
+    // --- Трансформация: shell-правила -- Bash() обёртка (нативные глобы без двоеточия) ---
+    it("трансформирует shell-правила в формат Bash(<pattern>) с нативными глобами", () => {
       const adapter = new ClaudePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["ls:*", "./gradlew:*", "git status:*"],
-            ask: [],
-            deny: [],
-          },
+          shell: [
+            { "./gradlew *": "allow" },
+            { "ls *": "allow" },
+            { "git status *": "allow" },
+            { "* --version": "allow" },
+            { "*": "allow" },
+          ],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
       expect(parsed.permissions.allow).toEqual([
-        "Bash(ls:*)",
-        "Bash(./gradlew:*)",
-        "Bash(git status:*)",
+        "Bash(./gradlew *)",
+        "Bash(ls *)",
+        "Bash(git status *)",
+        "Bash(* --version)",
+        "Bash(*)",
       ]);
     });
 
@@ -84,11 +85,11 @@ describe("ClaudePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          mcp: {
-            allow: ["bitbucket:get_pull_request", "jenkins:get_build"],
-            ask: [],
-            deny: ["*:*"],
-          },
+          mcp: [
+            { "bitbucket:get_pull_request": "allow" },
+            { "jenkins:get_build": "allow" },
+            { "*:*": "deny" },
+          ],
         }),
       );
 
@@ -100,39 +101,44 @@ describe("ClaudePermissionsAdapter", () => {
       expect(parsed.permissions.deny).toContain("mcp__*__*");
     });
 
-    // --- Поведение: шаг 2.2 -- shell.ask пропускается с предупреждением ---
-    it("пропускает shell.ask правила (не включает в allow или deny)", () => {
+    // --- Поведение: шаг 2.3 -- ask shell-правила пропускаются с предупреждением ---
+    it("пропускает shell-правила с действием ask (не включает в allow или deny)", () => {
       const adapter = new ClaudePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["ls:*"],
-            ask: ["npm:*", "yarn:*"],
-            deny: ["*:*"],
-          },
+          shell: [
+            { "ls *": "allow" },
+            { "npm *": "ask" },
+            { "yarn *": "ask" },
+            { "*": "deny" },
+          ],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
       // ask-правила не должны попасть ни в allow, ни в deny
-      expect(parsed.permissions.allow).not.toContain("Bash(npm:*)");
-      expect(parsed.permissions.allow).not.toContain("Bash(yarn:*)");
-      expect(parsed.permissions.deny).not.toContain("Bash(npm:*)");
-      expect(parsed.permissions.deny).not.toContain("Bash(yarn:*)");
+      expect(parsed.permissions.allow).not.toContain("Bash(npm *)");
+      expect(parsed.permissions.allow).not.toContain("Bash(yarn *)");
+      expect(parsed.permissions.deny).not.toContain("Bash(npm *)");
+      expect(parsed.permissions.deny).not.toContain("Bash(yarn *)");
+      // allow и deny содержат только соответствующие правила
+      expect(parsed.permissions.allow).toEqual(["Bash(ls *)"]);
+      expect(parsed.permissions.deny).toEqual(["Bash(*)"]);
     });
 
-    // --- Поведение: шаг 3.2 -- mcp.ask пропускается с предупреждением ---
-    it("пропускает mcp.ask правила (не включает в allow или deny)", () => {
+    // --- Поведение: шаг 3.3 -- ask MCP-правила пропускаются с предупреждением ---
+    it("пропускает mcp-правила с действием ask (не включает в allow или deny)", () => {
       const adapter = new ClaudePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          mcp: {
-            allow: ["bitbucket:get_pull_request"],
-            ask: ["bitbucket:*", "jenkins:*"],
-            deny: ["*:*"],
-          },
+          mcp: [
+            { "bitbucket:get_pull_request": "allow" },
+            { "bitbucket:*": "ask" },
+            { "jenkins:*": "ask" },
+            { "*:*": "deny" },
+          ],
         }),
       );
 
@@ -143,24 +149,25 @@ describe("ClaudePermissionsAdapter", () => {
       expect(parsed.permissions.deny).not.toContain("mcp__jenkins__*");
     });
 
-    // --- Поведение: шаг 4 -- file-секция игнорируется ---
+    // --- Поведение: шаг 4 -- file-секция игнорируется с предупреждением ---
     it("игнорирует file-секцию (не включает в permissions)", () => {
       const adapter = new ClaudePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          file: {
-            deny: ["**/.env"],
-            read: ["src/**"],
-            write: ["src/**/*.ts"],
-          },
+          file: [
+            { "**/.env": "deny" },
+            { "src/**": "read" },
+            { "src/**/*.ts": "write" },
+          ],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
       // file-правила не должны попасть в permissions
-      expect(parsed.permissions.allow).toBeUndefined();
-      expect(parsed.permissions.deny).toBeUndefined();
+      // При только file-секции -- permissions пуст -> расширение 6a: пустой объект {}
+      expect(parsed.permissions).toBeUndefined();
+      expect(parsed).toEqual({});
     });
 
     // --- Трансформация: шаг 5 -- удаление пустых массивов ---
@@ -169,17 +176,13 @@ describe("ClaudePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: [],
-            ask: [],
-            deny: ["*:*"],
-          },
+          shell: [{ "*": "deny" }],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
       expect(parsed.permissions.allow).toBeUndefined();
-      expect(parsed.permissions.deny).toEqual(["Bash(*:*)"]);
+      expect(parsed.permissions.deny).toEqual(["Bash(*)"]);
     });
 
     it("удаляет ключ deny, если массив permissions.deny пуст", () => {
@@ -187,30 +190,50 @@ describe("ClaudePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["ls:*"],
-            ask: [],
-            deny: [],
-          },
+          shell: [{ "ls *": "allow" }],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
       expect(parsed.permissions.deny).toBeUndefined();
-      expect(parsed.permissions.allow).toEqual(["Bash(ls:*)"]);
+      expect(parsed.permissions.allow).toEqual(["Bash(ls *)"]);
     });
 
-    // --- Трансформация: шаг 7 -- JSON с отступом 2 пробела и завершающим переводом строки ---
+    // --- Расширение 6a: пустой permissions -> пустой объект {} без ключа "permissions" ---
+    it("генерирует пустой объект {} без ключа permissions при пустом каноническом файле", () => {
+      const adapter = new ClaudePermissionsAdapter();
+
+      const files = adapter.transpile(makeCanonicalFile({}));
+
+      expect(files).toHaveLength(1);
+      const parsed = JSON.parse(files[0].content);
+      expect(parsed).toEqual({});
+      expect(parsed.permissions).toBeUndefined();
+    });
+
+    // --- Расширение 6a: только ask-правила (все пропускаются) -> пустой объект {} ---
+    it("генерирует пустой объект {}, если все правила -- ask", () => {
+      const adapter = new ClaudePermissionsAdapter();
+
+      const files = adapter.transpile(
+        makeCanonicalFile({
+          shell: [{ "npm *": "ask" }],
+          mcp: [{ "bitbucket:*": "ask" }],
+        }),
+      );
+
+      const parsed = JSON.parse(files[0].content);
+      expect(parsed).toEqual({});
+      expect(parsed.permissions).toBeUndefined();
+    });
+
+    // --- Трансформация: шаг 8 -- JSON с отступом 2 пробела и завершающим переводом строки ---
     it("сериализует JSON с отступом 2 пробела и завершающим переводом строки", () => {
       const adapter = new ClaudePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["ls:*"],
-            ask: [],
-            deny: [],
-          },
+          shell: [{ "ls *": "allow" }],
         }),
       );
 
@@ -218,34 +241,45 @@ describe("ClaudePermissionsAdapter", () => {
       expect(files[0].content).toMatch(/\n$/);
     });
 
-    // --- Happy path: shell и mcp вместе ---
-    it("объединяет shell и mcp правила в общие массивы allow и deny", () => {
+    // --- Happy path: shell и mcp вместе -- итерация ordered list, split в allow/deny ---
+    it("объединяет shell и mcp allow/deny-правила в общие массивы", () => {
       const adapter = new ClaudePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["./gradlew:*", "ls:*", "git status:*"],
-            ask: ["npm:*"],
-            deny: ["*:*"],
-          },
-          mcp: {
-            allow: ["bitbucket:get_pull_request", "jenkins:get_build"],
-            ask: ["bitbucket:*", "jenkins:*"],
-            deny: ["*:*"],
-          },
+          shell: [
+            { "git push *": "deny" },
+            { "./gradlew *": "allow" },
+            { "ls *": "allow" },
+            { "git status *": "allow" },
+            { "npm *": "ask" },
+            { "*": "deny" },
+          ],
+          mcp: [
+            { "untrusted-server:*": "deny" },
+            { "bitbucket:get_pull_request": "allow" },
+            { "jenkins:get_build": "allow" },
+            { "bitbucket:*": "ask" },
+            { "jenkins:*": "ask" },
+            { "*:*": "deny" },
+          ],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
       expect(parsed.permissions.allow).toEqual([
-        "Bash(./gradlew:*)",
-        "Bash(ls:*)",
-        "Bash(git status:*)",
+        "Bash(./gradlew *)",
+        "Bash(ls *)",
+        "Bash(git status *)",
         "mcp__bitbucket__get_pull_request",
         "mcp__jenkins__get_build",
       ]);
-      expect(parsed.permissions.deny).toEqual(["Bash(*:*)", "mcp__*__*"]);
+      expect(parsed.permissions.deny).toEqual([
+        "Bash(git push *)",
+        "Bash(*)",
+        "mcp__untrusted-server__*",
+        "mcp__*__*",
+      ]);
     });
 
     // --- Пример из спецификации ---
@@ -254,21 +288,27 @@ describe("ClaudePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["./gradlew:*", "ls:*", "git status:*"],
-            ask: ["npm:*"],
-            deny: ["*:*"],
-          },
-          mcp: {
-            allow: ["bitbucket:get_pull_request", "jenkins:get_build"],
-            ask: ["bitbucket:*", "jenkins:*"],
-            deny: ["*:*"],
-          },
-          file: {
-            deny: ["**/.env"],
-            read: ["src/**"],
-            write: ["src/**/*.ts"],
-          },
+          shell: [
+            { "git push *": "deny" },
+            { "./gradlew *": "allow" },
+            { "ls *": "allow" },
+            { "git status *": "allow" },
+            { "npm *": "ask" },
+            { "*": "deny" },
+          ],
+          mcp: [
+            { "untrusted-server:*": "deny" },
+            { "bitbucket:get_pull_request": "allow" },
+            { "jenkins:get_build": "allow" },
+            { "bitbucket:*": "ask" },
+            { "jenkins:*": "ask" },
+            { "*:*": "deny" },
+          ],
+          file: [
+            { "**/.env": "deny" },
+            { "src/**/*.ts": "write" },
+            { "src/**": "read" },
+          ],
         }),
       );
 
@@ -276,50 +316,51 @@ describe("ClaudePermissionsAdapter", () => {
       expect(parsed).toEqual({
         permissions: {
           allow: [
-            "Bash(./gradlew:*)",
-            "Bash(ls:*)",
-            "Bash(git status:*)",
+            "Bash(./gradlew *)",
+            "Bash(ls *)",
+            "Bash(git status *)",
             "mcp__bitbucket__get_pull_request",
             "mcp__jenkins__get_build",
           ],
-          deny: ["Bash(*:*)", "mcp__*__*"],
+          deny: [
+            "Bash(git push *)",
+            "Bash(*)",
+            "mcp__untrusted-server__*",
+            "mcp__*__*",
+          ],
         },
       });
     });
 
-    // --- Граничное условие: пустой канонический файл ---
-    it("генерирует permissions без allow и deny при пустом каноническом файле", () => {
-      const adapter = new ClaudePermissionsAdapter();
-
-      const files = adapter.transpile(makeCanonicalFile({}));
-
-      expect(files).toHaveLength(1);
-      const parsed = JSON.parse(files[0].content);
-      // Оба массива пусты -> оба ключа удалены
-      expect(parsed.permissions).toEqual({});
-    });
-
-    // --- Граничное условие: только ask-правила (все пропускаются) ---
-    it("генерирует пустой permissions, если все правила -- ask", () => {
+    // --- Граничное условие: единственное правило allow ---
+    it("генерирует permissions с только allow при единственном allow-правиле", () => {
       const adapter = new ClaudePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: [],
-            ask: ["npm:*"],
-            deny: [],
-          },
-          mcp: {
-            allow: [],
-            ask: ["bitbucket:*"],
-            deny: [],
-          },
+          shell: [{ "ls *": "allow" }],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
-      expect(parsed.permissions).toEqual({});
+      expect(parsed.permissions.allow).toEqual(["Bash(ls *)"]);
+      expect(parsed.permissions.deny).toBeUndefined();
+    });
+
+    // --- Граничное условие: пустые массивы в секциях ---
+    it("генерирует пустой объект {} при пустых массивах в секциях", () => {
+      const adapter = new ClaudePermissionsAdapter();
+
+      const files = adapter.transpile(
+        makeCanonicalFile({
+          shell: [],
+          mcp: [],
+        }),
+      );
+
+      const parsed = JSON.parse(files[0].content);
+      expect(parsed).toEqual({});
+      expect(parsed.permissions).toBeUndefined();
     });
   });
 });
@@ -337,17 +378,13 @@ describe("OpenCodePermissionsAdapter", () => {
   });
 
   describe("transpile", () => {
-    // --- Happy path: шаги 1-7 -- генерация opencode.json ---
-    it('генерирует opencode.json с ключом "permission"', () => {
+    // --- Happy path: шаги 1-7 -- генерация opencode.json (новый формат ordered list) ---
+    it('генерирует opencode.json с ключом "permission" из ordered list', () => {
       const adapter = new OpenCodePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["ls:*"],
-            ask: [],
-            deny: ["*:*"],
-          },
+          shell: [{ "ls *": "allow" }, { "*": "deny" }],
         }),
       );
 
@@ -359,17 +396,19 @@ describe("OpenCodePermissionsAdapter", () => {
       expect(parsed.permission.bash).toBeDefined();
     });
 
-    // --- Трансформация: shell-правила -- ':' заменяется на пробел ---
-    it("трансформирует shell-правила: ':' заменяется на пробел", () => {
+    // --- Трансформация: shell-правила передаются as-is (нативные глобы) ---
+    it("передаёт shell-паттерны as-is без трансформации", () => {
       const adapter = new OpenCodePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["ls:*", "./gradlew:*", "git status:*"],
-            ask: [],
-            deny: [],
-          },
+          shell: [
+            { "ls *": "allow" },
+            { "./gradlew *": "allow" },
+            { "git status *": "allow" },
+            { "* --version": "allow" },
+            { "*": "allow" },
+          ],
         }),
       );
 
@@ -377,25 +416,8 @@ describe("OpenCodePermissionsAdapter", () => {
       expect(parsed.permission.bash["ls *"]).toBe("allow");
       expect(parsed.permission.bash["./gradlew *"]).toBe("allow");
       expect(parsed.permission.bash["git status *"]).toBe("allow");
-    });
-
-    // --- Трансформация: специальный случай *:* -> * ---
-    it("трансформирует shell-паттерн *:* в * (без пробела)", () => {
-      const adapter = new OpenCodePermissionsAdapter();
-
-      const files = adapter.transpile(
-        makeCanonicalFile({
-          shell: {
-            allow: [],
-            ask: [],
-            deny: ["*:*"],
-          },
-        }),
-      );
-
-      const parsed = JSON.parse(files[0].content);
-      expect(parsed.permission.bash["*"]).toBe("deny");
-      expect(parsed.permission.bash["* *"]).toBeUndefined();
+      expect(parsed.permission.bash["* --version"]).toBe("allow");
+      expect(parsed.permission.bash["*"]).toBe("allow");
     });
 
     // --- Трансформация: MCP-правила -- ':' заменяется на '_' ---
@@ -404,11 +426,7 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          mcp: {
-            allow: ["bitbucket:get_pull_request"],
-            ask: [],
-            deny: [],
-          },
+          mcp: [{ "bitbucket:get_pull_request": "allow" }],
         }),
       );
 
@@ -422,11 +440,7 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          mcp: {
-            allow: [],
-            ask: [],
-            deny: ["*:*"],
-          },
+          mcp: [{ "*:*": "deny" }],
         }),
       );
 
@@ -434,27 +448,39 @@ describe("OpenCodePermissionsAdapter", () => {
       expect(parsed.permission["*_*"]).toBe("deny");
     });
 
-    // --- Трансформация: инверсия порядка правил ---
-    it("инвертирует порядок правил для last-match-wins семантики", () => {
+    // --- Трансформация: инверсия порядка shell-правил для last-match-wins ---
+    it("инвертирует порядок shell-правил для last-match-wins семантики", () => {
       const adapter = new OpenCodePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["ls:*", "git status:*"],
-            ask: ["npm:*"],
-            deny: ["*:*"],
-          },
+          shell: [
+            { "git push *": "deny" },
+            { "./gradlew *": "allow" },
+            { "ls *": "allow" },
+            { "git status *": "allow" },
+            { "npm *": "ask" },
+            { "*": "deny" },
+          ],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
       const bashKeys = Object.keys(parsed.permission.bash);
 
-      // После инверсии: deny первым, ask вторым, allow последним
-      // Canonical order: allow(ls:*, git status:*), ask(npm:*), deny(*:*)
-      // Reversed: deny(*:*), ask(npm:*), allow(git status:*), allow(ls:*)
-      expect(bashKeys).toEqual(["*", "npm *", "git status *", "ls *"]);
+      // Canonical first-match-wins: git push* deny, ./gradlew* allow, ls* allow, git status* allow, npm* ask, * deny
+      // Reversed for last-match-wins: * deny, npm* ask, git status* allow, ls* allow, ./gradlew* allow, git push* deny
+      expect(bashKeys).toEqual([
+        "*",
+        "npm *",
+        "git status *",
+        "ls *",
+        "./gradlew *",
+        "git push *",
+      ]);
+      expect(parsed.permission.bash["*"]).toBe("deny");
+      expect(parsed.permission.bash["npm *"]).toBe("ask");
+      expect(parsed.permission.bash["git push *"]).toBe("deny");
     });
 
     // --- Трансформация: инверсия MCP-правил ---
@@ -463,29 +489,30 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          mcp: {
-            allow: ["bitbucket:get_pull_request", "jenkins:get_build"],
-            ask: ["bitbucket:*", "jenkins:*"],
-            deny: ["*:*"],
-          },
+          mcp: [
+            { "untrusted-server:*": "deny" },
+            { "bitbucket:get_pull_request": "allow" },
+            { "jenkins:get_build": "allow" },
+            { "bitbucket:*": "ask" },
+            { "jenkins:*": "ask" },
+            { "*:*": "deny" },
+          ],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
-      // MCP-правила -- плоские ключи в permission (не в bash)
-      // Canonical: allow(bitbucket:get_pull_request, jenkins:get_build),
-      //            ask(bitbucket:*, jenkins:*), deny(*:*)
-      // Reversed: deny(*:*), ask(jenkins:*), ask(bitbucket:*),
-      //           allow(jenkins:get_build), allow(bitbucket:get_pull_request)
       const mcpKeys = Object.keys(parsed.permission).filter(
         (k) => k !== "bash" && k !== "file",
       );
+      // Reversed: *:* deny, jenkins:* ask, bitbucket:* ask, jenkins:get_build allow,
+      //           bitbucket:get_pull_request allow, untrusted-server:* deny
       expect(mcpKeys).toEqual([
         "*_*",
         "jenkins_*",
         "bitbucket_*",
         "jenkins_get_build",
         "bitbucket_get_pull_request",
+        "untrusted-server_*",
       ]);
     });
 
@@ -495,11 +522,7 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: [],
-            ask: ["npm:*"],
-            deny: [],
-          },
+          shell: [{ "npm *": "ask" }],
         }),
       );
 
@@ -507,29 +530,29 @@ describe("OpenCodePermissionsAdapter", () => {
       expect(parsed.permission.bash["npm *"]).toBe("ask");
     });
 
-    // --- Трансформация: file-секция ---
+    // --- Трансформация: file-секция с инверсией порядка ---
     it("трансформирует file-секцию с инверсией порядка", () => {
       const adapter = new OpenCodePermissionsAdapter();
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          file: {
-            deny: ["**/.env"],
-            read: ["src/**"],
-            write: ["src/**/*.ts"],
-          },
+          file: [
+            { "**/.env": "deny" },
+            { "src/**/*.ts": "write" },
+            { "src/**": "read" },
+          ],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
       expect(parsed.permission.file).toBeDefined();
 
-      // Canonical: deny(**/.env), read(src/**), write(src/**/*.ts)
-      // Reversed: write(src/**/*.ts), read(src/**), deny(**/.env)
+      // Canonical: **/.env deny, src/**/*.ts write, src/** read
+      // Reversed: src/** read, src/**/*.ts write, **/.env deny
       const fileKeys = Object.keys(parsed.permission.file);
-      expect(fileKeys).toEqual(["src/**/*.ts", "src/**", "**/.env"]);
-      expect(parsed.permission.file["src/**/*.ts"]).toBe("write");
+      expect(fileKeys).toEqual(["src/**", "src/**/*.ts", "**/.env"]);
       expect(parsed.permission.file["src/**"]).toBe("read");
+      expect(parsed.permission.file["src/**/*.ts"]).toBe("write");
       expect(parsed.permission.file["**/.env"]).toBe("deny");
     });
 
@@ -539,11 +562,7 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["ls:*"],
-            ask: [],
-            deny: [],
-          },
+          shell: [{ "ls *": "allow" }],
         }),
       );
 
@@ -557,21 +576,27 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["./gradlew:*", "ls:*", "git status:*"],
-            ask: ["npm:*"],
-            deny: ["*:*"],
-          },
-          mcp: {
-            allow: ["bitbucket:get_pull_request", "jenkins:get_build"],
-            ask: ["bitbucket:*", "jenkins:*"],
-            deny: ["*:*"],
-          },
-          file: {
-            deny: ["**/.env"],
-            read: ["src/**"],
-            write: ["src/**/*.ts"],
-          },
+          shell: [
+            { "git push *": "deny" },
+            { "./gradlew *": "allow" },
+            { "ls *": "allow" },
+            { "git status *": "allow" },
+            { "npm *": "ask" },
+            { "*": "deny" },
+          ],
+          mcp: [
+            { "untrusted-server:*": "deny" },
+            { "bitbucket:get_pull_request": "allow" },
+            { "jenkins:get_build": "allow" },
+            { "bitbucket:*": "ask" },
+            { "jenkins:*": "ask" },
+            { "*:*": "deny" },
+          ],
+          file: [
+            { "**/.env": "deny" },
+            { "src/**/*.ts": "write" },
+            { "src/**": "read" },
+          ],
         }),
       );
 
@@ -583,16 +608,18 @@ describe("OpenCodePermissionsAdapter", () => {
           "bitbucket_*": "ask",
           jenkins_get_build: "allow",
           bitbucket_get_pull_request: "allow",
+          "untrusted-server_*": "deny",
           bash: {
             "*": "deny",
             "npm *": "ask",
             "git status *": "allow",
             "ls *": "allow",
             "./gradlew *": "allow",
+            "git push *": "deny",
           },
           file: {
-            "src/**/*.ts": "write",
             "src/**": "read",
+            "src/**/*.ts": "write",
             "**/.env": "deny",
           },
         },
@@ -616,17 +643,12 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: {
-            allow: ["ls:*"],
-            ask: [],
-            deny: [],
-          },
+          shell: [{ "ls *": "allow" }],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
       expect(parsed.permission.bash).toBeDefined();
-      // Нет mcp-ключей и file
       const keys = Object.keys(parsed.permission);
       expect(keys).toEqual(["bash"]);
     });
@@ -637,11 +659,7 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          mcp: {
-            allow: ["bitbucket:get_pull_request"],
-            ask: [],
-            deny: [],
-          },
+          mcp: [{ "bitbucket:get_pull_request": "allow" }],
         }),
       );
 
@@ -657,11 +675,7 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          file: {
-            deny: ["**/.env"],
-            read: [],
-            write: [],
-          },
+          file: [{ "**/.env": "deny" }],
         }),
       );
 
@@ -678,16 +692,28 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: { allow: [], ask: [], deny: [] },
-          mcp: { allow: [], ask: [], deny: [] },
-          file: { deny: [], read: [], write: [] },
+          shell: [],
+          mcp: [],
+          file: [],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
-      // Все секции присутствуют, но массивы пусты -- объекты не должны содержать ключей
-      // или не создаваться вовсе (зависит от реализации, но permission должен быть пустым)
       expect(parsed.permission).toEqual({});
+    });
+
+    // --- Граничное условие: единственное правило ---
+    it("корректно обрабатывает единственное MCP-правило с инверсией", () => {
+      const adapter = new OpenCodePermissionsAdapter();
+
+      const files = adapter.transpile(
+        makeCanonicalFile({
+          mcp: [{ "bitbucket:*": "allow" }],
+        }),
+      );
+
+      const parsed = JSON.parse(files[0].content);
+      expect(parsed.permission["bitbucket_*"]).toBe("allow");
     });
   });
 });

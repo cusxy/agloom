@@ -136,9 +136,11 @@ describe("PermissionsTranspiler", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
-    // --- Happy path: шаги 1-6 -- обнаружение .agloom/permissions.yml ---
+    // --- Happy path: шаги 1-6 -- обнаружение .agloom/permissions.yml (новый формат: ordered list) ---
     it("обнаруживает .agloom/permissions.yml и возвращает PermissionsCanonicalFile с format yaml", () => {
-      const yamlContent = "shell:\n  allow:\n    - 'ls:*'\n";
+      const yamlContent = ["shell:", '  - "ls *": allow', '  - "*": deny'].join(
+        "\n",
+      );
       fs.writeFileSync(
         path.join(tmpDir, ".agloom", "permissions.yml"),
         yamlContent,
@@ -155,16 +157,14 @@ describe("PermissionsTranspiler", () => {
       expect(result!.relativePath).toBe(".agloom/permissions.yml");
       expect(result!.format).toBe("yaml");
       expect(result!.content.shell).toBeDefined();
-      expect(result!.content.shell!.allow).toEqual(["ls:*"]);
+      expect(Array.isArray(result!.content.shell)).toBe(true);
+      expect(result!.content.shell).toHaveLength(2);
     });
 
-    // --- Happy path: шаги 1-6 -- обнаружение .agloom/permissions.json ---
+    // --- Happy path: шаги 1-6 -- обнаружение .agloom/permissions.json (новый формат: ordered list) ---
     it("обнаруживает .agloom/permissions.json и возвращает PermissionsCanonicalFile с format json", () => {
       const jsonContent = JSON.stringify({
-        shell: {
-          allow: ["ls:*"],
-          deny: ["*:*"],
-        },
+        shell: [{ "ls *": "allow" }, { "*": "deny" }],
       });
       fs.writeFileSync(
         path.join(tmpDir, ".agloom", "permissions.json"),
@@ -181,19 +181,22 @@ describe("PermissionsTranspiler", () => {
       expect(result).not.toBeNull();
       expect(result!.relativePath).toBe(".agloom/permissions.json");
       expect(result!.format).toBe("json");
-      expect(result!.content.shell!.allow).toEqual(["ls:*"]);
-      expect(result!.content.shell!.deny).toEqual(["*:*"]);
+      expect(Array.isArray(result!.content.shell)).toBe(true);
+      expect(result!.content.shell).toEqual([
+        { "ls *": "allow" },
+        { "*": "deny" },
+      ]);
     });
 
     // --- Расширение 3a: оба файла существуют ---
     it("выбрасывает DiscoverError, если оба .agloom/permissions.yml и .agloom/permissions.json существуют", () => {
       fs.writeFileSync(
         path.join(tmpDir, ".agloom", "permissions.yml"),
-        "shell: {}",
+        "shell: []",
       );
       fs.writeFileSync(
         path.join(tmpDir, ".agloom", "permissions.json"),
-        '{"shell": {}}',
+        '{"shell": []}',
       );
 
       const transpiler = createPermissionsTranspiler({
@@ -222,7 +225,7 @@ describe("PermissionsTranspiler", () => {
     // --- Расширение 4a: ошибка чтения файла ---
     it("выбрасывает DiscoverError при ошибке чтения файла", () => {
       const ymlPath = path.join(tmpDir, ".agloom", "permissions.yml");
-      fs.writeFileSync(ymlPath, "shell: {}");
+      fs.writeFileSync(ymlPath, "shell: []");
       fs.chmodSync(ymlPath, 0o000);
 
       const transpiler = createPermissionsTranspiler({
@@ -291,29 +294,27 @@ describe("PermissionsTranspiler", () => {
       expect(result!.content.file).toBeUndefined();
     });
 
-    // --- Трансформация: шаг 5 -- парсинг YAML со всеми секциями ---
-    it("корректно парсит YAML со всеми тремя секциями", () => {
+    // --- Трансформация: шаг 5 -- парсинг YAML со всеми секциями (новый формат) ---
+    it("корректно парсит YAML со всеми тремя секциями в формате ordered list", () => {
       const yamlContent = [
         "shell:",
-        "  allow:",
-        '    - "ls:*"',
-        '    - "git status:*"',
-        "  ask:",
-        '    - "npm:*"',
-        "  deny:",
-        '    - "*:*"',
+        '  - "git push *": deny',
+        '  - "./gradlew *": allow',
+        '  - "ls *": allow',
+        '  - "git status *": allow',
+        '  - "npm *": ask',
+        '  - "*": deny',
         "mcp:",
-        "  allow:",
-        '    - "bitbucket:get_pull_request"',
-        "  deny:",
-        '    - "*:*"',
+        '  - "untrusted-server:*": deny',
+        '  - "bitbucket:get_pull_request": allow',
+        '  - "jenkins:get_build": allow',
+        '  - "bitbucket:*": ask',
+        '  - "jenkins:*": ask',
+        '  - "*:*": deny',
         "file:",
-        "  deny:",
-        '    - "**/.env"',
-        "  read:",
-        '    - "src/**"',
-        "  write:",
-        '    - "src/**/*.ts"',
+        '  - "**/.env": deny',
+        '  - "src/**/*.ts": write',
+        '  - "src/**": read',
       ].join("\n");
       fs.writeFileSync(
         path.join(tmpDir, ".agloom", "permissions.yml"),
@@ -328,16 +329,24 @@ describe("PermissionsTranspiler", () => {
       const result = transpiler.discover();
 
       expect(result).not.toBeNull();
-      expect(result!.content.shell!.allow).toEqual(["ls:*", "git status:*"]);
-      expect(result!.content.shell!.ask).toEqual(["npm:*"]);
-      expect(result!.content.shell!.deny).toEqual(["*:*"]);
-      expect(result!.content.mcp!.allow).toEqual([
-        "bitbucket:get_pull_request",
-      ]);
-      expect(result!.content.mcp!.deny).toEqual(["*:*"]);
-      expect(result!.content.file!.deny).toEqual(["**/.env"]);
-      expect(result!.content.file!.read).toEqual(["src/**"]);
-      expect(result!.content.file!.write).toEqual(["src/**/*.ts"]);
+      // shell -- массив пар pattern:action
+      expect(Array.isArray(result!.content.shell)).toBe(true);
+      expect(result!.content.shell).toHaveLength(6);
+      expect(result!.content.shell![0]).toEqual({ "git push *": "deny" });
+      expect(result!.content.shell![1]).toEqual({ "./gradlew *": "allow" });
+      expect(result!.content.shell![5]).toEqual({ "*": "deny" });
+      // mcp -- массив пар pattern:action
+      expect(Array.isArray(result!.content.mcp)).toBe(true);
+      expect(result!.content.mcp).toHaveLength(6);
+      expect(result!.content.mcp![0]).toEqual({
+        "untrusted-server:*": "deny",
+      });
+      // file -- массив пар pattern:action
+      expect(Array.isArray(result!.content.file)).toBe(true);
+      expect(result!.content.file).toHaveLength(3);
+      expect(result!.content.file![0]).toEqual({ "**/.env": "deny" });
+      expect(result!.content.file![1]).toEqual({ "src/**/*.ts": "write" });
+      expect(result!.content.file![2]).toEqual({ "src/**": "read" });
     });
   });
 
@@ -347,23 +356,21 @@ describe("PermissionsTranspiler", () => {
   // ===========================================================================
 
   describe("Валидация канонического файла", () => {
-    // --- Happy path: шаги 1-5 -- валидный контент со всеми секциями ---
-    it("принимает валидный контент со всеми тремя секциями", () => {
+    // --- Happy path: шаги 1-5 -- валидный контент со всеми секциями (новый формат) ---
+    it("принимает валидный контент со всеми тремя секциями в формате ordered list", () => {
       const content = {
-        shell: {
-          allow: ["ls:*"],
-          ask: ["npm:*"],
-          deny: ["*:*"],
-        },
-        mcp: {
-          allow: ["bitbucket:get_pull_request"],
-          deny: ["*:*"],
-        },
-        file: {
-          deny: ["**/.env"],
-          read: ["src/**"],
-          write: ["src/**/*.ts"],
-        },
+        shell: [
+          { "git push *": "deny" },
+          { "ls *": "allow" },
+          { "npm *": "ask" },
+          { "*": "deny" },
+        ],
+        mcp: [{ "bitbucket:get_pull_request": "allow" }, { "*:*": "deny" }],
+        file: [
+          { "**/.env": "deny" },
+          { "src/**": "read" },
+          { "src/**/*.ts": "write" },
+        ],
       };
 
       const result = validatePermissionsContent(content);
@@ -385,13 +392,28 @@ describe("PermissionsTranspiler", () => {
     // --- Happy path: только одна секция ---
     it("принимает контент с единственной секцией shell", () => {
       const content = {
-        shell: { allow: ["ls:*"] },
+        shell: [{ "ls *": "allow" }],
       };
 
       const result = validatePermissionsContent(content);
 
       expect(result.shell).toBeDefined();
-      expect(result.shell!.allow).toEqual(["ls:*"]);
+      expect(result.shell).toHaveLength(1);
+    });
+
+    // --- Happy path: пустой массив в секции ---
+    it("принимает секцию с пустым массивом правил", () => {
+      const content = {
+        shell: [],
+        mcp: [],
+        file: [],
+      };
+
+      const result = validatePermissionsContent(content);
+
+      expect(result.shell).toEqual([]);
+      expect(result.mcp).toEqual([]);
+      expect(result.file).toEqual([]);
     });
 
     // --- Расширение 1a: content не является объектом ---
@@ -416,280 +438,273 @@ describe("PermissionsTranspiler", () => {
     // --- Расширение 2a: неизвестный ключ ---
     it("выбрасывает TransformError при неизвестном ключе в корне", () => {
       expect(() =>
-        validatePermissionsContent({ shell: {}, unknown: [] } as any),
+        validatePermissionsContent({ shell: [], unknown: [] } as any),
       ).toThrow(TransformError);
       expect(() =>
-        validatePermissionsContent({ shell: {}, unknown: [] } as any),
+        validatePermissionsContent({ shell: [], unknown: [] } as any),
       ).toThrow(
         "Unknown key 'unknown' in permissions config. Allowed keys: shell, mcp, file",
       );
     });
 
-    // --- Расширение 3a: shell не является объектом ---
-    it("выбрасывает TransformError, если shell не является объектом", () => {
+    // --- Расширение 3a: shell не является массивом ---
+    it("выбрасывает TransformError, если shell не является массивом", () => {
       expect(() =>
-        validatePermissionsContent({ shell: "not-object" } as any),
+        validatePermissionsContent({ shell: "not-array" } as any),
       ).toThrow(TransformError);
       expect(() =>
-        validatePermissionsContent({ shell: "not-object" } as any),
-      ).toThrow("'shell' must be an object");
+        validatePermissionsContent({ shell: "not-array" } as any),
+      ).toThrow("'shell' must be an array of permission rules");
     });
 
-    // --- Расширение 3b: shell содержит неизвестный ключ ---
-    it("выбрасывает TransformError при неизвестном ключе в shell", () => {
+    // --- Обратная совместимость: старый формат (allow/ask/deny блоки) -- ошибка валидации ---
+    it("выбрасывает TransformError при старом формате shell с allow/ask/deny блоками", () => {
       expect(() =>
         validatePermissionsContent({
-          shell: { allow: [], unknown: [] },
+          shell: { allow: ["ls:*"], deny: ["*:*"] },
         } as any),
       ).toThrow(TransformError);
       expect(() =>
         validatePermissionsContent({
-          shell: { allow: [], unknown: [] },
+          shell: { allow: ["ls:*"], deny: ["*:*"] },
         } as any),
-      ).toThrow(
-        "Unknown key 'unknown' in 'shell'. Allowed keys: allow, ask, deny",
-      );
+      ).toThrow("'shell' must be an array of permission rules");
     });
 
-    // --- Расширение 3c: shell.allow не массив строк ---
-    it("выбрасывает TransformError, если shell.allow не является массивом строк", () => {
-      expect(() =>
-        validatePermissionsContent({ shell: { allow: "not-array" } } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ shell: { allow: "not-array" } } as any),
-      ).toThrow("'shell.allow' must be an array of strings");
-    });
-
-    // --- Расширение 3d: shell.ask не массив строк ---
-    it("выбрасывает TransformError, если shell.ask не является массивом строк", () => {
-      expect(() =>
-        validatePermissionsContent({ shell: { ask: 42 } } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ shell: { ask: 42 } } as any),
-      ).toThrow("'shell.ask' must be an array of strings");
-    });
-
-    // --- Расширение 3e: shell.deny не массив строк ---
-    it("выбрасывает TransformError, если shell.deny не является массивом строк", () => {
-      expect(() =>
-        validatePermissionsContent({ shell: { deny: {} } } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ shell: { deny: {} } } as any),
-      ).toThrow("'shell.deny' must be an array of strings");
-    });
-
-    // --- Расширение 3f: невалидный shell-паттерн (нет разделителя :) ---
-    it("выбрасывает TransformError при невалидном shell-паттерне без разделителя ':'", () => {
+    // --- Расширение 3b: элемент shell не является объектом с ровно одним ключом ---
+    it("выбрасывает TransformError, если элемент shell не является объектом с ровно одним ключом", () => {
       expect(() =>
         validatePermissionsContent({
-          shell: { allow: ["ls-without-colon"] },
-        }),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({
-          shell: { allow: ["ls-without-colon"] },
-        }),
-      ).toThrow(
-        "Invalid shell pattern 'ls-without-colon': must match format '<command>:<args-glob>'",
-      );
-    });
-
-    // --- Расширение 3f: невалидный shell-паттерн (два разделителя :) ---
-    it("выбрасывает TransformError при shell-паттерне с двумя разделителями ':'", () => {
-      expect(() =>
-        validatePermissionsContent({
-          shell: { deny: ["a:b:c"] },
-        }),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({
-          shell: { deny: ["a:b:c"] },
-        }),
-      ).toThrow(
-        "Invalid shell pattern 'a:b:c': must match format '<command>:<args-glob>'",
-      );
-    });
-
-    // --- Расширение 4a: mcp не является объектом ---
-    it("выбрасывает TransformError, если mcp не является объектом", () => {
-      expect(() => validatePermissionsContent({ mcp: [] } as any)).toThrow(
-        TransformError,
-      );
-      expect(() => validatePermissionsContent({ mcp: [] } as any)).toThrow(
-        "'mcp' must be an object",
-      );
-    });
-
-    // --- Расширение 4b: mcp содержит неизвестный ключ ---
-    it("выбрасывает TransformError при неизвестном ключе в mcp", () => {
-      expect(() =>
-        validatePermissionsContent({
-          mcp: { allow: [], badkey: [] },
+          shell: ["not-an-object"],
         } as any),
       ).toThrow(TransformError);
       expect(() =>
         validatePermissionsContent({
-          mcp: { allow: [], badkey: [] },
+          shell: ["not-an-object"],
         } as any),
       ).toThrow(
-        "Unknown key 'badkey' in 'mcp'. Allowed keys: allow, ask, deny",
+        "Each rule in 'shell' must be an object with exactly one key (pattern) and one value (action)",
       );
     });
 
-    // --- Расширение 4c: mcp.allow не массив строк ---
-    it("выбрасывает TransformError, если mcp.allow не является массивом строк", () => {
-      expect(() =>
-        validatePermissionsContent({ mcp: { allow: 123 } } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ mcp: { allow: 123 } } as any),
-      ).toThrow("'mcp.allow' must be an array of strings");
-    });
-
-    // --- Расширение 4d: mcp.ask не массив строк ---
-    it("выбрасывает TransformError, если mcp.ask не является массивом строк", () => {
-      expect(() =>
-        validatePermissionsContent({ mcp: { ask: null } } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ mcp: { ask: null } } as any),
-      ).toThrow("'mcp.ask' must be an array of strings");
-    });
-
-    // --- Расширение 4e: mcp.deny не массив строк ---
-    it("выбрасывает TransformError, если mcp.deny не является массивом строк", () => {
-      expect(() =>
-        validatePermissionsContent({ mcp: { deny: true } } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ mcp: { deny: true } } as any),
-      ).toThrow("'mcp.deny' must be an array of strings");
-    });
-
-    // --- Расширение 4f: невалидный MCP-паттерн ---
-    it("выбрасывает TransformError при невалидном MCP-паттерне без разделителя ':'", () => {
+    it("выбрасывает TransformError, если элемент shell содержит два ключа", () => {
       expect(() =>
         validatePermissionsContent({
-          mcp: { allow: ["bitbucket_get_pull_request"] },
+          shell: [{ "ls *": "allow", "git *": "deny" }],
+        } as any),
+      ).toThrow(TransformError);
+      expect(() =>
+        validatePermissionsContent({
+          shell: [{ "ls *": "allow", "git *": "deny" }],
+        } as any),
+      ).toThrow(
+        "Each rule in 'shell' must be an object with exactly one key (pattern) and one value (action)",
+      );
+    });
+
+    it("выбрасывает TransformError, если элемент shell является пустым объектом", () => {
+      expect(() =>
+        validatePermissionsContent({
+          shell: [{}],
+        } as any),
+      ).toThrow(TransformError);
+      expect(() =>
+        validatePermissionsContent({
+          shell: [{}],
+        } as any),
+      ).toThrow(
+        "Each rule in 'shell' must be an object with exactly one key (pattern) and one value (action)",
+      );
+    });
+
+    // --- Расширение 3c: невалидное действие shell ---
+    it("выбрасывает TransformError при невалидном действии в shell-правиле", () => {
+      expect(() =>
+        validatePermissionsContent({
+          shell: [{ "ls *": "invalid" }],
         }),
       ).toThrow(TransformError);
       expect(() =>
         validatePermissionsContent({
-          mcp: { allow: ["bitbucket_get_pull_request"] },
+          shell: [{ "ls *": "invalid" }],
+        }),
+      ).toThrow(
+        "Invalid action 'invalid' in 'shell' rule 'ls *'. Allowed actions: allow, ask, deny",
+      );
+    });
+
+    // --- Расширение 4a: mcp не является массивом ---
+    it("выбрасывает TransformError, если mcp не является массивом", () => {
+      expect(() =>
+        validatePermissionsContent({ mcp: "not-array" } as any),
+      ).toThrow(TransformError);
+      expect(() =>
+        validatePermissionsContent({ mcp: "not-array" } as any),
+      ).toThrow("'mcp' must be an array of permission rules");
+    });
+
+    // --- Расширение 4b: элемент mcp не является объектом с ровно одним ключом ---
+    it("выбрасывает TransformError, если элемент mcp не является объектом с ровно одним ключом", () => {
+      expect(() =>
+        validatePermissionsContent({
+          mcp: [42],
+        } as any),
+      ).toThrow(TransformError);
+      expect(() =>
+        validatePermissionsContent({
+          mcp: [42],
+        } as any),
+      ).toThrow(
+        "Each rule in 'mcp' must be an object with exactly one key (pattern) and one value (action)",
+      );
+    });
+
+    // --- Расширение 4c: невалидное действие mcp ---
+    it("выбрасывает TransformError при невалидном действии в mcp-правиле", () => {
+      expect(() =>
+        validatePermissionsContent({
+          mcp: [{ "bitbucket:*": "invalid" }],
+        }),
+      ).toThrow(TransformError);
+      expect(() =>
+        validatePermissionsContent({
+          mcp: [{ "bitbucket:*": "invalid" }],
+        }),
+      ).toThrow(
+        "Invalid action 'invalid' in 'mcp' rule 'bitbucket:*'. Allowed actions: allow, ask, deny",
+      );
+    });
+
+    // --- Расширение 4d: невалидный MCP-паттерн (нет разделителя :) ---
+    it("выбрасывает TransformError при MCP-паттерне без разделителя ':'", () => {
+      expect(() =>
+        validatePermissionsContent({
+          mcp: [{ bitbucket_get_pull_request: "allow" }],
+        }),
+      ).toThrow(TransformError);
+      expect(() =>
+        validatePermissionsContent({
+          mcp: [{ bitbucket_get_pull_request: "allow" }],
         }),
       ).toThrow(
         "Invalid MCP pattern 'bitbucket_get_pull_request': must match format '<server>:<tool>'",
       );
     });
 
-    // --- Расширение 5a: file не является объектом ---
-    it("выбрасывает TransformError, если file не является объектом", () => {
-      expect(() =>
-        validatePermissionsContent({ file: "string" } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ file: "string" } as any),
-      ).toThrow("'file' must be an object");
-    });
-
-    // --- Расширение 5b: file содержит неизвестный ключ ---
-    it("выбрасывает TransformError при неизвестном ключе в file", () => {
+    // --- Расширение 4d: MCP-паттерн с двумя разделителями : ---
+    it("выбрасывает TransformError при MCP-паттерне с двумя разделителями ':'", () => {
       expect(() =>
         validatePermissionsContent({
-          file: { deny: [], allow: [] },
-        } as any),
+          mcp: [{ "a:b:c": "allow" }],
+        }),
       ).toThrow(TransformError);
       expect(() =>
         validatePermissionsContent({
-          file: { deny: [], allow: [] },
-        } as any),
+          mcp: [{ "a:b:c": "allow" }],
+        }),
       ).toThrow(
-        "Unknown key 'allow' in 'file'. Allowed keys: deny, read, write",
+        "Invalid MCP pattern 'a:b:c': must match format '<server>:<tool>'",
       );
     });
 
-    // --- Расширение 5c: file.deny не массив строк ---
-    it("выбрасывает TransformError, если file.deny не является массивом строк", () => {
+    // --- Расширение 5a: file не является массивом ---
+    it("выбрасывает TransformError, если file не является массивом", () => {
       expect(() =>
-        validatePermissionsContent({ file: { deny: 42 } } as any),
+        validatePermissionsContent({ file: "string" } as any),
       ).toThrow(TransformError);
       expect(() =>
-        validatePermissionsContent({ file: { deny: 42 } } as any),
-      ).toThrow("'file.deny' must be an array of strings");
+        validatePermissionsContent({ file: "string" } as any),
+      ).toThrow("'file' must be an array of permission rules");
     });
 
-    // --- Расширение 5d: file.read не массив строк ---
-    it("выбрасывает TransformError, если file.read не является массивом строк", () => {
+    // --- Расширение 5b: элемент file не является объектом с ровно одним ключом ---
+    it("выбрасывает TransformError, если элемент file не является объектом с ровно одним ключом", () => {
       expect(() =>
-        validatePermissionsContent({ file: { read: {} } } as any),
+        validatePermissionsContent({
+          file: [null],
+        } as any),
       ).toThrow(TransformError);
       expect(() =>
-        validatePermissionsContent({ file: { read: {} } } as any),
-      ).toThrow("'file.read' must be an array of strings");
+        validatePermissionsContent({
+          file: [null],
+        } as any),
+      ).toThrow(
+        "Each rule in 'file' must be an object with exactly one key (pattern) and one value (action)",
+      );
     });
 
-    // --- Расширение 5e: file.write не массив строк ---
-    it("выбрасывает TransformError, если file.write не является массивом строк", () => {
+    // --- Расширение 5c: невалидное действие file ---
+    it("выбрасывает TransformError при невалидном действии в file-правиле", () => {
       expect(() =>
-        validatePermissionsContent({ file: { write: false } } as any),
+        validatePermissionsContent({
+          file: [{ "src/**": "allow" }],
+        }),
       ).toThrow(TransformError);
       expect(() =>
-        validatePermissionsContent({ file: { write: false } } as any),
-      ).toThrow("'file.write' must be an array of strings");
-    });
-
-    // --- Граничное условие: пустые массивы в секциях ---
-    it("принимает секции с пустыми массивами", () => {
-      const content = {
-        shell: { allow: [], ask: [], deny: [] },
-        mcp: { allow: [], ask: [], deny: [] },
-        file: { deny: [], read: [], write: [] },
-      };
-
-      const result = validatePermissionsContent(content);
-
-      expect(result.shell!.allow).toEqual([]);
-      expect(result.mcp!.deny).toEqual([]);
-      expect(result.file!.write).toEqual([]);
-    });
-
-    // --- Граничное условие: shell-паттерн *:* (wildcard) ---
-    it("принимает валидный shell-паттерн *:*", () => {
-      const content = {
-        shell: { deny: ["*:*"] },
-      };
-
-      const result = validatePermissionsContent(content);
-
-      expect(result.shell!.deny).toEqual(["*:*"]);
+        validatePermissionsContent({
+          file: [{ "src/**": "allow" }],
+        }),
+      ).toThrow(
+        "Invalid action 'allow' in 'file' rule 'src/**'. Allowed actions: deny, read, write",
+      );
     });
 
     // --- Граничное условие: MCP-паттерн *:* (wildcard) ---
     it("принимает валидный MCP-паттерн *:*", () => {
       const content = {
-        mcp: { deny: ["*:*"] },
+        mcp: [{ "*:*": "deny" }],
       };
 
       const result = validatePermissionsContent(content);
 
-      expect(result.mcp!.deny).toEqual(["*:*"]);
+      expect(result.mcp).toEqual([{ "*:*": "deny" }]);
     });
 
-    // --- Граничное условие: массив содержит нестроковый элемент ---
-    it("выбрасывает TransformError, если shell.allow содержит числовой элемент", () => {
+    // --- Граничное условие: массив содержит нестроковое действие ---
+    it("выбрасывает TransformError, если действие shell-правила не является строкой", () => {
       expect(() =>
         validatePermissionsContent({
-          shell: { allow: [42] },
+          shell: [{ "ls *": 42 }],
+        } as any),
+      ).toThrow(TransformError);
+    });
+
+    // --- Граничное условие: content является массивом ---
+    it("выбрасывает TransformError, если content является массивом", () => {
+      expect(() => validatePermissionsContent([] as any)).toThrow(
+        TransformError,
+      );
+      expect(() => validatePermissionsContent([] as any)).toThrow(
+        "Permissions config must be an object",
+      );
+    });
+
+    // --- Обратная совместимость: старый формат mcp с allow/ask/deny блоками ---
+    it("выбрасывает TransformError при старом формате mcp с allow/ask/deny блоками", () => {
+      expect(() =>
+        validatePermissionsContent({
+          mcp: { allow: ["bitbucket:*"], deny: ["*:*"] },
         } as any),
       ).toThrow(TransformError);
       expect(() =>
         validatePermissionsContent({
-          shell: { allow: [42] },
+          mcp: { allow: ["bitbucket:*"], deny: ["*:*"] },
         } as any),
-      ).toThrow("'shell.allow' must be an array of strings");
+      ).toThrow("'mcp' must be an array of permission rules");
+    });
+
+    // --- Обратная совместимость: старый формат file с deny/read/write блоками ---
+    it("выбрасывает TransformError при старом формате file с deny/read/write блоками", () => {
+      expect(() =>
+        validatePermissionsContent({
+          file: { deny: ["**/.env"], read: ["src/**"], write: ["src/**/*.ts"] },
+        } as any),
+      ).toThrow(TransformError);
+      expect(() =>
+        validatePermissionsContent({
+          file: { deny: ["**/.env"], read: ["src/**"], write: ["src/**/*.ts"] },
+        } as any),
+      ).toThrow("'file' must be an array of permission rules");
     });
   });
 
@@ -710,15 +725,11 @@ describe("PermissionsTranspiler", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
-    // --- Happy path: шаги 1-4 -- полный цикл транспиляции ---
+    // --- Happy path: шаги 1-4 -- полный цикл транспиляции (новый формат) ---
     it("выполняет полный цикл транспиляции: discover -> validate -> adapter.transpile -> собрать результаты", () => {
-      const yamlContent = [
-        "shell:",
-        "  allow:",
-        '    - "ls:*"',
-        "  deny:",
-        '    - "*:*"',
-      ].join("\n");
+      const yamlContent = ["shell:", '  - "ls *": allow', '  - "*": deny'].join(
+        "\n",
+      );
       fs.writeFileSync(
         path.join(tmpDir, ".agloom", "permissions.yml"),
         yamlContent,
@@ -768,11 +779,11 @@ describe("PermissionsTranspiler", () => {
     it("пробрасывает DiscoverError к вызывающему коду", () => {
       fs.writeFileSync(
         path.join(tmpDir, ".agloom", "permissions.yml"),
-        "shell: {}",
+        "shell: []",
       );
       fs.writeFileSync(
         path.join(tmpDir, ".agloom", "permissions.json"),
-        '{"shell": {}}',
+        '{"shell": []}',
       );
 
       const transpiler = createPermissionsTranspiler({
@@ -800,9 +811,10 @@ describe("PermissionsTranspiler", () => {
 
     // --- Расширение 3a: адаптер выбрасывает исключение ---
     it("создаёт TranspileResult с ошибкой при исключении адаптера и продолжает остальные", () => {
+      const yamlContent = ["shell:", '  - "ls *": allow'].join("\n");
       fs.writeFileSync(
         path.join(tmpDir, ".agloom", "permissions.yml"),
-        "shell:\n  allow:\n    - 'ls:*'\n",
+        yamlContent,
       );
 
       const failingAdapter = {

@@ -10,10 +10,12 @@ import type {
   PermissionsAdapter,
   PermissionsCanonicalFile,
   PermissionsOutputFile,
+  ShellPermissionRule,
+  McpPermissionRule,
 } from "../types.js";
 
 /**
- * Трансформирует shell-паттерн в формат Claude Code: Bash(<command>:<args-glob>).
+ * Трансформирует shell-паттерн в формат Claude Code: Bash(<pattern>).
  */
 function transformShellPattern(pattern: string): string {
   return `Bash(${pattern})`;
@@ -26,6 +28,14 @@ function transformMcpPattern(pattern: string): string {
   return `mcp__${pattern.replace(":", "__")}`;
 }
 
+/**
+ * Извлекает паттерн и действие из одноключевого объекта правила.
+ */
+function extractRule(rule: Record<string, string>): [string, string] {
+  const pattern = Object.keys(rule)[0];
+  return [pattern, rule[pattern]];
+}
+
 export class ClaudePermissionsAdapter implements PermissionsAdapter {
   readonly agentId = "claude";
 
@@ -34,45 +44,45 @@ export class ClaudePermissionsAdapter implements PermissionsAdapter {
     const allow: string[] = [];
     const deny: string[] = [];
 
-    // Шаг 2: shell-правила
+    // Шаг 2: shell-правила -- итерировать ordered list
     if (file.content.shell) {
-      // 2.1: allow
-      for (const pattern of file.content.shell.allow ?? []) {
-        allow.push(transformShellPattern(pattern));
+      let askCount = 0;
+      for (const rule of file.content.shell as ShellPermissionRule[]) {
+        const [pattern, action] = extractRule(rule);
+        if (action === "allow") {
+          allow.push(transformShellPattern(pattern));
+        } else if (action === "deny") {
+          deny.push(transformShellPattern(pattern));
+        } else if (action === "ask") {
+          askCount++;
+        }
       }
-
-      // 2.2: ask — пропускаем с предупреждением
-      const askCount = (file.content.shell.ask ?? []).length;
+      // 2.3: предупреждение о пропущенных ask-правилах
       if (askCount > 0) {
         process.stderr.write(
           `Warning: Claude Code does not support 'ask' action. ${askCount} shell rule(s) skipped.\n`,
         );
       }
-
-      // 2.3: deny
-      for (const pattern of file.content.shell.deny ?? []) {
-        deny.push(transformShellPattern(pattern));
-      }
     }
 
-    // Шаг 3: MCP-правила
+    // Шаг 3: MCP-правила -- итерировать ordered list
     if (file.content.mcp) {
-      // 3.1: allow
-      for (const pattern of file.content.mcp.allow ?? []) {
-        allow.push(transformMcpPattern(pattern));
+      let askCount = 0;
+      for (const rule of file.content.mcp as McpPermissionRule[]) {
+        const [pattern, action] = extractRule(rule);
+        if (action === "allow") {
+          allow.push(transformMcpPattern(pattern));
+        } else if (action === "deny") {
+          deny.push(transformMcpPattern(pattern));
+        } else if (action === "ask") {
+          askCount++;
+        }
       }
-
-      // 3.2: ask — пропускаем с предупреждением
-      const askCount = (file.content.mcp.ask ?? []).length;
+      // 3.3: предупреждение о пропущенных ask-правилах
       if (askCount > 0) {
         process.stderr.write(
           `Warning: Claude Code does not support 'ask' action. ${askCount} mcp rule(s) skipped.\n`,
         );
-      }
-
-      // 3.3: deny
-      for (const pattern of file.content.mcp.deny ?? []) {
-        deny.push(transformMcpPattern(pattern));
       }
     }
 
@@ -92,11 +102,15 @@ export class ClaudePermissionsAdapter implements PermissionsAdapter {
       permissions.deny = deny;
     }
 
-    // Шаг 6-7: сформировать и сериализовать output
-    const output = { permissions };
+    // Шаг 6: проверить, что permissions непуст
+    // Расширение 6a: пустой permissions -> пустой объект {} без ключа "permissions"
+    const hasPermissions = Object.keys(permissions).length > 0;
+    const output = hasPermissions ? { permissions } : {};
+
+    // Шаг 7-8: сериализовать
     const content = JSON.stringify(output, null, 2) + "\n";
 
-    // Шаг 8: сформировать PermissionsOutputFile
+    // Шаг 9: сформировать PermissionsOutputFile
     return [{ relativePath: ".claude/settings.json", content }];
   }
 }
