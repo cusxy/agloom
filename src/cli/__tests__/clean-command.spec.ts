@@ -54,10 +54,13 @@ describe("CLI", () => {
     // Шаг 7: Отобразить результат в TUI (§ Вывод — успех).
     // Шаг 8: Завершить процесс с exit code 0.
     it("при успешной очистке отображает заголовок, ✓ с removedCount, Done и завершается с exit code 0", async () => {
-      // Создаём файлы адаптера "claude": targetRoot=".claude", targetFiles=["CLAUDE.md"]
-      const claudeDir = path.join(tmpDir, ".claude");
-      fs.mkdirSync(claudeDir, { recursive: true });
-      fs.writeFileSync(path.join(claudeDir, "settings.json"), "{}");
+      // Создаём файлы в paths-поддиректориях адаптера "claude" и targetFiles
+      const skillsDir = path.join(tmpDir, ".claude", "skills", "my-skill");
+      fs.mkdirSync(skillsDir, { recursive: true });
+      fs.writeFileSync(path.join(skillsDir, "SKILL.md"), "skill content");
+      const agentsDir = path.join(tmpDir, ".claude", "agents");
+      fs.mkdirSync(agentsDir, { recursive: true });
+      fs.writeFileSync(path.join(agentsDir, "agent.md"), "agent content");
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Generated content");
 
       const { lastFrame, unmount } = render(
@@ -88,8 +91,9 @@ describe("CLI", () => {
       // § Exit codes: 0 — успех
       expect(process.exitCode).toBeUndefined();
 
-      // Побочный эффект: файлы удалены
-      expect(fs.existsSync(claudeDir)).toBe(false);
+      // Побочный эффект: paths-поддиректории и targetFiles удалены
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "skills"))).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "agents"))).toBe(false);
       expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(false);
 
       unmount();
@@ -160,11 +164,11 @@ describe("CLI", () => {
     // При наличии ошибок: "✗ {errors[0]}", "Done. {removedCount} files removed."
     // Exit code 1.
     it("при ошибках очистки отображает ✗ с сообщением ошибки и завершается с exit code 1", async () => {
-      // targetRoot с protected файлом — провоцирует EACCES при удалении
-      const claudeDir = path.join(tmpDir, ".claude");
-      fs.mkdirSync(claudeDir, { recursive: true });
-      fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
-      fs.chmodSync(claudeDir, 0o555);
+      // paths-поддиректория с protected файлом — провоцирует EACCES при удалении
+      const skillsDir = path.join(tmpDir, ".claude", "skills");
+      fs.mkdirSync(skillsDir, { recursive: true });
+      fs.writeFileSync(path.join(skillsDir, "file.txt"), "content");
+      fs.chmodSync(skillsDir, 0o555);
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -230,10 +234,10 @@ describe("CLI", () => {
     // --- Режим --all ---
 
     it("при --all очищает все адаптеры и показывает суммарное количество удалённых файлов", async () => {
-      // Создаём файлы для claude
-      const claudeDir = path.join(tmpDir, ".claude");
-      fs.mkdirSync(claudeDir, { recursive: true });
-      fs.writeFileSync(path.join(claudeDir, "settings.json"), "{}");
+      // Создаём файлы в paths-поддиректориях для claude
+      const skillsDir = path.join(tmpDir, ".claude", "skills", "my-skill");
+      fs.mkdirSync(skillsDir, { recursive: true });
+      fs.writeFileSync(path.join(skillsDir, "SKILL.md"), "skill content");
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "content");
 
       const { lastFrame, unmount } = render(
@@ -257,8 +261,8 @@ describe("CLI", () => {
       expect(output).toContain("Cleaning for claude");
       expect(output).toMatch(/Done\.\s+\d+\s+files removed\./);
 
-      // Файлы удалены
-      expect(fs.existsSync(claudeDir)).toBe(false);
+      // paths-поддиректории и targetFiles удалены
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "skills"))).toBe(false);
       expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(false);
       expect(process.exitCode).toBeUndefined();
 
@@ -333,10 +337,10 @@ describe("CLI", () => {
         "adapters:\n  - claude\n",
       );
 
-      // Создаём файлы адаптера claude
-      const claudeDir = path.join(tmpDir, ".claude");
-      fs.mkdirSync(claudeDir, { recursive: true });
-      fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
+      // Создаём файлы в paths-поддиректориях адаптера claude
+      const skillsDir = path.join(tmpDir, ".claude", "skills");
+      fs.mkdirSync(skillsDir, { recursive: true });
+      fs.writeFileSync(path.join(skillsDir, "skill.md"), "content");
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Generated content");
 
       const { lastFrame, unmount } = render(
@@ -363,8 +367,8 @@ describe("CLI", () => {
       // § Exit codes: 0 — успех
       expect(process.exitCode).toBeUndefined();
 
-      // Побочный эффект: файлы удалены
-      expect(fs.existsSync(claudeDir)).toBe(false);
+      // Побочный эффект: paths-поддиректории и targetFiles удалены
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "skills"))).toBe(false);
       expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(false);
 
       unmount();

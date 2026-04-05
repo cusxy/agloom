@@ -72,10 +72,10 @@ describe("CLI", () => {
     // 4. При наличии флага --clean выполнить процедуру Clean Files
     //    с entry и projectRoot.
     it("при флаге --clean удаляет ранее сгенерированные файлы и затем выполняет транспиляцию", async () => {
-      // Создаём «ранее сгенерированные» файлы адаптера claude
-      const claudeDir = path.join(tmpDir, ".claude");
-      fs.mkdirSync(claudeDir, { recursive: true });
-      fs.writeFileSync(path.join(claudeDir, "old-file.txt"), "old content");
+      // Создаём «ранее сгенерированные» файлы в paths-поддиректориях адаптера claude
+      const oldSkillsDir = path.join(tmpDir, ".claude", "skills", "old-skill");
+      fs.mkdirSync(oldSkillsDir, { recursive: true });
+      fs.writeFileSync(path.join(oldSkillsDir, "SKILL.md"), "old content");
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Old CLAUDE.md");
 
       const { lastFrame, unmount } = render(
@@ -102,8 +102,8 @@ describe("CLI", () => {
       expect(output).toContain("✓");
       expect(output).toMatch(/files written/);
 
-      // old-file.txt удалён процедурой Clean Files
-      expect(fs.existsSync(path.join(claudeDir, "old-file.txt"))).toBe(false);
+      // old-skill удалён процедурой Clean Files (вся skills/ поддиректория удалена)
+      expect(fs.existsSync(path.join(oldSkillsDir, "SKILL.md"))).toBe(false);
 
       // § Изменения в exit codes: 0 при успехе (нет ошибок ни в clean, ни в transpile)
       expect(process.exitCode).toBeUndefined();
@@ -185,10 +185,10 @@ describe("CLI", () => {
     // --- § Изменения в exit codes ---
     // Exit code 1 если хотя бы одна ошибка в clean ИЛИ transpile шагах.
     it("завершается с exit code 1 при ошибке в clean даже если transpile успешен", async () => {
-      // Создаём targetRoot с protected поддиректорией — EACCES при удалении
+      // Создаём paths-поддиректорию с protected содержимым — EACCES при удалении
       // .claude/ остаётся writable — transpile сможет писать в неё
-      const claudeDir = path.join(tmpDir, ".claude");
-      const protectedDir = path.join(claudeDir, "protected");
+      const skillsDir = path.join(tmpDir, ".claude", "skills");
+      const protectedDir = path.join(skillsDir, "protected");
       fs.mkdirSync(protectedDir, { recursive: true });
       fs.writeFileSync(path.join(protectedDir, "file.txt"), "locked");
       fs.chmodSync(protectedDir, 0o555);

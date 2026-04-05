@@ -277,7 +277,7 @@ describe("CLI Integration", () => {
   describe("Clean Command", () => {
     // IT-CLI-06: clean --adapter claude
     it("IT-CLI-06: clean --adapter claude удаляет сгенерированные файлы адаптера", async () => {
-      // Создаём target files
+      // Создаём target files в paths-поддиректориях
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Generated content.");
       const claudeSkillDir = path.join(tmpDir, ".claude", "skills", "my-skill");
       fs.mkdirSync(claudeSkillDir, { recursive: true });
@@ -312,8 +312,8 @@ describe("CLI Integration", () => {
       // Шаг 5: CLAUDE.md удалён
       expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(false);
 
-      // Шаг 6: .claude/ удалён
-      expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
+      // Шаг 6: paths-поддиректории удалены
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "skills"))).toBe(false);
 
       unmount();
     });

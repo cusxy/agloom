@@ -4,8 +4,7 @@ description: >
   Библиотека интерполяции переменных с namespace-prefix синтаксисом
   (${agloom:VAR}, ${env:VAR}) для подстановки адаптер-зависимых путей
   и значений окружения при транспиляции canonical файлов в agent-specific.
-  Загружает .env файл из корня проекта (dotenv). Расширяет
-  AdapterRegistryEntry полем paths. Интегрируется с instructions,
+  Загружает .env файл из корня проекта (dotenv). Интегрируется с instructions,
   agents, skills транспилерами и overlay step.
 type: spec
 status: implemented
@@ -78,40 +77,13 @@ Canonical файлы используют абстрактные ссылки в
 `void`. Побочный эффект: `process.env` дополнен переменными
 из `.env` файла (без перезаписи существующих значений).
 
-## Расширение AdapterRegistryEntry
+## Зависимость от поля paths
 
-К существующему типу `AdapterRegistryEntry`
+Данная спецификация использует поле `paths` типа `AdapterRegistryEntry`
 (см. `docs/specs/adapter-registry-ext.md` § Расширение AdapterRegistryEntry)
-ТРЕБУЕТСЯ добавить поле:
-
-- `paths` (object, обязательно) — пути к agent-specific каталогам.
-  Объект МОЖЕТ быть пустым. Все подполя опциональны:
-  - `skills` (string, опционально) — путь к каталогу skills
-    относительно корня проекта.
-  - `agents` (string, опционально) — путь к каталогу agents
-    относительно корня проекта.
-  - `docs` (string, опционально) — путь к каталогу docs
-    относительно корня проекта.
-  - `schemas` (string, опционально) — путь к каталогу schemas
-    относительно корня проекта.
-
-Значения полей `paths` НЕ ДОЛЖНЫ автоматически деривироваться из `targetRoot`.
-Каждый адаптер полностью контролирует свои пути. Например, будущий адаптер
-codex МОЖЕТ иметь `targetRoot: ".codex"`, но `paths.skills: ".agents/skills"`.
-
-### Обновление реестра адаптеров
-
-В реестр адаптеров ТРЕБУЕТСЯ добавить поле `paths` для каждой записи:
-
-| `id`         | `paths.skills`       | `paths.agents`       | `paths.docs`       | `paths.schemas`       |
-| ------------ | -------------------- | -------------------- | ------------------ | --------------------- |
-| `"claude"`   | `".claude/skills"`   | `".claude/agents"`   | `".claude/docs"`   | `".claude/schemas"`   |
-| `"opencode"` | `".opencode/skills"` | `".opencode/agents"` | `".opencode/docs"` | `".opencode/schemas"` |
-| `"agentsmd"` | _(не определено)_    | _(не определено)_    | _(не определено)_  | _(не определено)_     |
-
-Запись `"agentsmd"` ДОЛЖНА иметь пустой объект `paths: {}`, потому что
-адаптер agentsmd отвечает только за файл `AGENTS.md` и не имеет
-собственных каталогов skills, agents, docs, schemas.
+для построения динамических и статических переменных интерполяции.
+Определение поля `paths`, его подполей и значений для каждого адаптера
+описано в `docs/specs/adapter-registry-ext.md`.
 
 ## Синтаксис переменных
 
@@ -159,22 +131,17 @@ codex МОЖЕТ иметь `targetRoot: ".codex"`, но `paths.skills: ".agents
 ### Динамические (per-current-adapter)
 
 Значения зависят от текущего адаптера, для которого выполняется
-транспиляция. Источник значений — поля `targetRoot` и `paths`
+транспиляция. Источник значений — поле `paths`
 текущего адаптера (`currentAdapter`).
 
 | Переменная    | Источник                       |
 | ------------- | ------------------------------ |
-| `ROOT_DIR`    | `currentAdapter.targetRoot`    |
 | `SKILLS_DIR`  | `currentAdapter.paths.skills`  |
 | `AGENTS_DIR`  | `currentAdapter.paths.agents`  |
 | `DOCS_DIR`    | `currentAdapter.paths.docs`    |
 | `SCHEMAS_DIR` | `currentAdapter.paths.schemas` |
 
-Переменная `ROOT_DIR` ДОЛЖНА присутствовать всегда, потому что
-`targetRoot` является обязательным полем `AdapterRegistryEntry`.
-
-Динамическая переменная (`SKILLS_DIR`, `AGENTS_DIR`, `DOCS_DIR`,
-`SCHEMAS_DIR`) ДОЛЖНА присутствовать в карте только если
+Динамическая переменная ДОЛЖНА присутствовать в карте только если
 соответствующее поле `paths` определено у текущего адаптера.
 Если поле не определено, переменная НЕ ДОЛЖНА присутствовать в карте.
 
@@ -186,7 +153,6 @@ codex МОЖЕТ иметь `targetRoot: ".codex"`, но `paths.skills: ".agents
 
 | Шаблон переменной      | Источник                |
 | ---------------------- | ----------------------- |
-| `{PREFIX}_DIR`         | `adapter.targetRoot`    |
 | `{PREFIX}_SKILLS_DIR`  | `adapter.paths.skills`  |
 | `{PREFIX}_AGENTS_DIR`  | `adapter.paths.agents`  |
 | `{PREFIX}_DOCS_DIR`    | `adapter.paths.docs`    |
@@ -194,28 +160,23 @@ codex МОЖЕТ иметь `targetRoot: ".codex"`, но `paths.skills: ".agents
 
 Где `{PREFIX}` = `adapter.id.toUpperCase()`.
 
-Переменная `{PREFIX}_DIR` ДОЛЖНА генерироваться всегда для адаптера,
-у которого генерируются per-adapter переменные.
-
 Переменная `{PREFIX}_SKILLS_DIR` ДОЛЖНА генерироваться только если
 `adapter.paths.skills` определено. Аналогично для `agents`, `docs`,
 `schemas`.
 
 Для адаптера с пустым объектом `paths`
 (`Object.keys(adapter.paths).length === 0`) per-adapter переменные
-НЕ ДОЛЖНЫ генерироваться (включая `{PREFIX}_DIR`).
+НЕ ДОЛЖНЫ генерироваться.
 
 #### Пример
 
 При текущей конфигурации реестра (claude, opencode, agentsmd)
 per-adapter переменные генерируются для `claude` и `opencode`:
 
-- `CLAUDE_DIR` → `.claude`
 - `CLAUDE_SKILLS_DIR` → `.claude/skills`
 - `CLAUDE_AGENTS_DIR` → `.claude/agents`
 - `CLAUDE_DOCS_DIR` → `.claude/docs`
 - `CLAUDE_SCHEMAS_DIR` → `.claude/schemas`
-- `OPENCODE_DIR` → `.opencode`
 - `OPENCODE_SKILLS_DIR` → `.opencode/skills`
 - `OPENCODE_AGENTS_DIR` → `.opencode/agents`
 - `OPENCODE_DOCS_DIR` → `.opencode/docs`
@@ -247,15 +208,13 @@ agloom-переменных для указанного текущего ада�
 2. Добавить `PROJECT_DIR` со значением `projectRoot`.
 3. Добавить остальные канонические переменные
    (см. «Канонические (фиксированные)»).
-4. Добавить `ROOT_DIR` со значением `currentAdapter.targetRoot`.
-5. Для каждого определённого поля из `currentAdapter.paths` добавить
+4. Для каждого определённого поля из `currentAdapter.paths` добавить
    соответствующую динамическую переменную
    (см. «Динамические (per-current-adapter)»).
-6. Для каждого адаптера из `allAdapters`, у которого
+5. Для каждого адаптера из `allAdapters`, у которого
    `Object.keys(adapter.paths).length > 0` —
    вычислить префикс `adapter.id.toUpperCase()`.
-7. Добавить `{PREFIX}_DIR` со значением `adapter.targetRoot`.
-8. Для каждого определённого поля из `adapter.paths` добавить
+6. Для каждого определённого поля из `adapter.paths` добавить
    соответствующую per-adapter переменную
    (см. «Статические (per-adapter)»).
 

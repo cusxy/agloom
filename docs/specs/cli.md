@@ -65,8 +65,8 @@ CLI-модуль для запуска транспиляции канониче
 - `agents` (AgentAdapter) — экземпляр адаптера для agents-transpiler
   (см. `docs/specs/agents-transpiler.md` § Интерфейс адаптера).
 
-Дополнительные поля (`targetRoot`, `targetFiles`, `projectFiles`,
-`instructionsFile`, `dependsOn`, `hidden`) описаны
+Дополнительные поля (`targetFiles`, `projectFiles`,
+`instructionsFile`, `dependsOn`, `hidden`, `paths`) описаны
 в `docs/specs/adapter-registry-ext.md` § Расширение AdapterRegistryEntry.
 
 ### TranspilerStepOutcome

@@ -28,9 +28,10 @@ function countFilesInDir(dir: string): number {
  * Удаляет сгенерированные файлы адаптера.
  *
  * Шаги:
- * 1. Рекурсивно удалить директорию <projectRoot>/<entry.targetRoot>/.
- * 2. Удалить каждый файл из entry.targetFiles.
- * 3. Сформировать CleanOutcome с removedCount и errors.
+ * 1. Собрать значения всех определённых полей из entry.paths.
+ * 2. Для каждого пути рекурсивно удалить директорию <projectRoot>/<path>/.
+ * 3. Удалить каждый файл из entry.targetFiles.
+ * 4. Сформировать CleanOutcome с removedCount и errors.
  *
  * @param entry — запись адаптера из реестра.
  * @param projectRoot — абсолютный путь к корню проекта.
@@ -43,35 +44,37 @@ export function cleanFiles(
   let removedCount = 0;
   const errors: string[] = [];
 
-  // Шаг 1: Рекурсивно удалить директорию targetRoot
-  const targetRootPath = path.join(projectRoot, entry.targetRoot);
-
-  if (fs.existsSync(targetRootPath)) {
-    try {
-      // Подсчитать файлы перед удалением
-      const fileCount = countFilesInDir(targetRootPath);
-      fs.rmSync(targetRootPath, { recursive: true });
-      removedCount += fileCount;
-    } catch (err) {
-      // Расширение 1b: EACCES и т.п.
-      const error = err instanceof Error ? err : new Error(String(err));
-      errors.push(error.message);
+  // Шаг 1: Собрать значения всех определённых полей из entry.paths
+  const pathKeys: (keyof typeof entry.paths)[] = [
+    "skills",
+    "agents",
+    "docs",
+    "schemas",
+  ];
+  const definedPaths: string[] = [];
+  for (const key of pathKeys) {
+    const value = entry.paths[key];
+    if (value !== undefined) {
+      definedPaths.push(value);
     }
   }
-  // Расширение 1a: targetRoot не существует — removedCount: 0, не ошибка
 
-  // Шаг 2: Удалить каждый файл из targetFiles
-  for (const targetFile of entry.targetFiles) {
-    const filePath = path.join(projectRoot, targetFile);
+  // Расширение 1a: Если paths пустой — пропустить шаг 2
 
-    if (!fs.existsSync(filePath)) {
-      // Расширение 2a: файл не существует — пропустить
+  // Шаг 2: Для каждого пути рекурсивно удалить директорию
+  for (const dirPath of definedPaths) {
+    const fullPath = path.join(projectRoot, dirPath);
+
+    if (!fs.existsSync(fullPath)) {
+      // Расширение 2a: директория не существует — пропустить
       continue;
     }
 
     try {
-      fs.unlinkSync(filePath);
-      removedCount++;
+      // Подсчитать файлы перед удалением
+      const fileCount = countFilesInDir(fullPath);
+      fs.rmSync(fullPath, { recursive: true });
+      removedCount += fileCount;
     } catch (err) {
       // Расширение 2b: EACCES и т.п.
       const error = err instanceof Error ? err : new Error(String(err));
@@ -79,6 +82,25 @@ export function cleanFiles(
     }
   }
 
-  // Шаг 3: Сформировать CleanOutcome
+  // Шаг 3: Удалить каждый файл из targetFiles
+  for (const targetFile of entry.targetFiles) {
+    const filePath = path.join(projectRoot, targetFile);
+
+    if (!fs.existsSync(filePath)) {
+      // Расширение 3a: файл не существует — пропустить
+      continue;
+    }
+
+    try {
+      fs.unlinkSync(filePath);
+      removedCount++;
+    } catch (err) {
+      // Расширение 3b: EACCES и т.п.
+      const error = err instanceof Error ? err : new Error(String(err));
+      errors.push(error.message);
+    }
+  }
+
+  // Шаг 4: Сформировать CleanOutcome
   return { removedCount, errors };
 }

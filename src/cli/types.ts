@@ -25,9 +25,7 @@ export interface AdapterRegistryEntry {
   mcp: McpAdapter | null;
   /** Экземпляр Permissions-адаптера (null если адаптер не поддерживает Permissions-транспиляцию). */
   permissions: PermissionsAdapter | null;
-  /** Относительный путь к корневой директории agent-специфичных файлов. */
-  targetRoot: string;
-  /** Список относительных путей к файлам за пределами targetRoot, генерируемых транспилерами. */
+  /** Список относительных путей к файлам, генерируемых транспилерами. */
   targetFiles: string[];
   /** Имена файлов для рекурсивного поиска в project tree при создании .agloom/instructions/ бэкапа. */
   projectFiles: string[];

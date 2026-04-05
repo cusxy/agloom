@@ -6,7 +6,6 @@
 /** Минимальный интерфейс записи адаптера для buildVariables. */
 interface AdapterEntry {
   id: string;
-  targetRoot: string;
   paths: {
     skills?: string;
     agents?: string;
@@ -22,13 +21,11 @@ interface AdapterEntry {
  * 1. Создать пустую карту Record<string, string>.
  * 2. Добавить PROJECT_DIR со значением projectRoot.
  * 3. Добавить остальные канонические переменные.
- * 4. Добавить ROOT_DIR со значением currentAdapter.targetRoot.
- * 5. Для каждого определённого поля из currentAdapter.paths добавить
+ * 4. Для каждого определённого поля из currentAdapter.paths добавить
  *    соответствующую динамическую переменную.
- * 6. Для каждого адаптера из allAdapters, у которого
+ * 5. Для каждого адаптера из allAdapters, у которого
  *    Object.keys(adapter.paths).length > 0 — вычислить PREFIX.
- * 7. Добавить {PREFIX}_DIR со значением adapter.targetRoot.
- * 8. Для каждого определённого поля из adapter.paths добавить
+ * 6. Для каждого определённого поля из adapter.paths добавить
  *    соответствующую per-adapter переменную.
  */
 export function buildVariables(
@@ -49,9 +46,6 @@ export function buildVariables(
   variables["AGLOOM_DOCS_DIR"] = ".agloom/docs";
   variables["AGLOOM_SCHEMAS_DIR"] = ".agloom/schemas";
 
-  // Шаг 3: ROOT_DIR = currentAdapter.targetRoot
-  variables["ROOT_DIR"] = currentAdapter.targetRoot;
-
   // Шаг 4: динамические переменные (per-current-adapter)
   if (currentAdapter.paths.skills !== undefined) {
     variables["SKILLS_DIR"] = currentAdapter.paths.skills;
@@ -66,7 +60,7 @@ export function buildVariables(
     variables["SCHEMAS_DIR"] = currentAdapter.paths.schemas;
   }
 
-  // Шаги 5–7: статические (per-adapter) переменные
+  // Шаги 5–6: статические (per-adapter) переменные
   for (const adapter of allAdapters) {
     const definedKeys = Object.keys(adapter.paths).filter(
       (key) => adapter.paths[key as keyof typeof adapter.paths] !== undefined,
@@ -79,10 +73,7 @@ export function buildVariables(
 
     const prefix = adapter.id.toUpperCase();
 
-    // Шаг 6: {PREFIX}_DIR всегда
-    variables[`${prefix}_DIR`] = adapter.targetRoot;
-
-    // Шаг 7: per-adapter подпеременные
+    // Шаг 6: per-adapter подпеременные
     if (adapter.paths.skills !== undefined) {
       variables[`${prefix}_SKILLS_DIR`] = adapter.paths.skills;
     }
