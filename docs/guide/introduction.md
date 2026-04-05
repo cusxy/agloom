@@ -26,10 +26,15 @@ Agloom introduces a **canonical format** -- a single `.agloom/` directory that h
 Think of it like Sass compiling to CSS, or TypeScript compiling to JavaScript. You write once, and Agloom produces the right output for each tool.
 
 ```
-.agloom/                          Output:
-  instructions/AGLOOM.md    -->   CLAUDE.md, AGENTS.md, GEMINI.md
+AGLOOM.md                   -->   CLAUDE.md, AGENTS.md, GEMINI.md
+
+.agloom/
+  config.yml                      (project configuration)
   skills/                   -->   .claude/skills/, .opencode/skills/, ...
   agents/                   -->   .claude/agents/, .opencode/agents/, ...
+  docs/                     -->   .claude/docs/, .opencode/docs/, ...
+  mcp.yml                   -->   .mcp.json, opencode.json (mcp section)
+  permissions.yml           -->   .claude/settings.json, opencode.json (permissions)
 ```
 
 ## Core Principles
@@ -41,6 +46,16 @@ Think of it like Sass compiling to CSS, or TypeScript compiling to JavaScript. Y
 **Plugin-extensible.** Package your skills, agents, docs, and schemas into plugins and reuse them across projects. Plugins can be loaded from local directories or git repositories.
 
 **Non-intrusive.** Agloom generates files but does not interfere with how target tools work. The generated files are standard config files that each tool reads natively.
+
+## Key Features
+
+**Agent-specific blocks.** Use `<!-- agent:claude -->` and `<!-- agent:agentsmd -->` HTML comments to include content that only applies to a specific agent. Shared content lives outside these blocks and reaches all agents.
+
+**Frontmatter overrides.** YAML frontmatter in markdown files supports an `override` block where you can set agent-specific metadata such as a model choice.
+
+**Variable interpolation.** Reference environment variables (`${env:API_KEY}`), agent paths (`${agloom:SKILLS_DIR}`), and plugin values (`${values:name}`) anywhere in your canonical files. Values are resolved at transpile time.
+
+**Overlays.** Place raw files in `.agloom/overlays/<agent>/` for content that does not fit the canonical format -- agent-specific JSON settings, TOML configs, or any file the target tool expects. Overlays support deep merge, full replacement, and patch operations.
 
 ## When to Use Agloom
 
@@ -55,7 +70,7 @@ Agloom is a good fit when:
 
 Agloom may not be worth the overhead when:
 
-- Your project uses **only one** AI coding assistant and you have no plans to add others.
+- Your project uses **only one** AI coding assistant, and you have no plans to add others.
 - You have no need for plugins or shared configurations.
 
 In that case, editing the tool's native config files directly is simpler.
