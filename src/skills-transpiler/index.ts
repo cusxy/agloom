@@ -11,6 +11,9 @@ import type { SkillAdapter, SkillsTranspilerConfig } from "./types.js";
 // Barrel exports
 export { ClaudeSkillAdapter } from "./adapters/claude-adapter.js";
 export { OpenCodeSkillAdapter } from "./adapters/opencode-adapter.js";
+export { KiloCodeSkillAdapter } from "./adapters/kilocode-adapter.js";
+export { CodexSkillAdapter } from "./adapters/codex-adapter.js";
+export { GeminiSkillAdapter } from "./adapters/gemini-adapter.js";
 
 export { SkillsTranspiler } from "./transpiler.js";
 export {

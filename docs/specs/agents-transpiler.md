@@ -307,7 +307,8 @@ agents-адаптер выполняет трансформацию содерж
 **Поведение:**
 
 Определяется конкретным адаптером (см. «Claude Code адаптер»,
-«OpenCode адаптер»).
+«OpenCode адаптер», «KiloCode адаптер», «Gemini адаптер»,
+«Codex адаптер»).
 
 **Расширения:**
 
@@ -594,6 +595,182 @@ More general instructions.
 
 `AgentOutputFile[]`.
 
+## KiloCode адаптер
+
+Адаптер для KiloCode.
+
+- `agentId`: `"kilocode"`.
+- `targetDir`: `".kilo/agents"`.
+
+### transpile
+
+`kilocodeAgentAdapter.transpile(definitions)`.
+
+**Вход:**
+
+- `definitions` (array\<AgentDefinition>, обязательно) — массив
+  обнаруженных определений агентов.
+
+**Поведение:**
+
+1. Для каждого определения из `definitions` вызвать
+   `transformContent(definition.rawContent, "kilocode")`
+   (см. «Трансформация контента»).
+2. Сформировать `AgentOutputFile` с `definition.relativePath`
+   в качестве `relativePath` и результатом `transformContent`
+   в качестве `content`.
+
+Ремаппинг `relativePath` (`<agloomDir>/agents/` → `<adapter.targetDir>/`)
+выполняется транспилером после вызова `adapter.transpile`
+(см. «Транспиляция», шаг 3).
+
+**Расширения:**
+
+1a. `transformContent` выбрасывает `AgentTransformError` → пробросить
+к вызывающему коду.
+
+**Результат:**
+
+`AgentOutputFile[]`.
+
+## Gemini адаптер
+
+Адаптер для Gemini.
+
+- `agentId`: `"gemini"`.
+- `targetDir`: `".gemini/agents"`.
+
+### transpile
+
+`geminiAgentAdapter.transpile(definitions)`.
+
+**Вход:**
+
+- `definitions` (array\<AgentDefinition>, обязательно) — массив
+  обнаруженных определений агентов.
+
+**Поведение:**
+
+1. Для каждого определения из `definitions` вызвать
+   `transformContent(definition.rawContent, "gemini")`
+   (см. «Трансформация контента»).
+2. Сформировать `AgentOutputFile` с `definition.relativePath`
+   в качестве `relativePath` и результатом `transformContent`
+   в качестве `content`.
+
+Ремаппинг `relativePath` (`<agloomDir>/agents/` → `<adapter.targetDir>/`)
+выполняется транспилером после вызова `adapter.transpile`
+(см. «Транспиляция», шаг 3).
+
+**Расширения:**
+
+1a. `transformContent` выбрасывает `AgentTransformError` → пробросить
+к вызывающему коду.
+
+**Результат:**
+
+`AgentOutputFile[]`.
+
+## Codex адаптер
+
+Адаптер для Codex.
+
+- `agentId`: `"codex"`.
+- `targetDir`: `".codex/agents"`.
+
+Codex использует формат TOML для определений агентов. Адаптер
+выполняет стандартную трансформацию через `transformContent`
+(см. «Трансформация контента»), затем конвертирует результат
+из Markdown в TOML. Для сериализации TOML ТРЕБУЕТСЯ использовать
+библиотеку `smol-toml` (уже присутствует в зависимостях проекта).
+
+### transpile
+
+`codexAgentAdapter.transpile(definitions)`.
+
+**Вход:**
+
+- `definitions` (array\<AgentDefinition>, обязательно) — массив
+  обнаруженных определений агентов.
+
+**Поведение:**
+
+1. Для каждого определения из `definitions` вызвать
+   `transformContent(definition.rawContent, "codex")`
+   (см. «Трансформация контента»).
+2. Выполнить парсинг результата `transformContent` библиотекой
+   `gray-matter`, получив объект frontmatter (`data`) и тело
+   документа (`content`).
+3. Если `content` (после trim) не является пустой строкой —
+   добавить ключ `developer_instructions` в `data` со значением
+   trimmed `content`.
+4. Сериализовать `data` в формат TOML через `smol-toml`.
+5. Сформировать `AgentOutputFile` с `definition.relativePath`
+   (расширение `.md` заменяется на `.toml`) в качестве `relativePath`
+   и результатом сериализации TOML в качестве `content`.
+
+Ремаппинг `relativePath` (`<agloomDir>/agents/` → `<adapter.targetDir>/`)
+выполняется транспилером после вызова `adapter.transpile`
+(см. «Транспиляция», шаг 3).
+
+**Расширения:**
+
+1a. `transformContent` выбрасывает `AgentTransformError` → пробросить
+к вызывающему коду.
+
+2a. Библиотека `gray-matter` выбрасывает ошибку парсинга результата →
+`AgentTransformError("Failed to parse transformed content for '{definition.name}': {причина}")`.
+
+4a. `smol-toml` выбрасывает ошибку сериализации →
+`AgentTransformError("Failed to serialize TOML for '{definition.name}': {причина}")`.
+
+**Результат:**
+
+`AgentOutputFile[]`.
+
+### Правила конвертации в TOML
+
+- `transformContent` выполняет парсинг frontmatter, override merge,
+  удаление `override`, фильтрацию body и сериализацию обратно
+  в Markdown. Codex адаптер повторно парсит этот Markdown
+  для извлечения финального frontmatter и body.
+- Все top-level ключи из финального frontmatter становятся
+  top-level ключами TOML.
+- Body (после trim) становится значением ключа
+  `developer_instructions` (string).
+- Если body пустое (после trim) — ключ `developer_instructions`
+  НЕ ВКЛЮЧАЕТСЯ в TOML.
+- Расширение выходного файла — `.toml` (вместо `.md`).
+- Типы значений frontmatter сохраняются: строки → TOML strings,
+  числа → TOML integers/floats, массивы → TOML arrays,
+  объекты → TOML tables.
+
+### Пример конвертации
+
+Входной файл `.agloom/agents/code-reviewer.md`:
+
+```markdown
+---
+name: code-reviewer
+description: Reviews code for best practices
+model: sonnet
+override:
+  codex:
+    model: gpt-5-codex
+---
+
+Review all code changes for...
+```
+
+Выходной файл `.codex/agents/code-reviewer.toml`:
+
+```toml
+name = "code-reviewer"
+description = "Reviews code for best practices"
+model = "gpt-5-codex"
+developer_instructions = "Review all code changes for..."
+```
+
 ## Запись результатов
 
 `transpiler.writeResults(results, options?)` — записывает результаты
@@ -641,7 +818,6 @@ More general instructions.
 - Валидация семантики frontmatter (имена моделей, списки инструментов и т.д.).
 - Deep merge для override (только shallow merge top-level ключей).
 - Watch mode (отслеживание изменений определений агентов).
-- Адаптеры для Codex CLI и Gemini CLI (отдельные спецификации).
 - Агенты как директории (только одиночные `.md` файлы).
 - CLI-интерфейс (отдельная спецификация).
 - Очистка устаревших agent-specific файлов при удалении определений.

@@ -9,14 +9,23 @@ import {
   OpenCodeAdapter,
   AgentsMdAdapter,
 } from "../../instructions-transpiler/index.js";
+import { GeminiAdapter } from "../../instructions-transpiler/adapters/gemini-adapter.js";
+import { KiloCodeAdapter } from "../../instructions-transpiler/adapters/kilocode-adapter.js";
+import { CodexAdapter } from "../../instructions-transpiler/adapters/codex-adapter.js";
 import {
   ClaudeSkillAdapter,
   OpenCodeSkillAdapter,
 } from "../../skills-transpiler/index.js";
+import { KiloCodeSkillAdapter } from "../../skills-transpiler/adapters/kilocode-adapter.js";
+import { CodexSkillAdapter } from "../../skills-transpiler/adapters/codex-adapter.js";
+import { GeminiSkillAdapter } from "../../skills-transpiler/adapters/gemini-adapter.js";
 import {
   ClaudeAgentAdapter,
   OpenCodeAgentAdapter,
 } from "../../agents-transpiler/index.js";
+import { KiloCodeAgentAdapter } from "../../agents-transpiler/adapters/kilocode-adapter.js";
+import { GeminiAgentAdapter } from "../../agents-transpiler/adapters/gemini-adapter.js";
+import { CodexAgentAdapter } from "../../agents-transpiler/adapters/codex-adapter.js";
 
 describe("CLI", () => {
   describe("Реестр адаптеров", () => {
@@ -44,10 +53,18 @@ describe("CLI", () => {
       expect(opencode!.agents).toBeInstanceOf(OpenCodeAgentAdapter);
     });
 
-    // --- Happy path: реестр содержит ровно 3 записи ---
-    // § cli.md § Состав реестра: таблица содержит 3 записи (claude, opencode, agentsmd)
-    it("содержит ровно три записи (claude, opencode и agentsmd)", () => {
-      expect(adapterRegistry).toHaveLength(3);
+    // --- Happy path: реестр содержит ровно 6 записей ---
+    // § adapter-registry-ext.md § Обновление реестра адаптеров:
+    // 6 записей: claude, opencode, agentsmd, kilocode, codex, gemini
+    it("содержит ровно шесть записей (claude, opencode, agentsmd, kilocode, codex, gemini)", () => {
+      expect(adapterRegistry).toHaveLength(6);
+      const ids = adapterRegistry.map((e) => e.id);
+      expect(ids).toContain("claude");
+      expect(ids).toContain("opencode");
+      expect(ids).toContain("agentsmd");
+      expect(ids).toContain("kilocode");
+      expect(ids).toContain("codex");
+      expect(ids).toContain("gemini");
     });
 
     // --- Happy path: реестр содержит запись agentsmd ---
@@ -68,23 +85,51 @@ describe("CLI", () => {
 
   // Спецификация: docs/specs/adapter-registry-ext.md § Обновление реестра адаптеров
   describe("Расширение реестра адаптеров", () => {
-    // --- Happy path: запись claude содержит новые поля targetRoot и targetFiles ---
-    // § Обновление реестра адаптеров, строка claude: targetRoot=".claude", targetFiles=["CLAUDE.md", ".mcp.json"]
-    it('запись "claude" содержит targetRoot ".claude" и targetFiles ["CLAUDE.md", ".mcp.json"]', () => {
+    // --- Удаление targetRoot: записи реестра НЕ содержат поле targetRoot ---
+    // § adapter-registry-ext.md § Расширение AdapterRegistryEntry: поле targetRoot отсутствует
+    it('запись "claude" НЕ содержит поле targetRoot', () => {
       const claude = adapterRegistry.find((e) => e.id === "claude");
       expect(claude).toBeDefined();
-      expect(claude!.targetRoot).toBe(".claude");
+      expect(claude).not.toHaveProperty("targetRoot");
+    });
+
+    it('запись "opencode" НЕ содержит поле targetRoot', () => {
+      const opencode = adapterRegistry.find((e) => e.id === "opencode");
+      expect(opencode).toBeDefined();
+      expect(opencode).not.toHaveProperty("targetRoot");
+    });
+
+    it('запись "agentsmd" НЕ содержит поле targetRoot', () => {
+      const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
+      expect(agentsmd).toBeDefined();
+      expect(agentsmd).not.toHaveProperty("targetRoot");
+    });
+
+    // --- Happy path: запись claude содержит targetFiles ---
+    // § Обновление реестра адаптеров, строка claude: targetFiles=["CLAUDE.md", ".mcp.json"]
+    it('запись "claude" содержит targetFiles ["CLAUDE.md", ".mcp.json"]', () => {
+      const claude = adapterRegistry.find((e) => e.id === "claude");
+      expect(claude).toBeDefined();
       expect(claude!.targetFiles).toEqual(["CLAUDE.md", ".mcp.json"]);
     });
 
-    // --- Happy path: запись opencode содержит обновлённые поля ---
+    // --- Happy path: запись opencode содержит targetFiles ---
     // § adapter-registry-ext.md § Запись opencode: targetFiles=["opencode.json"]
-    // § Обновление реестра адаптеров, строка opencode: targetFiles=["opencode.json"]
-    it('запись "opencode" содержит targetRoot ".opencode" и targetFiles ["opencode.json"]', () => {
+    it('запись "opencode" содержит targetFiles ["opencode.json"]', () => {
       const opencode = adapterRegistry.find((e) => e.id === "opencode");
       expect(opencode).toBeDefined();
-      expect(opencode!.targetRoot).toBe(".opencode");
       expect(opencode!.targetFiles).toEqual(["opencode.json"]);
+    });
+
+    // --- Happy path: запись agentsmd содержит targetFiles ---
+    // § Обновление реестра адаптеров, строка agentsmd: targetFiles=["AGENTS.md", "AGENTS.override.md"]
+    it('запись "agentsmd" содержит targetFiles ["AGENTS.md", "AGENTS.override.md"]', () => {
+      const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
+      expect(agentsmd).toBeDefined();
+      expect(agentsmd!.targetFiles).toEqual([
+        "AGENTS.md",
+        "AGENTS.override.md",
+      ]);
     });
 
     // --- Happy path: запись claude содержит поле projectFiles ---
@@ -97,24 +142,17 @@ describe("CLI", () => {
 
     // --- Happy path: запись opencode содержит поле projectFiles ---
     // § Обновление реестра адаптеров, строка opencode: projectFiles=[]
-    // § Запись opencode: projectFiles пуст, т.к. OpenCode не имеет уникальных файлов
     it('запись "opencode" содержит projectFiles [] (пустой массив)', () => {
       const opencode = adapterRegistry.find((e) => e.id === "opencode");
       expect(opencode).toBeDefined();
       expect(opencode!.projectFiles).toEqual([]);
     });
 
-    // --- Happy path: запись agentsmd содержит поля targetRoot, targetFiles, projectFiles ---
-    // § Обновление реестра адаптеров, строка agentsmd:
-    //   targetRoot=".agents", targetFiles=["AGENTS.md", "AGENTS.override.md"], projectFiles=["AGENTS.md", "AGENTS.override.md"]
-    it('запись "agentsmd" содержит targetRoot ".agents", targetFiles ["AGENTS.md", "AGENTS.override.md"], projectFiles ["AGENTS.md", "AGENTS.override.md"]', () => {
+    // --- Happy path: запись agentsmd содержит поле projectFiles ---
+    // § Обновление реестра адаптеров, строка agentsmd: projectFiles=["AGENTS.md", "AGENTS.override.md"]
+    it('запись "agentsmd" содержит projectFiles ["AGENTS.md", "AGENTS.override.md"]', () => {
       const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmd).toBeDefined();
-      expect(agentsmd!.targetRoot).toBe(".agents");
-      expect(agentsmd!.targetFiles).toEqual([
-        "AGENTS.md",
-        "AGENTS.override.md",
-      ]);
       expect(agentsmd!.projectFiles).toEqual([
         "AGENTS.md",
         "AGENTS.override.md",
@@ -131,7 +169,6 @@ describe("CLI", () => {
 
     // --- Happy path: запись opencode содержит поле instructionsFile ---
     // § Обновление реестра адаптеров, строка opencode: instructionsFile=null
-    // § Запись opencode: instructionsFile null, т.к. OpenCode не имеет собственного формата
     it('запись "opencode" содержит instructionsFile null', () => {
       const opencode = adapterRegistry.find((e) => e.id === "opencode");
       expect(opencode).toBeDefined();
@@ -239,8 +276,7 @@ describe("CLI", () => {
   });
 
   // =====================================================================
-  // Спецификация: docs/specs/interpolation.md § Расширение AdapterRegistryEntry
-  // § Обновление реестра адаптеров — поле paths
+  // Спецификация: docs/specs/adapter-registry-ext.md § Расширение AdapterRegistryEntry — поле paths
   // =====================================================================
 
   describe("Расширение реестра адаптеров — поле paths", () => {
@@ -275,6 +311,232 @@ describe("CLI", () => {
       expect(agentsmd).toBeDefined();
       expect(agentsmd!.paths).toBeDefined();
       expect(Object.keys(agentsmd!.paths)).toHaveLength(0);
+    });
+
+    // --- Happy path: запись kilocode содержит поле paths ---
+    // § Обновление реестра адаптеров, строка kilocode: paths.skills=".kilo/skills", paths.agents=".kilo/agents", paths.docs=".kilo/docs", paths.schemas=".kilo/schemas"
+    it('запись "kilocode" содержит paths с корректными значениями', () => {
+      const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
+      expect(kilocode).toBeDefined();
+      expect(kilocode!.paths).toBeDefined();
+      expect(kilocode!.paths.skills).toBe(".kilo/skills");
+      expect(kilocode!.paths.agents).toBe(".kilo/agents");
+      expect(kilocode!.paths.docs).toBe(".kilo/docs");
+      expect(kilocode!.paths.schemas).toBe(".kilo/schemas");
+    });
+
+    // --- Happy path: запись codex содержит поле paths ---
+    // § Обновление реестра адаптеров, строка codex: paths.skills=".agents/skills", paths.agents=".codex/agents"
+    // § Запись codex: skills размещаются в .agents/skills/ (НЕ .codex/skills/)
+    it('запись "codex" содержит paths с skills=".agents/skills" и agents=".codex/agents"', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.paths).toBeDefined();
+      expect(codex!.paths.skills).toBe(".agents/skills");
+      expect(codex!.paths.agents).toBe(".codex/agents");
+      // codex НЕ содержит docs и schemas
+      expect(codex!.paths.docs).toBeUndefined();
+      expect(codex!.paths.schemas).toBeUndefined();
+    });
+
+    // --- Happy path: запись gemini содержит поле paths ---
+    // § Обновление реестра адаптеров, строка gemini: paths.skills=".gemini/skills", paths.agents=".gemini/agents", paths.docs=".gemini/docs", paths.schemas=".gemini/schemas"
+    it('запись "gemini" содержит paths с корректными значениями', () => {
+      const gemini = adapterRegistry.find((e) => e.id === "gemini");
+      expect(gemini).toBeDefined();
+      expect(gemini!.paths).toBeDefined();
+      expect(gemini!.paths.skills).toBe(".gemini/skills");
+      expect(gemini!.paths.agents).toBe(".gemini/agents");
+      expect(gemini!.paths.docs).toBe(".gemini/docs");
+      expect(gemini!.paths.schemas).toBe(".gemini/schemas");
+    });
+  });
+
+  // =====================================================================
+  // Спецификация: docs/specs/adapter-registry-ext.md § Записи kilocode, codex, gemini
+  // =====================================================================
+
+  describe("Новые записи реестра (kilocode, codex, gemini)", () => {
+    // --- Happy path: запись kilocode ---
+    // § Запись kilocode: id="kilocode", dependsOn=["agentsmd"], instructionsFile=null, hidden=false
+    it('содержит запись для "kilocode" с корректными id и description', () => {
+      const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
+      expect(kilocode).toBeDefined();
+      expect(kilocode!.id).toBe("kilocode");
+      expect(kilocode!.description).toBe("KiloCode");
+    });
+
+    it('запись "kilocode" содержит экземпляры адаптеров для instructions, skills и agents', () => {
+      const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
+      expect(kilocode).toBeDefined();
+      expect(kilocode!.instructions).toBeInstanceOf(KiloCodeAdapter);
+      expect(kilocode!.skills).toBeInstanceOf(KiloCodeSkillAdapter);
+      expect(kilocode!.agents).toBeInstanceOf(KiloCodeAgentAdapter);
+    });
+
+    it('запись "kilocode" содержит instructionsFile null', () => {
+      const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
+      expect(kilocode).toBeDefined();
+      expect(kilocode!.instructionsFile).toBeNull();
+    });
+
+    it('запись "kilocode" содержит dependsOn ["agentsmd"]', () => {
+      const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
+      expect(kilocode).toBeDefined();
+      expect(kilocode!.dependsOn).toEqual(["agentsmd"]);
+    });
+
+    it('запись "kilocode" содержит hidden false', () => {
+      const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
+      expect(kilocode).toBeDefined();
+      expect(kilocode).toHaveProperty("hidden", false);
+    });
+
+    it('запись "kilocode" содержит targetFiles [] (пустой массив)', () => {
+      const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
+      expect(kilocode).toBeDefined();
+      expect(kilocode!.targetFiles).toEqual([]);
+    });
+
+    it('запись "kilocode" содержит overlayImportPaths [".kilo"]', () => {
+      const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
+      expect(kilocode).toBeDefined();
+      expect(kilocode!.overlayImportPaths).toEqual([".kilo"]);
+    });
+
+    // --- Happy path: запись kilocode содержит поле projectFiles ---
+    // § Обновление реестра адаптеров, строка kilocode: projectFiles=[]
+    it('запись "kilocode" содержит projectFiles [] (пустой массив)', () => {
+      const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
+      expect(kilocode).toBeDefined();
+      expect(kilocode!.projectFiles).toEqual([]);
+    });
+
+    // --- Happy path: запись codex ---
+    // § Запись codex: id="codex", dependsOn=["agentsmd"], instructionsFile=null, hidden=false
+    it('содержит запись для "codex" с корректными id и description', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.id).toBe("codex");
+      expect(codex!.description).toBe("Codex");
+    });
+
+    it('запись "codex" содержит экземпляры адаптеров для instructions, skills и agents', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.instructions).toBeInstanceOf(CodexAdapter);
+      expect(codex!.skills).toBeInstanceOf(CodexSkillAdapter);
+      expect(codex!.agents).toBeInstanceOf(CodexAgentAdapter);
+    });
+
+    it('запись "codex" содержит instructionsFile null', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.instructionsFile).toBeNull();
+    });
+
+    it('запись "codex" содержит dependsOn ["agentsmd"]', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.dependsOn).toEqual(["agentsmd"]);
+    });
+
+    it('запись "codex" содержит hidden false', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex).toHaveProperty("hidden", false);
+    });
+
+    it('запись "codex" содержит targetFiles [] (пустой массив)', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.targetFiles).toEqual([]);
+    });
+
+    it('запись "codex" содержит overlayImportPaths [".codex", ".agents"]', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.overlayImportPaths).toEqual([".codex", ".agents"]);
+    });
+
+    // --- Happy path: запись codex содержит поле projectFiles ---
+    // § Обновление реестра адаптеров, строка codex: projectFiles=[]
+    it('запись "codex" содержит projectFiles [] (пустой массив)', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.projectFiles).toEqual([]);
+    });
+
+    // --- Happy path: запись gemini ---
+    // § Запись gemini: id="gemini", dependsOn=[], instructionsFile="GEMINI.md", hidden=false
+    it('содержит запись для "gemini" с корректными id и description', () => {
+      const gemini = adapterRegistry.find((e) => e.id === "gemini");
+      expect(gemini).toBeDefined();
+      expect(gemini!.id).toBe("gemini");
+      expect(gemini!.description).toBe("Gemini");
+    });
+
+    it('запись "gemini" содержит экземпляры адаптеров для instructions, skills и agents', () => {
+      const gemini = adapterRegistry.find((e) => e.id === "gemini");
+      expect(gemini).toBeDefined();
+      expect(gemini!.instructions).toBeInstanceOf(GeminiAdapter);
+      expect(gemini!.skills).toBeInstanceOf(GeminiSkillAdapter);
+      expect(gemini!.agents).toBeInstanceOf(GeminiAgentAdapter);
+    });
+
+    it('запись "gemini" содержит instructionsFile "GEMINI.md"', () => {
+      const gemini = adapterRegistry.find((e) => e.id === "gemini");
+      expect(gemini).toBeDefined();
+      expect(gemini!.instructionsFile).toBe("GEMINI.md");
+    });
+
+    it('запись "gemini" содержит dependsOn [] (пустой массив)', () => {
+      const gemini = adapterRegistry.find((e) => e.id === "gemini");
+      expect(gemini).toBeDefined();
+      expect(gemini!.dependsOn).toEqual([]);
+    });
+
+    it('запись "gemini" содержит hidden false', () => {
+      const gemini = adapterRegistry.find((e) => e.id === "gemini");
+      expect(gemini).toBeDefined();
+      expect(gemini).toHaveProperty("hidden", false);
+    });
+
+    it('запись "gemini" содержит targetFiles ["GEMINI.md"]', () => {
+      const gemini = adapterRegistry.find((e) => e.id === "gemini");
+      expect(gemini).toBeDefined();
+      expect(gemini!.targetFiles).toEqual(["GEMINI.md"]);
+    });
+
+    it('запись "gemini" содержит overlayImportPaths [".gemini", "**/GEMINI.md"]', () => {
+      const gemini = adapterRegistry.find((e) => e.id === "gemini");
+      expect(gemini).toBeDefined();
+      expect(gemini!.overlayImportPaths).toEqual([".gemini", "**/GEMINI.md"]);
+    });
+
+    // --- Happy path: запись gemini содержит поле projectFiles ---
+    // § Обновление реестра адаптеров, строка gemini: projectFiles=["GEMINI.md"]
+    it('запись "gemini" содержит projectFiles ["GEMINI.md"]', () => {
+      const gemini = adapterRegistry.find((e) => e.id === "gemini");
+      expect(gemini).toBeDefined();
+      expect(gemini!.projectFiles).toEqual(["GEMINI.md"]);
+    });
+
+    // --- allowedAgentIds: "gemini" включён ---
+    // § instructions-transpiler.md § Валидация допустимых agentId:
+    // "gemini" — допустим (GEMINI.md)
+    it('allowedAgentIds включает "gemini" (instructionsFile не null)', () => {
+      // Проверяем через экземпляры адаптеров: gemini имеет instructionsFile,
+      // значит он должен быть в allowedAgentIds
+      const entriesWithInstructionsFile = adapterRegistry
+        .filter((e) => e.instructionsFile !== null)
+        .map((e) => e.id);
+      expect(entriesWithInstructionsFile).toContain("claude");
+      expect(entriesWithInstructionsFile).toContain("agentsmd");
+      expect(entriesWithInstructionsFile).toContain("gemini");
+      // kilocode и codex НЕ имеют instructionsFile
+      expect(entriesWithInstructionsFile).not.toContain("kilocode");
+      expect(entriesWithInstructionsFile).not.toContain("codex");
     });
   });
 });

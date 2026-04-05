@@ -8,14 +8,23 @@ import {
   ClaudeAdapter,
   OpenCodeAdapter,
   AgentsMdAdapter,
+  GeminiAdapter,
+  KiloCodeAdapter,
+  CodexAdapter,
 } from "../instructions-transpiler/index.js";
 import {
   ClaudeSkillAdapter,
   OpenCodeSkillAdapter,
+  KiloCodeSkillAdapter,
+  CodexSkillAdapter,
+  GeminiSkillAdapter,
 } from "../skills-transpiler/index.js";
 import {
   ClaudeAgentAdapter,
   OpenCodeAgentAdapter,
+  KiloCodeAgentAdapter,
+  GeminiAgentAdapter,
+  CodexAgentAdapter,
 } from "../agents-transpiler/index.js";
 import {
   ClaudeMcpAdapter,
@@ -32,7 +41,7 @@ import type { AdapterRegistryEntry } from "./types.js";
  * файл инструкций (instructionsFile !== null). Используется для валидации
  * допустимых agentId в <!-- agent:X --> блоках.
  */
-const allowedAgentIds = ["claude", "agentsmd"];
+const allowedAgentIds = ["claude", "agentsmd", "gemini"];
 
 /**
  * Реестр является единственным местом определения списка поддерживаемых адаптеров.
@@ -47,7 +56,6 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     agents: new ClaudeAgentAdapter(),
     mcp: new ClaudeMcpAdapter(),
     permissions: new ClaudePermissionsAdapter(),
-    targetRoot: ".claude",
     targetFiles: ["CLAUDE.md", ".mcp.json"],
     projectFiles: ["CLAUDE.md"],
     instructionsFile: "CLAUDE.md",
@@ -69,7 +77,6 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     agents: new OpenCodeAgentAdapter(),
     mcp: new OpenCodeMcpAdapter(),
     permissions: new OpenCodePermissionsAdapter(),
-    targetRoot: ".opencode",
     targetFiles: ["opencode.json"],
     projectFiles: [],
     instructionsFile: null,
@@ -91,7 +98,6 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     agents: null,
     mcp: null,
     permissions: null,
-    targetRoot: ".agents",
     targetFiles: ["AGENTS.md", "AGENTS.override.md"],
     projectFiles: ["AGENTS.md", "AGENTS.override.md"],
     instructionsFile: "AGENTS.md",
@@ -99,5 +105,66 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     hidden: true,
     overlayImportPaths: [".agents", "**/AGENTS.md", "**/AGENTS.override.md"],
     paths: {},
+  },
+  {
+    id: "kilocode",
+    description: "KiloCode",
+    instructions: new KiloCodeAdapter(),
+    skills: new KiloCodeSkillAdapter(),
+    agents: new KiloCodeAgentAdapter(),
+    mcp: null,
+    permissions: null,
+    targetFiles: [],
+    projectFiles: [],
+    instructionsFile: null,
+    dependsOn: ["agentsmd"],
+    hidden: false,
+    overlayImportPaths: [".kilo"],
+    paths: {
+      skills: ".kilo/skills",
+      agents: ".kilo/agents",
+      docs: ".kilo/docs",
+      schemas: ".kilo/schemas",
+    },
+  },
+  {
+    id: "codex",
+    description: "Codex",
+    instructions: new CodexAdapter(),
+    skills: new CodexSkillAdapter(),
+    agents: new CodexAgentAdapter(),
+    mcp: null,
+    permissions: null,
+    targetFiles: [],
+    projectFiles: [],
+    instructionsFile: null,
+    dependsOn: ["agentsmd"],
+    hidden: false,
+    overlayImportPaths: [".codex", ".agents"],
+    paths: {
+      skills: ".agents/skills",
+      agents: ".codex/agents",
+    },
+  },
+  {
+    id: "gemini",
+    description: "Gemini",
+    instructions: new GeminiAdapter(allowedAgentIds),
+    skills: new GeminiSkillAdapter(),
+    agents: new GeminiAgentAdapter(),
+    mcp: null,
+    permissions: null,
+    targetFiles: ["GEMINI.md"],
+    projectFiles: ["GEMINI.md"],
+    instructionsFile: "GEMINI.md",
+    dependsOn: [],
+    hidden: false,
+    overlayImportPaths: [".gemini", "**/GEMINI.md"],
+    paths: {
+      skills: ".gemini/skills",
+      agents: ".gemini/agents",
+      docs: ".gemini/docs",
+      schemas: ".gemini/schemas",
+    },
   },
 ];

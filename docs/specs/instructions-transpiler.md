@@ -211,7 +211,8 @@ agent-specific секций.
 **Поведение:**
 
 Определяется конкретным адаптером (см. «Claude Code адаптер»,
-«AGENTS.md адаптер», «OpenCode адаптер»).
+«AGENTS.md адаптер», «OpenCode адаптер», «Gemini адаптер»,
+«KiloCode адаптер», «Codex адаптер»).
 
 **Расширения:**
 
@@ -398,7 +399,12 @@ Shallow merge применяется при наличии `override[agentId]`:
 
 - `"claude"` — допустим (`CLAUDE.md`).
 - `"agentsmd"` — допустим (`AGENTS.md`).
+- `"gemini"` — допустим (`GEMINI.md`).
 - `"opencode"` — ЗАПРЕЩЁН (не имеет собственного формата инструкций,
+  использует `AGENTS.md` через адаптер `"agentsmd"`).
+- `"kilocode"` — ЗАПРЕЩЁН (не имеет собственного формата инструкций,
+  использует `AGENTS.md` через адаптер `"agentsmd"`).
+- `"codex"` — ЗАПРЕЩЁН (не имеет собственного формата инструкций,
   использует `AGENTS.md` через адаптер `"agentsmd"`).
 
 При обнаружении запрещённого `<agent-id>` в открывающем теге
@@ -535,6 +541,106 @@ instructions-transpiler является no-op.
 
 `OutputFile[]` (всегда пустой массив).
 
+## Gemini адаптер
+
+Адаптер для Gemini. `agentId`: `"gemini"`.
+
+### Правила генерации
+
+Для каждого канонического файла адаптер генерирует соответствующий
+agent-specific файл по следующим правилам:
+
+| Канонический файл      | Тип       | Генерируемый файл            | Условие |
+| ---------------------- | --------- | ---------------------------- | ------- |
+| `AGLOOM.md` (корень)   | root      | `GEMINI.md` (корень)         | Всегда  |
+| `AGLOOM.md` (подпапка) | directory | `GEMINI.md` (та же подпапка) | Всегда  |
+
+### transpile
+
+`geminiAdapter.transpile(files)`.
+
+**Вход:**
+
+- `files` (array\<CanonicalFile>, обязательно) — массив канонических файлов.
+
+**Поведение:**
+
+1. Отфильтровать `files`, оставив файлы типов `"root"` и `"directory"`.
+2. Для каждого файла вызвать `transformContent(file.content, "gemini", this.allowedAgentIds)`,
+   где `this.allowedAgentIds` — значение, сохранённое из конструктора
+   (см. «Интерфейс адаптера» и «Валидация допустимых agentId»
+   § Формирование списка allowedAgentIds).
+3. Заменить `AGLOOM.md` на `GEMINI.md` в `relativePath`.
+4. Сформировать `OutputFile` с изменённым `relativePath` и результатом
+   `transformContent` в качестве `content`.
+
+**Расширения:**
+
+2a. `transformContent` выбрасывает `TransformError` → пробросить
+к вызывающему коду.
+
+**Результат:**
+
+`OutputFile[]`.
+
+## KiloCode адаптер
+
+Адаптер для KiloCode. `agentId`: `"kilocode"`.
+
+KiloCode не имеет собственного формата файла инструкций.
+Файл `AGENTS.md` генерируется адаптером `"agentsmd"`
+(см. «AGENTS.md адаптер»). Адаптер `"kilocode"` для
+instructions-transpiler является no-op.
+
+### transpile
+
+`kilocodeAdapter.transpile(files)`.
+
+**Вход:**
+
+- `files` (array\<CanonicalFile>, обязательно) — массив канонических файлов.
+
+**Поведение:**
+
+1. Вернуть пустой массив `OutputFile[]`.
+
+**Расширения:**
+
+Нет расширений.
+
+**Результат:**
+
+`OutputFile[]` (всегда пустой массив).
+
+## Codex адаптер
+
+Адаптер для Codex. `agentId`: `"codex"`.
+
+Codex не имеет собственного формата файла инструкций.
+Файл `AGENTS.md` генерируется адаптером `"agentsmd"`
+(см. «AGENTS.md адаптер»). Адаптер `"codex"` для
+instructions-transpiler является no-op.
+
+### transpile
+
+`codexAdapter.transpile(files)`.
+
+**Вход:**
+
+- `files` (array\<CanonicalFile>, обязательно) — массив канонических файлов.
+
+**Поведение:**
+
+1. Вернуть пустой массив `OutputFile[]`.
+
+**Расширения:**
+
+Нет расширений.
+
+**Результат:**
+
+`OutputFile[]` (всегда пустой массив).
+
 ## Запись результатов
 
 `transpiler.writeResults(results)` — записывает результаты транспиляции
@@ -582,6 +688,5 @@ instructions-transpiler является no-op.
 - CLI-интерфейс (отдельная спецификация).
 - Watch mode (отслеживание изменений канонических файлов).
 - Автоматическое обновление `.gitignore`.
-- Адаптеры для Codex CLI и Gemini CLI (отдельные спецификации).
 - Deep merge для override (только shallow merge top-level ключей).
 - Markdown-aware парсинг (учёт code blocks при фильтрации секций).

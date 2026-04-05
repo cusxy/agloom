@@ -11,6 +11,9 @@ import type { AgentAdapter, AgentsTranspilerConfig } from "./types.js";
 // Barrel exports
 export { ClaudeAgentAdapter } from "./adapters/claude-adapter.js";
 export { OpenCodeAgentAdapter } from "./adapters/opencode-adapter.js";
+export { KiloCodeAgentAdapter } from "./adapters/kilocode-adapter.js";
+export { GeminiAgentAdapter } from "./adapters/gemini-adapter.js";
+export { CodexAgentAdapter } from "./adapters/codex-adapter.js";
 
 export { AgentsTranspiler } from "./transpiler.js";
 export { transformContent } from "./transform-content.js";

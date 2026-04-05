@@ -243,6 +243,30 @@ YAML frontmatter + Markdown body.
 OpenCode нативно читает `.opencode/skills/`
 (см. `docs/researches/agent-capabilities-map/agents/opencode.md` § C4. Навыки).
 
+## KiloCode адаптер
+
+Адаптер для KiloCode.
+
+- `agentId`: `"kilocode"`.
+- `targetDir`: `".kilo/skills"`.
+
+## Codex адаптер
+
+Адаптер для Codex.
+
+- `agentId`: `"codex"`.
+- `targetDir`: `".agents/skills"`.
+
+Codex использует каталог `.agents/skills/` (НЕ `.codex/skills/`)
+для хранения skill-пакетов.
+
+## Gemini адаптер
+
+Адаптер для Gemini.
+
+- `agentId`: `"gemini"`.
+- `targetDir`: `".gemini/skills"`.
+
 ## Запись результатов
 
 `transpiler.writeResults(results, options?)` — записывает результаты
@@ -317,7 +341,6 @@ OpenCode нативно читает `.opencode/skills/`
 - Валидация формата и frontmatter файла SKILL.md.
 - Трансляция frontmatter между агентами.
 - Watch mode (отслеживание изменений skill-пакетов).
-- Адаптеры для Codex CLI и Gemini CLI (отдельные спецификации).
 - CLI-интерфейс (отдельная спецификация).
 - Очистка устаревших agent-specific файлов при удалении skill-пакетов.
 - Автоматическое обновление `.gitignore`.
