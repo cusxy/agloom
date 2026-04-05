@@ -28,6 +28,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Validate docs linked list
+        run: npx tsx scripts/validate-docs-linked-list.ts
+
+      - name: Build Docusaurus site
+        run: cd website && pnpm run build:site
+
       - run: pnpm run build
 
       - run: pnpm run lint
