@@ -27,17 +27,7 @@ export function discover(projectRoot: string): CanonicalFile[] {
     });
   }
 
-  // Шаг 2: проверить наличие AGLOOM.local.md в projectRoot
-  const localAgents = path.join(projectRoot, "AGLOOM.local.md");
-  if (fs.existsSync(localAgents)) {
-    files.push({
-      relativePath: "AGLOOM.local.md",
-      type: "local",
-      content: readFileSafe(localAgents, "AGLOOM.local.md"),
-    });
-  }
-
-  // Шаг 3: рекурсивно найти все AGLOOM.md в подпапках
+  // Шаг 2: рекурсивно найти все AGLOOM.md в подпапках
   const subdirFiles = scanDirectory(
     projectRoot,
     projectRoot,
@@ -139,17 +129,6 @@ function scanDirectory(
         relativePath,
         type: "directory",
         content: readFileSafe(agentsFile, relativePath),
-      });
-    }
-
-    // Check for AGLOOM.local.md in this subdirectory
-    const agentsLocalFile = path.join(dirPath, "AGLOOM.local.md");
-    if (fs.existsSync(agentsLocalFile)) {
-      const relativePath = path.join(relativeDirPath, "AGLOOM.local.md");
-      files.push({
-        relativePath,
-        type: "directory-local",
-        content: readFileSafe(agentsLocalFile, relativePath),
       });
     }
 

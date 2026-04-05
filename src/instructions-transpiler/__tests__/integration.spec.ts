@@ -24,21 +24,15 @@ describe("InstructionsTranspiler", () => {
     });
 
     // --- IT-INSTR-01: Pipeline с Claude адаптером ---
-    it("транспилирует все четыре типа канонических файлов для Claude адаптера", () => {
-      // Вход: создать каноническую структуру
+    // § integration-tests.md § IT-INSTR-01: Pipeline с Claude адаптером
+    // Канонические файлы: root и directory (local и directory-local удалены из спецификации)
+    it("транспилирует root и directory канонические файлы для Claude адаптера", () => {
+      // Вход: создать каноническую структуру (только root и directory)
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "root instructions");
-      fs.writeFileSync(
-        path.join(tmpDir, "AGLOOM.local.md"),
-        "local instructions",
-      );
       fs.mkdirSync(path.join(tmpDir, "src", "module"), { recursive: true });
       fs.writeFileSync(
         path.join(tmpDir, "src", "module", "AGLOOM.md"),
         "directory instructions",
-      );
-      fs.writeFileSync(
-        path.join(tmpDir, "src", "module", "AGLOOM.local.md"),
-        "directory-local instructions",
       );
 
       // Поведение: шаги 1–3
@@ -59,45 +53,28 @@ describe("InstructionsTranspiler", () => {
       );
       expect(rootContent).toBe("root instructions");
 
-      // Шаги 7–8: CLAUDE.local.md в корне
-      const localContent = fs.readFileSync(
-        path.join(tmpDir, "CLAUDE.local.md"),
-        "utf-8",
-      );
-      expect(localContent).toBe("local instructions");
-
-      // Шаги 9–10: src/module/CLAUDE.md
+      // Шаги 7–8: src/module/CLAUDE.md
       const dirContent = fs.readFileSync(
         path.join(tmpDir, "src", "module", "CLAUDE.md"),
         "utf-8",
       );
       expect(dirContent).toBe("directory instructions");
 
-      // Шаги 11–12: src/module/CLAUDE.local.md
-      const dirLocalContent = fs.readFileSync(
-        path.join(tmpDir, "src", "module", "CLAUDE.local.md"),
-        "utf-8",
-      );
-      expect(dirLocalContent).toBe("directory-local instructions");
-
-      // Результат: writeResult.written содержит четыре пути
+      // Результат: writeResult.written содержит два пути
       expect(writeResult.written).toContain("CLAUDE.md");
-      expect(writeResult.written).toContain("CLAUDE.local.md");
       expect(writeResult.written).toContain("src/module/CLAUDE.md");
-      expect(writeResult.written).toContain("src/module/CLAUDE.local.md");
+      // CLAUDE.local.md НЕ ДОЛЖЕН генерироваться (удалён из спецификации)
+      expect(writeResult.written).not.toContain("CLAUDE.local.md");
+      expect(writeResult.written).not.toContain("src/module/CLAUDE.local.md");
     });
 
     // --- IT-INSTR-02: Pipeline с AgentsMd адаптером ---
-    // § instructions-transpiler.md § AGENTS.md адаптер: agentId "agentsmd",
-    // генерирует AGENTS.md из root и directory файлов.
-    // OpenCode адаптер — no-op (возвращает пустой массив).
-    it("AgentsMd адаптер генерирует AGENTS.md из канонического AGLOOM.md", () => {
-      // Вход: создать канонические файлы
+    // § integration-tests.md § IT-INSTR-02: Pipeline с OpenCode адаптером
+    // AgentsMd адаптер генерирует AGENTS.md из root файлов.
+    // AGLOOM.local.md удалён из входных данных.
+    it("AgentsMd адаптер генерирует AGENTS.md из канонического AGLOOM.md (без AGLOOM.local.md)", () => {
+      // Вход: создать канонические файлы (только AGLOOM.md, без AGLOOM.local.md)
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "root instructions");
-      fs.writeFileSync(
-        path.join(tmpDir, "AGLOOM.local.md"),
-        "local instructions",
-      );
 
       // Поведение: шаги 1–3
       const transpiler = createInstructionsTranspiler({
@@ -110,16 +87,15 @@ describe("InstructionsTranspiler", () => {
       // Шаг 4: writeResult.errors — пустой массив
       expect(writeResult.errors).toHaveLength(0);
 
-      // Шаг 5: AGENTS.md создан из AGLOOM.md
+      // Шаг 5–6: AGENTS.md создан из AGLOOM.md
       const agentsContent = fs.readFileSync(
         path.join(tmpDir, "AGENTS.md"),
         "utf-8",
       );
       expect(agentsContent).toBe("root instructions");
 
-      // CLAUDE.md и CLAUDE.local.md НЕ существуют
+      // CLAUDE.md НЕ существует
       expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(false);
-      expect(fs.existsSync(path.join(tmpDir, "CLAUDE.local.md"))).toBe(false);
 
       // Результат: writeResult.written содержит AGENTS.md
       expect(writeResult.written).toContain("AGENTS.md");

@@ -1,9 +1,9 @@
 ---
 summary: Instructions Transpiler — библиотека транспиляции AGLOOM.md в agent-specific файлы инструкций
 description: >
-  Библиотека для транспиляции канонических файлов AGLOOM.md и AGLOOM.local.md
-  в agent-specific файлы инструкций. Поддерживает root, directory,
-  local и directory-local канонические файлы. Выполняет трансформацию контента:
+  Библиотека для транспиляции канонических файлов AGLOOM.md
+  в agent-specific файлы инструкций. Поддерживает root и directory
+  канонические файлы. Выполняет трансформацию контента:
   парсинг YAML frontmatter, применение override-полей, фильтрацию agent-specific
   секций в body с валидацией допустимых agentId. Расширяется через адаптеры.
 type: spec
@@ -40,13 +40,10 @@ agent-specific файлы — производные артефакты, ген�
 
 ## Канонические файлы
 
-Библиотека оперирует четырьмя видами канонических файлов:
+Библиотека оперирует двумя видами канонических файлов:
 
 - `AGLOOM.md` в корне проекта — общие инструкции (git-tracked).
 - `AGLOOM.md` в подпапках проекта — directory-level инструкции (git-tracked).
-- `AGLOOM.local.md` в корне проекта — личные инструкции (всегда .gitignore).
-- `AGLOOM.local.md` в подпапках проекта — directory-level личные инструкции
-  (всегда .gitignore).
 
 ### Frontmatter и override
 
@@ -160,27 +157,22 @@ agent-specific секций.
 **Поведение:**
 
 1. Проверить наличие `AGLOOM.md` в `projectRoot`.
-2. Проверить наличие `AGLOOM.local.md` в `projectRoot`.
-3. Рекурсивно найти все файлы `AGLOOM.md` в подпапках `projectRoot`.
-4. Рекурсивно найти все файлы `AGLOOM.local.md` в подпапках `projectRoot`.
-5. Исключить из результатов поиска каталоги, перечисленные в `.gitignore`
+2. Рекурсивно найти все файлы `AGLOOM.md` в подпапках `projectRoot`.
+3. Исключить из результатов поиска каталоги, перечисленные в `.gitignore`
    (если файл `.gitignore` существует в `projectRoot`).
-6. Исключить из результатов поиска каталог `node_modules`.
-7. Исключить из результатов поиска скрытые каталоги (начинающиеся с `.`).
-8. Прочитать содержимое каждого обнаруженного файла.
-9. Сформировать массив `CanonicalFile`.
+4. Исключить из результатов поиска каталог `node_modules`.
+5. Исключить из результатов поиска скрытые каталоги (начинающиеся с `.`).
+6. Прочитать содержимое каждого обнаруженного файла.
+7. Сформировать массив `CanonicalFile`.
 
 **Расширения:**
 
-3a. Ошибка доступа к каталогу при рекурсивном сканировании (EACCES, ENOENT) →
+2a. Ошибка доступа к каталогу при рекурсивном сканировании (EACCES, ENOENT) →
 `DiscoverError("Failed to scan directory {path}: {причина}")`.
 
-4a. Ошибка доступа к каталогу при рекурсивном сканировании (EACCES, ENOENT) →
-`DiscoverError("Failed to scan directory {path}: {причина}")`.
+3a. Файл `.gitignore` отсутствует → пропустить фильтрацию по `.gitignore`.
 
-5a. Файл `.gitignore` отсутствует → пропустить фильтрацию по `.gitignore`.
-
-8a. Ошибка чтения файла (EACCES, файл удалён между обнаружением и чтением) →
+6a. Ошибка чтения файла (EACCES, файл удалён между обнаружением и чтением) →
 `DiscoverError("Failed to read {relativePath}: {причина}")`.
 
 **Результат:**
@@ -188,11 +180,9 @@ agent-specific секций.
 `CanonicalFile[]`.
 
 - `relativePath` (string) — путь файла относительно `projectRoot`.
-- `type` (string: "root" | "directory" | "local" | "directory-local") — тип файла.
+- `type` (string: "root" | "directory") — тип файла.
   - `"root"` — `AGLOOM.md` в корне проекта.
   - `"directory"` — `AGLOOM.md` в подпапке проекта.
-  - `"local"` — `AGLOOM.local.md` в корне проекта.
-  - `"directory-local"` — `AGLOOM.local.md` в подпапке проекта.
 - `content` (string) — содержимое файла (raw Markdown).
 
 ## Интерфейс адаптера
@@ -441,12 +431,10 @@ Shallow merge применяется при наличии `override[agentId]`:
 Для каждого канонического файла адаптер генерирует соответствующий
 agent-specific файл по следующим правилам:
 
-| Канонический файл            | Тип             | Генерируемый файл                  | Условие |
-| ---------------------------- | --------------- | ---------------------------------- | ------- |
-| `AGLOOM.md` (корень)         | root            | `CLAUDE.md` (корень)               | Всегда  |
-| `AGLOOM.md` (подпапка)       | directory       | `CLAUDE.md` (та же подпапка)       | Всегда  |
-| `AGLOOM.local.md` (корень)   | local           | `CLAUDE.local.md` (корень)         | Всегда  |
-| `AGLOOM.local.md` (подпапка) | directory-local | `CLAUDE.local.md` (та же подпапка) | Всегда  |
+| Канонический файл      | Тип       | Генерируемый файл            | Условие |
+| ---------------------- | --------- | ---------------------------- | ------- |
+| `AGLOOM.md` (корень)   | root      | `CLAUDE.md` (корень)         | Всегда  |
+| `AGLOOM.md` (подпапка) | directory | `CLAUDE.md` (та же подпапка) | Всегда  |
 
 ### transpile
 
@@ -458,17 +446,13 @@ agent-specific файл по следующим правилам:
 
 **Поведение:**
 
-1. Отфильтровать `files`, оставив файлы типов `"root"`, `"directory"`,
-   `"local"` и `"directory-local"`.
+1. Отфильтровать `files`, оставив файлы типов `"root"` и `"directory"`.
 2. Для каждого файла вызвать `transformContent(file.content, "claude", this.allowedAgentIds)`,
    где `this.allowedAgentIds` — значение, сохранённое из конструктора
    (см. «Интерфейс адаптера» и «Валидация допустимых agentId»
    § Формирование списка allowedAgentIds).
-3. Для файла типа `"root"` или `"directory"` — заменить `AGLOOM.md` на `CLAUDE.md`
-   в `relativePath`.
-4. Для файла типа `"local"` или `"directory-local"` — заменить `AGLOOM.local.md`
-   на `CLAUDE.local.md` в `relativePath`.
-5. Сформировать `OutputFile` с изменённым `relativePath` и результатом
+3. Заменить `AGLOOM.md` на `CLAUDE.md` в `relativePath`.
+4. Сформировать `OutputFile` с изменённым `relativePath` и результатом
    `transformContent` в качестве `content`.
 
 **Расширения:**
@@ -489,12 +473,10 @@ agent-specific файл по следующим правилам:
 Для каждого канонического файла адаптер генерирует соответствующий
 agent-specific файл по следующим правилам:
 
-| Канонический файл            | Тип             | Генерируемый файл            | Условие                                   |
-| ---------------------------- | --------------- | ---------------------------- | ----------------------------------------- |
-| `AGLOOM.md` (корень)         | root            | `AGENTS.md` (корень)         | Всегда                                    |
-| `AGLOOM.md` (подпапка)       | directory       | `AGENTS.md` (та же подпапка) | Всегда                                    |
-| `AGLOOM.local.md` (корень)   | local           | _(не генерируется)_          | AGENTS.md не поддерживает local           |
-| `AGLOOM.local.md` (подпапка) | directory-local | _(не генерируется)_          | AGENTS.md не поддерживает directory-local |
+| Канонический файл      | Тип       | Генерируемый файл            | Условие |
+| ---------------------- | --------- | ---------------------------- | ------- |
+| `AGLOOM.md` (корень)   | root      | `AGENTS.md` (корень)         | Всегда  |
+| `AGLOOM.md` (подпапка) | directory | `AGENTS.md` (та же подпапка) | Всегда  |
 
 ### transpile
 

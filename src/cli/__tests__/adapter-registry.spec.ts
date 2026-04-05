@@ -69,22 +69,22 @@ describe("CLI", () => {
   // Спецификация: docs/specs/adapter-registry-ext.md § Обновление реестра адаптеров
   describe("Расширение реестра адаптеров", () => {
     // --- Happy path: запись claude содержит новые поля targetRoot и targetFiles ---
-    // § Обновление реестра адаптеров, строка claude: targetRoot=".claude", targetFiles=["CLAUDE.md"]
-    it('запись "claude" содержит targetRoot ".claude" и targetFiles ["CLAUDE.md"]', () => {
+    // § Обновление реестра адаптеров, строка claude: targetRoot=".claude", targetFiles=["CLAUDE.md", ".mcp.json"]
+    it('запись "claude" содержит targetRoot ".claude" и targetFiles ["CLAUDE.md", ".mcp.json"]', () => {
       const claude = adapterRegistry.find((e) => e.id === "claude");
       expect(claude).toBeDefined();
       expect(claude!.targetRoot).toBe(".claude");
-      expect(claude!.targetFiles).toEqual(["CLAUDE.md"]);
+      expect(claude!.targetFiles).toEqual(["CLAUDE.md", ".mcp.json"]);
     });
 
     // --- Happy path: запись opencode содержит обновлённые поля ---
-    // § adapter-registry-ext.md § Запись opencode: targetFiles=[], instructionsFile=null
-    // § Обновление реестра адаптеров, строка opencode: targetFiles=[]
-    it('запись "opencode" содержит targetRoot ".opencode" и targetFiles [] (пустой массив)', () => {
+    // § adapter-registry-ext.md § Запись opencode: targetFiles=["opencode.json"]
+    // § Обновление реестра адаптеров, строка opencode: targetFiles=["opencode.json"]
+    it('запись "opencode" содержит targetRoot ".opencode" и targetFiles ["opencode.json"]', () => {
       const opencode = adapterRegistry.find((e) => e.id === "opencode");
       expect(opencode).toBeDefined();
       expect(opencode!.targetRoot).toBe(".opencode");
-      expect(opencode!.targetFiles).toEqual([]);
+      expect(opencode!.targetFiles).toEqual(["opencode.json"]);
     });
 
     // --- Happy path: запись claude содержит поле projectFiles ---
@@ -106,12 +106,15 @@ describe("CLI", () => {
 
     // --- Happy path: запись agentsmd содержит поля targetRoot, targetFiles, projectFiles ---
     // § Обновление реестра адаптеров, строка agentsmd:
-    //   targetRoot=".agents", targetFiles=["AGENTS.md"], projectFiles=["AGENTS.md", "AGENTS.override.md"]
-    it('запись "agentsmd" содержит targetRoot ".agents", targetFiles ["AGENTS.md"], projectFiles ["AGENTS.md", "AGENTS.override.md"]', () => {
+    //   targetRoot=".agents", targetFiles=["AGENTS.md", "AGENTS.override.md"], projectFiles=["AGENTS.md", "AGENTS.override.md"]
+    it('запись "agentsmd" содержит targetRoot ".agents", targetFiles ["AGENTS.md", "AGENTS.override.md"], projectFiles ["AGENTS.md", "AGENTS.override.md"]', () => {
       const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmd).toBeDefined();
       expect(agentsmd!.targetRoot).toBe(".agents");
-      expect(agentsmd!.targetFiles).toEqual(["AGENTS.md"]);
+      expect(agentsmd!.targetFiles).toEqual([
+        "AGENTS.md",
+        "AGENTS.override.md",
+      ]);
       expect(agentsmd!.projectFiles).toEqual([
         "AGENTS.md",
         "AGENTS.override.md",
@@ -165,6 +168,45 @@ describe("CLI", () => {
       const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmd).toBeDefined();
       expect(agentsmd!.dependsOn).toEqual([]);
+    });
+
+    // =====================================================================
+    // § adapter-registry-ext.md § Обновление реестра адаптеров — поле overlayImportPaths
+    // =====================================================================
+
+    // --- Happy path: запись claude содержит поле overlayImportPaths ---
+    // § Обновление реестра адаптеров, строка claude: overlayImportPaths=[".claude", "**/CLAUDE.md", ".mcp.json"]
+    it('запись "claude" содержит overlayImportPaths [".claude", "**/CLAUDE.md", ".mcp.json"]', () => {
+      const claude = adapterRegistry.find((e) => e.id === "claude");
+      expect(claude).toBeDefined();
+      expect(claude!.overlayImportPaths).toEqual([
+        ".claude",
+        "**/CLAUDE.md",
+        ".mcp.json",
+      ]);
+    });
+
+    // --- Happy path: запись opencode содержит поле overlayImportPaths ---
+    // § Обновление реестра адаптеров, строка opencode: overlayImportPaths=[".opencode", "opencode.json"]
+    it('запись "opencode" содержит overlayImportPaths [".opencode", "opencode.json"]', () => {
+      const opencode = adapterRegistry.find((e) => e.id === "opencode");
+      expect(opencode).toBeDefined();
+      expect(opencode!.overlayImportPaths).toEqual([
+        ".opencode",
+        "opencode.json",
+      ]);
+    });
+
+    // --- Happy path: запись agentsmd содержит поле overlayImportPaths ---
+    // § Обновление реестра адаптеров, строка agentsmd: overlayImportPaths=[".agents", "**/AGENTS.md", "**/AGENTS.override.md"]
+    it('запись "agentsmd" содержит overlayImportPaths [".agents", "**/AGENTS.md", "**/AGENTS.override.md"]', () => {
+      const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
+      expect(agentsmd).toBeDefined();
+      expect(agentsmd!.overlayImportPaths).toEqual([
+        ".agents",
+        "**/AGENTS.md",
+        "**/AGENTS.override.md",
+      ]);
     });
 
     // =====================================================================

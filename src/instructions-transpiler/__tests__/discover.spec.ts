@@ -30,9 +30,12 @@ describe("InstructionsTranspiler", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
-    // --- Happy path: шаги 1–9 ---
-    it("обнаруживает все четыре типа канонических файлов: root, local, directory, directory-local", () => {
-      // Arrange
+    // --- Happy path: шаги 1–7 ---
+    // § instructions-transpiler.md § Обнаружение канонических файлов:
+    // Канонические файлы сокращены до 2 видов: root и directory.
+    // AGLOOM.local.md НЕ ДОЛЖЕН обнаруживаться.
+    it("обнаруживает только два типа канонических файлов: root и directory (AGLOOM.local.md игнорируется)", () => {
+      // Arrange: создаём все варианты файлов, включая local
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "root content");
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.local.md"), "local content");
       const subDir = path.join(tmpDir, "src", "module");
@@ -51,34 +54,30 @@ describe("InstructionsTranspiler", () => {
       // Act
       const files = transpiler.discover();
 
-      // Assert
-      expect(files).toHaveLength(4);
+      // Assert: только root и directory, без local и directory-local
+      expect(files).toHaveLength(2);
 
       const root = files.find((f) => f.type === "root");
       expect(root).toBeDefined();
       expect(root!.relativePath).toBe("AGLOOM.md");
       expect(root!.content).toBe("root content");
 
-      const local = files.find((f) => f.type === "local");
-      expect(local).toBeDefined();
-      expect(local!.relativePath).toBe("AGLOOM.local.md");
-      expect(local!.content).toBe("local content");
-
       const dir = files.find((f) => f.type === "directory");
       expect(dir).toBeDefined();
       expect(dir!.relativePath).toBe(path.join("src", "module", "AGLOOM.md"));
       expect(dir!.content).toBe("directory content");
 
+      // local и directory-local НЕ обнаружены
+      const local = files.find((f) => f.type === "local");
+      expect(local).toBeUndefined();
       const dirLocal = files.find((f) => f.type === "directory-local");
-      expect(dirLocal).toBeDefined();
-      expect(dirLocal!.relativePath).toBe(
-        path.join("src", "module", "AGLOOM.local.md"),
-      );
-      expect(dirLocal!.content).toBe("directory-local content");
+      expect(dirLocal).toBeUndefined();
     });
 
-    // --- Трансформация: шаг 4 — обнаружение AGLOOM.local.md в подпапках ---
-    it('обнаруживает AGLOOM.local.md в подпапках с типом "directory-local"', () => {
+    // --- Граничное условие: AGLOOM.local.md в подпапке НЕ обнаруживается ---
+    // § instructions-transpiler.md § Обнаружение канонических файлов:
+    // Типы local и directory-local удалены. AGLOOM.local.md игнорируется.
+    it("НЕ обнаруживает AGLOOM.local.md в подпапках (тип directory-local удалён)", () => {
       const subDir = path.join(tmpDir, "src", "feature");
       fs.mkdirSync(subDir, { recursive: true });
       fs.writeFileSync(
@@ -93,13 +92,8 @@ describe("InstructionsTranspiler", () => {
 
       const files = transpiler.discover();
 
-      expect(files).toHaveLength(1);
-      const dirLocal = files[0];
-      expect(dirLocal.type).toBe("directory-local");
-      expect(dirLocal.relativePath).toBe(
-        path.join("src", "feature", "AGLOOM.local.md"),
-      );
-      expect(dirLocal.content).toBe("feature local content");
+      // AGLOOM.local.md НЕ ДОЛЖЕН быть обнаружен
+      expect(files).toHaveLength(0);
     });
 
     // --- Трансформация: шаг 6 — исключение node_modules ---

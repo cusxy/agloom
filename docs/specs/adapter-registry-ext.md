@@ -86,28 +86,36 @@ maps_to:
 `projectFiles`, `instructionsFile`, `dependsOn`, `overlayImportPaths`
 и `hidden` для каждой записи:
 
-| `id`         | `targetRoot`  | `targetFiles`   | `projectFiles`                        | `instructionsFile` | `dependsOn`    | `overlayImportPaths`                                   | `hidden` |
-| ------------ | ------------- | --------------- | ------------------------------------- | ------------------ | -------------- | ------------------------------------------------------ | -------- |
-| `"claude"`   | `".claude"`   | `["CLAUDE.md"]` | `["CLAUDE.md"]`                       | `"CLAUDE.md"`      | `[]`           | `[".claude", "**/CLAUDE.md"]`                          | `false`  |
-| `"opencode"` | `".opencode"` | `[]`            | `[]`                                  | `null`             | `["agentsmd"]` | `[".opencode"]`                                        | `false`  |
-| `"agentsmd"` | `".agents"`   | `["AGENTS.md"]` | `["AGENTS.md", "AGENTS.override.md"]` | `"AGENTS.md"`      | `[]`           | `[".agents", "**/AGENTS.md", "**/AGENTS.override.md"]` | `true`   |
+| `id`         | `targetRoot`  | `targetFiles`                         | `projectFiles`                        | `instructionsFile` | `dependsOn`    | `overlayImportPaths`                                   | `hidden` |
+| ------------ | ------------- | ------------------------------------- | ------------------------------------- | ------------------ | -------------- | ------------------------------------------------------ | -------- |
+| `"claude"`   | `".claude"`   | `["CLAUDE.md", ".mcp.json"]`          | `["CLAUDE.md"]`                       | `"CLAUDE.md"`      | `[]`           | `[".claude", "**/CLAUDE.md", ".mcp.json"]`             | `false`  |
+| `"opencode"` | `".opencode"` | `["opencode.json"]`                   | `[]`                                  | `null`             | `["agentsmd"]` | `[".opencode", "opencode.json"]`                       | `false`  |
+| `"agentsmd"` | `".agents"`   | `["AGENTS.md", "AGENTS.override.md"]` | `["AGENTS.md", "AGENTS.override.md"]` | `"AGENTS.md"`      | `[]`           | `[".agents", "**/AGENTS.md", "**/AGENTS.override.md"]` | `true`   |
 
 ### Запись agentsmd
 
 Запись `"agentsmd"` представляет формат файлов `AGENTS.md`, используемый
-несколькими агентами (OpenCode, Gemini CLI и др.). Запись `"opencode"`
-НЕ ДОЛЖНА дублировать файлы, принадлежащие `"agentsmd"`: поле `targetFiles`
-записи `"opencode"` ДОЛЖНО быть пустым массивом, а генерация `AGENTS.md`
-ДОЛЖНА выполняться через адаптер `"agentsmd"`.
+несколькими агентами (OpenCode, Gemini CLI и др.). Поле `targetFiles`
+ДОЛЖНО содержать `["AGENTS.md", "AGENTS.override.md"]`, поскольку оба файла
+генерируются за пределами `targetRoot`. Файл `AGENTS.override.md` генерируется
+из канонического `AGLOOM.override.md`. Запись `"opencode"` НЕ ДОЛЖНА
+дублировать файлы, принадлежащие `"agentsmd"`: генерация `AGENTS.md`
+и `AGENTS.override.md` ДОЛЖНА выполняться через адаптер `"agentsmd"`.
 
 ### Запись opencode
 
 Запись `"opencode"` описывает агент OpenCode. Поле `targetFiles` ДОЛЖНО
-быть пустым массивом, поскольку файл `AGENTS.md` принадлежит записи
-`"agentsmd"`. Поле `projectFiles` ДОЛЖНО быть пустым массивом, поскольку
-OpenCode не имеет уникальных файлов в project tree. Поле `instructionsFile`
-ДОЛЖНО быть `null`, поскольку OpenCode не имеет собственного формата
-файла инструкций.
+содержать `["opencode.json"]`, поскольку файл `opencode.json` генерируется
+MCP-транспилером (см. `docs/specs/mcp-transpiler.md`) и permissions-транспилером
+(см. `docs/specs/permissions-transpiler.md`) за пределами `targetRoot`.
+Файл `opencode.json` является merge-eligible: несколько транспилеров
+генерируют отдельные секции (`mcp`, `permission`), которые объединяются
+при записи в единый файл. Поле `overlayImportPaths` ДОЛЖНО содержать
+`[".opencode", "opencode.json"]`, чтобы файл `opencode.json` включался
+в overlay при выполнении `init`. Поле `projectFiles` ДОЛЖНО быть пустым
+массивом, поскольку OpenCode не имеет уникальных файлов в project tree.
+Поле `instructionsFile` ДОЛЖНО быть `null`, поскольку OpenCode не имеет
+собственного формата файла инструкций.
 
 ## Процедура Resolve Adapter
 

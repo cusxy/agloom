@@ -84,16 +84,14 @@ Error paths (ошибки доступа, невалидная конфигур�
 
 ### IT-INSTR-01: Pipeline с Claude адаптером
 
-Проверяет, что канонические файлы всех четырёх типов корректно
+Проверяет, что канонические файлы обоих типов (root и directory) корректно
 транспилируются и записываются для Claude.
 
 **Вход:**
 
 - `tmpDir` содержит:
   - `AGLOOM.md` с содержимым `"root instructions"`.
-  - `AGLOOM.local.md` с содержимым `"local instructions"`.
   - `src/module/AGLOOM.md` с содержимым `"directory instructions"`.
-  - `src/module/AGLOOM.local.md` с содержимым `"directory-local instructions"`.
 - Адаптеры: `[ClaudeAdapter]`.
 
 **Поведение:**
@@ -104,12 +102,8 @@ Error paths (ошибки доступа, невалидная конфигур�
 4. Проверить, что `writeResult.errors` — пустой массив.
 5. Прочитать файл `CLAUDE.md` из `tmpDir`.
 6. Проверить, что содержимое файла `CLAUDE.md` равно `"root instructions"`.
-7. Прочитать файл `CLAUDE.local.md` из `tmpDir`.
-8. Проверить, что содержимое файла `CLAUDE.local.md` равно `"local instructions"`.
-9. Прочитать файл `src/module/CLAUDE.md` из `tmpDir`.
-10. Проверить, что содержимое файла `src/module/CLAUDE.md` равно `"directory instructions"`.
-11. Прочитать файл `src/module/CLAUDE.local.md` из `tmpDir`.
-12. Проверить, что содержимое файла `src/module/CLAUDE.local.md` равно `"directory-local instructions"`.
+7. Прочитать файл `src/module/CLAUDE.md` из `tmpDir`.
+8. Проверить, что содержимое файла `src/module/CLAUDE.md` равно `"directory instructions"`.
 
 **Расширения:**
 
@@ -117,9 +111,8 @@ Error paths (ошибки доступа, невалидная конфигур�
 
 **Результат:**
 
-`writeResult.written` содержит четыре пути: `"CLAUDE.md"`,
-`"CLAUDE.local.md"`, `"src/module/CLAUDE.md"`,
-`"src/module/CLAUDE.local.md"`.
+`writeResult.written` содержит два пути: `"CLAUDE.md"`
+и `"src/module/CLAUDE.md"`.
 
 ### IT-INSTR-02: Pipeline с OpenCode адаптером
 
@@ -130,7 +123,6 @@ Error paths (ошибки доступа, невалидная конфигур�
 
 - `tmpDir` содержит:
   - `AGLOOM.md` с содержимым `"root instructions"`.
-  - `AGLOOM.local.md` с содержимым `"local instructions"`.
 - Адаптеры: `[OpenCodeAdapter]`.
 
 **Поведение:**
@@ -142,7 +134,6 @@ Error paths (ошибки доступа, невалидная конфигур�
 5. Прочитать файл `AGENTS.md` из `tmpDir`.
 6. Проверить, что содержимое файла `AGENTS.md` равно `"root instructions"`.
 7. Проверить, что файл `CLAUDE.md` НЕ существует в `tmpDir`.
-8. Проверить, что файл `CLAUDE.local.md` НЕ существует в `tmpDir`.
 
 **Расширения:**
 
@@ -151,7 +142,7 @@ Error paths (ошибки доступа, невалидная конфигур�
 **Результат:**
 
 `writeResult.written` содержит `"AGENTS.md"`;
-local и directory-level файлы не создаются (OpenCode их не поддерживает).
+directory-level файлы не создаются (OpenCode их не поддерживает).
 
 ### IT-INSTR-03: Pipeline с обоими адаптерами одновременно
 
@@ -192,8 +183,7 @@ local и directory-level файлы не создаются (OpenCode их не 
 
 **Вход:**
 
-- `tmpDir` — пустая директория (без файлов `AGLOOM.md`
-  и `AGLOOM.local.md`).
+- `tmpDir` — пустая директория (без файлов `AGLOOM.md`).
 - Адаптеры: `[ClaudeAdapter]`.
 
 **Поведение:**

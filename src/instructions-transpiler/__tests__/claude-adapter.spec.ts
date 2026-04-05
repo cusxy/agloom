@@ -45,21 +45,24 @@ describe("ClaudeAdapter", () => {
       expect(files[0].content).toBe("Module instructions.");
     });
 
-    // --- Трансформация: шаг 3 — замена AGLOOM.local.md → CLAUDE.local.md для local ---
-    it('генерирует CLAUDE.local.md из AGLOOM.local.md в корне (тип "local")', () => {
+    // --- Граничное условие: тип "local" НЕ ДОЛЖЕН обрабатываться ---
+    // § instructions-transpiler.md § Claude Code адаптер:
+    // Типы local и directory-local удалены из спецификации.
+    // Адаптер ДОЛЖЕН фильтровать только root и directory.
+    it('НЕ генерирует файлы для типа "local" (тип удалён из спецификации)', () => {
       const adapter = new ClaudeAdapter();
 
       const files = adapter.transpile([
         makeCanonicalFile("AGLOOM.local.md", "local", "Personal settings."),
       ]);
 
-      expect(files).toHaveLength(1);
-      expect(files[0].relativePath).toBe("CLAUDE.local.md");
-      expect(files[0].content).toBe("Personal settings.");
+      expect(files).toHaveLength(0);
     });
 
-    // --- Трансформация: шаг 3 — замена AGLOOM.local.md → CLAUDE.local.md для directory-local ---
-    it('генерирует CLAUDE.local.md в подпапке из AGLOOM.local.md в подпапке (тип "directory-local")', () => {
+    // --- Граничное условие: тип "directory-local" НЕ ДОЛЖЕН обрабатываться ---
+    // § instructions-transpiler.md § Claude Code адаптер:
+    // Типы local и directory-local удалены из спецификации.
+    it('НЕ генерирует файлы для типа "directory-local" (тип удалён из спецификации)', () => {
       const adapter = new ClaudeAdapter();
 
       const files = adapter.transpile([
@@ -70,13 +73,13 @@ describe("ClaudeAdapter", () => {
         ),
       ]);
 
-      expect(files).toHaveLength(1);
-      expect(files[0].relativePath).toBe("src/feature/CLAUDE.local.md");
-      expect(files[0].content).toBe("Feature local settings.");
+      expect(files).toHaveLength(0);
     });
 
-    // --- Happy path: обработка всех четырёх типов файлов одновременно ---
-    it("обрабатывает root, directory, local и directory-local файлы в одном вызове", () => {
+    // --- Happy path: обработка root и directory файлов одновременно ---
+    // § instructions-transpiler.md § Claude Code адаптер:
+    // Шаг 1: отфильтровать файлы типов root и directory.
+    it("обрабатывает root и directory файлы, игнорируя local и directory-local", () => {
       const adapter = new ClaudeAdapter();
 
       const files = adapter.transpile([
@@ -90,12 +93,13 @@ describe("ClaudeAdapter", () => {
         ),
       ]);
 
-      expect(files).toHaveLength(4);
+      // Только root и directory обработаны, local и directory-local игнорированы
+      expect(files).toHaveLength(2);
       const paths = files.map((f) => f.relativePath);
       expect(paths).toContain("CLAUDE.md");
       expect(paths).toContain("src/CLAUDE.md");
-      expect(paths).toContain("CLAUDE.local.md");
-      expect(paths).toContain("src/CLAUDE.local.md");
+      expect(paths).not.toContain("CLAUDE.local.md");
+      expect(paths).not.toContain("src/CLAUDE.local.md");
     });
 
     // --- Трансформация: шаг 4 — контент берётся из file.content напрямую ---

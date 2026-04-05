@@ -331,16 +331,17 @@ describe("CLI", () => {
 
     // =====================================================================
     // § adapter-registry-ext.md § Обновление реестра адаптеров
-    // claude.overlayImportPaths = [".claude", "**/CLAUDE.md"]
+    // claude.overlayImportPaths = [".claude", "**/CLAUDE.md", ".mcp.json"]
     // =====================================================================
 
-    it("запись claude в реестре содержит glob-паттерн **/CLAUDE.md в overlayImportPaths", async () => {
+    it("запись claude в реестре содержит glob-паттерн **/CLAUDE.md и .mcp.json в overlayImportPaths", async () => {
       const { adapterRegistry } = await import("../adapter-registry.js");
       const claudeEntry = adapterRegistry.find((e) => e.id === "claude");
       expect(claudeEntry).toBeDefined();
       expect(claudeEntry!.overlayImportPaths).toEqual([
         ".claude",
         "**/CLAUDE.md",
+        ".mcp.json",
       ]);
     });
 
