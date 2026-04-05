@@ -25,6 +25,10 @@ The `.agloom/` directory is the single source of truth for your project's AI age
 │       └── helpers.ts
 ├── agents/                 # Sub-agent definitions
 │   └── reviewer.md
+├── commands/               # Slash-command definitions
+│   ├── deploy.md
+│   └── git/
+│       └── commit.md
 ├── docs/                   # Documentation files for agents
 ├── schemas/                # JSON/OpenAPI schemas for agents
 ├── mcp.yml                 # MCP server configuration
@@ -44,6 +48,8 @@ The `.agloom/` directory is the single source of truth for your project's AI age
 
 **`agents/`** -- sub-agent definitions. Each agent is a single `.md` file with YAML frontmatter describing the agent's role, model, and tools.
 
+**`commands/`** -- slash-command definitions. Each command is a single `.md` file with YAML frontmatter and a Markdown body. Commands may be organized into subdirectories (e.g., `commands/git/commit.md`). During transpilation, commands are transformed and written to each adapter's commands directory. See [Skills and Agents](skills-and-agents.md) for details on creating commands.
+
 **`docs/`** -- documentation files that agents can reference. Copied to each adapter's docs directory.
 
 **`schemas/`** -- JSON or OpenAPI schema files. Copied to each adapter's schemas directory.
@@ -58,14 +64,14 @@ The `.agloom/` directory is the single source of truth for your project's AI age
 
 Each adapter generates different output files. Here is what you get:
 
-| Adapter    | Generated files                                          |
-| ---------- | -------------------------------------------------------- |
-| `claude`   | `CLAUDE.md`, `.claude/skills/`, `.claude/agents/`, `.claude/docs/`, `.claude/schemas/`, `.mcp.json` |
-| `opencode` | `opencode.json`, `.opencode/skills/`, `.opencode/agents/`, `.opencode/docs/`, `.opencode/schemas/` |
-| `agentsmd` | `AGENTS.md` (generated automatically as a dependency)    |
-| `kilocode` | `.kilo/skills/`, `.kilo/agents/`, `.kilo/docs/`, `.kilo/schemas/` |
-| `codex`    | `.agents/skills/`, `.codex/agents/`                      |
-| `gemini`   | `GEMINI.md`, `.gemini/skills/`, `.gemini/agents/`, `.gemini/docs/`, `.gemini/schemas/` |
+| Adapter    | Generated files                                                                                                           |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `claude`   | `CLAUDE.md`, `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, `.claude/docs/`, `.claude/schemas/`, `.mcp.json`  |
+| `opencode` | `opencode.json`, `.opencode/skills/`, `.opencode/agents/`, `.opencode/commands/`, `.opencode/docs/`, `.opencode/schemas/` |
+| `agentsmd` | `AGENTS.md` (generated automatically as a dependency)                                                                     |
+| `kilocode` | `.kilo/skills/`, `.kilo/agents/`, `.kilo/commands/`, `.kilo/docs/`, `.kilo/schemas/`                                      |
+| `codex`    | `.agents/skills/`, `.codex/agents/`                                                                                       |
+| `gemini`   | `GEMINI.md`, `.gemini/skills/`, `.gemini/agents/`, `.gemini/commands/`, `.gemini/docs/`, `.gemini/schemas/`               |
 
 Note that `agentsmd` is a hidden adapter -- you do not configure it directly. It is included automatically when you use `opencode`, `kilocode`, or `codex` (which depend on it for `AGENTS.md` generation).
 

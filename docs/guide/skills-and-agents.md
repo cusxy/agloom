@@ -111,20 +111,116 @@ Step 2: Run `agloom transpile`. The agent file appears in each adapter's directo
 
 Each output file has adapter-specific frontmatter applied.
 
+## What Are Commands
+
+Commands are slash-command definitions stored in `.agloom/commands/`. Each command is a single `.md` file with YAML frontmatter and a Markdown body. Unlike skills (which are directories), a command is a single file.
+
+Commands may be organized into subdirectories. For example, you can group git-related commands under `commands/git/`.
+
+## Creating a Command
+
+Step 1: Create a command file at `.agloom/commands/deploy.md`:
+
+```markdown
+---
+description: Deploy to production
+---
+
+Deploy the current branch to production environment.
+Verify all tests pass before deploying.
+```
+
+The frontmatter fields are passed through to each adapter. Agloom does not validate or interpret command-specific fields like `description` -- the target agent defines what fields are meaningful.
+
+Step 2: Run `agloom transpile`. The command appears in each adapter's commands directory:
+
+```
+.claude/commands/deploy.md
+.opencode/commands/deploy.md
+.kilo/commands/deploy.md
+.gemini/commands/deploy.toml
+```
+
+Note that Gemini receives a `.toml` file (converted automatically) and Codex receives a skill package in `.agents/skills/deploy/SKILL.md` (since Codex does not support commands natively).
+
+### Commands in Subdirectories
+
+You can organize commands into subdirectories:
+
+```
+.agloom/commands/
+├── deploy.md
+└── git/
+    ├── commit.md
+    └── push.md
+```
+
+Some adapters **preserve** the subdirectory structure (Claude, Gemini), while others **flatten** it (OpenCode, KiloCode, Codex):
+
+- Preserve: `.agloom/commands/git/commit.md` becomes `.claude/commands/git/commit.md`
+- Flatten: `.agloom/commands/git/commit.md` becomes `.opencode/commands/commit.md`
+
+When flattening, if two commands from different subdirectories have the same filename, transpilation fails with a name conflict error.
+
+### Frontmatter Override
+
+Like agents, commands support per-adapter frontmatter overrides:
+
+```markdown
+---
+description: Deploy to production
+override:
+  gemini:
+    description: Deploy the app to production
+  claude:
+    argument-hint: "[environment]"
+---
+
+Deploy the current branch.
+```
+
+The `override` block merges adapter-specific fields into the frontmatter for each target. The `override` key itself is removed from the output. See [reference/transpilers](../reference/transpilers.md) for details on the commands transpiler.
+
+### Agent-Specific Sections
+
+The body may contain agent-specific sections, just like agent definitions:
+
+```markdown
+---
+description: Deploy to production
+---
+
+Deploy the current branch to production.
+
+<!-- agent:claude -->
+
+Use the Bash tool to run deployment scripts.
+
+<!-- /agent:claude -->
+
+<!-- agent:gemini -->
+
+Use !{deploy.sh} to deploy.
+
+<!-- /agent:gemini -->
+```
+
+Content outside sections appears in all outputs. Matching sections are unwrapped; non-matching sections are removed.
+
 ## Adapter Support
 
-Not all adapters support skills and agents:
+Not all adapters support skills, agents, and commands:
 
-| Adapter    | Skills | Agents |
-| ---------- | ------ | ------ |
-| `claude`   | Yes    | Yes    |
-| `opencode` | Yes    | Yes    |
-| `kilocode` | Yes    | Yes    |
-| `codex`    | Yes    | Yes    |
-| `gemini`   | Yes    | Yes    |
-| `agentsmd` | No     | No     |
+| Adapter    | Skills | Agents | Commands        |
+| ---------- | ------ | ------ | --------------- |
+| `claude`   | Yes    | Yes    | Yes             |
+| `opencode` | Yes    | Yes    | Yes             |
+| `kilocode` | Yes    | Yes    | Yes             |
+| `codex`    | Yes    | Yes    | Yes (as skills) |
+| `gemini`   | Yes    | Yes    | Yes (TOML)      |
+| `agentsmd` | No     | No     | No              |
 
-The `agentsmd` adapter only handles instruction files (`AGENTS.md`). It does not have its own skills or agents directories.
+The `agentsmd` adapter only handles instruction files (`AGENTS.md`). It does not have its own skills, agents, or commands directories. The `codex` adapter converts commands into skill packages (`.agents/skills/<name>/SKILL.md`) since Codex does not support commands natively. The `gemini` adapter converts commands from Markdown to TOML format.
 
 ## Example
 

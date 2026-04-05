@@ -12,14 +12,14 @@ Adapters define how Agloom transpiles canonical configurations into agent-specif
 
 ## Adapter Table
 
-| ID | Description | Output Files | Hidden |
-|----|-------------|--------------|--------|
-| `claude` | Claude Code | `CLAUDE.md`, `.mcp.json` | No |
-| `opencode` | OpenCode | `opencode.json` | No |
-| `agentsmd` | AGENTS.md (Codex, OpenCode, KiloCode, ...) | `AGENTS.md`, `AGENTS.override.md` | Yes |
-| `kilocode` | KiloCode | _(none)_ | No |
-| `codex` | Codex (OpenAI) | _(none)_ | No |
-| `gemini` | Gemini (Google) | `GEMINI.md` | No |
+| ID         | Description                                | Output Files                      | Hidden |
+| ---------- | ------------------------------------------ | --------------------------------- | ------ |
+| `claude`   | Claude Code                                | `CLAUDE.md`, `.mcp.json`          | No     |
+| `opencode` | OpenCode                                   | `opencode.json`                   | No     |
+| `agentsmd` | AGENTS.md (Codex, OpenCode, KiloCode, ...) | `AGENTS.md`, `AGENTS.override.md` | Yes    |
+| `kilocode` | KiloCode                                   | _(none)_                          | No     |
+| `codex`    | Codex (OpenAI)                             | _(none)_                          | No     |
+| `gemini`   | Gemini (Google)                            | `GEMINI.md`                       | No     |
 
 ## Per-Adapter Details
 
@@ -29,12 +29,13 @@ Adapters define how Agloom transpiles canonical configurations into agent-specif
 - **Dependencies:** None
 - **Output paths:**
 
-| Type | Path |
-|------|------|
-| Skills | `.claude/skills` |
-| Agents | `.claude/agents` |
-| Docs | `.claude/docs` |
-| Schemas | `.claude/schemas` |
+| Type     | Path               |
+| -------- | ------------------ |
+| Skills   | `.claude/skills`   |
+| Agents   | `.claude/agents`   |
+| Commands | `.claude/commands` |
+| Docs     | `.claude/docs`     |
+| Schemas  | `.claude/schemas`  |
 
 - **Target files:** `CLAUDE.md`, `.mcp.json`
 - **Overlay import paths:** `.claude`, `**/CLAUDE.md`, `.mcp.json`
@@ -45,12 +46,13 @@ Adapters define how Agloom transpiles canonical configurations into agent-specif
 - **Dependencies:** `agentsmd`
 - **Output paths:**
 
-| Type | Path |
-|------|------|
-| Skills | `.opencode/skills` |
-| Agents | `.opencode/agents` |
-| Docs | `.opencode/docs` |
-| Schemas | `.opencode/schemas` |
+| Type     | Path                 |
+| -------- | -------------------- |
+| Skills   | `.opencode/skills`   |
+| Agents   | `.opencode/agents`   |
+| Commands | `.opencode/commands` |
+| Docs     | `.opencode/docs`     |
+| Schemas  | `.opencode/schemas`  |
 
 - **Target files:** `opencode.json`
 - **Overlay import paths:** `.opencode`, `opencode.json`
@@ -74,12 +76,13 @@ The `agentsmd` adapter produces the `AGENTS.md` format used by multiple AI codin
 - **Dependencies:** `agentsmd`
 - **Output paths:**
 
-| Type | Path |
-|------|------|
-| Skills | `.kilo/skills` |
-| Agents | `.kilo/agents` |
-| Docs | `.kilo/docs` |
-| Schemas | `.kilo/schemas` |
+| Type     | Path             |
+| -------- | ---------------- |
+| Skills   | `.kilo/skills`   |
+| Agents   | `.kilo/agents`   |
+| Commands | `.kilo/commands` |
+| Docs     | `.kilo/docs`     |
+| Schemas  | `.kilo/schemas`  |
 
 - **Target files:** _(none)_
 - **Overlay import paths:** `.kilo`
@@ -90,10 +93,10 @@ The `agentsmd` adapter produces the `AGENTS.md` format used by multiple AI codin
 - **Dependencies:** `agentsmd`
 - **Output paths:**
 
-| Type | Path |
-|------|------|
+| Type   | Path             |
+| ------ | ---------------- |
 | Skills | `.agents/skills` |
-| Agents | `.codex/agents` |
+| Agents | `.codex/agents`  |
 
 Note: Codex places skills in `.agents/skills/` (not `.codex/skills/`).
 
@@ -106,45 +109,49 @@ Note: Codex places skills in `.agents/skills/` (not `.codex/skills/`).
 - **Dependencies:** None
 - **Output paths:**
 
-| Type | Path |
-|------|------|
-| Skills | `.gemini/skills` |
-| Agents | `.gemini/agents` |
-| Docs | `.gemini/docs` |
-| Schemas | `.gemini/schemas` |
+| Type     | Path               |
+| -------- | ------------------ |
+| Skills   | `.gemini/skills`   |
+| Agents   | `.gemini/agents`   |
+| Commands | `.gemini/commands` |
+| Docs     | `.gemini/docs`     |
+| Schemas  | `.gemini/schemas`  |
 
 - **Target files:** `GEMINI.md`
 - **Overlay import paths:** `.gemini`, `**/GEMINI.md`
 
 ## Capability Matrix
 
-| Feature | claude | opencode | agentsmd | kilocode | codex | gemini |
-|---------|--------|----------|----------|----------|-------|--------|
-| Instructions | Yes | No-op | Yes | No-op | No-op | Yes |
-| Skills | Yes | Yes | No | Yes | Yes | Yes |
-| Agents | Yes | Yes | No | Yes | Yes | Yes |
-| Docs | Yes | Yes | No | Yes | Yes | Yes |
-| Schemas | Yes | Yes | No | Yes | Yes | Yes |
-| MCP | Yes | Yes | No | No | No | No |
-| Permissions | Yes | Yes | No | No | No | No |
-| Overlays | Yes | Yes | Yes | Yes | Yes | Yes |
+| Feature      | claude | opencode | agentsmd | kilocode | codex           | gemini     |
+| ------------ | ------ | -------- | -------- | -------- | --------------- | ---------- |
+| Instructions | Yes    | No-op    | Yes      | No-op    | No-op           | Yes        |
+| Commands     | Yes    | Yes      | No       | Yes      | Yes (as skills) | Yes (TOML) |
+| Skills       | Yes    | Yes      | No       | Yes      | Yes             | Yes        |
+| Agents       | Yes    | Yes      | No       | Yes      | Yes             | Yes        |
+| Docs         | Yes    | Yes      | No       | Yes      | Yes             | Yes        |
+| Schemas      | Yes    | Yes      | No       | Yes      | Yes             | Yes        |
+| MCP          | Yes    | Yes      | No       | No       | No              | No         |
+| Permissions  | Yes    | Yes      | No       | No       | No              | No         |
+| Overlays     | Yes    | Yes      | Yes      | Yes      | Yes             | Yes        |
 
 Adapters marked "No-op" for Instructions return an empty array -- their instruction files are generated by a dependency adapter (typically `agentsmd`).
 
 Adapters marked "No" for Skills/Agents have an empty `paths` object and do not produce skill or agent directories.
 
+For Commands: Codex converts commands into skill packages at `.agents/skills/`. Gemini converts commands from Markdown to TOML format. See [Transpilers](transpilers.md) for full details on the commands transpiler.
+
 ## Dependencies
 
 Dependencies are resolved automatically. When you specify an adapter (via config or `--adapter`), its dependencies are included before it in topological order.
 
-| Adapter | Depends On |
-|---------|-----------|
-| `claude` | _(none)_ |
+| Adapter    | Depends On |
+| ---------- | ---------- |
+| `claude`   | _(none)_   |
 | `opencode` | `agentsmd` |
-| `agentsmd` | _(none)_ |
+| `agentsmd` | _(none)_   |
 | `kilocode` | `agentsmd` |
-| `codex` | `agentsmd` |
-| `gemini` | _(none)_ |
+| `codex`    | `agentsmd` |
+| `gemini`   | _(none)_   |
 
 **Example:** Specifying `opencode` in config results in the transpilation order: `agentsmd` then `opencode`.
 
