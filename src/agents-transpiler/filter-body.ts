@@ -44,16 +44,12 @@ export function filterBody(body: string, agentId: string): string {
 
       // Расширение 2a: невалидный agent-id
       if (!VALID_ID_RE.test(id)) {
-        throw new AgentTransformError(
-          `Invalid agent-id '${id}' in tag at line ${lineNum}`,
-        );
+        throw new AgentTransformError(`Invalid agent-id '${id}' in tag at line ${lineNum}`);
       }
 
       // Расширение 4a: вложенная секция
       if (currentSection !== null) {
-        throw new AgentTransformError(
-          `Nested agent section detected: agent:${id} inside agent:${currentSection.id}`,
-        );
+        throw new AgentTransformError(`Nested agent section detected: agent:${id} inside agent:${currentSection.id}`);
       }
 
       currentSection = { id };
@@ -65,9 +61,7 @@ export function filterBody(body: string, agentId: string): string {
 
       // Расширение 2a: невалидный agent-id
       if (!VALID_ID_RE.test(id)) {
-        throw new AgentTransformError(
-          `Invalid agent-id '${id}' in tag at line ${lineNum}`,
-        );
+        throw new AgentTransformError(`Invalid agent-id '${id}' in tag at line ${lineNum}`);
       }
 
       // Расширение 3b: тег закрытия без открытия
@@ -77,9 +71,7 @@ export function filterBody(body: string, agentId: string): string {
 
       // Расширение 3c: несовпадение идентификаторов
       if (currentSection.id !== id) {
-        throw new AgentTransformError(
-          `Mismatched closing tag: expected agent:${currentSection.id}, got agent:${id}`,
-        );
+        throw new AgentTransformError(`Mismatched closing tag: expected agent:${currentSection.id}, got agent:${id}`);
       }
 
       currentSection = null;
@@ -101,9 +93,7 @@ export function filterBody(body: string, agentId: string): string {
 
   // Расширение 3a: тег открытия без соответствующего закрытия
   if (currentSection !== null) {
-    throw new AgentTransformError(
-      `Unmatched opening tag for agent:${currentSection.id}`,
-    );
+    throw new AgentTransformError(`Unmatched opening tag for agent:${currentSection.id}`);
   }
 
   // Шаг 8: собрать результирующие строки

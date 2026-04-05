@@ -13,10 +13,7 @@ import type { SkillPackage } from "./types.js";
  * @param projectRoot - абсолютный путь к корню проекта.
  * @param agloomDir - относительный путь к agloom-директории (default: ".agloom").
  */
-export function discover(
-  projectRoot: string,
-  agloomDir: string = ".agloom",
-): SkillPackage[] {
+export function discover(projectRoot: string, agloomDir: string = ".agloom"): SkillPackage[] {
   const skillsDir = path.join(projectRoot, agloomDir, "skills");
 
   // Шаг 1: проверить наличие каталога .agloom/skills/
@@ -31,9 +28,7 @@ export function discover(
     entries = fs.readdirSync(skillsDir, { withFileTypes: true });
   } catch (err) {
     // Расширение 2a: ошибка доступа к каталогу .agloom/skills/
-    throw new SkillDiscoverError(
-      `Failed to scan directory .agloom/skills/: ${(err as Error).message}`,
-    );
+    throw new SkillDiscoverError(`Failed to scan directory .agloom/skills/: ${(err as Error).message}`);
   }
 
   const packages: SkillPackage[] = [];
@@ -70,20 +65,14 @@ export function discover(
 /**
  * Рекурсивно собирает все файлы в директории.
  */
-function collectFiles(
-  absoluteDir: string,
-  relativeDir: string,
-  projectRoot: string,
-): string[] {
+function collectFiles(absoluteDir: string, relativeDir: string, projectRoot: string): string[] {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(absoluteDir, { withFileTypes: true });
   } catch (err) {
     // Расширение 4a: ошибка доступа при рекурсивном сканировании
     const relativeDirPath = path.relative(projectRoot, absoluteDir);
-    throw new SkillDiscoverError(
-      `Failed to scan skill directory ${relativeDirPath}: ${(err as Error).message}`,
-    );
+    throw new SkillDiscoverError(`Failed to scan skill directory ${relativeDirPath}: ${(err as Error).message}`);
   }
 
   const files: string[] = [];
@@ -94,11 +83,7 @@ function collectFiles(
     if (entry.isFile()) {
       files.push(entryRelative);
     } else if (entry.isDirectory()) {
-      const subFiles = collectFiles(
-        path.join(absoluteDir, entry.name),
-        entryRelative,
-        projectRoot,
-      );
+      const subFiles = collectFiles(path.join(absoluteDir, entry.name), entryRelative, projectRoot);
       files.push(...subFiles);
     }
   }

@@ -7,12 +7,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { discover } from "./discover.js";
 import { WriteError } from "./errors.js";
-import type {
-  Adapter,
-  CanonicalFile,
-  TranspileResult,
-  WriteResult,
-} from "./types.js";
+import type { Adapter, CanonicalFile, TranspileResult, WriteResult } from "./types.js";
 
 export class InstructionsTranspiler {
   private readonly projectRoot: string;
@@ -80,10 +75,7 @@ export class InstructionsTranspiler {
    * Записывает результаты транспиляции в файловую систему.
    * Spec: § Запись результатов
    */
-  writeResults(
-    results: TranspileResult[],
-    options?: { targetRoot?: string },
-  ): WriteResult {
+  writeResults(results: TranspileResult[], options?: { targetRoot?: string }): WriteResult {
     const writeRoot = options?.targetRoot ?? this.projectRoot;
     const written: string[] = [];
     const errors: WriteError[] = [];
@@ -127,11 +119,7 @@ export class InstructionsTranspiler {
         written.push(file.relativePath);
       } catch (err) {
         // Расширение 4a: ошибка записи
-        errors.push(
-          new WriteError(
-            `Failed to write ${file.relativePath}: ${(err as Error).message}`,
-          ),
-        );
+        errors.push(new WriteError(`Failed to write ${file.relativePath}: ${(err as Error).message}`));
       }
     }
 

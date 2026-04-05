@@ -11,11 +11,7 @@
  */
 
 import { transformContent } from "../transform-content.js";
-import type {
-  AgentAdapter,
-  AgentDefinition,
-  AgentOutputFile,
-} from "../types.js";
+import type { AgentAdapter, AgentDefinition, AgentOutputFile } from "../types.js";
 
 export class ClaudeAgentAdapter implements AgentAdapter {
   readonly agentId = "claude";
@@ -29,12 +25,7 @@ export class ClaudeAgentAdapter implements AgentAdapter {
 
     for (const def of definitions) {
       // Шаг 1: трансформация контента для agentId = "claude"
-      const content = transformContent(
-        def.rawContent,
-        "claude",
-        this.variables,
-        this.values,
-      );
+      const content = transformContent(def.rawContent, "claude", this.variables, this.values);
 
       // Шаг 2: сформировать AgentOutputFile с definition.relativePath
       // Ремаппинг relativePath выполняется транспилером (§ Транспиляция, шаг 3)

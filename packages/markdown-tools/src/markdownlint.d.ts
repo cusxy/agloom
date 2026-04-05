@@ -20,9 +20,7 @@ declare module "markdownlint-cli2/markdownlint/promise" {
     } | null;
   }
 
-  export function lint(
-    options: LintOptions,
-  ): Promise<Record<string, LintResult[]>>;
+  export function lint(options: LintOptions): Promise<Record<string, LintResult[]>>;
 }
 
 declare module "markdownlint-cli2/markdownlint" {

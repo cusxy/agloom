@@ -29,9 +29,7 @@ describe("AgentsTranspiler", () => {
 
     beforeEach(() => {
       tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-agents-write-opts-"));
-      targetDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-agents-write-target-"),
-      );
+      targetDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-agents-write-target-"));
     });
 
     afterEach(() => {
@@ -68,12 +66,8 @@ describe("AgentsTranspiler", () => {
       expect(writeResult.written).toContain(".claude/agents/my-agent.md");
       expect(writeResult.errors).toHaveLength(0);
 
-      expect(
-        fs.existsSync(path.join(targetDir, ".claude", "agents", "my-agent.md")),
-      ).toBe(true);
-      expect(
-        fs.existsSync(path.join(tmpDir, ".claude", "agents", "my-agent.md")),
-      ).toBe(false);
+      expect(fs.existsSync(path.join(targetDir, ".claude", "agents", "my-agent.md"))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "agents", "my-agent.md"))).toBe(false);
     });
 
     // --- Спецификация: § Запись результатов, шаг 2 ---
@@ -100,9 +94,7 @@ describe("AgentsTranspiler", () => {
       expect(writeResult.written).toContain(".claude/agents/my-agent.md");
       expect(writeResult.errors).toHaveLength(0);
 
-      expect(
-        fs.existsSync(path.join(tmpDir, ".claude", "agents", "my-agent.md")),
-      ).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "agents", "my-agent.md"))).toBe(true);
     });
 
     // --- Спецификация: § Запись результатов, расширение 1a ---
@@ -180,9 +172,7 @@ describe("AgentsTranspiler", () => {
       ]);
 
       // Файл НЕ записан
-      expect(
-        fs.existsSync(path.join(tmpDir, ".claude", "agents", "my-agent.md")),
-      ).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "agents", "my-agent.md"))).toBe(false);
       expect(writeResult.written).not.toContain(".claude/agents/my-agent.md");
     });
   });

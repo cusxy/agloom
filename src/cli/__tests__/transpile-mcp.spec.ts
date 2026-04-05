@@ -13,11 +13,7 @@ import { render } from "ink-testing-library";
 import { App } from "../app.js";
 import { adapterRegistry } from "../adapter-registry.js";
 import { runTranspileStep } from "../transpile-step.js";
-import {
-  ClaudeMcpAdapter,
-  OpenCodeMcpAdapter,
-  createMcpTranspiler,
-} from "../../mcp-transpiler/index.js";
+import { ClaudeMcpAdapter, OpenCodeMcpAdapter, createMcpTranspiler } from "../../mcp-transpiler/index.js";
 
 describe("CLI", () => {
   // =====================================================================
@@ -71,18 +67,12 @@ describe("CLI", () => {
       // Skills: .agloom/skills/my-skill/SKILL.md
       const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nSkill content.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nSkill content.");
 
       // Agents: .agloom/agents/reviewer.md
       const agentDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentDir, "reviewer.md"),
-        "---\nname: reviewer\n---\nReviewer body.",
-      );
+      fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
       // MCP: .agloom/mcp.yml
       fs.writeFileSync(
@@ -228,10 +218,7 @@ describe("CLI", () => {
       // между "Transpiling for agentsmd" и следующим "Transpiling for" или "Done."
       const agentsmdIdx = output.indexOf("Transpiling for agentsmd");
       const afterAgentsmd = output.slice(agentsmdIdx);
-      const nextSectionIdx = afterAgentsmd.indexOf(
-        "Done.",
-        "Transpiling for agentsmd".length,
-      );
+      const nextSectionIdx = afterAgentsmd.indexOf("Done.", "Transpiling for agentsmd".length);
       const agentsmdSection = afterAgentsmd.slice(0, nextSectionIdx);
 
       // MCP не должен быть в секции agentsmd
@@ -341,10 +328,7 @@ describe("CLI", () => {
     it("завершается с exit code 1 при ошибке шага MCP", async () => {
       // Создаём невалидный mcp.yml (отсутствует обязательное поле mcpServers)
       // чтобы вызвать TransformError при валидации
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "mcp.yml"),
-        "not_valid_mcp: true",
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.yml"), "not_valid_mcp: true");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -442,27 +426,17 @@ describe("CLI", () => {
       const claudeIdx = output.indexOf("Transpiling for claude");
       const afterClaude = output.slice(claudeIdx);
       // Находим конец секции claude
-      const nextTranspileAfterClaude = afterClaude.indexOf(
-        "Transpiling for",
-        "Transpiling for claude".length,
-      );
+      const nextTranspileAfterClaude = afterClaude.indexOf("Transpiling for", "Transpiling for claude".length);
       const claudeSection =
-        nextTranspileAfterClaude > -1
-          ? afterClaude.slice(0, nextTranspileAfterClaude)
-          : afterClaude;
+        nextTranspileAfterClaude > -1 ? afterClaude.slice(0, nextTranspileAfterClaude) : afterClaude;
       expect(claudeSection).toContain("MCP");
 
       // opencode секция содержит MCP
       const opencodeIdx = output.indexOf("Transpiling for opencode");
       const afterOpencode = output.slice(opencodeIdx);
-      const nextTranspileAfterOpencode = afterOpencode.indexOf(
-        "Transpiling for",
-        "Transpiling for opencode".length,
-      );
+      const nextTranspileAfterOpencode = afterOpencode.indexOf("Transpiling for", "Transpiling for opencode".length);
       const opencodeSection =
-        nextTranspileAfterOpencode > -1
-          ? afterOpencode.slice(0, nextTranspileAfterOpencode)
-          : afterOpencode;
+        nextTranspileAfterOpencode > -1 ? afterOpencode.slice(0, nextTranspileAfterOpencode) : afterOpencode;
       expect(opencodeSection).toContain("MCP");
 
       unmount();
@@ -490,15 +464,10 @@ describe("CLI", () => {
       // Создаём mcp.yml
       const agloomDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(agloomDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agloomDir, "mcp.yml"),
-        "mcpServers:\n  test:\n    command: echo\n",
-      );
+      fs.writeFileSync(path.join(agloomDir, "mcp.yml"), "mcpServers:\n  test:\n    command: echo\n");
 
       const outcome = runTranspileStep({
-        transpilerFactory: createMcpTranspiler as Parameters<
-          typeof runTranspileStep
-        >[0]["transpilerFactory"],
+        transpilerFactory: createMcpTranspiler as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
         adapter: new ClaudeMcpAdapter(),
         projectRoot: tmpDir,
         name: "MCP",

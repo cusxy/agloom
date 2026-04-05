@@ -8,23 +8,14 @@ import * as path from "node:path";
 import { discover } from "./discover.js";
 import { SkillWriteError } from "./errors.js";
 import { interpolate, InterpolationError } from "../interpolation/index.js";
-import type {
-  SkillAdapter,
-  SkillPackage,
-  SkillTranspileResult,
-  SkillWriteResult,
-} from "./types.js";
+import type { SkillAdapter, SkillPackage, SkillTranspileResult, SkillWriteResult } from "./types.js";
 
 export class SkillsTranspiler {
   private readonly projectRoot: string;
   private readonly adapters: SkillAdapter[];
   private readonly agloomDir: string;
 
-  constructor(
-    projectRoot: string,
-    adapters: SkillAdapter[],
-    agloomDir: string = ".agloom",
-  ) {
+  constructor(projectRoot: string, adapters: SkillAdapter[], agloomDir: string = ".agloom") {
     this.projectRoot = projectRoot;
     this.adapters = adapters;
     this.agloomDir = agloomDir;
@@ -109,15 +100,8 @@ export class SkillsTranspiler {
       }
 
       // Расширение 3c: variablesByAgentId передан, но ключ agentId отсутствует
-      if (
-        variablesByAgentId !== undefined &&
-        !(result.agentId in variablesByAgentId)
-      ) {
-        errors.push(
-          new SkillWriteError(
-            `No interpolation variables for adapter: ${result.agentId}`,
-          ),
-        );
+      if (variablesByAgentId !== undefined && !(result.agentId in variablesByAgentId)) {
+        errors.push(new SkillWriteError(`No interpolation variables for adapter: ${result.agentId}`));
         continue;
       }
 
@@ -128,9 +112,7 @@ export class SkillsTranspiler {
 
         // Определить, нужна ли интерполяция для данного файла
         const isMd = path.extname(file.sourcePath).toLowerCase() === ".md";
-        const shouldInterpolate =
-          (variablesByAgentId !== undefined || valuesByAgentId !== undefined) &&
-          isMd;
+        const shouldInterpolate = (variablesByAgentId !== undefined || valuesByAgentId !== undefined) && isMd;
 
         if (shouldInterpolate) {
           // Интерполяция .md файлов
@@ -152,19 +134,11 @@ export class SkillsTranspiler {
           } catch (err) {
             // Расширение 3d: InterpolationError → SkillWriteError
             if (err instanceof InterpolationError) {
-              errors.push(
-                new SkillWriteError(
-                  `Interpolation failed for ${file.sourcePath}: ${err.message}`,
-                ),
-              );
+              errors.push(new SkillWriteError(`Interpolation failed for ${file.sourcePath}: ${err.message}`));
               continue;
             }
             // Расширение 3a/3b: ошибка чтения или записи
-            errors.push(
-              new SkillWriteError(
-                `Failed to write ${file.relativePath}: ${(err as Error).message}`,
-              ),
-            );
+            errors.push(new SkillWriteError(`Failed to write ${file.relativePath}: ${(err as Error).message}`));
           }
         } else {
           // Побайтовое копирование (не-.md файлы или variablesByAgentId не передан)
@@ -173,11 +147,7 @@ export class SkillsTranspiler {
           try {
             fs.accessSync(sourceAbsolute, fs.constants.R_OK);
           } catch (err) {
-            errors.push(
-              new SkillWriteError(
-                `Failed to read source ${file.sourcePath}: ${(err as Error).message}`,
-              ),
-            );
+            errors.push(new SkillWriteError(`Failed to read source ${file.sourcePath}: ${(err as Error).message}`));
             continue;
           }
 
@@ -192,11 +162,7 @@ export class SkillsTranspiler {
             written.push(file.relativePath);
           } catch (err) {
             // Расширение 3b: ошибка записи целевого файла
-            errors.push(
-              new SkillWriteError(
-                `Failed to write ${file.relativePath}: ${(err as Error).message}`,
-              ),
-            );
+            errors.push(new SkillWriteError(`Failed to write ${file.relativePath}: ${(err as Error).message}`));
           }
         }
       }

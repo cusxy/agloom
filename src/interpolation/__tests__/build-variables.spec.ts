@@ -18,10 +18,7 @@ interface TestAdapter {
   };
 }
 
-function makeAdapter(
-  id: string,
-  paths: TestAdapter["paths"] = {},
-): TestAdapter {
+function makeAdapter(id: string, paths: TestAdapter["paths"] = {}): TestAdapter {
   return { id, paths };
 }
 
@@ -46,11 +43,7 @@ describe("Interpolation", () => {
       });
       const agentsmd = makeAdapter("agentsmd", {});
 
-      const result = buildVariables(
-        claude,
-        [claude, opencode, agentsmd],
-        PROJECT_ROOT,
-      );
+      const result = buildVariables(claude, [claude, opencode, agentsmd], PROJECT_ROOT);
 
       // Канонические
       expect(result["PROJECT_DIR"]).toBe(PROJECT_ROOT);
@@ -302,11 +295,7 @@ describe("Interpolation", () => {
       });
       const agentsmd = makeAdapter("agentsmd", {});
 
-      const result = buildVariables(
-        claude,
-        [claude, opencode, agentsmd],
-        PROJECT_ROOT,
-      );
+      const result = buildVariables(claude, [claude, opencode, agentsmd], PROJECT_ROOT);
 
       // PROJECT_DIR — каноническая переменная
       expect(result["PROJECT_DIR"]).toBe(PROJECT_ROOT);

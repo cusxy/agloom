@@ -27,18 +27,12 @@ describe("CLI", () => {
       // Skills: .agloom/skills/my-skill/SKILL.md
       const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nSkill content.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nSkill content.");
 
       // Agents: .agloom/agents/reviewer.md
       const agentDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentDir, "reviewer.md"),
-        "---\nname: reviewer\n---\nReviewer body.",
-      );
+      fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
     });
 
     afterEach(() => {
@@ -266,10 +260,7 @@ describe("CLI", () => {
       // Создаём overlay-файлы для адаптера claude
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDir, "overlay-file.txt"),
-        "overlay data",
-      );
+      fs.writeFileSync(path.join(overlayDir, "overlay-file.txt"), "overlay data");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -293,9 +284,7 @@ describe("CLI", () => {
       expect(output).toMatch(/Overlay\s+\d+\s+files/);
 
       // Порядок отображения: Overlay ПОСЛЕ Agents
-      expect(output.indexOf("Overlay")).toBeGreaterThan(
-        output.indexOf("Agents"),
-      );
+      expect(output.indexOf("Overlay")).toBeGreaterThan(output.indexOf("Agents"));
 
       unmount();
     });
@@ -479,17 +468,9 @@ describe("CLI", () => {
       // Skills transpiler создаёт .claude/skills/my-skill/SKILL.md
       // Overlay содержит файл с тем же путём относительно project root
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-      const overlaySkillDir = path.join(
-        overlayDir,
-        ".claude",
-        "skills",
-        "my-skill",
-      );
+      const overlaySkillDir = path.join(overlayDir, ".claude", "skills", "my-skill");
       fs.mkdirSync(overlaySkillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlaySkillDir, "SKILL.md"),
-        "Overlay skill content overrides canonical.",
-      );
+      fs.writeFileSync(path.join(overlaySkillDir, "SKILL.md"), "Overlay skill content overrides canonical.");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -508,10 +489,7 @@ describe("CLI", () => {
 
       // Файл в целевой директории должен содержать overlay-контент,
       // а не каноническое значение от skills transpiler
-      const skillFile = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
-        "utf-8",
-      );
+      const skillFile = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"), "utf-8");
       expect(skillFile).toBe("Overlay skill content overrides canonical.");
 
       unmount();
@@ -649,10 +627,7 @@ describe("CLI", () => {
 
     it("при transpile --adapter opencode создаёт AGENTS.md через зависимость agentsmd", async () => {
       // Создаём канонический файл
-      fs.writeFileSync(
-        path.join(tmpDir, "AGLOOM.md"),
-        "OpenCode project instructions",
-      );
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "OpenCode project instructions");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -672,9 +647,7 @@ describe("CLI", () => {
       // Побочный эффект: AGENTS.md создан (через зависимость agentsmd)
       const agentsMdPath = path.join(tmpDir, "AGENTS.md");
       expect(fs.existsSync(agentsMdPath)).toBe(true);
-      expect(fs.readFileSync(agentsMdPath, "utf-8")).toBe(
-        "OpenCode project instructions",
-      );
+      expect(fs.readFileSync(agentsMdPath, "utf-8")).toBe("OpenCode project instructions");
 
       unmount();
     });
@@ -699,9 +672,7 @@ describe("CLI", () => {
         },
       ] as AdapterRegistryEntry[];
 
-      expect(() => resolveDeps("a", circularRegistry)).toThrow(
-        "Circular dependency detected",
-      );
+      expect(() => resolveDeps("a", circularRegistry)).toThrow("Circular dependency detected");
     });
 
     // =====================================================================
@@ -719,9 +690,7 @@ describe("CLI", () => {
         },
       ] as AdapterRegistryEntry[];
 
-      expect(() => resolveDeps("a", missingDepRegistry)).toThrow(
-        "Unknown dependency: missing",
-      );
+      expect(() => resolveDeps("a", missingDepRegistry)).toThrow("Unknown dependency: missing");
     });
 
     // =====================================================================
@@ -828,17 +797,11 @@ describe("CLI", () => {
 
       const skillDir = path.join(sparseDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nSkill content.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nSkill content.");
 
       const agentDir = path.join(sparseDir, ".agloom", "agents");
       fs.mkdirSync(agentDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentDir, "reviewer.md"),
-        "---\nname: reviewer\n---\nReviewer body.",
-      );
+      fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -913,10 +876,7 @@ describe("CLI", () => {
     it("при отсутствии --adapter и --all с конфигом adapters: [claude] транспилирует для claude", async () => {
       // .agloom/ уже создан в beforeEach (для skills/agents),
       // добавим config.yml
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "config.yml"),
-        "adapters:\n  - claude\n",
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "config.yml"), "adapters:\n  - claude\n");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {

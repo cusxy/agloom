@@ -36,17 +36,11 @@ describe("CLI Integration", () => {
 
       const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nSkill content.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nSkill content.");
 
       const agentDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentDir, "reviewer.md"),
-        "---\nname: reviewer\n---\nReviewer body.",
-      );
+      fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -91,17 +85,11 @@ describe("CLI Integration", () => {
 
       const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nSkill content.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nSkill content.");
 
       const agentDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentDir, "reviewer.md"),
-        "---\nname: reviewer\n---\nReviewer body.",
-      );
+      fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -140,24 +128,15 @@ describe("CLI Integration", () => {
 
       const agloomDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(agloomDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agloomDir, "config.yml"),
-        "adapters:\n  - claude\n",
-      );
+      fs.writeFileSync(path.join(agloomDir, "config.yml"), "adapters:\n  - claude\n");
 
       const skillDir = path.join(agloomDir, "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nSkill content.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nSkill content.");
 
       const agentDir = path.join(agloomDir, "agents");
       fs.mkdirSync(agentDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentDir, "reviewer.md"),
-        "---\nname: reviewer\n---\nReviewer body.",
-      );
+      fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -199,17 +178,11 @@ describe("CLI Integration", () => {
 
       const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nSkill content.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nSkill content.");
 
       const agentDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentDir, "reviewer.md"),
-        "---\nname: reviewer\n---\nReviewer body.",
-      );
+      fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -281,10 +254,7 @@ describe("CLI Integration", () => {
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Generated content.");
       const claudeSkillDir = path.join(tmpDir, ".claude", "skills", "my-skill");
       fs.mkdirSync(claudeSkillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(claudeSkillDir, "SKILL.md"),
-        "Generated skill.",
-      );
+      fs.writeFileSync(path.join(claudeSkillDir, "SKILL.md"), "Generated skill.");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -359,10 +329,7 @@ describe("CLI Integration", () => {
     // IT-CLI-08: init --adapter claude
     it("IT-CLI-08: init --adapter claude создаёт .agloom/ и копирует overlay файлы", async () => {
       // Создаём CLAUDE.md для импорта
-      fs.writeFileSync(
-        path.join(tmpDir, "CLAUDE.md"),
-        "Existing instructions.",
-      );
+      fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Existing instructions.");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -385,9 +352,7 @@ describe("CLI Integration", () => {
       expect(fs.existsSync(path.join(tmpDir, ".agloom"))).toBe(true);
 
       // Шаг 4: config.yml существует
-      expect(fs.existsSync(path.join(tmpDir, ".agloom", "config.yml"))).toBe(
-        true,
-      );
+      expect(fs.existsSync(path.join(tmpDir, ".agloom", "config.yml"))).toBe(true);
 
       // Шаг 5: TUI содержит "files copied"
       expect(output).toContain("files copied");

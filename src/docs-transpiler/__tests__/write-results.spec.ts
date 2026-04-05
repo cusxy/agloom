@@ -56,10 +56,7 @@ describe("ResourceTranspiler", () => {
       expect(writeResult.written).toContain(".claude/docs/overview.md");
       expect(writeResult.errors).toHaveLength(0);
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "overview.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "overview.md"), "utf-8");
       expect(writtenContent).toBe(sourceContent);
     });
 
@@ -67,9 +64,7 @@ describe("ResourceTranspiler", () => {
     it("побайтово копирует бинарные файлы (не повреждает данные)", () => {
       const sourceDir = path.join(tmpDir, ".agloom", "docs");
       fs.mkdirSync(sourceDir, { recursive: true });
-      const binaryContent = Buffer.from([
-        0x00, 0x01, 0x02, 0xff, 0xfe, 0xfd, 0x89, 0x50, 0x4e, 0x47,
-      ]);
+      const binaryContent = Buffer.from([0x00, 0x01, 0x02, 0xff, 0xfe, 0xfd, 0x89, 0x50, 0x4e, 0x47]);
       fs.writeFileSync(path.join(sourceDir, "image.png"), binaryContent);
 
       const transpiler = createResourceTranspiler({
@@ -93,9 +88,7 @@ describe("ResourceTranspiler", () => {
 
       expect(writeResult.written).toContain(".claude/docs/image.png");
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "image.png"),
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "image.png"));
       expect(Buffer.compare(writtenContent, binaryContent)).toBe(0);
     });
 
@@ -137,10 +130,7 @@ describe("ResourceTranspiler", () => {
     it("интерполирует .md файлы при наличии variablesByAgentId", () => {
       const sourceDir = path.join(tmpDir, ".agloom", "docs");
       fs.mkdirSync(sourceDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(sourceDir, "guide.md"),
-        "Path: ${agloom:ROOT_DIR}/docs",
-      );
+      fs.writeFileSync(path.join(sourceDir, "guide.md"), "Path: ${agloom:ROOT_DIR}/docs");
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
@@ -171,10 +161,7 @@ describe("ResourceTranspiler", () => {
       expect(writeResult.written).toContain(".claude/docs/guide.md");
       expect(writeResult.errors).toHaveLength(0);
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "guide.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "guide.md"), "utf-8");
       expect(writtenContent).toBe("Path: .claude/docs");
     });
 
@@ -212,10 +199,7 @@ describe("ResourceTranspiler", () => {
       );
 
       expect(writeResult.written).toContain(".claude/docs/config.json");
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "config.json"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "config.json"), "utf-8");
       expect(writtenContent).toBe(jsonContent);
     });
 
@@ -246,10 +230,7 @@ describe("ResourceTranspiler", () => {
       ]);
 
       expect(writeResult.written).toContain(".claude/docs/guide.md");
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "guide.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "guide.md"), "utf-8");
       expect(writtenContent).toBe(mdContent);
     });
 
@@ -257,10 +238,7 @@ describe("ResourceTranspiler", () => {
     it("интерполирует файлы с расширением .MD (case-insensitive)", () => {
       const sourceDir = path.join(tmpDir, ".agloom", "docs");
       fs.mkdirSync(sourceDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(sourceDir, "README.MD"),
-        "Path: ${agloom:ROOT_DIR}",
-      );
+      fs.writeFileSync(path.join(sourceDir, "README.MD"), "Path: ${agloom:ROOT_DIR}");
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
@@ -289,10 +267,7 @@ describe("ResourceTranspiler", () => {
       );
 
       expect(writeResult.written).toContain(".claude/docs/README.MD");
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "README.MD"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "README.MD"), "utf-8");
       expect(writtenContent).toBe("Path: .claude");
     });
 
@@ -302,9 +277,7 @@ describe("ResourceTranspiler", () => {
       fs.mkdirSync(sourceDir, { recursive: true });
       fs.writeFileSync(path.join(sourceDir, "file.md"), "# Content");
 
-      const targetRoot = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-resource-target-"),
-      );
+      const targetRoot = fs.mkdtempSync(path.join(os.tmpdir(), "agl-resource-target-"));
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
@@ -333,14 +306,10 @@ describe("ResourceTranspiler", () => {
         expect(writeResult.errors).toHaveLength(0);
 
         // Файл записан в targetRoot, а не в projectRoot
-        expect(
-          fs.existsSync(path.join(targetRoot, ".claude", "docs", "file.md")),
-        ).toBe(true);
+        expect(fs.existsSync(path.join(targetRoot, ".claude", "docs", "file.md"))).toBe(true);
 
         // Файл НЕ записан в projectRoot
-        expect(
-          fs.existsSync(path.join(tmpDir, ".claude", "docs", "file.md")),
-        ).toBe(false);
+        expect(fs.existsSync(path.join(tmpDir, ".claude", "docs", "file.md"))).toBe(false);
       } finally {
         fs.rmSync(targetRoot, { recursive: true, force: true });
       }
@@ -378,17 +347,13 @@ describe("ResourceTranspiler", () => {
       ]);
 
       // Файл НЕ записан
-      expect(
-        fs.existsSync(path.join(tmpDir, ".failing", "docs", "file.md")),
-      ).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, ".failing", "docs", "file.md"))).toBe(false);
       expect(writeResult.written).not.toContain(".failing/docs/file.md");
 
       // Ошибка с правильным сообщением
       expect(writeResult.errors).toHaveLength(1);
       expect(writeResult.errors[0]).toBeInstanceOf(ResourceWriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Skipped failing: transpile errors present/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Skipped failing: transpile errors present/);
     });
 
     // --- Расширение 1a: смешанный сценарий — один адаптер с ошибками, другой без ---
@@ -399,10 +364,7 @@ describe("ResourceTranspiler", () => {
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
-        adapters: [
-          createStubAdapter("failing", ".failing/docs"),
-          createStubAdapter("claude", ".claude/docs"),
-        ],
+        adapters: [createStubAdapter("failing", ".failing/docs"), createStubAdapter("claude", ".claude/docs")],
         resourceType: "docs",
       });
 
@@ -436,14 +398,10 @@ describe("ResourceTranspiler", () => {
       ]);
 
       // failing НЕ записан
-      expect(
-        fs.existsSync(path.join(tmpDir, ".failing", "docs", "file.md")),
-      ).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, ".failing", "docs", "file.md"))).toBe(false);
 
       // claude записан
-      expect(
-        fs.existsSync(path.join(tmpDir, ".claude", "docs", "file.md")),
-      ).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "docs", "file.md"))).toBe(true);
       expect(writeResult.written).toContain(".claude/docs/file.md");
 
       expect(writeResult.errors.length).toBeGreaterThan(0);
@@ -453,10 +411,7 @@ describe("ResourceTranspiler", () => {
     it("возвращает ResourceWriteError при отсутствии ключа agentId в variablesByAgentId", () => {
       const sourceDir = path.join(tmpDir, ".agloom", "docs");
       fs.mkdirSync(sourceDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(sourceDir, "file.md"),
-        "Path: ${agloom:ROOT_DIR}",
-      );
+      fs.writeFileSync(path.join(sourceDir, "file.md"), "Path: ${agloom:ROOT_DIR}");
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
@@ -486,19 +441,14 @@ describe("ResourceTranspiler", () => {
 
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(ResourceWriteError);
-      expect(writeResult.errors[0].message).toBe(
-        "No interpolation variables for adapter: claude",
-      );
+      expect(writeResult.errors[0].message).toBe("No interpolation variables for adapter: claude");
     });
 
     // --- Расширение 3b: InterpolationError → ResourceWriteError ---
     it("возвращает ResourceWriteError при ошибке интерполяции .md файла", () => {
       const sourceDir = path.join(tmpDir, ".agloom", "docs");
       fs.mkdirSync(sourceDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(sourceDir, "file.md"),
-        "Path: ${agloom:NONEXISTENT}",
-      );
+      fs.writeFileSync(path.join(sourceDir, "file.md"), "Path: ${agloom:NONEXISTENT}");
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
@@ -528,9 +478,7 @@ describe("ResourceTranspiler", () => {
 
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(ResourceWriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Interpolation failed for \.agloom\/docs\/file\.md/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Interpolation failed for \.agloom\/docs\/file\.md/);
     });
 
     // --- Расширение 3c: sourcePath не существует → ResourceWriteError ---
@@ -556,9 +504,7 @@ describe("ResourceTranspiler", () => {
 
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(ResourceWriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Failed to read source \.agloom\/docs\/missing\.md/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Failed to read source \.agloom\/docs\/missing\.md/);
     });
 
     // --- Расширение 3d: ошибка записи целевого файла → ResourceWriteError ---
@@ -591,9 +537,7 @@ describe("ResourceTranspiler", () => {
 
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(ResourceWriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Failed to write \.claude\/docs\/file\.md/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Failed to write \.claude\/docs\/file\.md/);
     });
 
     // --- Happy path: запись результатов нескольких адаптеров ---
@@ -604,10 +548,7 @@ describe("ResourceTranspiler", () => {
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
-        adapters: [
-          createStubAdapter("claude", ".claude/docs"),
-          createStubAdapter("opencode", ".opencode/docs"),
-        ],
+        adapters: [createStubAdapter("claude", ".claude/docs"), createStubAdapter("opencode", ".opencode/docs")],
         resourceType: "docs",
       });
 

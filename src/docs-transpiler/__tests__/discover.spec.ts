@@ -31,10 +31,7 @@ describe("ResourceTranspiler", () => {
       const cyclingDir = path.join(docsDir, "cycling");
       fs.mkdirSync(cyclingDir, { recursive: true });
       fs.writeFileSync(path.join(docsDir, "overview.md"), "# Overview");
-      fs.writeFileSync(
-        path.join(cyclingDir, "agent-protocol.md"),
-        "# Agent Protocol",
-      );
+      fs.writeFileSync(path.join(cyclingDir, "agent-protocol.md"), "# Agent Protocol");
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
@@ -57,10 +54,7 @@ describe("ResourceTranspiler", () => {
       // Arrange
       const schemasDir = path.join(tmpDir, ".agloom", "schemas");
       fs.mkdirSync(schemasDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(schemasDir, "config.schema.json"),
-        '{"type": "object"}',
-      );
+      fs.writeFileSync(path.join(schemasDir, "config.schema.json"), '{"type": "object"}');
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
@@ -188,10 +182,7 @@ describe("ResourceTranspiler", () => {
       fs.mkdirSync(docsDir, { recursive: true });
       fs.writeFileSync(path.join(docsDir, "readme.md"), "# Readme");
       fs.writeFileSync(path.join(docsDir, "config.json"), "{}");
-      fs.writeFileSync(
-        path.join(docsDir, "image.png"),
-        Buffer.from([0x89, 0x50]),
-      );
+      fs.writeFileSync(path.join(docsDir, "image.png"), Buffer.from([0x89, 0x50]));
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,

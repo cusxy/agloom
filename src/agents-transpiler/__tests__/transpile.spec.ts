@@ -13,11 +13,7 @@ import { AgentDiscoverError } from "../errors.js";
  * Адаптер возвращает definition.relativePath (без ремаппинга).
  * Ремаппинг выполняется транспилером.
  */
-function createStubAdapter(
-  agentId: string,
-  targetDir: string,
-  transpileFn?: (definitions: any[]) => any[],
-) {
+function createStubAdapter(agentId: string, targetDir: string, transpileFn?: (definitions: any[]) => any[]) {
   return {
     agentId,
     targetDir,
@@ -47,10 +43,7 @@ describe("AgentsTranspiler", () => {
     it("выполняет полный цикл: discover → adapter.transpile(definitions) → ремаппинг → собрать результаты", () => {
       const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentsDir, "code-reviewer.md"),
-        "---\nname: code-reviewer\n---\nBody.",
-      );
+      fs.writeFileSync(path.join(agentsDir, "code-reviewer.md"), "---\nname: code-reviewer\n---\nBody.");
 
       const adapter1 = createStubAdapter("adapter-a", ".adapter-a/agents");
       const adapter2 = createStubAdapter("adapter-b", ".adapter-b/agents");
@@ -68,17 +61,13 @@ describe("AgentsTranspiler", () => {
       expect(resultA).toBeDefined();
       expect(resultA!.files).toHaveLength(1);
       // Транспилер ремаппит relativePath: .agloom/agents/ → .adapter-a/agents/
-      expect(resultA!.files[0].relativePath).toBe(
-        ".adapter-a/agents/code-reviewer.md",
-      );
+      expect(resultA!.files[0].relativePath).toBe(".adapter-a/agents/code-reviewer.md");
       expect(resultA!.errors).toHaveLength(0);
 
       const resultB = results.find((r) => r.agentId === "adapter-b");
       expect(resultB).toBeDefined();
       expect(resultB!.files).toHaveLength(1);
-      expect(resultB!.files[0].relativePath).toBe(
-        ".adapter-b/agents/code-reviewer.md",
-      );
+      expect(resultB!.files[0].relativePath).toBe(".adapter-b/agents/code-reviewer.md");
       expect(resultB!.errors).toHaveLength(0);
     });
 
@@ -118,10 +107,7 @@ describe("AgentsTranspiler", () => {
     it("создаёт AgentTranspileResult с ошибкой при исключении адаптера и продолжает остальные", () => {
       const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentsDir, "agent.md"),
-        "---\nname: agent\n---\nContent.",
-      );
+      fs.writeFileSync(path.join(agentsDir, "agent.md"), "---\nname: agent\n---\nContent.");
 
       const failingAdapter = {
         agentId: "failing",
@@ -148,9 +134,7 @@ describe("AgentsTranspiler", () => {
       expect(failingResult).toBeDefined();
       expect(failingResult!.files).toHaveLength(0);
       expect(failingResult!.errors).toHaveLength(1);
-      expect(failingResult!.errors[0].message).toContain(
-        "Adapter internal failure",
-      );
+      expect(failingResult!.errors[0].message).toContain("Adapter internal failure");
       expect(failingResult!.errors[0].agentId).toBe("failing");
       expect(failingResult!.errors[0].cause).toBeInstanceOf(Error);
 

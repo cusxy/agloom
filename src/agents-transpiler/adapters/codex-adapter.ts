@@ -14,11 +14,7 @@ import matter from "gray-matter";
 import * as TOML from "smol-toml";
 import { AgentTransformError } from "../errors.js";
 import { transformContent } from "../transform-content.js";
-import type {
-  AgentAdapter,
-  AgentDefinition,
-  AgentOutputFile,
-} from "../types.js";
+import type { AgentAdapter, AgentDefinition, AgentOutputFile } from "../types.js";
 
 export class CodexAgentAdapter implements AgentAdapter {
   readonly agentId = "codex";
@@ -35,20 +31,13 @@ export class CodexAgentAdapter implements AgentAdapter {
       // Расширение 1a: transformContent выбрасывает AgentTransformError → пробросить
       let transformed: string;
       try {
-        transformed = transformContent(
-          def.rawContent,
-          "codex",
-          this.variables,
-          this.values,
-        );
+        transformed = transformContent(def.rawContent, "codex", this.variables, this.values);
       } catch (err) {
         if (err instanceof AgentTransformError) {
           throw err;
         }
         const reason = err instanceof Error ? err.message : String(err);
-        throw new AgentTransformError(
-          `Failed to parse transformed content for '${def.name}': ${reason}`,
-        );
+        throw new AgentTransformError(`Failed to parse transformed content for '${def.name}': ${reason}`);
       }
 
       // Шаг 2: парсинг результата через gray-matter
@@ -60,9 +49,7 @@ export class CodexAgentAdapter implements AgentAdapter {
         body = parsed.content;
       } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);
-        throw new AgentTransformError(
-          `Failed to parse transformed content for '${def.name}': ${reason}`,
-        );
+        throw new AgentTransformError(`Failed to parse transformed content for '${def.name}': ${reason}`);
       }
 
       // Шаг 3: если body (после trim) не пустой — добавить developer_instructions
@@ -77,9 +64,7 @@ export class CodexAgentAdapter implements AgentAdapter {
         tomlContent = TOML.stringify(data as Record<string, unknown>);
       } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);
-        throw new AgentTransformError(
-          `Failed to serialize TOML for '${def.name}': ${reason}`,
-        );
+        throw new AgentTransformError(`Failed to serialize TOML for '${def.name}': ${reason}`);
       }
 
       // Шаг 5: заменить расширение .md → .toml

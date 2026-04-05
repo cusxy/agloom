@@ -11,9 +11,7 @@ import type { PermissionsCanonicalFile } from "../types.js";
  * Создаёт PermissionsCanonicalFile для тестирования адаптеров.
  * Новый формат: секции -- упорядоченные массивы пар { pattern: action }.
  */
-function makeCanonicalFile(
-  content: PermissionsCanonicalFile["content"],
-): PermissionsCanonicalFile {
+function makeCanonicalFile(content: PermissionsCanonicalFile["content"]): PermissionsCanonicalFile {
   return {
     relativePath: ".agloom/permissions.yml",
     format: "yaml",
@@ -85,18 +83,12 @@ describe("ClaudePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          mcp: [
-            { "bitbucket:get_pull_request": "allow" },
-            { "jenkins:get_build": "allow" },
-            { "*:*": "deny" },
-          ],
+          mcp: [{ "bitbucket:get_pull_request": "allow" }, { "jenkins:get_build": "allow" }, { "*:*": "deny" }],
         }),
       );
 
       const parsed = JSON.parse(files[0].content);
-      expect(parsed.permissions.allow).toContain(
-        "mcp__bitbucket__get_pull_request",
-      );
+      expect(parsed.permissions.allow).toContain("mcp__bitbucket__get_pull_request");
       expect(parsed.permissions.allow).toContain("mcp__jenkins__get_build");
       expect(parsed.permissions.deny).toContain("mcp__*__*");
     });
@@ -107,12 +99,7 @@ describe("ClaudePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          shell: [
-            { "ls *": "allow" },
-            { "npm *": "ask" },
-            { "yarn *": "ask" },
-            { "*": "deny" },
-          ],
+          shell: [{ "ls *": "allow" }, { "npm *": "ask" }, { "yarn *": "ask" }, { "*": "deny" }],
         }),
       );
 
@@ -155,11 +142,7 @@ describe("ClaudePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          file: [
-            { "**/.env": "deny" },
-            { "src/**": "read" },
-            { "src/**/*.ts": "write" },
-          ],
+          file: [{ "**/.env": "deny" }, { "src/**": "read" }, { "src/**/*.ts": "write" }],
         }),
       );
 
@@ -274,12 +257,7 @@ describe("ClaudePermissionsAdapter", () => {
         "mcp__bitbucket__get_pull_request",
         "mcp__jenkins__get_build",
       ]);
-      expect(parsed.permissions.deny).toEqual([
-        "Bash(git push *)",
-        "Bash(*)",
-        "mcp__untrusted-server__*",
-        "mcp__*__*",
-      ]);
+      expect(parsed.permissions.deny).toEqual(["Bash(git push *)", "Bash(*)", "mcp__untrusted-server__*", "mcp__*__*"]);
     });
 
     // --- Пример из спецификации ---
@@ -304,11 +282,7 @@ describe("ClaudePermissionsAdapter", () => {
             { "jenkins:*": "ask" },
             { "*:*": "deny" },
           ],
-          file: [
-            { "**/.env": "deny" },
-            { "src/**/*.ts": "write" },
-            { "src/**": "read" },
-          ],
+          file: [{ "**/.env": "deny" }, { "src/**/*.ts": "write" }, { "src/**": "read" }],
         }),
       );
 
@@ -322,12 +296,7 @@ describe("ClaudePermissionsAdapter", () => {
             "mcp__bitbucket__get_pull_request",
             "mcp__jenkins__get_build",
           ],
-          deny: [
-            "Bash(git push *)",
-            "Bash(*)",
-            "mcp__untrusted-server__*",
-            "mcp__*__*",
-          ],
+          deny: ["Bash(git push *)", "Bash(*)", "mcp__untrusted-server__*", "mcp__*__*"],
         },
       });
     });
@@ -470,14 +439,7 @@ describe("OpenCodePermissionsAdapter", () => {
 
       // Canonical first-match-wins: git push* deny, ./gradlew* allow, ls* allow, git status* allow, npm* ask, * deny
       // Reversed for last-match-wins: * deny, npm* ask, git status* allow, ls* allow, ./gradlew* allow, git push* deny
-      expect(bashKeys).toEqual([
-        "*",
-        "npm *",
-        "git status *",
-        "ls *",
-        "./gradlew *",
-        "git push *",
-      ]);
+      expect(bashKeys).toEqual(["*", "npm *", "git status *", "ls *", "./gradlew *", "git push *"]);
       expect(parsed.permission.bash["*"]).toBe("deny");
       expect(parsed.permission.bash["npm *"]).toBe("ask");
       expect(parsed.permission.bash["git push *"]).toBe("deny");
@@ -501,9 +463,7 @@ describe("OpenCodePermissionsAdapter", () => {
       );
 
       const parsed = JSON.parse(files[0].content);
-      const mcpKeys = Object.keys(parsed.permission).filter(
-        (k) => k !== "bash" && k !== "file",
-      );
+      const mcpKeys = Object.keys(parsed.permission).filter((k) => k !== "bash" && k !== "file");
       // Reversed: *:* deny, jenkins:* ask, bitbucket:* ask, jenkins:get_build allow,
       //           bitbucket:get_pull_request allow, untrusted-server:* deny
       expect(mcpKeys).toEqual([
@@ -536,11 +496,7 @@ describe("OpenCodePermissionsAdapter", () => {
 
       const files = adapter.transpile(
         makeCanonicalFile({
-          file: [
-            { "**/.env": "deny" },
-            { "src/**/*.ts": "write" },
-            { "src/**": "read" },
-          ],
+          file: [{ "**/.env": "deny" }, { "src/**/*.ts": "write" }, { "src/**": "read" }],
         }),
       );
 
@@ -592,11 +548,7 @@ describe("OpenCodePermissionsAdapter", () => {
             { "jenkins:*": "ask" },
             { "*:*": "deny" },
           ],
-          file: [
-            { "**/.env": "deny" },
-            { "src/**/*.ts": "write" },
-            { "src/**": "read" },
-          ],
+          file: [{ "**/.env": "deny" }, { "src/**/*.ts": "write" }, { "src/**": "read" }],
         }),
       );
 

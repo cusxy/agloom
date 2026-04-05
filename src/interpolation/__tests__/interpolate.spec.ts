@@ -26,13 +26,9 @@ describe("Interpolation", () => {
       const result = interpolate(content, variables, env);
 
       expect(result).toBe(
-        [
-          "Root: .claude",
-          "Skills: .claude/skills",
-          "Env: myapp",
-          "Escaped: ${agloom:ROOT_DIR}",
-          "Plain text.",
-        ].join("\n"),
+        ["Root: .claude", "Skills: .claude/skills", "Env: myapp", "Escaped: ${agloom:ROOT_DIR}", "Plain text."].join(
+          "\n",
+        ),
       );
     });
 
@@ -143,12 +139,8 @@ describe("Interpolation", () => {
       const content = "Value: ${agloom:NONEXISTENT}";
       const variables: Record<string, string> = {};
 
-      expect(() => interpolate(content, variables, {})).toThrow(
-        InterpolationError,
-      );
-      expect(() => interpolate(content, variables, {})).toThrow(
-        "Unknown agloom variable: NONEXISTENT",
-      );
+      expect(() => interpolate(content, variables, {})).toThrow(InterpolationError);
+      expect(() => interpolate(content, variables, {})).toThrow("Unknown agloom variable: NONEXISTENT");
     });
 
     // --- Расширение 5a: InterpolationError при неопределённой переменной окружения ---
@@ -157,9 +149,7 @@ describe("Interpolation", () => {
       const env: Record<string, string> = {};
 
       expect(() => interpolate(content, {}, env)).toThrow(InterpolationError);
-      expect(() => interpolate(content, {}, env)).toThrow(
-        "Undefined environment variable: MISSING_VAR",
-      );
+      expect(() => interpolate(content, {}, env)).toThrow("Undefined environment variable: MISSING_VAR");
     });
 
     // --- Расширение 5a: InterpolationError при значении undefined в env ---
@@ -170,9 +160,7 @@ describe("Interpolation", () => {
       };
 
       expect(() => interpolate(content, {}, env)).toThrow(InterpolationError);
-      expect(() => interpolate(content, {}, env)).toThrow(
-        "Undefined environment variable: UNDEF_VAR",
-      );
+      expect(() => interpolate(content, {}, env)).toThrow("Undefined environment variable: UNDEF_VAR");
     });
 
     // --- Трансформация: композиция PROJECT_DIR с другими переменными ---

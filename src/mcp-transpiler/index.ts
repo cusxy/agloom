@@ -13,13 +13,7 @@ export { ClaudeMcpAdapter } from "./adapters/claude-adapter.js";
 export { OpenCodeMcpAdapter } from "./adapters/opencode-adapter.js";
 export { McpTranspiler } from "./transpiler.js";
 export { validateCanonicalContent } from "./validate.js";
-export {
-  ConfigError,
-  DiscoverError,
-  TransformError,
-  TranspileError,
-  WriteError,
-} from "./errors.js";
+export { ConfigError, DiscoverError, TransformError, TranspileError, WriteError } from "./errors.js";
 export type {
   McpAdapter,
   McpCanonicalContent,
@@ -51,9 +45,7 @@ function isMcpAdapter(value: unknown): value is McpAdapter {
  * 4. Валидировать, что значения agentId всех адаптеров уникальны.
  * 5. Сохранить конфигурацию в экземпляре.
  */
-export function createMcpTranspiler(
-  config: McpTranspilerConfig,
-): McpTranspiler {
+export function createMcpTranspiler(config: McpTranspilerConfig): McpTranspiler {
   // Шаг 1: projectRoot должен быть абсолютным путём
   // Расширение 1a
   if (!path.isAbsolute(config.projectRoot)) {
@@ -70,9 +62,7 @@ export function createMcpTranspiler(
   // Расширение 3a
   for (let i = 0; i < config.adapters.length; i++) {
     if (!isMcpAdapter(config.adapters[i])) {
-      throw new ConfigError(
-        `Adapter at index ${i} does not implement McpAdapter interface`,
-      );
+      throw new ConfigError(`Adapter at index ${i} does not implement McpAdapter interface`);
     }
   }
 
@@ -87,9 +77,5 @@ export function createMcpTranspiler(
   }
 
   // Шаг 5: создать экземпляр
-  return new McpTranspiler(
-    config.projectRoot,
-    config.adapters,
-    config.agloomDir,
-  );
+  return new McpTranspiler(config.projectRoot, config.adapters, config.agloomDir);
 }

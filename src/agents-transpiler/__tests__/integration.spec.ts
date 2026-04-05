@@ -6,11 +6,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import matter from "gray-matter";
-import {
-  createAgentsTranspiler,
-  ClaudeAgentAdapter,
-  OpenCodeAgentAdapter,
-} from "../index.js";
+import { createAgentsTranspiler, ClaudeAgentAdapter, OpenCodeAgentAdapter } from "../index.js";
 
 const REVIEWER_CANONICAL = `---
 name: reviewer
@@ -38,9 +34,7 @@ describe("AgentsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-agents-integration-"),
-      );
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-agents-integration-"));
     });
 
     afterEach(() => {
@@ -122,12 +116,7 @@ describe("AgentsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаг 5: прочитать целевой файл
-      const outputPath = path.join(
-        tmpDir,
-        ".opencode",
-        "agents",
-        "reviewer.md",
-      );
+      const outputPath = path.join(tmpDir, ".opencode", "agents", "reviewer.md");
       const outputContent = fs.readFileSync(outputPath, "utf-8");
 
       // Шаг 6: парсинг frontmatter
@@ -186,38 +175,22 @@ describe("AgentsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаг 6: .claude/agents/reviewer.md существует
-      expect(
-        fs.existsSync(path.join(tmpDir, ".claude", "agents", "reviewer.md")),
-      ).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "agents", "reviewer.md"))).toBe(true);
 
       // Шаг 7: .opencode/agents/reviewer.md существует
-      expect(
-        fs.existsSync(path.join(tmpDir, ".opencode", "agents", "reviewer.md")),
-      ).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, ".opencode", "agents", "reviewer.md"))).toBe(true);
 
       // Шаги 8–9: Claude файл содержит Claude-specific, не содержит OpenCode-specific
-      const claudeContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "agents", "reviewer.md"),
-        "utf-8",
-      );
+      const claudeContent = fs.readFileSync(path.join(tmpDir, ".claude", "agents", "reviewer.md"), "utf-8");
       const claudeParsed = matter(claudeContent);
       expect(claudeParsed.content).toContain("Claude-specific instructions.");
-      expect(claudeParsed.content).not.toContain(
-        "OpenCode-specific instructions.",
-      );
+      expect(claudeParsed.content).not.toContain("OpenCode-specific instructions.");
 
       // Шаги 10–13: OpenCode файл содержит OpenCode-specific, не содержит Claude-specific
-      const opencodeContent = fs.readFileSync(
-        path.join(tmpDir, ".opencode", "agents", "reviewer.md"),
-        "utf-8",
-      );
+      const opencodeContent = fs.readFileSync(path.join(tmpDir, ".opencode", "agents", "reviewer.md"), "utf-8");
       const opencodeParsed = matter(opencodeContent);
-      expect(opencodeParsed.content).not.toContain(
-        "Claude-specific instructions.",
-      );
-      expect(opencodeParsed.content).toContain(
-        "OpenCode-specific instructions.",
-      );
+      expect(opencodeParsed.content).not.toContain("Claude-specific instructions.");
+      expect(opencodeParsed.content).toContain("OpenCode-specific instructions.");
 
       // Результат: writeResult.written содержит оба пути
       expect(writeResult.written).toContain(".claude/agents/reviewer.md");
@@ -233,10 +206,7 @@ describe("AgentsTranspiler", () => {
         path.join(agentsDir, "reviewer.md"),
         "---\nname: reviewer\nmodel: sonnet\n---\nReviewer instructions.",
       );
-      fs.writeFileSync(
-        path.join(agentsDir, "coder.md"),
-        "---\nname: coder\nmodel: opus\n---\nCoder instructions.",
-      );
+      fs.writeFileSync(path.join(agentsDir, "coder.md"), "---\nname: coder\nmodel: opus\n---\nCoder instructions.");
 
       // Поведение: шаги 1–3
       const transpiler = createAgentsTranspiler({
@@ -250,18 +220,12 @@ describe("AgentsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаги 5–6: reviewer.md
-      const reviewerContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "agents", "reviewer.md"),
-        "utf-8",
-      );
+      const reviewerContent = fs.readFileSync(path.join(tmpDir, ".claude", "agents", "reviewer.md"), "utf-8");
       const reviewerParsed = matter(reviewerContent);
       expect(reviewerParsed.content).toContain("Reviewer instructions.");
 
       // Шаги 7–8: coder.md
-      const coderContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "agents", "coder.md"),
-        "utf-8",
-      );
+      const coderContent = fs.readFileSync(path.join(tmpDir, ".claude", "agents", "coder.md"), "utf-8");
       const coderParsed = matter(coderContent);
       expect(coderParsed.content).toContain("Coder instructions.");
 
@@ -312,10 +276,7 @@ describe("AgentsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаг 5: прочитать целевой файл
-      const outputContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "agents", "simple.md"),
-        "utf-8",
-      );
+      const outputContent = fs.readFileSync(path.join(tmpDir, ".claude", "agents", "simple.md"), "utf-8");
 
       // Шаг 6: парсинг frontmatter
       const parsed = matter(outputContent);
@@ -327,9 +288,7 @@ describe("AgentsTranspiler", () => {
       expect(parsed.data.model).toBe("sonnet");
 
       // Шаг 9: body содержит оригинальный текст
-      expect(parsed.content).toContain(
-        "Plain instructions without any special sections.",
-      );
+      expect(parsed.content).toContain("Plain instructions without any special sections.");
 
       // Результат: writeResult.written содержит целевой путь
       expect(writeResult.written).toContain(".claude/agents/simple.md");
@@ -357,10 +316,7 @@ describe("AgentsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаг 5: прочитать целевой файл
-      const outputContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "agents", "reviewer.md"),
-        "utf-8",
-      );
+      const outputContent = fs.readFileSync(path.join(tmpDir, ".claude", "agents", "reviewer.md"), "utf-8");
 
       // Шаг 6: парсинг frontmatter
       const parsed = matter(outputContent);
@@ -381,12 +337,8 @@ describe("AgentsTranspiler", () => {
     // --- IT-AGENT-08: Pipeline с writeResults targetRoot ---
     it("IT-AGENT-08: writeResults записывает файлы в targetRoot с override-трансформацией", () => {
       // Вход: создать sourceDir и targetDir
-      const sourceDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-agents-source-"),
-      );
-      const targetDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-agents-target-"),
-      );
+      const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-agents-source-"));
+      const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-agents-target-"));
 
       try {
         const agentsDir = path.join(sourceDir, "agents");
@@ -411,10 +363,7 @@ describe("AgentsTranspiler", () => {
         expect(writeResult.errors).toHaveLength(0);
 
         // Шаг 5: прочитать целевой файл из targetDir
-        const outputContent = fs.readFileSync(
-          path.join(targetDir, ".claude", "agents", "coder.md"),
-          "utf-8",
-        );
+        const outputContent = fs.readFileSync(path.join(targetDir, ".claude", "agents", "coder.md"), "utf-8");
 
         // Шаг 6: парсинг frontmatter
         const parsed = matter(outputContent);
@@ -432,9 +381,7 @@ describe("AgentsTranspiler", () => {
         expect(parsed.content).toContain("Source agent instructions.");
 
         // Шаг 11: файл НЕ существует в sourceDir
-        expect(
-          fs.existsSync(path.join(sourceDir, ".claude", "agents", "coder.md")),
-        ).toBe(false);
+        expect(fs.existsSync(path.join(sourceDir, ".claude", "agents", "coder.md"))).toBe(false);
 
         // Результат: writeResult.written содержит целевой путь
         expect(writeResult.written).toContain(".claude/agents/coder.md");
@@ -468,19 +415,14 @@ describe("AgentsTranspiler", () => {
 
       // Шаг 3: relativePath ремаппинг выполнен
       // Префикс ./agents/ заменён на .claude/agents/
-      expect(results[0].files[0].relativePath).toBe(
-        ".claude/agents/nested-agent.md",
-      );
+      expect(results[0].files[0].relativePath).toBe(".claude/agents/nested-agent.md");
 
       // Шаги 4–5
       const writeResult = transpiler.writeResults(results);
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаг 6: прочитать целевой файл
-      const outputContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "agents", "nested-agent.md"),
-        "utf-8",
-      );
+      const outputContent = fs.readFileSync(path.join(tmpDir, ".claude", "agents", "nested-agent.md"), "utf-8");
       const parsed = matter(outputContent);
 
       // Шаг 7: body содержит "Nested agent instructions."

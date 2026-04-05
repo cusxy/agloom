@@ -22,12 +22,7 @@ export class ResourceTranspiler {
   private readonly agloomDir: string;
   private readonly resourceType: ResourceType;
 
-  constructor(
-    projectRoot: string,
-    adapters: ResourceAdapter[],
-    agloomDir: string,
-    resourceType: ResourceType,
-  ) {
+  constructor(projectRoot: string, adapters: ResourceAdapter[], agloomDir: string, resourceType: ResourceType) {
     this.projectRoot = projectRoot;
     this.adapters = adapters;
     this.agloomDir = agloomDir;
@@ -103,24 +98,13 @@ export class ResourceTranspiler {
       // Шаг 1: проверить, что массив errors пуст
       // Расширение 1a: при наличии ошибок — пропустить запись
       if (result.errors.length > 0) {
-        errors.push(
-          new ResourceWriteError(
-            `Skipped ${result.agentId}: transpile errors present`,
-          ),
-        );
+        errors.push(new ResourceWriteError(`Skipped ${result.agentId}: transpile errors present`));
         continue;
       }
 
       // Расширение 3a: variablesByAgentId передан, но ключ agentId отсутствует
-      if (
-        variablesByAgentId !== undefined &&
-        !(result.agentId in variablesByAgentId)
-      ) {
-        errors.push(
-          new ResourceWriteError(
-            `No interpolation variables for adapter: ${result.agentId}`,
-          ),
-        );
+      if (variablesByAgentId !== undefined && !(result.agentId in variablesByAgentId)) {
+        errors.push(new ResourceWriteError(`No interpolation variables for adapter: ${result.agentId}`));
         continue;
       }
 
@@ -131,9 +115,7 @@ export class ResourceTranspiler {
 
         // Определить, нужна ли интерполяция для данного файла
         const isMd = path.extname(file.sourcePath).toLowerCase() === ".md";
-        const shouldInterpolate =
-          (variablesByAgentId !== undefined || valuesByAgentId !== undefined) &&
-          isMd;
+        const shouldInterpolate = (variablesByAgentId !== undefined || valuesByAgentId !== undefined) && isMd;
 
         if (shouldInterpolate) {
           // Интерполяция .md файлов
@@ -155,19 +137,11 @@ export class ResourceTranspiler {
           } catch (err) {
             // Расширение 3b: InterpolationError → ResourceWriteError
             if (err instanceof InterpolationError) {
-              errors.push(
-                new ResourceWriteError(
-                  `Interpolation failed for ${file.sourcePath}: ${err.message}`,
-                ),
-              );
+              errors.push(new ResourceWriteError(`Interpolation failed for ${file.sourcePath}: ${err.message}`));
               continue;
             }
             // Расширение 3c/3d: ошибка чтения или записи
-            errors.push(
-              new ResourceWriteError(
-                `Failed to write ${file.relativePath}: ${(err as Error).message}`,
-              ),
-            );
+            errors.push(new ResourceWriteError(`Failed to write ${file.relativePath}: ${(err as Error).message}`));
           }
         } else {
           // Побайтовое копирование
@@ -176,11 +150,7 @@ export class ResourceTranspiler {
           try {
             fs.accessSync(sourceAbsolute, fs.constants.R_OK);
           } catch (err) {
-            errors.push(
-              new ResourceWriteError(
-                `Failed to read source ${file.sourcePath}: ${(err as Error).message}`,
-              ),
-            );
+            errors.push(new ResourceWriteError(`Failed to read source ${file.sourcePath}: ${(err as Error).message}`));
             continue;
           }
 
@@ -195,11 +165,7 @@ export class ResourceTranspiler {
             written.push(file.relativePath);
           } catch (err) {
             // Расширение 3d: ошибка записи целевого файла
-            errors.push(
-              new ResourceWriteError(
-                `Failed to write ${file.relativePath}: ${(err as Error).message}`,
-              ),
-            );
+            errors.push(new ResourceWriteError(`Failed to write ${file.relativePath}: ${(err as Error).message}`));
           }
         }
       }

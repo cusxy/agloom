@@ -34,9 +34,7 @@ function restorePermissions(dir: string): void {
  * Создаёт минимальный mock AdapterRegistryEntry с заданными paths и targetFiles.
  * После удаления targetRoot процедура Clean Files использует paths и targetFiles.
  */
-function createEntry(
-  overrides?: Partial<Pick<AdapterRegistryEntry, "paths" | "targetFiles">>,
-): AdapterRegistryEntry {
+function createEntry(overrides?: Partial<Pick<AdapterRegistryEntry, "paths" | "targetFiles">>): AdapterRegistryEntry {
   return {
     id: "test",
     description: "Test Adapter",

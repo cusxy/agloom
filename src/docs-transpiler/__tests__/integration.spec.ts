@@ -18,9 +18,7 @@ describe("ResourceTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-resource-integration-"),
-      );
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-resource-integration-"));
     });
 
     afterEach(() => {
@@ -34,10 +32,7 @@ describe("ResourceTranspiler", () => {
       const cyclingDir = path.join(docsDir, "cycling");
       fs.mkdirSync(cyclingDir, { recursive: true });
       fs.writeFileSync(path.join(docsDir, "overview.md"), "# Overview");
-      fs.writeFileSync(
-        path.join(cyclingDir, "agent-protocol.md"),
-        "# Agent Protocol",
-      );
+      fs.writeFileSync(path.join(cyclingDir, "agent-protocol.md"), "# Agent Protocol");
 
       // Act
       const transpiler = createResourceTranspiler({
@@ -53,24 +48,16 @@ describe("ResourceTranspiler", () => {
 
       // Assert: файлы побайтово совпадают
       const sourceOverview = fs.readFileSync(path.join(docsDir, "overview.md"));
-      const targetOverview = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "overview.md"),
-      );
+      const targetOverview = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "overview.md"));
       expect(targetOverview.equals(sourceOverview)).toBe(true);
 
-      const sourceProtocol = fs.readFileSync(
-        path.join(cyclingDir, "agent-protocol.md"),
-      );
-      const targetProtocol = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "cycling", "agent-protocol.md"),
-      );
+      const sourceProtocol = fs.readFileSync(path.join(cyclingDir, "agent-protocol.md"));
+      const targetProtocol = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "cycling", "agent-protocol.md"));
       expect(targetProtocol.equals(sourceProtocol)).toBe(true);
 
       // Assert: writeResult.written содержит оба файла
       expect(writeResult.written).toContain(".claude/docs/overview.md");
-      expect(writeResult.written).toContain(
-        ".claude/docs/cycling/agent-protocol.md",
-      );
+      expect(writeResult.written).toContain(".claude/docs/cycling/agent-protocol.md");
     });
 
     // --- Happy path: полный цикл schemas transpiler ---
@@ -78,10 +65,7 @@ describe("ResourceTranspiler", () => {
       // Arrange
       const schemasDir = path.join(tmpDir, ".agloom", "schemas");
       fs.mkdirSync(schemasDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(schemasDir, "config.schema.json"),
-        '{"type": "object"}',
-      );
+      fs.writeFileSync(path.join(schemasDir, "config.schema.json"), '{"type": "object"}');
 
       // Act
       const transpiler = createResourceTranspiler({
@@ -95,17 +79,11 @@ describe("ResourceTranspiler", () => {
       // Assert
       expect(writeResult.errors).toHaveLength(0);
 
-      const sourceContent = fs.readFileSync(
-        path.join(schemasDir, "config.schema.json"),
-      );
-      const targetContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "schemas", "config.schema.json"),
-      );
+      const sourceContent = fs.readFileSync(path.join(schemasDir, "config.schema.json"));
+      const targetContent = fs.readFileSync(path.join(tmpDir, ".claude", "schemas", "config.schema.json"));
       expect(targetContent.equals(sourceContent)).toBe(true);
 
-      expect(writeResult.written).toContain(
-        ".claude/schemas/config.schema.json",
-      );
+      expect(writeResult.written).toContain(".claude/schemas/config.schema.json");
     });
 
     // --- Happy path: полный цикл с несколькими адаптерами ---
@@ -118,10 +96,7 @@ describe("ResourceTranspiler", () => {
       // Act
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
-        adapters: [
-          createStubAdapter("claude", ".claude/docs"),
-          createStubAdapter("opencode", ".opencode/docs"),
-        ],
+        adapters: [createStubAdapter("claude", ".claude/docs"), createStubAdapter("opencode", ".opencode/docs")],
         resourceType: "docs",
       });
       const results = transpiler.transpile();
@@ -134,12 +109,8 @@ describe("ResourceTranspiler", () => {
 
       // Оба файла побайтово совпадают с исходным
       const source = fs.readFileSync(path.join(docsDir, "readme.md"));
-      const claude = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "readme.md"),
-      );
-      const opencode = fs.readFileSync(
-        path.join(tmpDir, ".opencode", "docs", "readme.md"),
-      );
+      const claude = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "readme.md"));
+      const opencode = fs.readFileSync(path.join(tmpDir, ".opencode", "docs", "readme.md"));
       expect(claude.equals(source)).toBe(true);
       expect(opencode.equals(source)).toBe(true);
     });
@@ -206,14 +177,8 @@ describe("ResourceTranspiler", () => {
     it("полный цикл с интерполяцией: discover → transpile → writeResults с variablesByAgentId", () => {
       const docsDir = path.join(tmpDir, ".agloom", "docs");
       fs.mkdirSync(docsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(docsDir, "guide.md"),
-        "Skills: ${agloom:SKILLS_DIR}",
-      );
-      fs.writeFileSync(
-        path.join(docsDir, "data.json"),
-        '{"path": "${agloom:SKILLS_DIR}"}',
-      );
+      fs.writeFileSync(path.join(docsDir, "guide.md"), "Skills: ${agloom:SKILLS_DIR}");
+      fs.writeFileSync(path.join(docsDir, "data.json"), '{"path": "${agloom:SKILLS_DIR}"}');
 
       const transpiler = createResourceTranspiler({
         projectRoot: tmpDir,
@@ -233,17 +198,11 @@ describe("ResourceTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // .md файл интерполирован
-      const mdContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "guide.md"),
-        "utf-8",
-      );
+      const mdContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "guide.md"), "utf-8");
       expect(mdContent).toBe("Skills: .claude/skills");
 
       // .json файл скопирован побайтово (без интерполяции)
-      const jsonContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "data.json"),
-        "utf-8",
-      );
+      const jsonContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "data.json"), "utf-8");
       expect(jsonContent).toBe('{"path": "${agloom:SKILLS_DIR}"}');
     });
 
@@ -253,10 +212,7 @@ describe("ResourceTranspiler", () => {
       const docsDir = path.join(tmpDir, ".agloom", "docs");
       const cyclingDir = path.join(docsDir, "cycling");
       fs.mkdirSync(cyclingDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(cyclingDir, "agent-protocol.md"),
-        "agent protocol content",
-      );
+      fs.writeFileSync(path.join(cyclingDir, "agent-protocol.md"), "agent protocol content");
       fs.writeFileSync(path.join(docsDir, "overview.md"), "overview content");
 
       // Поведение: шаги 1–3
@@ -272,25 +228,17 @@ describe("ResourceTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаги 5–6: cycling/agent-protocol.md побайтово совпадает
-      const sourceProtocol = fs.readFileSync(
-        path.join(cyclingDir, "agent-protocol.md"),
-      );
-      const targetProtocol = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "cycling", "agent-protocol.md"),
-      );
+      const sourceProtocol = fs.readFileSync(path.join(cyclingDir, "agent-protocol.md"));
+      const targetProtocol = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "cycling", "agent-protocol.md"));
       expect(targetProtocol.equals(sourceProtocol)).toBe(true);
 
       // Шаги 7–8: overview.md побайтово совпадает
       const sourceOverview = fs.readFileSync(path.join(docsDir, "overview.md"));
-      const targetOverview = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "overview.md"),
-      );
+      const targetOverview = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "overview.md"));
       expect(targetOverview.equals(sourceOverview)).toBe(true);
 
       // Результат: writeResult.written содержит оба файла
-      expect(writeResult.written).toContain(
-        ".claude/docs/cycling/agent-protocol.md",
-      );
+      expect(writeResult.written).toContain(".claude/docs/cycling/agent-protocol.md");
       expect(writeResult.written).toContain(".claude/docs/overview.md");
     });
 
@@ -300,14 +248,8 @@ describe("ResourceTranspiler", () => {
       const schemasDir = path.join(tmpDir, ".agloom", "schemas");
       const draftDir = path.join(schemasDir, "draft");
       fs.mkdirSync(draftDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(schemasDir, "spec.schema.yml"),
-        "spec schema content",
-      );
-      fs.writeFileSync(
-        path.join(draftDir, "agent.schema.yml"),
-        "agent schema content",
-      );
+      fs.writeFileSync(path.join(schemasDir, "spec.schema.yml"), "spec schema content");
+      fs.writeFileSync(path.join(draftDir, "agent.schema.yml"), "agent schema content");
 
       // Поведение: шаги 1–3
       const transpiler = createResourceTranspiler({
@@ -322,28 +264,18 @@ describe("ResourceTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаги 5–6: spec.schema.yml побайтово совпадает
-      const sourceSpec = fs.readFileSync(
-        path.join(schemasDir, "spec.schema.yml"),
-      );
-      const targetSpec = fs.readFileSync(
-        path.join(tmpDir, ".claude", "schemas", "spec.schema.yml"),
-      );
+      const sourceSpec = fs.readFileSync(path.join(schemasDir, "spec.schema.yml"));
+      const targetSpec = fs.readFileSync(path.join(tmpDir, ".claude", "schemas", "spec.schema.yml"));
       expect(targetSpec.equals(sourceSpec)).toBe(true);
 
       // Шаги 7–8: draft/agent.schema.yml побайтово совпадает
-      const sourceAgent = fs.readFileSync(
-        path.join(draftDir, "agent.schema.yml"),
-      );
-      const targetAgent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "schemas", "draft", "agent.schema.yml"),
-      );
+      const sourceAgent = fs.readFileSync(path.join(draftDir, "agent.schema.yml"));
+      const targetAgent = fs.readFileSync(path.join(tmpDir, ".claude", "schemas", "draft", "agent.schema.yml"));
       expect(targetAgent.equals(sourceAgent)).toBe(true);
 
       // Результат: writeResult.written содержит оба файла
       expect(writeResult.written).toContain(".claude/schemas/spec.schema.yml");
-      expect(writeResult.written).toContain(
-        ".claude/schemas/draft/agent.schema.yml",
-      );
+      expect(writeResult.written).toContain(".claude/schemas/draft/agent.schema.yml");
     });
 
     // --- IT-DOCS-03: Pipeline при отсутствии каталога .agloom/docs/ ---
@@ -372,14 +304,8 @@ describe("ResourceTranspiler", () => {
       // Вход: создать каноническую структуру
       const docsDir = path.join(tmpDir, ".agloom", "docs");
       fs.mkdirSync(docsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(docsDir, "guide.md"),
-        "Skills dir: ${agloom:SKILLS_DIR}",
-      );
-      fs.writeFileSync(
-        path.join(docsDir, "data.yml"),
-        "raw: ${agloom:SKILLS_DIR}",
-      );
+      fs.writeFileSync(path.join(docsDir, "guide.md"), "Skills dir: ${agloom:SKILLS_DIR}");
+      fs.writeFileSync(path.join(docsDir, "data.yml"), "raw: ${agloom:SKILLS_DIR}");
 
       // Поведение: шаги 1–2
       const transpiler = createResourceTranspiler({
@@ -401,17 +327,12 @@ describe("ResourceTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаги 5–6: guide.md интерполирован
-      const mdContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "guide.md"),
-        "utf-8",
-      );
+      const mdContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "guide.md"), "utf-8");
       expect(mdContent).toBe("Skills dir: .claude/skills");
 
       // Шаги 7–8: data.yml скопирован побайтово (без интерполяции)
       const sourceYml = fs.readFileSync(path.join(docsDir, "data.yml"));
-      const targetYml = fs.readFileSync(
-        path.join(tmpDir, ".claude", "docs", "data.yml"),
-      );
+      const targetYml = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "data.yml"));
       expect(targetYml.equals(sourceYml)).toBe(true);
 
       // Результат: writeResult.written содержит оба файла

@@ -12,9 +12,7 @@ import type { AdapterRegistryEntry } from "../types.js";
  * Минимальный стаб AdapterRegistryEntry для тестов overlay.
  * Операция overlay использует только entry.id и entry.targetRoot.
  */
-function createTestEntry(
-  overrides: Partial<AdapterRegistryEntry> = {},
-): AdapterRegistryEntry {
+function createTestEntry(overrides: Partial<AdapterRegistryEntry> = {}): AdapterRegistryEntry {
   return {
     id: "test-adapter",
     description: "Test Adapter",
@@ -61,10 +59,7 @@ describe("CLI", () => {
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       const overlayClaudeDir = path.join(overlayDir, ".claude");
       fs.mkdirSync(overlayClaudeDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayClaudeDir, "settings.json"),
-        '{"key": "value"}',
-      );
+      fs.writeFileSync(path.join(overlayClaudeDir, "settings.json"), '{"key": "value"}');
       fs.writeFileSync(path.join(overlayDir, ".mcp.json"), '{"mcp": true}');
 
       const outcome = runOverlayStep({ entry, projectRoot: tmpDir });
@@ -74,16 +69,10 @@ describe("CLI", () => {
       expect(outcome.errors).toEqual([]);
 
       // Проверяем, что файлы скопированы в project root с сохранением пути
-      const targetSettings = fs.readFileSync(
-        path.join(tmpDir, ".claude", "settings.json"),
-        "utf-8",
-      );
+      const targetSettings = fs.readFileSync(path.join(tmpDir, ".claude", "settings.json"), "utf-8");
       expect(targetSettings).toBe('{"key": "value"}');
 
-      const targetMcp = fs.readFileSync(
-        path.join(tmpDir, ".mcp.json"),
-        "utf-8",
-      );
+      const targetMcp = fs.readFileSync(path.join(tmpDir, ".mcp.json"), "utf-8");
       expect(targetMcp).toBe('{"mcp": true}');
     });
 
@@ -104,16 +93,10 @@ describe("CLI", () => {
       expect(outcome.errors).toEqual([]);
 
       // Проверяем сохранение вложенной структуры
-      const deepFile = fs.readFileSync(
-        path.join(tmpDir, ".claude", "commands", "sub", "deep-file.md"),
-        "utf-8",
-      );
+      const deepFile = fs.readFileSync(path.join(tmpDir, ".claude", "commands", "sub", "deep-file.md"), "utf-8");
       expect(deepFile).toBe("deep content");
 
-      const rootFile = fs.readFileSync(
-        path.join(tmpDir, "root-file.txt"),
-        "utf-8",
-      );
+      const rootFile = fs.readFileSync(path.join(tmpDir, "root-file.txt"), "utf-8");
       expect(rootFile).toBe("root content");
     });
 
@@ -127,22 +110,15 @@ describe("CLI", () => {
       fs.mkdirSync(overlayClaudeDir, { recursive: true });
 
       // Бинарные данные с null bytes и произвольными байтами
-      const binaryContent = Buffer.from([
-        0x00, 0x01, 0xff, 0xfe, 0x89, 0x50, 0x4e, 0x47,
-      ]);
-      fs.writeFileSync(
-        path.join(overlayClaudeDir, "binary.bin"),
-        binaryContent,
-      );
+      const binaryContent = Buffer.from([0x00, 0x01, 0xff, 0xfe, 0x89, 0x50, 0x4e, 0x47]);
+      fs.writeFileSync(path.join(overlayClaudeDir, "binary.bin"), binaryContent);
 
       const outcome = runOverlayStep({ entry, projectRoot: tmpDir });
 
       expect(outcome.writtenCount).toBe(1);
       expect(outcome.errors).toEqual([]);
 
-      const copied = fs.readFileSync(
-        path.join(tmpDir, ".claude", "binary.bin"),
-      );
+      const copied = fs.readFileSync(path.join(tmpDir, ".claude", "binary.bin"));
       expect(Buffer.compare(copied, binaryContent)).toBe(0);
     });
 
@@ -201,10 +177,7 @@ describe("CLI", () => {
 
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDir, "config.md"),
-        "Root: ${agloom:ROOT_DIR}",
-      );
+      fs.writeFileSync(path.join(overlayDir, "config.md"), "Root: ${agloom:ROOT_DIR}");
 
       const variables: Record<string, string> = { ROOT_DIR: ".claude" };
       const env: Record<string, string> = {};
@@ -230,23 +203,9 @@ describe("CLI", () => {
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
 
-      const extensions = [
-        ".json",
-        ".yml",
-        ".yaml",
-        ".txt",
-        ".toml",
-        ".xml",
-        ".html",
-        ".svg",
-        ".jsonc",
-        ".jsonl",
-      ];
+      const extensions = [".json", ".yml", ".yaml", ".txt", ".toml", ".xml", ".html", ".svg", ".jsonc", ".jsonl"];
       for (const ext of extensions) {
-        fs.writeFileSync(
-          path.join(overlayDir, `file${ext}`),
-          "dir: ${agloom:ROOT_DIR}",
-        );
+        fs.writeFileSync(path.join(overlayDir, `file${ext}`), "dir: ${agloom:ROOT_DIR}");
       }
 
       const variables: Record<string, string> = { ROOT_DIR: ".claude" };
@@ -262,10 +221,7 @@ describe("CLI", () => {
       expect(outcome.errors).toEqual([]);
 
       for (const ext of extensions) {
-        const content = fs.readFileSync(
-          path.join(tmpDir, `file${ext}`),
-          "utf-8",
-        );
+        const content = fs.readFileSync(path.join(tmpDir, `file${ext}`), "utf-8");
         expect(content).toBe("dir: .claude");
       }
     });
@@ -276,14 +232,8 @@ describe("CLI", () => {
 
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDir, "FILE.MD"),
-        "Root: ${agloom:ROOT_DIR}",
-      );
-      fs.writeFileSync(
-        path.join(overlayDir, "config.Json"),
-        '{"root": "${agloom:ROOT_DIR}"}',
-      );
+      fs.writeFileSync(path.join(overlayDir, "FILE.MD"), "Root: ${agloom:ROOT_DIR}");
+      fs.writeFileSync(path.join(overlayDir, "config.Json"), '{"root": "${agloom:ROOT_DIR}"}');
 
       const variables: Record<string, string> = { ROOT_DIR: ".claude" };
 
@@ -310,10 +260,7 @@ describe("CLI", () => {
 
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDir, "config.yml"),
-        "project: ${env:MY_PROJECT}",
-      );
+      fs.writeFileSync(path.join(overlayDir, "config.yml"), "project: ${env:MY_PROJECT}");
 
       const variables: Record<string, string> = {};
       const env: Record<string, string> = { MY_PROJECT: "agloom" };
@@ -341,10 +288,7 @@ describe("CLI", () => {
 
       // Файл с расширением .bin не в whitelist — содержимое с ${agloom:...} должно сохраниться
       const contentWithInterpolation = "Root: ${agloom:ROOT_DIR}";
-      fs.writeFileSync(
-        path.join(overlayDir, "data.bin"),
-        contentWithInterpolation,
-      );
+      fs.writeFileSync(path.join(overlayDir, "data.bin"), contentWithInterpolation);
 
       const variables: Record<string, string> = { ROOT_DIR: ".claude" };
 
@@ -370,9 +314,7 @@ describe("CLI", () => {
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
 
-      const binaryContent = Buffer.from([
-        0x00, 0x01, 0xff, 0xfe, 0x89, 0x50, 0x4e, 0x47,
-      ]);
+      const binaryContent = Buffer.from([0x00, 0x01, 0xff, 0xfe, 0x89, 0x50, 0x4e, 0x47]);
       fs.writeFileSync(path.join(overlayDir, "image.png"), binaryContent);
 
       const variables: Record<string, string> = { ROOT_DIR: ".claude" };
@@ -397,10 +339,7 @@ describe("CLI", () => {
 
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDir, "config.md"),
-        "Root: ${agloom:ROOT_DIR}",
-      );
+      fs.writeFileSync(path.join(overlayDir, "config.md"), "Root: ${agloom:ROOT_DIR}");
 
       // Вызов без variables — обратная совместимость
       const outcome = runOverlayStep({ entry, projectRoot: tmpDir });
@@ -421,15 +360,9 @@ describe("CLI", () => {
       fs.mkdirSync(overlayDir, { recursive: true });
 
       // Файл с неизвестной переменной — вызовет InterpolationError
-      fs.writeFileSync(
-        path.join(overlayDir, "bad.md"),
-        "Value: ${agloom:NONEXISTENT}",
-      );
+      fs.writeFileSync(path.join(overlayDir, "bad.md"), "Value: ${agloom:NONEXISTENT}");
       // Файл с валидной переменной — должен быть обработан успешно
-      fs.writeFileSync(
-        path.join(overlayDir, "good.md"),
-        "Root: ${agloom:ROOT_DIR}",
-      );
+      fs.writeFileSync(path.join(overlayDir, "good.md"), "Root: ${agloom:ROOT_DIR}");
 
       const variables: Record<string, string> = { ROOT_DIR: ".claude" };
 
@@ -447,10 +380,7 @@ describe("CLI", () => {
       expect(outcome.errors[0]).toMatch(/bad\.md/);
 
       // good.md успешно интерполирован
-      const goodContent = fs.readFileSync(
-        path.join(tmpDir, "good.md"),
-        "utf-8",
-      );
+      const goodContent = fs.readFileSync(path.join(tmpDir, "good.md"), "utf-8");
       expect(goodContent).toBe("Root: .claude");
     });
 
@@ -461,10 +391,7 @@ describe("CLI", () => {
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       const nestedDir = path.join(overlayDir, "docs");
       fs.mkdirSync(nestedDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(nestedDir, "readme.md"),
-        "Missing: ${agloom:UNKNOWN_VAR}",
-      );
+      fs.writeFileSync(path.join(nestedDir, "readme.md"), "Missing: ${agloom:UNKNOWN_VAR}");
 
       const variables: Record<string, string> = {};
 
@@ -479,9 +406,7 @@ describe("CLI", () => {
       // Проверяем формат: "Interpolation failed for docs/readme.md: Unknown agloom variable: UNKNOWN_VAR"
       expect(outcome.errors[0]).toContain("Interpolation failed for");
       expect(outcome.errors[0]).toContain(path.join("docs", "readme.md"));
-      expect(outcome.errors[0]).toContain(
-        "Unknown agloom variable: UNKNOWN_VAR",
-      );
+      expect(outcome.errors[0]).toContain("Unknown agloom variable: UNKNOWN_VAR");
     });
 
     // --- Шаг 7+8: смешанный сценарий — текстовые интерполируются, бинарные копируются ---
@@ -492,10 +417,7 @@ describe("CLI", () => {
       fs.mkdirSync(overlayDir, { recursive: true });
 
       // Текстовый файл — интерполируется
-      fs.writeFileSync(
-        path.join(overlayDir, "readme.md"),
-        "Dir: ${agloom:ROOT_DIR}",
-      );
+      fs.writeFileSync(path.join(overlayDir, "readme.md"), "Dir: ${agloom:ROOT_DIR}");
       // Бинарный файл — побайтово
       const binaryContent = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
       fs.writeFileSync(path.join(overlayDir, "icon.png"), binaryContent);
@@ -535,10 +457,7 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(overlayDir, "ok-file.txt"), "ok content");
 
       // Создаём файл (не каталог) по пути, где должен быть промежуточный каталог в project root
-      fs.writeFileSync(
-        path.join(tmpDir, "blocked-dir"),
-        "I am a file, not a directory",
-      );
+      fs.writeFileSync(path.join(tmpDir, "blocked-dir"), "I am a file, not a directory");
 
       const outcome = runOverlayStep({ entry, projectRoot: tmpDir });
 

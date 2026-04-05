@@ -36,14 +36,8 @@ describe("AgentsTranspiler", () => {
       // Arrange
       const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentsDir, "code-reviewer.md"),
-        "---\nname: code-reviewer\n---\nBody content.",
-      );
-      fs.writeFileSync(
-        path.join(agentsDir, "test-writer.md"),
-        "---\nname: test-writer\n---\nTest body.",
-      );
+      fs.writeFileSync(path.join(agentsDir, "code-reviewer.md"), "---\nname: code-reviewer\n---\nBody content.");
+      fs.writeFileSync(path.join(agentsDir, "test-writer.md"), "---\nname: test-writer\n---\nTest body.");
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
@@ -59,16 +53,12 @@ describe("AgentsTranspiler", () => {
       const reviewer = definitions.find((d) => d.name === "code-reviewer");
       expect(reviewer).toBeDefined();
       expect(reviewer!.relativePath).toBe(".agloom/agents/code-reviewer.md");
-      expect(reviewer!.rawContent).toBe(
-        "---\nname: code-reviewer\n---\nBody content.",
-      );
+      expect(reviewer!.rawContent).toBe("---\nname: code-reviewer\n---\nBody content.");
 
       const writer = definitions.find((d) => d.name === "test-writer");
       expect(writer).toBeDefined();
       expect(writer!.relativePath).toBe(".agloom/agents/test-writer.md");
-      expect(writer!.rawContent).toBe(
-        "---\nname: test-writer\n---\nTest body.",
-      );
+      expect(writer!.rawContent).toBe("---\nname: test-writer\n---\nTest body.");
     });
 
     // --- Трансформация: шаг 3 — фильтрация только .md файлов ---
@@ -156,9 +146,7 @@ describe("AgentsTranspiler", () => {
 
       try {
         expect(() => transpiler.discover()).toThrow(AgentDiscoverError);
-        expect(() => transpiler.discover()).toThrow(
-          /Failed to scan directory \.agloom\/agents\//,
-        );
+        expect(() => transpiler.discover()).toThrow(/Failed to scan directory \.agloom\/agents\//);
       } finally {
         fs.chmodSync(agentsDir, 0o755);
       }
@@ -179,9 +167,7 @@ describe("AgentsTranspiler", () => {
 
       try {
         expect(() => transpiler.discover()).toThrow(AgentDiscoverError);
-        expect(() => transpiler.discover()).toThrow(
-          /Failed to read .agloom\/agents\/broken\.md/,
-        );
+        expect(() => transpiler.discover()).toThrow(/Failed to read .agloom\/agents\/broken\.md/);
       } finally {
         fs.chmodSync(filePath, 0o644);
       }

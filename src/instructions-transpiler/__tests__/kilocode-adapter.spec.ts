@@ -27,9 +27,7 @@ describe("KiloCodeAdapter", () => {
     it("возвращает пустой массив для root файлов (no-op)", () => {
       const adapter = new KiloCodeAdapter();
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", "Root content."),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", "Root content.")]);
 
       expect(files).toEqual([]);
     });
@@ -43,11 +41,7 @@ describe("KiloCodeAdapter", () => {
         makeCanonicalFile("AGLOOM.md", "root", "Root."),
         makeCanonicalFile("src/AGLOOM.md", "directory", "Dir."),
         makeCanonicalFile("AGLOOM.local.md", "local", "Local."),
-        makeCanonicalFile(
-          "src/AGLOOM.local.md",
-          "directory-local",
-          "Dir local.",
-        ),
+        makeCanonicalFile("src/AGLOOM.local.md", "directory-local", "Dir local."),
       ]);
 
       expect(files).toEqual([]);

@@ -6,12 +6,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { createPermissionsTranspiler } from "../index.js";
-import {
-  ConfigError,
-  DiscoverError,
-  TransformError,
-  WriteError,
-} from "../errors.js";
+import { ConfigError, DiscoverError, TransformError, WriteError } from "../errors.js";
 import { validatePermissionsContent } from "../validate.js";
 
 /**
@@ -96,9 +91,7 @@ describe("PermissionsTranspiler", () => {
           projectRoot: "/absolute/path",
           adapters: [invalidAdapter],
         }),
-      ).toThrow(
-        "Adapter at index 0 does not implement PermissionsAdapter interface",
-      );
+      ).toThrow("Adapter at index 0 does not implement PermissionsAdapter interface");
     });
 
     // --- Расширение 4a: дублирующийся agentId ---
@@ -138,13 +131,8 @@ describe("PermissionsTranspiler", () => {
 
     // --- Happy path: шаги 1-6 -- обнаружение .agloom/permissions.yml (новый формат: ordered list) ---
     it("обнаруживает .agloom/permissions.yml и возвращает PermissionsCanonicalFile с format yaml", () => {
-      const yamlContent = ["shell:", '  - "ls *": allow', '  - "*": deny'].join(
-        "\n",
-      );
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.yml"),
-        yamlContent,
-      );
+      const yamlContent = ["shell:", '  - "ls *": allow', '  - "*": deny'].join("\n");
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.yml"), yamlContent);
 
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
@@ -166,10 +154,7 @@ describe("PermissionsTranspiler", () => {
       const jsonContent = JSON.stringify({
         shell: [{ "ls *": "allow" }, { "*": "deny" }],
       });
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.json"),
-        jsonContent,
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.json"), jsonContent);
 
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
@@ -182,22 +167,13 @@ describe("PermissionsTranspiler", () => {
       expect(result!.relativePath).toBe(".agloom/permissions.json");
       expect(result!.format).toBe("json");
       expect(Array.isArray(result!.content.shell)).toBe(true);
-      expect(result!.content.shell).toEqual([
-        { "ls *": "allow" },
-        { "*": "deny" },
-      ]);
+      expect(result!.content.shell).toEqual([{ "ls *": "allow" }, { "*": "deny" }]);
     });
 
     // --- Расширение 3a: оба файла существуют ---
     it("выбрасывает DiscoverError, если оба .agloom/permissions.yml и .agloom/permissions.json существуют", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.yml"),
-        "shell: []",
-      );
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.json"),
-        '{"shell": []}',
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.yml"), "shell: []");
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.json"), '{"shell": []}');
 
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
@@ -243,10 +219,7 @@ describe("PermissionsTranspiler", () => {
 
     // --- Расширение 5a: ошибка парсинга YAML ---
     it("выбрасывает DiscoverError при невалидном YAML", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.yml"),
-        "shell:\n  - invalid: [yaml: {\n",
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.yml"), "shell:\n  - invalid: [yaml: {\n");
 
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
@@ -254,17 +227,12 @@ describe("PermissionsTranspiler", () => {
       });
 
       expect(() => transpiler.discover()).toThrow(DiscoverError);
-      expect(() => transpiler.discover()).toThrow(
-        /Failed to parse \.agloom\/permissions\.yml/,
-      );
+      expect(() => transpiler.discover()).toThrow(/Failed to parse \.agloom\/permissions\.yml/);
     });
 
     // --- Расширение 5b: ошибка парсинга JSON ---
     it("выбрасывает DiscoverError при невалидном JSON", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.json"),
-        "{invalid json",
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.json"), "{invalid json");
 
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
@@ -272,9 +240,7 @@ describe("PermissionsTranspiler", () => {
       });
 
       expect(() => transpiler.discover()).toThrow(DiscoverError);
-      expect(() => transpiler.discover()).toThrow(
-        /Failed to parse \.agloom\/permissions\.json/,
-      );
+      expect(() => transpiler.discover()).toThrow(/Failed to parse \.agloom\/permissions\.json/);
     });
 
     // --- Граничное условие: пустой канонический файл (все секции отсутствуют) ---
@@ -316,10 +282,7 @@ describe("PermissionsTranspiler", () => {
         '  - "src/**/*.ts": write',
         '  - "src/**": read',
       ].join("\n");
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.yml"),
-        yamlContent,
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.yml"), yamlContent);
 
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
@@ -359,18 +322,9 @@ describe("PermissionsTranspiler", () => {
     // --- Happy path: шаги 1-5 -- валидный контент со всеми секциями (новый формат) ---
     it("принимает валидный контент со всеми тремя секциями в формате ordered list", () => {
       const content = {
-        shell: [
-          { "git push *": "deny" },
-          { "ls *": "allow" },
-          { "npm *": "ask" },
-          { "*": "deny" },
-        ],
+        shell: [{ "git push *": "deny" }, { "ls *": "allow" }, { "npm *": "ask" }, { "*": "deny" }],
         mcp: [{ "bitbucket:get_pull_request": "allow" }, { "*:*": "deny" }],
-        file: [
-          { "**/.env": "deny" },
-          { "src/**": "read" },
-          { "src/**/*.ts": "write" },
-        ],
+        file: [{ "**/.env": "deny" }, { "src/**": "read" }, { "src/**/*.ts": "write" }],
       };
 
       const result = validatePermissionsContent(content);
@@ -418,43 +372,29 @@ describe("PermissionsTranspiler", () => {
 
     // --- Расширение 1a: content не является объектом ---
     it("выбрасывает TransformError, если content не является объектом", () => {
-      expect(() => validatePermissionsContent("not an object" as any)).toThrow(
-        TransformError,
-      );
-      expect(() => validatePermissionsContent("not an object" as any)).toThrow(
-        "Permissions config must be an object",
-      );
+      expect(() => validatePermissionsContent("not an object" as any)).toThrow(TransformError);
+      expect(() => validatePermissionsContent("not an object" as any)).toThrow("Permissions config must be an object");
     });
 
     it("выбрасывает TransformError, если content равен null", () => {
-      expect(() => validatePermissionsContent(null as any)).toThrow(
-        TransformError,
-      );
-      expect(() => validatePermissionsContent(null as any)).toThrow(
-        "Permissions config must be an object",
-      );
+      expect(() => validatePermissionsContent(null as any)).toThrow(TransformError);
+      expect(() => validatePermissionsContent(null as any)).toThrow("Permissions config must be an object");
     });
 
     // --- Расширение 2a: неизвестный ключ ---
     it("выбрасывает TransformError при неизвестном ключе в корне", () => {
-      expect(() =>
-        validatePermissionsContent({ shell: [], unknown: [] } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ shell: [], unknown: [] } as any),
-      ).toThrow(
+      expect(() => validatePermissionsContent({ shell: [], unknown: [] } as any)).toThrow(TransformError);
+      expect(() => validatePermissionsContent({ shell: [], unknown: [] } as any)).toThrow(
         "Unknown key 'unknown' in permissions config. Allowed keys: shell, mcp, file",
       );
     });
 
     // --- Расширение 3a: shell не является массивом ---
     it("выбрасывает TransformError, если shell не является массивом", () => {
-      expect(() =>
-        validatePermissionsContent({ shell: "not-array" } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ shell: "not-array" } as any),
-      ).toThrow("'shell' must be an array of permission rules");
+      expect(() => validatePermissionsContent({ shell: "not-array" } as any)).toThrow(TransformError);
+      expect(() => validatePermissionsContent({ shell: "not-array" } as any)).toThrow(
+        "'shell' must be an array of permission rules",
+      );
     });
 
     // --- Обратная совместимость: старый формат (allow/ask/deny блоки) -- ошибка валидации ---
@@ -482,9 +422,7 @@ describe("PermissionsTranspiler", () => {
         validatePermissionsContent({
           shell: ["not-an-object"],
         } as any),
-      ).toThrow(
-        "Each rule in 'shell' must be an object with exactly one key (pattern) and one value (action)",
-      );
+      ).toThrow("Each rule in 'shell' must be an object with exactly one key (pattern) and one value (action)");
     });
 
     it("выбрасывает TransformError, если элемент shell содержит два ключа", () => {
@@ -497,9 +435,7 @@ describe("PermissionsTranspiler", () => {
         validatePermissionsContent({
           shell: [{ "ls *": "allow", "git *": "deny" }],
         } as any),
-      ).toThrow(
-        "Each rule in 'shell' must be an object with exactly one key (pattern) and one value (action)",
-      );
+      ).toThrow("Each rule in 'shell' must be an object with exactly one key (pattern) and one value (action)");
     });
 
     it("выбрасывает TransformError, если элемент shell является пустым объектом", () => {
@@ -512,9 +448,7 @@ describe("PermissionsTranspiler", () => {
         validatePermissionsContent({
           shell: [{}],
         } as any),
-      ).toThrow(
-        "Each rule in 'shell' must be an object with exactly one key (pattern) and one value (action)",
-      );
+      ).toThrow("Each rule in 'shell' must be an object with exactly one key (pattern) and one value (action)");
     });
 
     // --- Расширение 3c: невалидное действие shell ---
@@ -528,19 +462,15 @@ describe("PermissionsTranspiler", () => {
         validatePermissionsContent({
           shell: [{ "ls *": "invalid" }],
         }),
-      ).toThrow(
-        "Invalid action 'invalid' in 'shell' rule 'ls *'. Allowed actions: allow, ask, deny",
-      );
+      ).toThrow("Invalid action 'invalid' in 'shell' rule 'ls *'. Allowed actions: allow, ask, deny");
     });
 
     // --- Расширение 4a: mcp не является массивом ---
     it("выбрасывает TransformError, если mcp не является массивом", () => {
-      expect(() =>
-        validatePermissionsContent({ mcp: "not-array" } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ mcp: "not-array" } as any),
-      ).toThrow("'mcp' must be an array of permission rules");
+      expect(() => validatePermissionsContent({ mcp: "not-array" } as any)).toThrow(TransformError);
+      expect(() => validatePermissionsContent({ mcp: "not-array" } as any)).toThrow(
+        "'mcp' must be an array of permission rules",
+      );
     });
 
     // --- Расширение 4b: элемент mcp не является объектом с ровно одним ключом ---
@@ -554,9 +484,7 @@ describe("PermissionsTranspiler", () => {
         validatePermissionsContent({
           mcp: [42],
         } as any),
-      ).toThrow(
-        "Each rule in 'mcp' must be an object with exactly one key (pattern) and one value (action)",
-      );
+      ).toThrow("Each rule in 'mcp' must be an object with exactly one key (pattern) and one value (action)");
     });
 
     // --- Расширение 4c: невалидное действие mcp ---
@@ -570,9 +498,7 @@ describe("PermissionsTranspiler", () => {
         validatePermissionsContent({
           mcp: [{ "bitbucket:*": "invalid" }],
         }),
-      ).toThrow(
-        "Invalid action 'invalid' in 'mcp' rule 'bitbucket:*'. Allowed actions: allow, ask, deny",
-      );
+      ).toThrow("Invalid action 'invalid' in 'mcp' rule 'bitbucket:*'. Allowed actions: allow, ask, deny");
     });
 
     // --- Расширение 4d: невалидный MCP-паттерн (нет разделителя :) ---
@@ -586,9 +512,7 @@ describe("PermissionsTranspiler", () => {
         validatePermissionsContent({
           mcp: [{ bitbucket_get_pull_request: "allow" }],
         }),
-      ).toThrow(
-        "Invalid MCP pattern 'bitbucket_get_pull_request': must match format '<server>:<tool>'",
-      );
+      ).toThrow("Invalid MCP pattern 'bitbucket_get_pull_request': must match format '<server>:<tool>'");
     });
 
     // --- Расширение 4d: MCP-паттерн с двумя разделителями : ---
@@ -602,19 +526,15 @@ describe("PermissionsTranspiler", () => {
         validatePermissionsContent({
           mcp: [{ "a:b:c": "allow" }],
         }),
-      ).toThrow(
-        "Invalid MCP pattern 'a:b:c': must match format '<server>:<tool>'",
-      );
+      ).toThrow("Invalid MCP pattern 'a:b:c': must match format '<server>:<tool>'");
     });
 
     // --- Расширение 5a: file не является массивом ---
     it("выбрасывает TransformError, если file не является массивом", () => {
-      expect(() =>
-        validatePermissionsContent({ file: "string" } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validatePermissionsContent({ file: "string" } as any),
-      ).toThrow("'file' must be an array of permission rules");
+      expect(() => validatePermissionsContent({ file: "string" } as any)).toThrow(TransformError);
+      expect(() => validatePermissionsContent({ file: "string" } as any)).toThrow(
+        "'file' must be an array of permission rules",
+      );
     });
 
     // --- Расширение 5b: элемент file не является объектом с ровно одним ключом ---
@@ -628,9 +548,7 @@ describe("PermissionsTranspiler", () => {
         validatePermissionsContent({
           file: [null],
         } as any),
-      ).toThrow(
-        "Each rule in 'file' must be an object with exactly one key (pattern) and one value (action)",
-      );
+      ).toThrow("Each rule in 'file' must be an object with exactly one key (pattern) and one value (action)");
     });
 
     // --- Расширение 5c: невалидное действие file ---
@@ -644,9 +562,7 @@ describe("PermissionsTranspiler", () => {
         validatePermissionsContent({
           file: [{ "src/**": "allow" }],
         }),
-      ).toThrow(
-        "Invalid action 'allow' in 'file' rule 'src/**'. Allowed actions: deny, read, write",
-      );
+      ).toThrow("Invalid action 'allow' in 'file' rule 'src/**'. Allowed actions: deny, read, write");
     });
 
     // --- Граничное условие: MCP-паттерн *:* (wildcard) ---
@@ -671,12 +587,8 @@ describe("PermissionsTranspiler", () => {
 
     // --- Граничное условие: content является массивом ---
     it("выбрасывает TransformError, если content является массивом", () => {
-      expect(() => validatePermissionsContent([] as any)).toThrow(
-        TransformError,
-      );
-      expect(() => validatePermissionsContent([] as any)).toThrow(
-        "Permissions config must be an object",
-      );
+      expect(() => validatePermissionsContent([] as any)).toThrow(TransformError);
+      expect(() => validatePermissionsContent([] as any)).toThrow("Permissions config must be an object");
     });
 
     // --- Обратная совместимость: старый формат mcp с allow/ask/deny блоками ---
@@ -727,13 +639,8 @@ describe("PermissionsTranspiler", () => {
 
     // --- Happy path: шаги 1-4 -- полный цикл транспиляции (новый формат) ---
     it("выполняет полный цикл транспиляции: discover -> validate -> adapter.transpile -> собрать результаты", () => {
-      const yamlContent = ["shell:", '  - "ls *": allow', '  - "*": deny'].join(
-        "\n",
-      );
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.yml"),
-        yamlContent,
-      );
+      const yamlContent = ["shell:", '  - "ls *": allow', '  - "*": deny'].join("\n");
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.yml"), yamlContent);
 
       const receivedFiles: unknown[] = [];
       const stubAdapter = {
@@ -777,14 +684,8 @@ describe("PermissionsTranspiler", () => {
 
     // --- Расширение 1b: discover() выбрасывает DiscoverError ---
     it("пробрасывает DiscoverError к вызывающему коду", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.yml"),
-        "shell: []",
-      );
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.json"),
-        '{"shell": []}',
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.yml"), "shell: []");
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.json"), '{"shell": []}');
 
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
@@ -796,10 +697,7 @@ describe("PermissionsTranspiler", () => {
 
     // --- Расширение 2a: валидация выбрасывает TransformError ---
     it("пробрасывает TransformError при невалидном каноническом файле", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.yml"),
-        "unknownKey: true",
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.yml"), "unknownKey: true");
 
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
@@ -812,10 +710,7 @@ describe("PermissionsTranspiler", () => {
     // --- Расширение 3a: адаптер выбрасывает исключение ---
     it("создаёт TranspileResult с ошибкой при исключении адаптера и продолжает остальные", () => {
       const yamlContent = ["shell:", '  - "ls *": allow'].join("\n");
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "permissions.yml"),
-        yamlContent,
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "permissions.yml"), yamlContent);
 
       const failingAdapter = {
         agentId: "failing",
@@ -841,9 +736,7 @@ describe("PermissionsTranspiler", () => {
       expect(failingResult).toBeDefined();
       expect(failingResult!.files).toHaveLength(0);
       expect(failingResult!.errors).toHaveLength(1);
-      expect(failingResult!.errors[0].message).toContain(
-        "Adapter internal failure",
-      );
+      expect(failingResult!.errors[0].message).toContain("Adapter internal failure");
       expect(failingResult!.errors[0].agentId).toBe("failing");
       expect(failingResult!.errors[0].cause).toBeInstanceOf(Error);
 
@@ -893,10 +786,7 @@ describe("PermissionsTranspiler", () => {
       expect(writeResult.written).toContain(".claude/settings.json");
       expect(writeResult.errors).toHaveLength(0);
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "settings.json"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "settings.json"), "utf-8");
       expect(writtenContent).toBe('{\n  "permissions": {}\n}\n');
     });
 
@@ -921,9 +811,7 @@ describe("PermissionsTranspiler", () => {
       ]);
 
       expect(writeResult.written).toContain(".claude/settings.json");
-      expect(fs.existsSync(path.join(tmpDir, ".claude", "settings.json"))).toBe(
-        true,
-      );
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "settings.json"))).toBe(true);
     });
 
     // --- Расширение 1a: TranspileResult содержит ошибки ---
@@ -952,9 +840,7 @@ describe("PermissionsTranspiler", () => {
         },
       ]);
 
-      expect(fs.existsSync(path.join(tmpDir, "should-not-exist.json"))).toBe(
-        false,
-      );
+      expect(fs.existsSync(path.join(tmpDir, "should-not-exist.json"))).toBe(false);
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.written).not.toContain("should-not-exist.json");
     });
@@ -963,10 +849,7 @@ describe("PermissionsTranspiler", () => {
     it("выполняет deep merge при одинаковом relativePath для JSON-файлов из разных адаптеров", () => {
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
-        adapters: [
-          createStubAdapter("adapter1"),
-          createStubAdapter("adapter2"),
-        ],
+        adapters: [createStubAdapter("adapter1"), createStubAdapter("adapter2")],
       });
 
       const writeResult = transpiler.writeResults([
@@ -975,9 +858,7 @@ describe("PermissionsTranspiler", () => {
           files: [
             {
               relativePath: "opencode.json",
-              content:
-                JSON.stringify({ permission: { "*_*": "deny" } }, null, 2) +
-                "\n",
+              content: JSON.stringify({ permission: { "*_*": "deny" } }, null, 2) + "\n",
             },
           ],
           errors: [],
@@ -987,12 +868,7 @@ describe("PermissionsTranspiler", () => {
           files: [
             {
               relativePath: "opencode.json",
-              content:
-                JSON.stringify(
-                  { mcp: { server1: { command: "npx" } } },
-                  null,
-                  2,
-                ) + "\n",
+              content: JSON.stringify({ mcp: { server1: { command: "npx" } } }, null, 2) + "\n",
             },
           ],
           errors: [],
@@ -1001,9 +877,7 @@ describe("PermissionsTranspiler", () => {
 
       expect(writeResult.written).toContain("opencode.json");
 
-      const writtenContent = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"),
-      );
+      const writtenContent = JSON.parse(fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"));
       expect(writtenContent.permission).toBeDefined();
       expect(writtenContent.mcp).toBeDefined();
     });
@@ -1013,10 +887,7 @@ describe("PermissionsTranspiler", () => {
       const existingContent = {
         mcp: { server1: { command: "npx" } },
       };
-      fs.writeFileSync(
-        path.join(tmpDir, "opencode.json"),
-        JSON.stringify(existingContent, null, 2),
-      );
+      fs.writeFileSync(path.join(tmpDir, "opencode.json"), JSON.stringify(existingContent, null, 2));
 
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
@@ -1029,9 +900,7 @@ describe("PermissionsTranspiler", () => {
           files: [
             {
               relativePath: "opencode.json",
-              content:
-                JSON.stringify({ permission: { "*_*": "deny" } }, null, 2) +
-                "\n",
+              content: JSON.stringify({ permission: { "*_*": "deny" } }, null, 2) + "\n",
             },
           ],
           errors: [],
@@ -1040,19 +909,14 @@ describe("PermissionsTranspiler", () => {
 
       expect(writeResult.written).toContain("opencode.json");
 
-      const writtenContent = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"),
-      );
+      const writtenContent = JSON.parse(fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"));
       expect(writtenContent.mcp.server1.command).toBe("npx");
       expect(writtenContent.permission["*_*"]).toBe("deny");
     });
 
     // --- Расширение 4a: существующий файл содержит невалидный JSON ---
     it("перезаписывает файл целиком, если существующий файл содержит невалидный JSON", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, "opencode.json"),
-        "{invalid json content",
-      );
+      fs.writeFileSync(path.join(tmpDir, "opencode.json"), "{invalid json content");
 
       const transpiler = createPermissionsTranspiler({
         projectRoot: tmpDir,
@@ -1075,9 +939,7 @@ describe("PermissionsTranspiler", () => {
 
       expect(writeResult.written).toContain("opencode.json");
 
-      const writtenContent = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"),
-      );
+      const writtenContent = JSON.parse(fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"));
       expect(writtenContent.permission["*_*"]).toBe("deny");
     });
 
@@ -1105,9 +967,7 @@ describe("PermissionsTranspiler", () => {
 
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(WriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Failed to write blocker\/settings\.json/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Failed to write blocker\/settings\.json/);
     });
   });
 });

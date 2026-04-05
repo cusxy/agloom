@@ -25,15 +25,11 @@ export function resolveAdapter(adapterId: string): ResolveAdapterResult {
   const entry = adapterRegistry.find((e) => e.id === adapterId);
 
   if (!entry) {
-    throw new Error(
-      `Unknown agent: ${adapterId}. Run 'agloom adapters' to see available adapters.`,
-    );
+    throw new Error(`Unknown agent: ${adapterId}. Run 'agloom adapters' to see available adapters.`);
   }
 
   if (entry.hidden) {
-    throw new Error(
-      `Adapter '${adapterId}' cannot be used directly. It is included automatically as a dependency.`,
-    );
+    throw new Error(`Adapter '${adapterId}' cannot be used directly. It is included automatically as a dependency.`);
   }
 
   const projectRoot = process.cwd();

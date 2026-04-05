@@ -62,10 +62,7 @@ function isGlobPattern(p: string): boolean {
  * @param projectRoot — абсолютный путь к корню проекта.
  * @param adapterIds — список идентификаторов адаптеров для записи в конфиг.
  */
-export function createConfigFile(
-  projectRoot: string,
-  adapterIds: string[],
-): void {
+export function createConfigFile(projectRoot: string, adapterIds: string[]): void {
   const configDir = path.join(projectRoot, ".agloom");
   const configPath = path.join(configDir, "config.yml");
 
@@ -92,11 +89,7 @@ ${adapterLines}
  * @param force — перезаписать существующие файлы.
  * @returns Результат выполнения импорта или строка с сообщением об ошибке (расш. 2a, 3a).
  */
-export function initFiles(
-  entry: AdapterRegistryEntry,
-  projectRoot: string,
-  force: boolean,
-): InitOutcome | string {
+export function initFiles(entry: AdapterRegistryEntry, projectRoot: string, force: boolean): InitOutcome | string {
   const errors: string[] = [];
   let copiedCount = 0;
 
@@ -157,10 +150,7 @@ export function initFiles(
           continue;
         }
         for (const filePath of files) {
-          const relativePath = path.join(
-            importPath,
-            path.relative(sourcePath, filePath),
-          );
+          const relativePath = path.join(importPath, path.relative(sourcePath, filePath));
           filesToCopy.push({ absolutePath: filePath, relativePath });
         }
       } else {

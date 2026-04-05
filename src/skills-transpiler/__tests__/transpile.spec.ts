@@ -43,23 +43,15 @@ describe("SkillsTranspiler", () => {
       const claudeResult = results.find((r) => r.agentId === "claude");
       expect(claudeResult).toBeDefined();
       expect(claudeResult!.files).toHaveLength(1);
-      expect(claudeResult!.files[0].relativePath).toBe(
-        ".claude/skills/my-skill/SKILL.md",
-      );
-      expect(claudeResult!.files[0].sourcePath).toBe(
-        ".agloom/skills/my-skill/SKILL.md",
-      );
+      expect(claudeResult!.files[0].relativePath).toBe(".claude/skills/my-skill/SKILL.md");
+      expect(claudeResult!.files[0].sourcePath).toBe(".agloom/skills/my-skill/SKILL.md");
       expect(claudeResult!.errors).toHaveLength(0);
 
       const opencodeResult = results.find((r) => r.agentId === "opencode");
       expect(opencodeResult).toBeDefined();
       expect(opencodeResult!.files).toHaveLength(1);
-      expect(opencodeResult!.files[0].relativePath).toBe(
-        ".opencode/skills/my-skill/SKILL.md",
-      );
-      expect(opencodeResult!.files[0].sourcePath).toBe(
-        ".agloom/skills/my-skill/SKILL.md",
-      );
+      expect(opencodeResult!.files[0].relativePath).toBe(".opencode/skills/my-skill/SKILL.md");
+      expect(opencodeResult!.files[0].sourcePath).toBe(".agloom/skills/my-skill/SKILL.md");
       expect(opencodeResult!.errors).toHaveLength(0);
     });
 

@@ -95,13 +95,8 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
 
   const versionStr = String(data.version);
   const cleaned = semver.valid(versionStr);
-  if (
-    cleaned === null ||
-    (versionStr !== cleaned && !versionStr.startsWith(cleaned + "+"))
-  ) {
-    throw new Error(
-      "Invalid plugin manifest: 'version' must be a valid semver string.",
-    );
+  if (cleaned === null || (versionStr !== cleaned && !versionStr.startsWith(cleaned + "+"))) {
+    throw new Error("Invalid plugin manifest: 'version' must be a valid semver string.");
   }
 
   // Step 6: проверить description
@@ -109,9 +104,7 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
     throw new Error("Invalid plugin manifest: 'description' is required.");
   }
   if (!isNonEmptyString(data.description)) {
-    throw new Error(
-      "Invalid plugin manifest: 'description' must be a non-empty string.",
-    );
+    throw new Error("Invalid plugin manifest: 'description' must be a non-empty string.");
   }
 
   // Step 7: проверить author
@@ -125,23 +118,17 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
   const author = data.author as Record<string, unknown>;
 
   if (!isNonEmptyString(author.name)) {
-    throw new Error(
-      "Invalid plugin manifest: 'author.name' must be a non-empty string.",
-    );
+    throw new Error("Invalid plugin manifest: 'author.name' must be a non-empty string.");
   }
   if (!isNonEmptyString(author.email)) {
-    throw new Error(
-      "Invalid plugin manifest: 'author.email' must be a non-empty string.",
-    );
+    throw new Error("Invalid plugin manifest: 'author.email' must be a non-empty string.");
   }
 
   // Step 8: проверить author.url
   let authorUrl: string | null = null;
   if (author.url != null) {
     if (!isNonEmptyString(author.url) || !isValidUrl(author.url)) {
-      throw new Error(
-        "Invalid plugin manifest: 'author.url' must be a valid URL.",
-      );
+      throw new Error("Invalid plugin manifest: 'author.url' must be a valid URL.");
     }
     authorUrl = author.url;
   }
@@ -150,9 +137,7 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
   let license: string | null = null;
   if (data.license != null) {
     if (!isNonEmptyString(data.license)) {
-      throw new Error(
-        "Invalid plugin manifest: 'license' must be a non-empty string.",
-      );
+      throw new Error("Invalid plugin manifest: 'license' must be a non-empty string.");
     }
     license = data.license;
   }
@@ -161,9 +146,7 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
   let homepage: string | null = null;
   if (data.homepage != null) {
     if (!isNonEmptyString(data.homepage) || !isValidUrl(data.homepage)) {
-      throw new Error(
-        "Invalid plugin manifest: 'homepage' must be a valid URL.",
-      );
+      throw new Error("Invalid plugin manifest: 'homepage' must be a valid URL.");
     }
     homepage = data.homepage;
   }
@@ -172,15 +155,11 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
   let keywords: string[] = [];
   if (data.keywords != null) {
     if (!Array.isArray(data.keywords)) {
-      throw new Error(
-        "Invalid plugin manifest: 'keywords' must be an array of strings.",
-      );
+      throw new Error("Invalid plugin manifest: 'keywords' must be an array of strings.");
     }
     for (const kw of data.keywords) {
       if (!isNonEmptyString(kw)) {
-        throw new Error(
-          "Invalid plugin manifest: each keyword must be a non-empty string.",
-        );
+        throw new Error("Invalid plugin manifest: each keyword must be a non-empty string.");
       }
     }
     keywords = data.keywords as string[];
@@ -192,9 +171,7 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
   if (data.variables != null) {
     // Step 13: проверить, что variables — объект
     if (typeof data.variables !== "object" || Array.isArray(data.variables)) {
-      throw new Error(
-        "Invalid plugin manifest: 'variables' must be an object.",
-      );
+      throw new Error("Invalid plugin manifest: 'variables' must be an object.");
     }
 
     const rawVars = data.variables as Record<string, unknown>;
@@ -203,27 +180,21 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
     for (const [key, value] of Object.entries(rawVars)) {
       // Step 14.1: проверить, что значение — объект
       if (typeof value !== "object" || value === null || Array.isArray(value)) {
-        throw new Error(
-          `Invalid plugin manifest: variable '${key}' must be an object.`,
-        );
+        throw new Error(`Invalid plugin manifest: variable '${key}' must be an object.`);
       }
 
       const varObj = value as Record<string, unknown>;
 
       // Step 14.2: проверить description
       if (!isNonEmptyString(varObj.description)) {
-        throw new Error(
-          `Invalid plugin manifest: variable '${key}' must have a non-empty 'description'.`,
-        );
+        throw new Error(`Invalid plugin manifest: variable '${key}' must have a non-empty 'description'.`);
       }
 
       // Step 14.3: проверить required
       let required = false;
       if (varObj.required != null) {
         if (typeof varObj.required !== "boolean") {
-          throw new Error(
-            `Invalid plugin manifest: variable '${key}' field 'required' must be a boolean.`,
-          );
+          throw new Error(`Invalid plugin manifest: variable '${key}' field 'required' must be a boolean.`);
         }
         required = varObj.required;
       }
@@ -232,9 +203,7 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
       let defaultValue: string | null = null;
       if (varObj.default != null) {
         if (typeof varObj.default !== "string") {
-          throw new Error(
-            `Invalid plugin manifest: variable '${key}' field 'default' must be a string.`,
-          );
+          throw new Error(`Invalid plugin manifest: variable '${key}' field 'default' must be a string.`);
         }
         defaultValue = varObj.default;
       }
@@ -243,9 +212,7 @@ export function loadPluginManifest(pluginDir: string): PluginManifest {
       let sensitive = false;
       if (varObj.sensitive != null) {
         if (typeof varObj.sensitive !== "boolean") {
-          throw new Error(
-            `Invalid plugin manifest: variable '${key}' field 'sensitive' must be a boolean.`,
-          );
+          throw new Error(`Invalid plugin manifest: variable '${key}' field 'sensitive' must be a boolean.`);
         }
         sensitive = varObj.sensitive;
       }

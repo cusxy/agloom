@@ -37,9 +37,7 @@ describe("CLI", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-manifest-variables-"),
-      );
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-manifest-variables-"));
     });
 
     afterEach(() => {
@@ -130,9 +128,7 @@ describe("CLI", () => {
 `,
       );
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        "Invalid plugin manifest: 'variables' must be an object.",
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow("Invalid plugin manifest: 'variables' must be an object.");
     });
 
     // § Расширения 13a: variables как строка → Error
@@ -144,9 +140,7 @@ describe("CLI", () => {
 `,
       );
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        "Invalid plugin manifest: 'variables' must be an object.",
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow("Invalid plugin manifest: 'variables' must be an object.");
     });
 
     // =================================================================

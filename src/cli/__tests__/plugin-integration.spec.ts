@@ -9,33 +9,17 @@ import * as os from "node:os";
 import matter from "gray-matter";
 import { runTranspileStep } from "../transpile-step.js";
 import type { TranspilerStepOutcome } from "../types.js";
-import {
-  createSkillsTranspiler,
-  ClaudeSkillAdapter,
-} from "../../skills-transpiler/index.js";
-import {
-  createAgentsTranspiler,
-  ClaudeAgentAdapter,
-} from "../../agents-transpiler/index.js";
-import {
-  createInstructionsTranspiler,
-  ClaudeAdapter,
-} from "../../instructions-transpiler/index.js";
-import {
-  createResourceTranspiler,
-  type ResourceAdapter,
-} from "../../docs-transpiler/index.js";
+import { createSkillsTranspiler, ClaudeSkillAdapter } from "../../skills-transpiler/index.js";
+import { createAgentsTranspiler, ClaudeAgentAdapter } from "../../agents-transpiler/index.js";
+import { createInstructionsTranspiler, ClaudeAdapter } from "../../instructions-transpiler/index.js";
+import { createResourceTranspiler, type ResourceAdapter } from "../../docs-transpiler/index.js";
 
 /**
  * Создаёт фабричную функцию для docs-транспилера с привязанным resourceType.
  * Аналог createResourceTranspilerFactory из app.tsx.
  */
 function createDocsTranspilerFactory() {
-  return (config: {
-    projectRoot: string;
-    adapters: unknown[];
-    agloomDir?: string;
-  }) =>
+  return (config: { projectRoot: string; adapters: unknown[]; agloomDir?: string }) =>
     createResourceTranspiler({
       projectRoot: config.projectRoot,
       adapters: config.adapters as ResourceAdapter[],
@@ -65,10 +49,7 @@ describe("Plugin Integration", () => {
       // Arrange
       const skillDir = path.join(pluginDir, "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nPlugin skill body.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nPlugin skill body.");
 
       // Act
       const outcome: TranspilerStepOutcome = runTranspileStep({
@@ -83,25 +64,13 @@ describe("Plugin Integration", () => {
       expect(outcome.errors).toEqual([]);
       expect(outcome.writtenCount).toBe(1);
 
-      const outputPath = path.join(
-        tmpDir,
-        ".claude",
-        "skills",
-        "my-skill",
-        "SKILL.md",
-      );
+      const outputPath = path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md");
       expect(fs.existsSync(outputPath)).toBe(true);
       const content = fs.readFileSync(outputPath, "utf-8");
       expect(content).toContain("Plugin skill body.");
 
       // Результат: файл НЕ ДОЛЖЕН существовать в pluginDir
-      const pluginOutputPath = path.join(
-        pluginDir,
-        ".claude",
-        "skills",
-        "my-skill",
-        "SKILL.md",
-      );
+      const pluginOutputPath = path.join(pluginDir, ".claude", "skills", "my-skill", "SKILL.md");
       expect(fs.existsSync(pluginOutputPath)).toBe(false);
     });
   });
@@ -153,12 +122,7 @@ describe("Plugin Integration", () => {
       expect(parsed.content).toContain("Agent instructions.");
 
       // Результат: файл НЕ ДОЛЖЕН существовать в pluginDir
-      const pluginOutputPath = path.join(
-        pluginDir,
-        ".claude",
-        "agents",
-        "my-agent.md",
-      );
+      const pluginOutputPath = path.join(pluginDir, ".claude", "agents", "my-agent.md");
       expect(fs.existsSync(pluginOutputPath)).toBe(false);
     });
   });
@@ -181,10 +145,7 @@ describe("Plugin Integration", () => {
     // Спецификация: § IT-PLUGIN-03, шаги 1–5
     it("AGLOOM.md из plugin directory обнаруживается, транспилируется и записывается в projectRoot", () => {
       // Arrange
-      fs.writeFileSync(
-        path.join(pluginDir, "AGLOOM.md"),
-        "Plugin instructions.",
-      );
+      fs.writeFileSync(path.join(pluginDir, "AGLOOM.md"), "Plugin instructions.");
 
       // Act
       const outcome: TranspilerStepOutcome = runTranspileStep({
@@ -229,10 +190,7 @@ describe("Plugin Integration", () => {
       // Arrange
       const docsDir = path.join(pluginDir, "docs");
       fs.mkdirSync(docsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(docsDir, "guide.md"),
-        "# Plugin Guide\n\nGuide content.",
-      );
+      fs.writeFileSync(path.join(docsDir, "guide.md"), "# Plugin Guide\n\nGuide content.");
 
       const docsAdapter: ResourceAdapter = {
         agentId: "claude",
@@ -258,12 +216,7 @@ describe("Plugin Integration", () => {
       expect(content).toContain("Guide content.");
 
       // Результат: файл НЕ ДОЛЖЕН существовать в pluginDir
-      const pluginOutputPath = path.join(
-        pluginDir,
-        ".claude",
-        "docs",
-        "guide.md",
-      );
+      const pluginOutputPath = path.join(pluginDir, ".claude", "docs", "guide.md");
       expect(fs.existsSync(pluginOutputPath)).toBe(false);
     });
   });
@@ -288,18 +241,12 @@ describe("Plugin Integration", () => {
       // Arrange: plugin skill
       const pluginSkillDir = path.join(pluginDir, "skills", "shared");
       fs.mkdirSync(pluginSkillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(pluginSkillDir, "SKILL.md"),
-        "---\nname: shared\n---\nplugin content",
-      );
+      fs.writeFileSync(path.join(pluginSkillDir, "SKILL.md"), "---\nname: shared\n---\nplugin content");
 
       // Arrange: local skill
       const localSkillDir = path.join(tmpDir, ".agloom", "skills", "shared");
       fs.mkdirSync(localSkillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(localSkillDir, "SKILL.md"),
-        "---\nname: shared\n---\nlocal content",
-      );
+      fs.writeFileSync(path.join(localSkillDir, "SKILL.md"), "---\nname: shared\n---\nlocal content");
 
       const adapter = new ClaudeSkillAdapter();
 
@@ -323,13 +270,7 @@ describe("Plugin Integration", () => {
       expect(outcome2.errors).toEqual([]);
 
       // Assert: local content wins
-      const outputPath = path.join(
-        tmpDir,
-        ".claude",
-        "skills",
-        "shared",
-        "SKILL.md",
-      );
+      const outputPath = path.join(tmpDir, ".claude", "skills", "shared", "SKILL.md");
       const content = fs.readFileSync(outputPath, "utf-8");
       expect(content).toContain("local content");
       expect(content).not.toContain("plugin content");
@@ -359,18 +300,12 @@ describe("Plugin Integration", () => {
       // Arrange: plugin1
       const p1SkillDir = path.join(plugin1Dir, "skills", "shared");
       fs.mkdirSync(p1SkillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(p1SkillDir, "SKILL.md"),
-        "---\nname: shared\n---\nplugin1 content",
-      );
+      fs.writeFileSync(path.join(p1SkillDir, "SKILL.md"), "---\nname: shared\n---\nplugin1 content");
 
       // Arrange: plugin2
       const p2SkillDir = path.join(plugin2Dir, "skills", "shared");
       fs.mkdirSync(p2SkillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(p2SkillDir, "SKILL.md"),
-        "---\nname: shared\n---\nplugin2 content",
-      );
+      fs.writeFileSync(path.join(p2SkillDir, "SKILL.md"), "---\nname: shared\n---\nplugin2 content");
 
       const adapter = new ClaudeSkillAdapter();
 
@@ -395,13 +330,7 @@ describe("Plugin Integration", () => {
       expect(outcome2.errors).toEqual([]);
 
       // Assert: plugin2 content wins
-      const outputPath = path.join(
-        tmpDir,
-        ".claude",
-        "skills",
-        "shared",
-        "SKILL.md",
-      );
+      const outputPath = path.join(tmpDir, ".claude", "skills", "shared", "SKILL.md");
       const content = fs.readFileSync(outputPath, "utf-8");
       expect(content).toContain("plugin2 content");
       expect(content).not.toContain("plugin1 content");
@@ -428,10 +357,7 @@ describe("Plugin Integration", () => {
       // Arrange
       const skillDir = path.join(pluginDir, "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nAgents dir: ${agloom:AGENTS_DIR}",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nAgents dir: ${agloom:AGENTS_DIR}");
 
       // Act
       const outcome: TranspilerStepOutcome = runTranspileStep({
@@ -447,13 +373,7 @@ describe("Plugin Integration", () => {
       expect(outcome.errors).toEqual([]);
       expect(outcome.writtenCount).toBe(1);
 
-      const outputPath = path.join(
-        tmpDir,
-        ".claude",
-        "skills",
-        "my-skill",
-        "SKILL.md",
-      );
+      const outputPath = path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md");
       const content = fs.readFileSync(outputPath, "utf-8");
       expect(content).toContain("Agents dir: .claude/agents");
       expect(content).not.toContain("${agloom:AGENTS_DIR}");

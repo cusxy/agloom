@@ -23,8 +23,7 @@ export function interpolate(
   env?: Record<string, string | undefined>,
   values?: Record<string, string>,
 ): string {
-  const resolvedEnv =
-    env ?? (process.env as Record<string, string | undefined>);
+  const resolvedEnv = env ?? (process.env as Record<string, string | undefined>);
   const resolvedValues = values ?? {};
 
   // Один проход: обрабатываем escaped и non-escaped паттерны для agloom, env и values
@@ -33,12 +32,7 @@ export function interpolate(
   // NAME = one or more chars not containing }
   return content.replace(
     /\\(\$\{(?:agloom|env|values):[^}]+\})|\$\{(agloom|env|values):([^}]+)\}/g,
-    (
-      match,
-      escaped: string | undefined,
-      namespace: string | undefined,
-      name: string | undefined,
-    ) => {
+    (match, escaped: string | undefined, namespace: string | undefined, name: string | undefined) => {
       // Шаги 2-3, 6: escaped — потребить backslash, вернуть литерал
       if (escaped !== undefined) {
         return escaped;
@@ -58,9 +52,7 @@ export function interpolate(
         const value = resolvedEnv[name!];
         if (value === undefined) {
           // Расширение 5a
-          throw new InterpolationError(
-            `Undefined environment variable: ${name}`,
-          );
+          throw new InterpolationError(`Undefined environment variable: ${name}`);
         }
         return value;
       }

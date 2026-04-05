@@ -16,11 +16,7 @@ export { CodexSkillAdapter } from "./adapters/codex-adapter.js";
 export { GeminiSkillAdapter } from "./adapters/gemini-adapter.js";
 
 export { SkillsTranspiler } from "./transpiler.js";
-export {
-  SkillConfigError,
-  SkillDiscoverError,
-  SkillWriteError,
-} from "./errors.js";
+export { SkillConfigError, SkillDiscoverError, SkillWriteError } from "./errors.js";
 export type {
   SkillAdapter,
   SkillOutputFile,
@@ -52,9 +48,7 @@ function isSkillAdapter(value: unknown): value is SkillAdapter {
  * 4. Валидировать, что значения agentId всех адаптеров уникальны.
  * 5. Сохранить конфигурацию в экземпляре.
  */
-export function createSkillsTranspiler(
-  config: SkillsTranspilerConfig,
-): SkillsTranspiler {
+export function createSkillsTranspiler(config: SkillsTranspilerConfig): SkillsTranspiler {
   // Шаг 1: projectRoot должен быть абсолютным путём
   // Расширение 1a
   if (!path.isAbsolute(config.projectRoot)) {
@@ -71,9 +65,7 @@ export function createSkillsTranspiler(
   // Расширение 3a
   for (let i = 0; i < config.adapters.length; i++) {
     if (!isSkillAdapter(config.adapters[i])) {
-      throw new SkillConfigError(
-        `Adapter at index ${i} does not implement SkillAdapter interface`,
-      );
+      throw new SkillConfigError(`Adapter at index ${i} does not implement SkillAdapter interface`);
     }
   }
 
@@ -88,9 +80,5 @@ export function createSkillsTranspiler(
   }
 
   // Шаг 5: создать экземпляр
-  return new SkillsTranspiler(
-    config.projectRoot,
-    config.adapters,
-    config.agloomDir,
-  );
+  return new SkillsTranspiler(config.projectRoot, config.adapters, config.agloomDir);
 }

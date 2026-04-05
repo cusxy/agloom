@@ -46,10 +46,7 @@ function referenceUrlHash(url: string): string {
   // 3. Привести к нижнему регистру
   normalized = normalized.toLowerCase();
   // 4. SHA-256
-  const hash = crypto
-    .createHash("sha256")
-    .update(normalized, "utf-8")
-    .digest("hex");
+  const hash = crypto.createHash("sha256").update(normalized, "utf-8").digest("hex");
   // 5. Первые 16 hex-символов
   return hash.slice(0, 16);
 }
@@ -119,9 +116,7 @@ describe("CLI", () => {
         };
       };
 
-      const result = parsePluginEntry(
-        "https://github.com/org/repo//plugins/eslint#v1.0.0",
-      );
+      const result = parsePluginEntry("https://github.com/org/repo//plugins/eslint#v1.0.0");
 
       expect(result).toEqual({
         type: "git",
@@ -274,9 +269,7 @@ describe("CLI", () => {
         parsePluginEntry: (entry: string) => unknown;
       };
 
-      expect(() => parsePluginEntry("#v1.0.0")).toThrow(
-        /Invalid config: git plugin URL must not be empty/,
-      );
+      expect(() => parsePluginEntry("#v1.0.0")).toThrow(/Invalid config: git plugin URL must not be empty/);
     });
 
     // --- Happy path: git@ URL без # → type: "git", ref: null ---
@@ -361,9 +354,7 @@ describe("CLI", () => {
         };
       };
 
-      const result = parsePluginEntry(
-        "https://github.com/org/repo//plugins/eslint",
-      );
+      const result = parsePluginEntry("https://github.com/org/repo//plugins/eslint");
 
       expect(result).toEqual({
         type: "git",
@@ -412,9 +403,7 @@ describe("CLI", () => {
       };
 
       // URL содержит # в fragment, последний # отделяет ref
-      const result = parsePluginEntry(
-        "https://github.com/org/repo#branch#v1.0.0",
-      );
+      const result = parsePluginEntry("https://github.com/org/repo#branch#v1.0.0");
 
       expect(result.ref).toBe("v1.0.0");
       expect(result.url).toBe("https://github.com/org/repo#branch");
@@ -479,8 +468,7 @@ describe("CLI", () => {
       expect(result).not.toBeNull();
       // Должен возвращать pluginEntries (массив ParsedPluginEntry)
       expect(result).toHaveProperty("pluginEntries");
-      const entries = (result as unknown as { pluginEntries: unknown[] })
-        .pluginEntries;
+      const entries = (result as unknown as { pluginEntries: unknown[] }).pluginEntries;
       expect(entries).toHaveLength(3);
     });
 
@@ -492,18 +480,12 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(
         path.join(configDir, "config.yml"),
-        [
-          "adapters:",
-          "  - claude",
-          "plugins:",
-          "  - git: ftp://invalid-protocol.com/repo",
-          "    ref: main",
-        ].join("\n") + "\n",
+        ["adapters:", "  - claude", "plugins:", "  - git: ftp://invalid-protocol.com/repo", "    ref: main"].join(
+          "\n",
+        ) + "\n",
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        "Invalid config: plugin entry 'git' must be an HTTPS or SSH git URL.",
-      );
+      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: plugin entry 'git' must be an HTTPS or SSH git URL.");
     });
 
     // --- Happy path: объект git без ref → ref: null (опциональный) ---
@@ -514,18 +496,12 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(
         path.join(configDir, "config.yml"),
-        [
-          "adapters:",
-          "  - claude",
-          "plugins:",
-          "  - git: https://github.com/org/repo",
-        ].join("\n") + "\n",
+        ["adapters:", "  - claude", "plugins:", "  - git: https://github.com/org/repo"].join("\n") + "\n",
       );
 
       const result = loadConfig(tmpDir);
       expect(result).not.toBeNull();
-      const entries = (result as unknown as { pluginEntries: unknown[] })
-        .pluginEntries;
+      const entries = (result as unknown as { pluginEntries: unknown[] }).pluginEntries;
       expect(entries).toHaveLength(1);
     });
 
@@ -581,17 +557,10 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(
         path.join(configDir, "config.yml"),
-        [
-          "adapters:",
-          "  - claude",
-          "plugins:",
-          "  - https://github.com/org/repo#",
-        ].join("\n") + "\n",
+        ["adapters:", "  - claude", "plugins:", "  - https://github.com/org/repo#"].join("\n") + "\n",
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        /Invalid config: git plugin ref must not be empty/,
-      );
+      expect(() => loadConfig(tmpDir)).toThrow(/Invalid config: git plugin ref must not be empty/);
     });
   });
 
@@ -716,26 +685,17 @@ describe("CLI", () => {
         throw new Error(`Unexpected command: ${cmd}`);
       });
 
-      const { resolveGitRef, hashGitUrl } =
-        (await import("../resolve-plugins.js")) as {
-          resolveGitRef: (params: {
-            gitUrl: string;
-            ref: string | null;
-            forceRefresh: boolean;
-          }) => { resolvedSha: string; cachePath: string };
-          hashGitUrl: (url: string) => string;
+      const { resolveGitRef, hashGitUrl } = (await import("../resolve-plugins.js")) as {
+        resolveGitRef: (params: { gitUrl: string; ref: string | null; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
         };
+        hashGitUrl: (url: string) => string;
+      };
 
       // Создаём директорию кеша для resolved SHA
       const urlHash = hashGitUrl("https://github.com/org/repo");
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        resolvedSha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, resolvedSha);
       fs.mkdirSync(cacheDir, { recursive: true });
 
       const result = resolveGitRef({
@@ -755,11 +715,10 @@ describe("CLI", () => {
     // § Поведение шаг 2.1: ref является полным commit SHA → resolvedSha = ref
     it("при 40-hex SHA ref возвращает его как resolvedSha без вызова git ls-remote", async () => {
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => { resolvedSha: string; cachePath: string };
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
+        };
       };
 
       const sha = "a".repeat(40);
@@ -769,14 +728,7 @@ describe("CLI", () => {
         hashGitUrl: (url: string) => string;
       };
       const urlHash = hashGitUrl("https://github.com/org/repo");
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        sha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, sha);
       fs.mkdirSync(cacheDir, { recursive: true });
 
       const result = resolveGitRef({
@@ -803,27 +755,18 @@ describe("CLI", () => {
         throw new Error(`Unexpected command: ${cmd}`);
       });
 
-      const { resolveGitRef, hashGitUrl } =
-        (await import("../resolve-plugins.js")) as {
-          resolveGitRef: (params: {
-            gitUrl: string;
-            ref: string;
-            forceRefresh: boolean;
-          }) => { resolvedSha: string; cachePath: string };
-          hashGitUrl: (url: string) => string;
+      const { resolveGitRef, hashGitUrl } = (await import("../resolve-plugins.js")) as {
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
         };
+        hashGitUrl: (url: string) => string;
+      };
 
       // Создаём директорию кеша для resolved SHA
       const urlHash = hashGitUrl("https://github.com/org/repo");
       const resolvedSha = "def456789012345678901234567890abcdef1234";
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        resolvedSha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, resolvedSha);
       fs.mkdirSync(cacheDir, { recursive: true });
 
       const result = resolveGitRef({
@@ -835,14 +778,7 @@ describe("CLI", () => {
       expect(result.resolvedSha).toBe(resolvedSha);
 
       // Проверяем, что refs.yml записан с mutable: false
-      const refsPath = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        "refs.yml",
-      );
+      const refsPath = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, "refs.yml");
       expect(fs.existsSync(refsPath)).toBe(true);
       const refsContent = fs.readFileSync(refsPath, "utf-8");
       expect(refsContent).toContain("mutable: false");
@@ -861,26 +797,17 @@ describe("CLI", () => {
         throw new Error(`Unexpected command: ${cmd}`);
       });
 
-      const { resolveGitRef, hashGitUrl } =
-        (await import("../resolve-plugins.js")) as {
-          resolveGitRef: (params: {
-            gitUrl: string;
-            ref: string;
-            forceRefresh: boolean;
-          }) => { resolvedSha: string; cachePath: string };
-          hashGitUrl: (url: string) => string;
+      const { resolveGitRef, hashGitUrl } = (await import("../resolve-plugins.js")) as {
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
         };
+        hashGitUrl: (url: string) => string;
+      };
 
       const urlHash = hashGitUrl("https://github.com/org/repo");
       const resolvedSha = "abc123def456789012345678901234567890abcd";
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        resolvedSha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, resolvedSha);
       fs.mkdirSync(cacheDir, { recursive: true });
 
       const result = resolveGitRef({
@@ -892,14 +819,7 @@ describe("CLI", () => {
       expect(result.resolvedSha).toBe(resolvedSha);
 
       // Проверяем refs.yml: mutable: true
-      const refsPath = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        "refs.yml",
-      );
+      const refsPath = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, "refs.yml");
       expect(fs.existsSync(refsPath)).toBe(true);
       const refsContent = fs.readFileSync(refsPath, "utf-8");
       expect(refsContent).toContain("mutable: true");
@@ -914,13 +834,7 @@ describe("CLI", () => {
 
       const urlHash = hashGitUrl("https://github.com/org/repo");
       const resolvedSha = "abc123def456789012345678901234567890abcd";
-      const cacheBase = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-      );
+      const cacheBase = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash);
       const cacheDir = path.join(cacheBase, resolvedSha);
       fs.mkdirSync(cacheDir, { recursive: true });
 
@@ -937,11 +851,10 @@ describe("CLI", () => {
 
       // НЕ мокаем execSync — если ls-remote вызовется, тест упадёт
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => { resolvedSha: string; cachePath: string };
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
+        };
       };
 
       const result = resolveGitRef({
@@ -963,13 +876,7 @@ describe("CLI", () => {
       const urlHash = hashGitUrl("https://github.com/org/repo");
       const oldSha = "abc123def456789012345678901234567890abcd";
       const newSha = "def456789012345678901234567890abcdef1234";
-      const cacheBase = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-      );
+      const cacheBase = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash);
       fs.mkdirSync(path.join(cacheBase, newSha), { recursive: true });
 
       // resolvedAt = 48 часов назад (TTL по умолчанию 24h, истёк)
@@ -993,11 +900,10 @@ describe("CLI", () => {
       });
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => { resolvedSha: string; cachePath: string };
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
+        };
       };
 
       const result = resolveGitRef({
@@ -1018,13 +924,7 @@ describe("CLI", () => {
 
       const urlHash = hashGitUrl("https://github.com/org/repo");
       const resolvedSha = "abc123def456789012345678901234567890abcd";
-      const cacheBase = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-      );
+      const cacheBase = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash);
       fs.mkdirSync(path.join(cacheBase, resolvedSha), { recursive: true });
 
       // resolvedAt = сейчас (TTL не истёк)
@@ -1039,21 +939,18 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(cacheBase, "refs.yml"), refsYml);
 
       const childProcess = await import("node:child_process");
-      const execSyncSpy = vi
-        .spyOn(childProcess, "execSync")
-        .mockImplementation((cmd: string) => {
-          if (typeof cmd === "string" && cmd.includes("ls-remote")) {
-            return Buffer.from(`${resolvedSha}\trefs/heads/main\n`);
-          }
-          throw new Error(`Unexpected command: ${cmd}`);
-        });
+      const execSyncSpy = vi.spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (typeof cmd === "string" && cmd.includes("ls-remote")) {
+          return Buffer.from(`${resolvedSha}\trefs/heads/main\n`);
+        }
+        throw new Error(`Unexpected command: ${cmd}`);
+      });
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => { resolvedSha: string; cachePath: string };
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
+        };
       };
 
       resolveGitRef({
@@ -1063,10 +960,7 @@ describe("CLI", () => {
       });
 
       // ls-remote должен быть вызван несмотря на валидный TTL
-      expect(execSyncSpy).toHaveBeenCalledWith(
-        expect.stringContaining("ls-remote"),
-        expect.anything(),
-      );
+      expect(execSyncSpy).toHaveBeenCalledWith(expect.stringContaining("ls-remote"), expect.anything());
     });
 
     // --- Расширение 3a: refs.yml не существует → перейти к шагу 5 ---
@@ -1075,35 +969,24 @@ describe("CLI", () => {
       const childProcess = await import("node:child_process");
       const resolvedSha = "abc123def456789012345678901234567890abcd";
 
-      const execSyncSpy = vi
-        .spyOn(childProcess, "execSync")
-        .mockImplementation((cmd: string) => {
-          if (typeof cmd === "string" && cmd.includes("ls-remote")) {
-            return Buffer.from(`${resolvedSha}\trefs/heads/main\n`);
-          }
-          throw new Error(`Unexpected command: ${cmd}`);
-        });
+      const execSyncSpy = vi.spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (typeof cmd === "string" && cmd.includes("ls-remote")) {
+          return Buffer.from(`${resolvedSha}\trefs/heads/main\n`);
+        }
+        throw new Error(`Unexpected command: ${cmd}`);
+      });
 
-      const { resolveGitRef, hashGitUrl } =
-        (await import("../resolve-plugins.js")) as {
-          resolveGitRef: (params: {
-            gitUrl: string;
-            ref: string;
-            forceRefresh: boolean;
-          }) => { resolvedSha: string; cachePath: string };
-          hashGitUrl: (url: string) => string;
+      const { resolveGitRef, hashGitUrl } = (await import("../resolve-plugins.js")) as {
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
         };
+        hashGitUrl: (url: string) => string;
+      };
 
       // Создаём директорию кеша для resolved SHA
       const urlHash = hashGitUrl("https://github.com/org/repo");
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        resolvedSha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, resolvedSha);
       fs.mkdirSync(cacheDir, { recursive: true });
 
       const result = resolveGitRef({
@@ -1113,10 +996,7 @@ describe("CLI", () => {
       });
 
       expect(result.resolvedSha).toBe(resolvedSha);
-      expect(execSyncSpy).toHaveBeenCalledWith(
-        expect.stringContaining("ls-remote"),
-        expect.anything(),
-      );
+      expect(execSyncSpy).toHaveBeenCalledWith(expect.stringContaining("ls-remote"), expect.anything());
     });
 
     // --- Расширение 5a: ls-remote ошибка аутентификации ---
@@ -1126,18 +1006,12 @@ describe("CLI", () => {
       const childProcess = await import("node:child_process");
       vi.spyOn(childProcess, "execSync").mockImplementation(() => {
         const err = new Error("Command failed") as Error & { stderr: Buffer };
-        err.stderr = Buffer.from(
-          "fatal: Authentication failed for 'https://github.com/org/repo'",
-        );
+        err.stderr = Buffer.from("fatal: Authentication failed for 'https://github.com/org/repo'");
         throw err;
       });
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => unknown;
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => unknown;
       };
 
       expect(() =>
@@ -1160,11 +1034,7 @@ describe("CLI", () => {
       });
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => unknown;
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => unknown;
       };
 
       expect(() =>
@@ -1182,18 +1052,12 @@ describe("CLI", () => {
       const childProcess = await import("node:child_process");
       vi.spyOn(childProcess, "execSync").mockImplementation(() => {
         const err = new Error("Command failed") as Error & { stderr: Buffer };
-        err.stderr = Buffer.from(
-          "fatal: repository 'https://github.com/org/repo' not found",
-        );
+        err.stderr = Buffer.from("fatal: repository 'https://github.com/org/repo' not found");
         throw err;
       });
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => unknown;
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => unknown;
       };
 
       expect(() =>
@@ -1214,13 +1078,7 @@ describe("CLI", () => {
 
       const urlHash = hashGitUrl("https://github.com/org/repo");
       const resolvedSha = "def456789012345678901234567890abcdef1234";
-      const cacheBase = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-      );
+      const cacheBase = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash);
       const cacheDir = path.join(cacheBase, resolvedSha);
       fs.mkdirSync(cacheDir, { recursive: true });
 
@@ -1236,11 +1094,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(cacheBase, "refs.yml"), refsYml);
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => { resolvedSha: string; cachePath: string };
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
+        };
       };
 
       // Не мокаем execSync — если вызовется, тест упадёт
@@ -1279,22 +1136,16 @@ describe("CLI", () => {
     it("при ref равном HEAD использует --depth 1 без --branch для клонирования", async () => {
       const childProcess = await import("node:child_process");
       const commands: string[] = [];
-      const _execSyncSpy = vi
-        .spyOn(childProcess, "execSync")
-        .mockImplementation((cmd: string) => {
-          commands.push(cmd);
-          return Buffer.from("");
-        });
+      const _execSyncSpy = vi.spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        commands.push(cmd);
+        return Buffer.from("");
+      });
 
-      const { cloneGitRepository } =
-        (await import("../resolve-plugins.js")) as {
-          cloneGitRepository: (params: {
-            gitUrl: string;
-            resolvedSha: string;
-            ref: string;
-            urlHash: string;
-          }) => { cachePath: string };
+      const { cloneGitRepository } = (await import("../resolve-plugins.js")) as {
+        cloneGitRepository: (params: { gitUrl: string; resolvedSha: string; ref: string; urlHash: string }) => {
+          cachePath: string;
         };
+      };
 
       cloneGitRepository({
         gitUrl: "https://github.com/org/repo",
@@ -1314,21 +1165,15 @@ describe("CLI", () => {
     // § Поведение шаг 4.2: ref НЕ является commit SHA и НЕ равен "HEAD" → git clone --depth 1 --branch <ref>
     it("при ref не являющемся SHA использует --depth 1 --branch для клонирования", async () => {
       const childProcess = await import("node:child_process");
-      const execSyncSpy = vi
-        .spyOn(childProcess, "execSync")
-        .mockImplementation(() => {
-          return Buffer.from("");
-        });
+      const execSyncSpy = vi.spyOn(childProcess, "execSync").mockImplementation(() => {
+        return Buffer.from("");
+      });
 
-      const { cloneGitRepository } =
-        (await import("../resolve-plugins.js")) as {
-          cloneGitRepository: (params: {
-            gitUrl: string;
-            resolvedSha: string;
-            ref: string;
-            urlHash: string;
-          }) => { cachePath: string };
+      const { cloneGitRepository } = (await import("../resolve-plugins.js")) as {
+        cloneGitRepository: (params: { gitUrl: string; resolvedSha: string; ref: string; urlHash: string }) => {
+          cachePath: string;
         };
+      };
 
       cloneGitRepository({
         gitUrl: "https://github.com/org/repo",
@@ -1337,10 +1182,7 @@ describe("CLI", () => {
         urlHash: "abcdef0123456789",
       });
 
-      expect(execSyncSpy).toHaveBeenCalledWith(
-        expect.stringContaining("--depth 1 --branch v1.0.0"),
-        expect.anything(),
-      );
+      expect(execSyncSpy).toHaveBeenCalledWith(expect.stringContaining("--depth 1 --branch v1.0.0"), expect.anything());
     });
 
     // --- Happy path: SHA → --filter=blob:none + checkout ---
@@ -1356,15 +1198,11 @@ describe("CLI", () => {
         return Buffer.from("");
       });
 
-      const { cloneGitRepository } =
-        (await import("../resolve-plugins.js")) as {
-          cloneGitRepository: (params: {
-            gitUrl: string;
-            resolvedSha: string;
-            ref: string;
-            urlHash: string;
-          }) => { cachePath: string };
+      const { cloneGitRepository } = (await import("../resolve-plugins.js")) as {
+        cloneGitRepository: (params: { gitUrl: string; resolvedSha: string; ref: string; urlHash: string }) => {
+          cachePath: string;
         };
+      };
 
       cloneGitRepository({
         gitUrl: "https://github.com/org/repo",
@@ -1388,15 +1226,9 @@ describe("CLI", () => {
         throw err;
       });
 
-      const { cloneGitRepository } =
-        (await import("../resolve-plugins.js")) as {
-          cloneGitRepository: (params: {
-            gitUrl: string;
-            resolvedSha: string;
-            ref: string;
-            urlHash: string;
-          }) => unknown;
-        };
+      const { cloneGitRepository } = (await import("../resolve-plugins.js")) as {
+        cloneGitRepository: (params: { gitUrl: string; resolvedSha: string; ref: string; urlHash: string }) => unknown;
+      };
 
       expect(() =>
         cloneGitRepository({
@@ -1425,15 +1257,11 @@ describe("CLI", () => {
         return Buffer.from("");
       });
 
-      const { cloneGitRepository } =
-        (await import("../resolve-plugins.js")) as {
-          cloneGitRepository: (params: {
-            gitUrl: string;
-            resolvedSha: string;
-            ref: string;
-            urlHash: string;
-          }) => { cachePath: string };
+      const { cloneGitRepository } = (await import("../resolve-plugins.js")) as {
+        cloneGitRepository: (params: { gitUrl: string; resolvedSha: string; ref: string; urlHash: string }) => {
+          cachePath: string;
         };
+      };
 
       const urlHash = "abcdef0123456789";
 
@@ -1446,14 +1274,7 @@ describe("CLI", () => {
       });
 
       // § Результат: cachePath — абсолютный путь к директории кеша
-      const expectedCachePath = path.join(
-        os.homedir(),
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        sha,
-      );
+      const expectedCachePath = path.join(os.homedir(), ".agloom", "cache", "plugins", urlHash, sha);
       expect(result.cachePath).toBe(expectedCachePath);
       // Должно быть больше вызовов: partial clone (fail) + full clone + checkout
       expect(callCount).toBeGreaterThan(1);
@@ -1472,15 +1293,9 @@ describe("CLI", () => {
         throw err;
       });
 
-      const { cloneGitRepository } =
-        (await import("../resolve-plugins.js")) as {
-          cloneGitRepository: (params: {
-            gitUrl: string;
-            resolvedSha: string;
-            ref: string;
-            urlHash: string;
-          }) => unknown;
-        };
+      const { cloneGitRepository } = (await import("../resolve-plugins.js")) as {
+        cloneGitRepository: (params: { gitUrl: string; resolvedSha: string; ref: string; urlHash: string }) => unknown;
+      };
 
       expect(() =>
         cloneGitRepository({
@@ -1508,15 +1323,9 @@ describe("CLI", () => {
         return Buffer.from("");
       });
 
-      const { cloneGitRepository } =
-        (await import("../resolve-plugins.js")) as {
-          cloneGitRepository: (params: {
-            gitUrl: string;
-            resolvedSha: string;
-            ref: string;
-            urlHash: string;
-          }) => unknown;
-        };
+      const { cloneGitRepository } = (await import("../resolve-plugins.js")) as {
+        cloneGitRepository: (params: { gitUrl: string; resolvedSha: string; ref: string; urlHash: string }) => unknown;
+      };
 
       expect(() =>
         cloneGitRepository({
@@ -1533,28 +1342,17 @@ describe("CLI", () => {
     it("при существующем целевом пути возвращает его без клонирования", async () => {
       const sha = "abc123def456789012345678901234567890abcd";
       const urlHash = "abcdef0123456789";
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        sha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, sha);
       fs.mkdirSync(cacheDir, { recursive: true });
 
       const childProcess = await import("node:child_process");
       const execSyncSpy = vi.spyOn(childProcess, "execSync");
 
-      const { cloneGitRepository } =
-        (await import("../resolve-plugins.js")) as {
-          cloneGitRepository: (params: {
-            gitUrl: string;
-            resolvedSha: string;
-            ref: string;
-            urlHash: string;
-          }) => { cachePath: string };
+      const { cloneGitRepository } = (await import("../resolve-plugins.js")) as {
+        cloneGitRepository: (params: { gitUrl: string; resolvedSha: string; ref: string; urlHash: string }) => {
+          cachePath: string;
         };
+      };
 
       const result = cloneGitRepository({
         gitUrl: "https://github.com/org/repo",
@@ -1608,14 +1406,7 @@ describe("CLI", () => {
       };
 
       const urlHash = hashGitUrl("https://github.com/org/repo");
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        resolvedSha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, resolvedSha);
       fs.mkdirSync(cacheDir, { recursive: true });
       writePluginYaml(cacheDir, validManifest("git-plugin"));
 
@@ -1674,14 +1465,7 @@ describe("CLI", () => {
       };
 
       const urlHash = hashGitUrl("https://github.com/org/repo");
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        resolvedSha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, resolvedSha);
       const subpathDir = path.join(cacheDir, "plugins", "eslint");
       fs.mkdirSync(subpathDir, { recursive: true });
       writePluginYaml(subpathDir, validManifest("eslint-plugin"));
@@ -1735,14 +1519,7 @@ describe("CLI", () => {
       };
 
       const urlHash = hashGitUrl("https://github.com/org/repo");
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        resolvedSha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, resolvedSha);
       fs.mkdirSync(cacheDir, { recursive: true });
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
@@ -1792,14 +1569,7 @@ describe("CLI", () => {
       };
 
       const urlHash = hashGitUrl("https://github.com/org/repo");
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        resolvedSha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, resolvedSha);
       fs.mkdirSync(cacheDir, { recursive: true });
       // Создаём файл вместо директории для subpath
       fs.mkdirSync(path.join(cacheDir, "plugins"), { recursive: true });
@@ -1857,14 +1627,7 @@ describe("CLI", () => {
 
       // Git плагин (в кеше)
       const urlHash = hashGitUrl("https://github.com/org/repo");
-      const cacheDir = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-        resolvedSha,
-      );
+      const cacheDir = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash, resolvedSha);
       fs.mkdirSync(cacheDir, { recursive: true });
       writePluginYaml(cacheDir, validManifest("git-plugin"));
 
@@ -1925,9 +1688,7 @@ describe("CLI", () => {
       };
 
       const result = resolvePlugins({
-        pluginEntries: [
-          { type: "local", url: null, ref: null, path: localPluginDir },
-        ],
+        pluginEntries: [{ type: "local", url: null, ref: null, path: localPluginDir }],
         projectRoot: tmpDir,
         forceRefresh: false,
       });
@@ -1954,21 +1715,13 @@ describe("CLI", () => {
       const childProcess = await import("node:child_process");
       let capturedEnv: Record<string, string> | undefined;
 
-      vi.spyOn(childProcess, "execSync").mockImplementation(
-        (_cmd: string, opts?: unknown) => {
-          capturedEnv = (opts as { env?: Record<string, string> })?.env;
-          return Buffer.from(
-            "abc123def456789012345678901234567890abcd\trefs/heads/main\n",
-          );
-        },
-      );
+      vi.spyOn(childProcess, "execSync").mockImplementation((_cmd: string, opts?: unknown) => {
+        capturedEnv = (opts as { env?: Record<string, string> })?.env;
+        return Buffer.from("abc123def456789012345678901234567890abcd\trefs/heads/main\n");
+      });
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => unknown;
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => unknown;
       };
 
       try {
@@ -1994,21 +1747,13 @@ describe("CLI", () => {
 
       process.env.AGLOOM_GIT_TOKEN = "test-token-123";
 
-      vi.spyOn(childProcess, "execSync").mockImplementation(
-        (_cmd: string, opts?: unknown) => {
-          capturedEnv = (opts as { env?: Record<string, string> })?.env;
-          return Buffer.from(
-            "abc123def456789012345678901234567890abcd\trefs/heads/main\n",
-          );
-        },
-      );
+      vi.spyOn(childProcess, "execSync").mockImplementation((_cmd: string, opts?: unknown) => {
+        capturedEnv = (opts as { env?: Record<string, string> })?.env;
+        return Buffer.from("abc123def456789012345678901234567890abcd\trefs/heads/main\n");
+      });
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => unknown;
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => unknown;
       };
 
       try {
@@ -2135,10 +1880,7 @@ describe("CLI", () => {
     it("команда transpile принимает флаг --refresh без ошибки", async () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "Content.");
 
       const React = await import("react");
@@ -2197,13 +1939,7 @@ describe("CLI", () => {
 
       const urlHash = hashGitUrl("https://github.com/org/repo");
       const resolvedSha = "abc123def456789012345678901234567890abcd";
-      const cacheBase = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-      );
+      const cacheBase = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash);
       fs.mkdirSync(path.join(cacheBase, resolvedSha), { recursive: true });
 
       const almostExpired = new Date(Date.now() - 23 * 60 * 60 * 1000);
@@ -2218,11 +1954,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(cacheBase, "refs.yml"), refsYml);
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => { resolvedSha: string; cachePath: string };
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
+        };
       };
 
       // Не мокаем execSync — если TTL не истёк, ls-remote не вызовется
@@ -2241,10 +1976,7 @@ describe("CLI", () => {
       // Создаём settings.yml
       const settingsDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(settingsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(settingsDir, "settings.yml"),
-        "cache:\n  ttl: 1h\n",
-      );
+      fs.writeFileSync(path.join(settingsDir, "settings.yml"), "cache:\n  ttl: 1h\n");
 
       const { hashGitUrl } = (await import("../resolve-plugins.js")) as {
         hashGitUrl: (url: string) => string;
@@ -2253,13 +1985,7 @@ describe("CLI", () => {
       const urlHash = hashGitUrl("https://github.com/org/repo");
       const resolvedSha = "abc123def456789012345678901234567890abcd";
       const newSha = "def456789012345678901234567890abcdef1234";
-      const cacheBase = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-      );
+      const cacheBase = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash);
       fs.mkdirSync(path.join(cacheBase, newSha), { recursive: true });
 
       // resolvedAt = 2 часа назад (> 1h TTL, истёк)
@@ -2283,11 +2009,10 @@ describe("CLI", () => {
       });
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => { resolvedSha: string; cachePath: string };
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
+        };
       };
 
       const result = resolveGitRef({
@@ -2305,10 +2030,7 @@ describe("CLI", () => {
     it("при cache.ttl: '0' всегда выполняет ls-remote для mutable refs", async () => {
       const settingsDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(settingsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(settingsDir, "settings.yml"),
-        'cache:\n  ttl: "0"\n',
-      );
+      fs.writeFileSync(path.join(settingsDir, "settings.yml"), 'cache:\n  ttl: "0"\n');
 
       const { hashGitUrl } = (await import("../resolve-plugins.js")) as {
         hashGitUrl: (url: string) => string;
@@ -2316,13 +2038,7 @@ describe("CLI", () => {
 
       const urlHash = hashGitUrl("https://github.com/org/repo");
       const resolvedSha = "abc123def456789012345678901234567890abcd";
-      const cacheBase = path.join(
-        tmpDir,
-        ".agloom",
-        "cache",
-        "plugins",
-        urlHash,
-      );
+      const cacheBase = path.join(tmpDir, ".agloom", "cache", "plugins", urlHash);
       fs.mkdirSync(path.join(cacheBase, resolvedSha), { recursive: true });
 
       // resolvedAt = только что (не истёк по любому TTL, кроме 0)
@@ -2337,21 +2053,18 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(cacheBase, "refs.yml"), refsYml);
 
       const childProcess = await import("node:child_process");
-      const execSyncSpy = vi
-        .spyOn(childProcess, "execSync")
-        .mockImplementation((cmd: string) => {
-          if (typeof cmd === "string" && cmd.includes("ls-remote")) {
-            return Buffer.from(`${resolvedSha}\trefs/heads/main\n`);
-          }
-          throw new Error(`Unexpected command: ${cmd}`);
-        });
+      const execSyncSpy = vi.spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (typeof cmd === "string" && cmd.includes("ls-remote")) {
+          return Buffer.from(`${resolvedSha}\trefs/heads/main\n`);
+        }
+        throw new Error(`Unexpected command: ${cmd}`);
+      });
 
       const { resolveGitRef } = (await import("../resolve-plugins.js")) as {
-        resolveGitRef: (params: {
-          gitUrl: string;
-          ref: string;
-          forceRefresh: boolean;
-        }) => { resolvedSha: string; cachePath: string };
+        resolveGitRef: (params: { gitUrl: string; ref: string; forceRefresh: boolean }) => {
+          resolvedSha: string;
+          cachePath: string;
+        };
       };
 
       resolveGitRef({
@@ -2361,10 +2074,7 @@ describe("CLI", () => {
       });
 
       // ls-remote должен быть вызван несмотря на свежий resolvedAt
-      expect(execSyncSpy).toHaveBeenCalledWith(
-        expect.stringContaining("ls-remote"),
-        expect.anything(),
-      );
+      expect(execSyncSpy).toHaveBeenCalledWith(expect.stringContaining("ls-remote"), expect.anything());
     });
   });
 });

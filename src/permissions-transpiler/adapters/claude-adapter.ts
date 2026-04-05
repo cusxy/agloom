@@ -80,17 +80,13 @@ export class ClaudePermissionsAdapter implements PermissionsAdapter {
       }
       // 3.3: предупреждение о пропущенных ask-правилах
       if (askCount > 0) {
-        process.stderr.write(
-          `Warning: Claude Code does not support 'ask' action. ${askCount} mcp rule(s) skipped.\n`,
-        );
+        process.stderr.write(`Warning: Claude Code does not support 'ask' action. ${askCount} mcp rule(s) skipped.\n`);
       }
     }
 
     // Шаг 4: file-секция — предупреждение
     if (file.content.file) {
-      process.stderr.write(
-        "Warning: Claude Code does not support file permissions. 'file' section ignored.\n",
-      );
+      process.stderr.write("Warning: Claude Code does not support file permissions. 'file' section ignored.\n");
     }
 
     // Шаг 5: удалить пустые массивы

@@ -10,10 +10,7 @@ import type { AdapterRegistryEntry } from "./types.js";
  * в топологическом порядке (зависимости перед зависящими).
  * Spec: docs/specs/cli.md § Разрешение зависимостей
  */
-export function resolveDeps(
-  entryId: string,
-  registry: AdapterRegistryEntry[],
-): AdapterRegistryEntry[] {
+export function resolveDeps(entryId: string, registry: AdapterRegistryEntry[]): AdapterRegistryEntry[] {
   const visited = new Set<string>();
   const inStack = new Set<string>();
   const result: AdapterRegistryEntry[] = [];

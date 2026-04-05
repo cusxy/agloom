@@ -19,11 +19,7 @@ function createWriteOptionsSpy() {
     options?: Record<string, unknown>;
   }> = [];
 
-  const factory = (_config: {
-    projectRoot: string;
-    adapters: unknown[];
-    agloomDir?: string;
-  }) => {
+  const factory = (_config: { projectRoot: string; adapters: unknown[]; agloomDir?: string }) => {
     return {
       transpile: () => [{ agentId: "claude", content: "test" }],
       writeResults: (results: unknown[], options?: Record<string, unknown>) => {
@@ -65,9 +61,7 @@ describe("CLI", () => {
       };
 
       runTranspileStep({
-        transpilerFactory: factory as Parameters<
-          typeof runTranspileStep
-        >[0]["transpilerFactory"],
+        transpilerFactory: factory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
         adapter: createStubAdapter(),
         projectRoot: tmpDir,
         name: "Skills",
@@ -76,9 +70,7 @@ describe("CLI", () => {
 
       expect(writeResultsCalls).toHaveLength(1);
       expect(writeResultsCalls[0].options).toBeDefined();
-      expect(writeResultsCalls[0].options!.valuesByAgentId).toEqual(
-        valuesByAgentId,
-      );
+      expect(writeResultsCalls[0].options!.valuesByAgentId).toEqual(valuesByAgentId);
     });
 
     // --- Spec: § Расширение процедуры «Шаг транспиляции» ---
@@ -87,9 +79,7 @@ describe("CLI", () => {
       const { factory, writeResultsCalls } = createWriteOptionsSpy();
 
       runTranspileStep({
-        transpilerFactory: factory as Parameters<
-          typeof runTranspileStep
-        >[0]["transpilerFactory"],
+        transpilerFactory: factory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
         adapter: createStubAdapter(),
         projectRoot: tmpDir,
         name: "Skills",
@@ -111,9 +101,7 @@ describe("CLI", () => {
       const variablesByAgentId = { claude: { ROOT_DIR: ".claude" } };
 
       runTranspileStep({
-        transpilerFactory: factory as Parameters<
-          typeof runTranspileStep
-        >[0]["transpilerFactory"],
+        transpilerFactory: factory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
         adapter: createStubAdapter(),
         projectRoot: tmpDir,
         name: "Skills",
@@ -123,28 +111,20 @@ describe("CLI", () => {
 
       expect(writeResultsCalls).toHaveLength(1);
       expect(writeResultsCalls[0].options).toBeDefined();
-      expect(writeResultsCalls[0].options!.valuesByAgentId).toEqual(
-        valuesByAgentId,
-      );
-      expect(writeResultsCalls[0].options!.variablesByAgentId).toEqual(
-        variablesByAgentId,
-      );
+      expect(writeResultsCalls[0].options!.valuesByAgentId).toEqual(valuesByAgentId);
+      expect(writeResultsCalls[0].options!.variablesByAgentId).toEqual(variablesByAgentId);
     });
 
     // --- Spec: § Расширение процедуры «Шаг транспиляции» ---
     // valuesByAgentId с sourceRoot: оба передаются в options
     it("передаёт valuesByAgentId вместе с targetRoot при sourceRoot", () => {
       const { factory, writeResultsCalls } = createWriteOptionsSpy();
-      const pluginDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-plugin-vals-"),
-      );
+      const pluginDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-plugin-vals-"));
       const valuesByAgentId = { claude: { team: "backend" } };
 
       try {
         runTranspileStep({
-          transpilerFactory: factory as Parameters<
-            typeof runTranspileStep
-          >[0]["transpilerFactory"],
+          transpilerFactory: factory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
           adapter: createStubAdapter(),
           projectRoot: tmpDir,
           name: "Docs",
@@ -154,9 +134,7 @@ describe("CLI", () => {
 
         expect(writeResultsCalls).toHaveLength(1);
         expect(writeResultsCalls[0].options).toBeDefined();
-        expect(writeResultsCalls[0].options!.valuesByAgentId).toEqual(
-          valuesByAgentId,
-        );
+        expect(writeResultsCalls[0].options!.valuesByAgentId).toEqual(valuesByAgentId);
         expect(writeResultsCalls[0].options!.targetRoot).toBe(tmpDir);
       } finally {
         fs.rmSync(pluginDir, { recursive: true, force: true });
@@ -170,9 +148,7 @@ describe("CLI", () => {
       const valuesByAgentId: Record<string, Record<string, string>> = {};
 
       runTranspileStep({
-        transpilerFactory: factory as Parameters<
-          typeof runTranspileStep
-        >[0]["transpilerFactory"],
+        transpilerFactory: factory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
         adapter: createStubAdapter(),
         projectRoot: tmpDir,
         name: "Skills",
@@ -195,13 +171,9 @@ describe("CLI", () => {
       // Создаём skill с ${values:team_name}
       const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nTeam: ${values:team_name}",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nTeam: ${values:team_name}");
 
-      const { createSkillsTranspiler, ClaudeSkillAdapter } =
-        await import("../../skills-transpiler/index.js");
+      const { createSkillsTranspiler, ClaudeSkillAdapter } = await import("../../skills-transpiler/index.js");
 
       const valuesByAgentId = {
         claude: { team_name: "platform-team" },
@@ -224,10 +196,7 @@ describe("CLI", () => {
       const skillFile = files.find((f) => f.endsWith(".md"));
       expect(skillFile).toBeDefined();
 
-      const content = fs.readFileSync(
-        path.join(outputPath, skillFile!),
-        "utf-8",
-      );
+      const content = fs.readFileSync(path.join(outputPath, skillFile!), "utf-8");
       expect(content).toContain("Team: platform-team");
     });
   });

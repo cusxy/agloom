@@ -52,11 +52,7 @@ describe("InstructionsTranspiler", () => {
 
       const transpiler = createInstructionsTranspiler({
         projectRoot: tmpDir,
-        adapters: [
-          new ClaudeAdapter(),
-          new AgentsMdAdapter(),
-          new OpenCodeAdapter(),
-        ],
+        adapters: [new ClaudeAdapter(), new AgentsMdAdapter(), new OpenCodeAdapter()],
       });
 
       const results = transpiler.transpile();

@@ -20,18 +20,11 @@ function createSpyFactory() {
     agloomDir?: string;
   }> = [];
 
-  const factory = (config: {
-    projectRoot: string;
-    adapters: unknown[];
-    agloomDir?: string;
-  }) => {
+  const factory = (config: { projectRoot: string; adapters: unknown[]; agloomDir?: string }) => {
     calls.push({ ...config });
     return {
       transpile: () => [],
-      writeResults: (
-        _results: unknown[],
-        _opts?: Record<string, unknown> | { targetRoot: string },
-      ) => ({
+      writeResults: (_results: unknown[], _opts?: Record<string, unknown> | { targetRoot: string }) => ({
         written: [] as string[],
         errors: [] as { message: string }[],
       }),
@@ -67,9 +60,7 @@ describe("CLI", () => {
       const { factory, calls } = createSpyFactory();
 
       runTranspileStep({
-        transpilerFactory: factory as Parameters<
-          typeof runTranspileStep
-        >[0]["transpilerFactory"],
+        transpilerFactory: factory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
         adapter: createStubAdapter(),
         projectRoot: tmpDir,
         name: "Skills",
@@ -88,9 +79,7 @@ describe("CLI", () => {
       const { factory, calls } = createSpyFactory();
 
       runTranspileStep({
-        transpilerFactory: factory as Parameters<
-          typeof runTranspileStep
-        >[0]["transpilerFactory"],
+        transpilerFactory: factory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
         adapter: createStubAdapter(),
         projectRoot: tmpDir,
         name: "Skills",
@@ -123,17 +112,13 @@ describe("CLI", () => {
       // Arrange: создаём skill в pluginDir/skills/demo-skill/SKILL.md
       const skillDir = path.join(pluginDir, "skills", "demo-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: demo-skill\n---\nDemo skill content.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: demo-skill\n---\nDemo skill content.");
 
       // Целевая директория для записи
       const targetSkillDir = path.join(tmpDir, ".claude", "skills");
       fs.mkdirSync(targetSkillDir, { recursive: true });
 
-      const { createSkillsTranspiler, ClaudeSkillAdapter } =
-        await import("../../skills-transpiler/index.js");
+      const { createSkillsTranspiler, ClaudeSkillAdapter } = await import("../../skills-transpiler/index.js");
 
       const outcome: TranspilerStepOutcome = runTranspileStep({
         transpilerFactory: createSkillsTranspiler,
@@ -154,16 +139,12 @@ describe("CLI", () => {
       // Arrange: создаём агента в pluginDir/agents/my-agent.md
       const agentsDir = path.join(pluginDir, "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentsDir, "my-agent.md"),
-        "---\nname: my-agent\n---\nAgent body.",
-      );
+      fs.writeFileSync(path.join(agentsDir, "my-agent.md"), "---\nname: my-agent\n---\nAgent body.");
 
       const targetAgentsDir = path.join(tmpDir, ".claude", "agents");
       fs.mkdirSync(targetAgentsDir, { recursive: true });
 
-      const { createAgentsTranspiler, ClaudeAgentAdapter } =
-        await import("../../agents-transpiler/index.js");
+      const { createAgentsTranspiler, ClaudeAgentAdapter } = await import("../../agents-transpiler/index.js");
 
       const outcome: TranspilerStepOutcome = runTranspileStep({
         transpilerFactory: createAgentsTranspiler,
@@ -185,13 +166,9 @@ describe("CLI", () => {
       // Arrange: стандартная структура .agloom/skills/
       const skillDir = path.join(tmpDir, ".agloom", "skills", "local-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: local-skill\n---\nLocal skill.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: local-skill\n---\nLocal skill.");
 
-      const { createSkillsTranspiler, ClaudeSkillAdapter } =
-        await import("../../skills-transpiler/index.js");
+      const { createSkillsTranspiler, ClaudeSkillAdapter } = await import("../../skills-transpiler/index.js");
 
       const outcome: TranspilerStepOutcome = runTranspileStep({
         transpilerFactory: createSkillsTranspiler,
@@ -209,13 +186,9 @@ describe("CLI", () => {
     // При sourceRoot записи попадают в projectRoot, не в sourceRoot.
     it("при sourceRoot записывает результаты в projectRoot, а не в sourceRoot", async () => {
       // Arrange: Instructions-транспилер — проще всего для проверки write target
-      fs.writeFileSync(
-        path.join(pluginDir, "AGLOOM.md"),
-        "Plugin instructions.",
-      );
+      fs.writeFileSync(path.join(pluginDir, "AGLOOM.md"), "Plugin instructions.");
 
-      const { createInstructionsTranspiler, ClaudeAdapter } =
-        await import("../../instructions-transpiler/index.js");
+      const { createInstructionsTranspiler, ClaudeAdapter } = await import("../../instructions-transpiler/index.js");
 
       const outcome: TranspilerStepOutcome = runTranspileStep({
         transpilerFactory: createInstructionsTranspiler,
@@ -243,8 +216,7 @@ describe("CLI", () => {
     it("не создаёт .agloom symlink в sourceRoot при обработке плагина", async () => {
       fs.writeFileSync(path.join(pluginDir, "AGLOOM.md"), "Plugin.");
 
-      const { createInstructionsTranspiler, ClaudeAdapter } =
-        await import("../../instructions-transpiler/index.js");
+      const { createInstructionsTranspiler, ClaudeAdapter } = await import("../../instructions-transpiler/index.js");
 
       runTranspileStep({
         transpilerFactory: createInstructionsTranspiler,

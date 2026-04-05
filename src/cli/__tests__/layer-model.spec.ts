@@ -13,19 +13,12 @@ import type { AdapterRegistryEntry } from "../types.js";
 // deepMerge — рекурсивный deep merge двух объектов (§ Алгоритм deep merge).
 // stripOverrideSuffix — удаляет суффикс .override из имени файла (§ Удаление суффикса при записи).
 // runOverlayStep — рефакторенная операция overlay с поддержкой layers (§ Рефакторинг операции overlay).
-import {
-  classifyFile,
-  deepMerge,
-  stripOverrideSuffix,
-  runOverlayStep,
-} from "../overlay-step.js";
+import { classifyFile, deepMerge, stripOverrideSuffix, runOverlayStep } from "../overlay-step.js";
 
 /**
  * Минимальный стаб AdapterRegistryEntry для тестов overlay.
  */
-function createTestEntry(
-  overrides: Partial<AdapterRegistryEntry> = {},
-): AdapterRegistryEntry {
+function createTestEntry(overrides: Partial<AdapterRegistryEntry> = {}): AdapterRegistryEntry {
   return {
     id: "test-adapter",
     description: "Test Adapter",
@@ -144,9 +137,7 @@ describe("Модель слоёв", () => {
     // § Удаление суффикса при записи:
     // Файл settings.override.json → settings.json
     it("удаляет суффикс .override из имени файла", () => {
-      expect(stripOverrideSuffix("settings.override.json")).toBe(
-        "settings.json",
-      );
+      expect(stripOverrideSuffix("settings.override.json")).toBe("settings.json");
     });
 
     it("удаляет суффикс .override из YAML-файла", () => {
@@ -164,16 +155,14 @@ describe("Модель слоёв", () => {
 
     // Граничное условие: файл с .override в пути (но не перед финальным расширением)
     it("обрабатывает путь с директорией, содержащей .override в имени", () => {
-      expect(
-        stripOverrideSuffix(path.join("overrides", "settings.override.json")),
-      ).toBe(path.join("overrides", "settings.json"));
+      expect(stripOverrideSuffix(path.join("overrides", "settings.override.json"))).toBe(
+        path.join("overrides", "settings.json"),
+      );
     });
 
     // Граничное условие: файл с множественными точками в имени
     it("удаляет только суффикс .override непосредственно перед финальным расширением", () => {
-      expect(stripOverrideSuffix("my.config.override.json")).toBe(
-        "my.config.json",
-      );
+      expect(stripOverrideSuffix("my.config.override.json")).toBe("my.config.json");
     });
   });
 
@@ -355,10 +344,7 @@ describe("Модель слоёв", () => {
      * Создаёт директорию слоя с указанными файлами.
      * Возвращает абсолютный путь к директории слоя.
      */
-    function createLayer(
-      layerId: string,
-      files: Record<string, string | Buffer>,
-    ): string {
+    function createLayer(layerId: string, files: Record<string, string | Buffer>): string {
       const layerDir = path.join(tmpDir, "layers", layerId);
       for (const [relativePath, content] of Object.entries(files)) {
         const filePath = path.join(layerDir, relativePath);
@@ -390,9 +376,7 @@ describe("Модель слоёв", () => {
       expect(outcome.writtenCount).toBe(1);
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"));
       expect(written).toEqual({ editor: { fontSize: 14 } });
     });
 
@@ -422,9 +406,7 @@ describe("Модель слоёв", () => {
       expect(outcome.writtenCount).toBe(1);
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"));
       expect(written).toEqual({ editor: { fontSize: 16, tabSize: 2 } });
     });
 
@@ -458,10 +440,7 @@ describe("Модель слоёв", () => {
 
       // Результат: fontSize=16 (local wins), tabSize=4 (plugin-a, сохранён),
       // theme=dark (plugin-a, сохранён), wordWrap=on (plugin-b, сохранён)
-      const content = fs.readFileSync(
-        path.join(tmpDir, "config.yaml"),
-        "utf-8",
-      );
+      const content = fs.readFileSync(path.join(tmpDir, "config.yaml"), "utf-8");
       const parsed = yaml.load(content) as Record<string, unknown>;
       expect(parsed).toEqual({
         editor: {
@@ -521,9 +500,7 @@ describe("Модель слоёв", () => {
 
       // Файл записан как settings.json, не settings.override.json
       expect(fs.existsSync(path.join(tmpDir, "settings.json"))).toBe(true);
-      expect(fs.existsSync(path.join(tmpDir, "settings.override.json"))).toBe(
-        false,
-      );
+      expect(fs.existsSync(path.join(tmpDir, "settings.override.json"))).toBe(false);
     });
 
     // --- Суффикс .override для merge-eligible → полная замена (не merge) ---
@@ -551,9 +528,7 @@ describe("Модель слоёв", () => {
       expect(outcome.writtenCount).toBe(1);
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"));
       // Полная замена, не merge: только {c: 3}, без a и b
       expect(written).toEqual({ c: 3 });
     });
@@ -582,9 +557,7 @@ describe("Модель слоёв", () => {
       expect(outcome.writtenCount).toBe(1);
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"));
       expect(written).toEqual({ a: 1, c: 3 });
       expect("b" in written).toBe(false);
     });
@@ -610,9 +583,7 @@ describe("Модель слоёв", () => {
         ],
       });
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"));
       expect(written).toEqual({ rulers: [100] });
     });
 
@@ -643,9 +614,7 @@ describe("Модель слоёв", () => {
 
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "config.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "config.json"), "utf-8"));
       // root заменён интерполированным значением, keep сохранён из plugin
       expect(written).toEqual({ root: ".claude", keep: true });
     });
@@ -674,12 +643,8 @@ describe("Модель слоёв", () => {
       expect(outcome.writtenCount).toBe(2);
       expect(outcome.errors).toEqual([]);
 
-      expect(
-        JSON.parse(fs.readFileSync(path.join(tmpDir, "a.json"), "utf-8")),
-      ).toEqual({ from: "plugin" });
-      expect(
-        JSON.parse(fs.readFileSync(path.join(tmpDir, "b.json"), "utf-8")),
-      ).toEqual({ from: "local" });
+      expect(JSON.parse(fs.readFileSync(path.join(tmpDir, "a.json"), "utf-8"))).toEqual({ from: "plugin" });
+      expect(JSON.parse(fs.readFileSync(path.join(tmpDir, "b.json"), "utf-8"))).toEqual({ from: "local" });
     });
 
     // --- mergeState с существующим целевым файлом ---
@@ -707,9 +672,7 @@ describe("Модель слоёв", () => {
 
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"));
       expect(written).toEqual({
         existing: true,
         editor: { fontSize: 16, theme: "dark" },
@@ -771,9 +734,7 @@ describe("Модель слоёв", () => {
       expect(outcome.writtenCount).toBe(1);
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"));
       expect(written).toEqual({ key: "value" });
     });
 
@@ -868,9 +829,7 @@ describe("Модель слоёв", () => {
 
       expect(outcome.errors.length).toBeGreaterThanOrEqual(1);
       // ok-file.json должен быть записан
-      const okFile = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "ok-file.json"), "utf-8"),
-      );
+      const okFile = JSON.parse(fs.readFileSync(path.join(tmpDir, "ok-file.json"), "utf-8"));
       expect(okFile).toEqual({ key: "ok" });
     });
 
@@ -882,10 +841,7 @@ describe("Модель слоёв", () => {
 
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDir, "config.md"),
-        "Root: ${agloom:ROOT_DIR}",
-      );
+      fs.writeFileSync(path.join(overlayDir, "config.md"), "Root: ${agloom:ROOT_DIR}");
 
       const outcome = runOverlayStep({
         entry,
@@ -931,9 +887,7 @@ describe("Модель слоёв", () => {
 
       expect(outcome.writtenCount).toBe(1);
       expect(fs.existsSync(path.join(tmpDir, "readme.md"))).toBe(true);
-      expect(fs.existsSync(path.join(tmpDir, "readme.override.md"))).toBe(
-        false,
-      );
+      expect(fs.existsSync(path.join(tmpDir, "readme.override.md"))).toBe(false);
     });
 
     // --- TranspilerStepOutcome содержит name: "Overlay" и корректный writtenCount ---

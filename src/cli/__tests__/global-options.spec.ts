@@ -24,15 +24,10 @@ describe("CLI", () => {
     // Шаг 1: прочитать version из package.json
     // Шаг 2: отобразить прочитанное значение
     it("--version отображает версию из package.json", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["--version"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["--version"] }));
 
       // Прочитать ожидаемую версию из package.json
-      const packageJsonPath = path.resolve(
-        import.meta.dirname,
-        "../../../package.json",
-      );
+      const packageJsonPath = path.resolve(import.meta.dirname, "../../../package.json");
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 
       const output = lastFrame()!;
@@ -49,9 +44,7 @@ describe("CLI", () => {
     // Шаг 2: отобразить список доступных команд (transpile, adapters)
     // Шаг 3: отобразить список глобальных опций (--help, --version)
     it("--help отображает справку с описанием, командами и опциями", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["--help"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["--help"] }));
 
       const output = lastFrame()!;
 
@@ -76,15 +69,11 @@ describe("CLI", () => {
     // При вызове без команды ДОЛЖНА отображаться общая справка (аналогично --help).
     // Процесс завершается с exit code 0.
     it("при вызове без команды отображает справку (аналогично --help)", () => {
-      const { lastFrame: helpFrame, unmount: unmountHelp } = render(
-        React.createElement(App, { args: ["--help"] }),
-      );
+      const { lastFrame: helpFrame, unmount: unmountHelp } = render(React.createElement(App, { args: ["--help"] }));
       const _helpOutput = helpFrame()!;
       unmountHelp();
 
-      const { lastFrame: emptyFrame, unmount: unmountEmpty } = render(
-        React.createElement(App, { args: [] }),
-      );
+      const { lastFrame: emptyFrame, unmount: unmountEmpty } = render(React.createElement(App, { args: [] }));
       const emptyOutput = emptyFrame()!;
 
       // Вывод без команды содержит те же ключевые элементы, что и --help
@@ -100,9 +89,7 @@ describe("CLI", () => {
     // --- § Неизвестный флаг ---
     // Неизвестный флаг → "Unknown option: {flag}"; exit code 1.
     it('при неизвестном флаге отображает "Unknown option" и exit code 1', () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["init", "--фаа", "--force"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["init", "--фаа", "--force"] }));
 
       const output = lastFrame()!;
 
@@ -115,9 +102,7 @@ describe("CLI", () => {
     });
 
     it("при неизвестном флаге без команды отображает ошибку", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["--foo"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["--foo"] }));
 
       const output = lastFrame()!;
 
@@ -128,9 +113,7 @@ describe("CLI", () => {
     });
 
     it("--help с неизвестным флагом отображает справку (не ошибку)", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["--help", "--foo"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["--help", "--foo"] }));
 
       const output = lastFrame()!;
 
@@ -145,9 +128,7 @@ describe("CLI", () => {
     // transpile --help: справка по команде transpile
     // adapters --help: справка по команде adapters
     it("transpile --help отображает справку по команде transpile", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["transpile", "--help"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["transpile", "--help"] }));
 
       const output = lastFrame()!;
 
@@ -163,9 +144,7 @@ describe("CLI", () => {
     // --- Неизвестная команда ---
     // Неизвестная команда → "Unknown command: {value}"; exit code 1.
     it('при неизвестной команде отображает "Unknown command" и exit code 1', () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["agents"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["agents"] }));
 
       const output = lastFrame()!;
 
@@ -180,9 +159,7 @@ describe("CLI", () => {
     // --- § --help на уровне команды adapters ---
     // adapters --help: справка по команде adapters
     it("adapters --help отображает справку по команде adapters", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["adapters", "--help"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["adapters", "--help"] }));
 
       const output = lastFrame()!;
 
@@ -201,16 +178,12 @@ describe("CLI", () => {
     // "Unknown command: {cmd}. Run 'agloom --help' to see available commands."
     // exit code 1.
     it("при неизвестной команде отображает точный формат сообщения из спецификации", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["foobar"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["foobar"] }));
 
       const output = lastFrame()!;
 
       // Точный формат сообщения из спецификации
-      expect(output).toContain(
-        "Unknown command: foobar. Run 'agloom --help' to see available commands.",
-      );
+      expect(output).toContain("Unknown command: foobar. Run 'agloom --help' to see available commands.");
       expect(process.exitCode).toBe(1);
 
       unmount();
@@ -222,9 +195,7 @@ describe("CLI", () => {
     //  неизвестной команды. Приоритет ошибки неизвестной команды ДОЛЖЕН
     //  быть выше, чем отображение глобальной справки --help."
     it("при неизвестной команде с --help отображает ошибку команды, а не справку", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["non_exists_command", "--help"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["non_exists_command", "--help"] }));
 
       const output = lastFrame()!;
 
@@ -237,9 +208,7 @@ describe("CLI", () => {
     });
 
     it("при неизвестной команде с --help в начале отображает ошибку команды", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["--help", "non_exists_command"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["--help", "non_exists_command"] }));
 
       const output = lastFrame()!;
 

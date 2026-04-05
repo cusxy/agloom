@@ -19,9 +19,7 @@ describe("AgentsMdAdapter", () => {
     it('генерирует AGENTS.md из AGLOOM.md в корне (тип "root")', () => {
       const adapter = new AgentsMdAdapter();
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", "Root content."),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", "Root content.")]);
 
       expect(files).toHaveLength(1);
       expect(files[0].relativePath).toBe("AGENTS.md");
@@ -32,13 +30,7 @@ describe("AgentsMdAdapter", () => {
     it('генерирует AGENTS.md в подпапке из AGLOOM.md в подпапке (тип "directory")', () => {
       const adapter = new AgentsMdAdapter();
 
-      const files = adapter.transpile([
-        makeCanonicalFile(
-          "src/module/AGLOOM.md",
-          "directory",
-          "Directory content.",
-        ),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("src/module/AGLOOM.md", "directory", "Directory content.")]);
 
       expect(files).toHaveLength(1);
       expect(files[0].relativePath).toBe("src/module/AGENTS.md");
@@ -51,11 +43,7 @@ describe("AgentsMdAdapter", () => {
 
       const files = adapter.transpile([
         makeCanonicalFile("AGLOOM.local.md", "local", "Local content."),
-        makeCanonicalFile(
-          "src/AGLOOM.local.md",
-          "directory-local",
-          "Dir local content.",
-        ),
+        makeCanonicalFile("src/AGLOOM.local.md", "directory-local", "Dir local content."),
       ]);
 
       expect(files).toEqual([]);
@@ -69,11 +57,7 @@ describe("AgentsMdAdapter", () => {
         makeCanonicalFile("AGLOOM.md", "root", "Root."),
         makeCanonicalFile("src/AGLOOM.md", "directory", "Dir."),
         makeCanonicalFile("AGLOOM.local.md", "local", "Local."),
-        makeCanonicalFile(
-          "src/AGLOOM.local.md",
-          "directory-local",
-          "Dir local.",
-        ),
+        makeCanonicalFile("src/AGLOOM.local.md", "directory-local", "Dir local."),
       ]);
 
       expect(files).toHaveLength(2);
@@ -105,9 +89,7 @@ describe("AgentsMdAdapter", () => {
         "Body content.",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", content),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]);
 
       expect(files).toHaveLength(1);
       expect(files[0].content).toContain("title: AGENTS.md Project");
@@ -129,9 +111,7 @@ describe("AgentsMdAdapter", () => {
         "<!-- /agent:claude -->",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", content),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]);
 
       expect(files).toHaveLength(1);
       expect(files[0].content).toContain("AGENTS.md-specific.");
@@ -156,17 +136,11 @@ describe("AgentsMdAdapter", () => {
     it("пробрасывает TransformError от transformContent к вызывающему коду", () => {
       const adapter = new AgentsMdAdapter();
 
-      const content = [
-        "---",
-        "title: Test",
-        "override: not-an-object",
-        "---",
-        "Body.",
-      ].join("\n");
+      const content = ["---", "title: Test", "override: not-an-object", "---", "Body."].join("\n");
 
-      expect(() =>
-        adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]),
-      ).toThrow(/Override must be an object/);
+      expect(() => adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)])).toThrow(
+        /Override must be an object/,
+      );
     });
 
     // --- Свойство: agentId адаптера ---
@@ -188,9 +162,9 @@ describe("AgentsMdAdapter", () => {
       ].join("\n");
 
       // "opencode" не входит в allowedAgentIds — должна быть ошибка
-      expect(() =>
-        adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]),
-      ).toThrow(/Invalid agent-id 'opencode'/);
+      expect(() => adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)])).toThrow(
+        /Invalid agent-id 'opencode'/,
+      );
     });
   });
 });

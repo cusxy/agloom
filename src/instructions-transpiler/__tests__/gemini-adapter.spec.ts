@@ -27,9 +27,7 @@ describe("GeminiAdapter", () => {
     it('генерирует GEMINI.md из AGLOOM.md в корне проекта (тип "root")', () => {
       const adapter = new GeminiAdapter();
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", "General instructions."),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", "General instructions.")]);
 
       expect(files).toHaveLength(1);
       expect(files[0].relativePath).toBe("GEMINI.md");
@@ -41,13 +39,7 @@ describe("GeminiAdapter", () => {
     it('генерирует GEMINI.md в подпапке из AGLOOM.md в подпапке (тип "directory")', () => {
       const adapter = new GeminiAdapter();
 
-      const files = adapter.transpile([
-        makeCanonicalFile(
-          "src/module/AGLOOM.md",
-          "directory",
-          "Module instructions.",
-        ),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("src/module/AGLOOM.md", "directory", "Module instructions.")]);
 
       expect(files).toHaveLength(1);
       expect(files[0].relativePath).toBe("src/module/GEMINI.md");
@@ -59,9 +51,7 @@ describe("GeminiAdapter", () => {
     it('НЕ генерирует файлы для типа "local"', () => {
       const adapter = new GeminiAdapter();
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.local.md", "local", "Personal settings."),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.local.md", "local", "Personal settings.")]);
 
       expect(files).toHaveLength(0);
     });
@@ -71,11 +61,7 @@ describe("GeminiAdapter", () => {
       const adapter = new GeminiAdapter();
 
       const files = adapter.transpile([
-        makeCanonicalFile(
-          "src/feature/AGLOOM.local.md",
-          "directory-local",
-          "Feature local settings.",
-        ),
+        makeCanonicalFile("src/feature/AGLOOM.local.md", "directory-local", "Feature local settings."),
       ]);
 
       expect(files).toHaveLength(0);
@@ -90,11 +76,7 @@ describe("GeminiAdapter", () => {
         makeCanonicalFile("AGLOOM.md", "root", "Root."),
         makeCanonicalFile("src/AGLOOM.md", "directory", "Dir."),
         makeCanonicalFile("AGLOOM.local.md", "local", "Local."),
-        makeCanonicalFile(
-          "src/AGLOOM.local.md",
-          "directory-local",
-          "Dir local.",
-        ),
+        makeCanonicalFile("src/AGLOOM.local.md", "directory-local", "Dir local."),
       ]);
 
       expect(files).toHaveLength(2);
@@ -119,9 +101,7 @@ describe("GeminiAdapter", () => {
         "Body content.",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", content),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]);
 
       expect(files).toHaveLength(1);
       expect(files[0].content).toContain("title: Gemini Project");
@@ -143,9 +123,7 @@ describe("GeminiAdapter", () => {
         "<!-- /agent:claude -->",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", content),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]);
 
       expect(files).toHaveLength(1);
       expect(files[0].content).toContain("Gemini-specific.");
@@ -157,17 +135,11 @@ describe("GeminiAdapter", () => {
     it("пробрасывает TransformError от transformContent к вызывающему коду", () => {
       const adapter = new GeminiAdapter();
 
-      const content = [
-        "---",
-        "title: Test",
-        "override: not-an-object",
-        "---",
-        "Body.",
-      ].join("\n");
+      const content = ["---", "title: Test", "override: not-an-object", "---", "Body."].join("\n");
 
-      expect(() =>
-        adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]),
-      ).toThrow(/Override must be an object/);
+      expect(() => adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)])).toThrow(
+        /Override must be an object/,
+      );
     });
 
     // --- Конструктор: allowedAgentIds передаётся и используется ---
@@ -184,9 +156,9 @@ describe("GeminiAdapter", () => {
       ].join("\n");
 
       // "opencode" не входит в allowedAgentIds — должна быть ошибка
-      expect(() =>
-        adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]),
-      ).toThrow(/Invalid agent-id 'opencode'/);
+      expect(() => adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)])).toThrow(
+        /Invalid agent-id 'opencode'/,
+      );
     });
 
     // --- Граничное условие: пустой входной массив ---

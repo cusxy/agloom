@@ -4,25 +4,15 @@
 
 import { describe, it, expect } from "vitest";
 import { adapterRegistry } from "../adapter-registry.js";
-import {
-  ClaudeAdapter,
-  OpenCodeAdapter,
-  AgentsMdAdapter,
-} from "../../instructions-transpiler/index.js";
+import { ClaudeAdapter, OpenCodeAdapter, AgentsMdAdapter } from "../../instructions-transpiler/index.js";
 import { GeminiAdapter } from "../../instructions-transpiler/adapters/gemini-adapter.js";
 import { KiloCodeAdapter } from "../../instructions-transpiler/adapters/kilocode-adapter.js";
 import { CodexAdapter } from "../../instructions-transpiler/adapters/codex-adapter.js";
-import {
-  ClaudeSkillAdapter,
-  OpenCodeSkillAdapter,
-} from "../../skills-transpiler/index.js";
+import { ClaudeSkillAdapter, OpenCodeSkillAdapter } from "../../skills-transpiler/index.js";
 import { KiloCodeSkillAdapter } from "../../skills-transpiler/adapters/kilocode-adapter.js";
 import { CodexSkillAdapter } from "../../skills-transpiler/adapters/codex-adapter.js";
 import { GeminiSkillAdapter } from "../../skills-transpiler/adapters/gemini-adapter.js";
-import {
-  ClaudeAgentAdapter,
-  OpenCodeAgentAdapter,
-} from "../../agents-transpiler/index.js";
+import { ClaudeAgentAdapter, OpenCodeAgentAdapter } from "../../agents-transpiler/index.js";
 import { KiloCodeAgentAdapter } from "../../agents-transpiler/adapters/kilocode-adapter.js";
 import { GeminiAgentAdapter } from "../../agents-transpiler/adapters/gemini-adapter.js";
 import { CodexAgentAdapter } from "../../agents-transpiler/adapters/codex-adapter.js";
@@ -73,9 +63,7 @@ describe("CLI", () => {
       const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmd).toBeDefined();
       expect(agentsmd!.id).toBe("agentsmd");
-      expect(agentsmd!.description).toBe(
-        "AGENTS.md (Codex, OpenCode, KiloCode, ...)",
-      );
+      expect(agentsmd!.description).toBe("AGENTS.md (Codex, OpenCode, KiloCode, ...)");
       // § agentsmd транспилирует только instructions (AGLOOM.md → AGENTS.md)
       expect(agentsmd!.instructions).toBeInstanceOf(AgentsMdAdapter);
       expect(agentsmd!.skills).toBeNull();
@@ -126,10 +114,7 @@ describe("CLI", () => {
     it('запись "agentsmd" содержит targetFiles ["AGENTS.md", "AGENTS.override.md"]', () => {
       const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmd).toBeDefined();
-      expect(agentsmd!.targetFiles).toEqual([
-        "AGENTS.md",
-        "AGENTS.override.md",
-      ]);
+      expect(agentsmd!.targetFiles).toEqual(["AGENTS.md", "AGENTS.override.md"]);
     });
 
     // --- Happy path: запись claude содержит поле projectFiles ---
@@ -153,10 +138,7 @@ describe("CLI", () => {
     it('запись "agentsmd" содержит projectFiles ["AGENTS.md", "AGENTS.override.md"]', () => {
       const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmd).toBeDefined();
-      expect(agentsmd!.projectFiles).toEqual([
-        "AGENTS.md",
-        "AGENTS.override.md",
-      ]);
+      expect(agentsmd!.projectFiles).toEqual(["AGENTS.md", "AGENTS.override.md"]);
     });
 
     // --- Happy path: запись claude содержит поле instructionsFile ---
@@ -216,11 +198,7 @@ describe("CLI", () => {
     it('запись "claude" содержит overlayImportPaths [".claude", "**/CLAUDE.md", ".mcp.json"]', () => {
       const claude = adapterRegistry.find((e) => e.id === "claude");
       expect(claude).toBeDefined();
-      expect(claude!.overlayImportPaths).toEqual([
-        ".claude",
-        "**/CLAUDE.md",
-        ".mcp.json",
-      ]);
+      expect(claude!.overlayImportPaths).toEqual([".claude", "**/CLAUDE.md", ".mcp.json"]);
     });
 
     // --- Happy path: запись opencode содержит поле overlayImportPaths ---
@@ -228,10 +206,7 @@ describe("CLI", () => {
     it('запись "opencode" содержит overlayImportPaths [".opencode", "opencode.json"]', () => {
       const opencode = adapterRegistry.find((e) => e.id === "opencode");
       expect(opencode).toBeDefined();
-      expect(opencode!.overlayImportPaths).toEqual([
-        ".opencode",
-        "opencode.json",
-      ]);
+      expect(opencode!.overlayImportPaths).toEqual([".opencode", "opencode.json"]);
     });
 
     // --- Happy path: запись agentsmd содержит поле overlayImportPaths ---
@@ -239,11 +214,7 @@ describe("CLI", () => {
     it('запись "agentsmd" содержит overlayImportPaths [".agents", "**/AGENTS.md", "**/AGENTS.override.md"]', () => {
       const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmd).toBeDefined();
-      expect(agentsmd!.overlayImportPaths).toEqual([
-        ".agents",
-        "**/AGENTS.md",
-        "**/AGENTS.override.md",
-      ]);
+      expect(agentsmd!.overlayImportPaths).toEqual([".agents", "**/AGENTS.md", "**/AGENTS.override.md"]);
     });
 
     // =====================================================================
@@ -528,9 +499,7 @@ describe("CLI", () => {
     it('allowedAgentIds включает "gemini" (instructionsFile не null)', () => {
       // Проверяем через экземпляры адаптеров: gemini имеет instructionsFile,
       // значит он должен быть в allowedAgentIds
-      const entriesWithInstructionsFile = adapterRegistry
-        .filter((e) => e.instructionsFile !== null)
-        .map((e) => e.id);
+      const entriesWithInstructionsFile = adapterRegistry.filter((e) => e.instructionsFile !== null).map((e) => e.id);
       expect(entriesWithInstructionsFile).toContain("claude");
       expect(entriesWithInstructionsFile).toContain("agentsmd");
       expect(entriesWithInstructionsFile).toContain("gemini");

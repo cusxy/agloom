@@ -75,10 +75,7 @@ describe("CLI", () => {
       // Создаём файлы в .claude/ (в overlayImportPaths записи claude)
       const claudeDir = path.join(tmpDir, ".claude");
       fs.mkdirSync(claudeDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(claudeDir, "settings.json"),
-        '{"key": "value"}',
-      );
+      fs.writeFileSync(path.join(claudeDir, "settings.json"), '{"key": "value"}');
       fs.writeFileSync(path.join(claudeDir, "config.txt"), "config content");
 
       const { lastFrame, unmount } = render(
@@ -106,9 +103,7 @@ describe("CLI", () => {
       expect(output).not.toContain(".agloom/instructions/");
       // § Вывод (успех): результат overlay (2 files from .claude/ + 1 CLAUDE.md via glob = 3)
       expect(output).toContain("\u2713");
-      expect(output).toMatch(
-        /3\s+files copied to \.agloom\/overlays\/claude\//,
-      );
+      expect(output).toMatch(/3\s+files copied to \.agloom\/overlays\/claude\//);
       // "Done."
       expect(output).toContain("Done.");
       // § Exit codes: 0 — успех
@@ -121,21 +116,12 @@ describe("CLI", () => {
       // Побочный эффект: файлы скопированы в .agloom/overlays/claude/
       // с сохранением позиции относительно project root
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-      const overlaySettings = fs.readFileSync(
-        path.join(overlayDir, ".claude", "settings.json"),
-        "utf-8",
-      );
+      const overlaySettings = fs.readFileSync(path.join(overlayDir, ".claude", "settings.json"), "utf-8");
       expect(overlaySettings).toBe('{"key": "value"}');
-      const overlayConfig = fs.readFileSync(
-        path.join(overlayDir, ".claude", "config.txt"),
-        "utf-8",
-      );
+      const overlayConfig = fs.readFileSync(path.join(overlayDir, ".claude", "config.txt"), "utf-8");
       expect(overlayConfig).toBe("config content");
       // CLAUDE.md скопирован в overlay через glob **/CLAUDE.md
-      const overlayClaude = fs.readFileSync(
-        path.join(overlayDir, "CLAUDE.md"),
-        "utf-8",
-      );
+      const overlayClaude = fs.readFileSync(path.join(overlayDir, "CLAUDE.md"), "utf-8");
       expect(overlayClaude).toBe("Claude instructions");
 
       unmount();
@@ -194,32 +180,17 @@ describe("CLI", () => {
       // Побочный эффект: корневой CLAUDE.md скопирован через glob **/CLAUDE.md
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       expect(fs.existsSync(path.join(overlayDir, "CLAUDE.md"))).toBe(true);
-      expect(fs.readFileSync(path.join(overlayDir, "CLAUDE.md"), "utf-8")).toBe(
-        "Root CLAUDE.md",
-      );
+      expect(fs.readFileSync(path.join(overlayDir, "CLAUDE.md"), "utf-8")).toBe("Root CLAUDE.md");
 
       // Побочный эффект: CLAUDE.md из подпапки скопирован с сохранением пути
-      expect(
-        fs.existsSync(path.join(overlayDir, "packages", "core", "CLAUDE.md")),
-      ).toBe(true);
-      expect(
-        fs.readFileSync(
-          path.join(overlayDir, "packages", "core", "CLAUDE.md"),
-          "utf-8",
-        ),
-      ).toBe("Sub CLAUDE.md");
+      expect(fs.existsSync(path.join(overlayDir, "packages", "core", "CLAUDE.md"))).toBe(true);
+      expect(fs.readFileSync(path.join(overlayDir, "packages", "core", "CLAUDE.md"), "utf-8")).toBe("Sub CLAUDE.md");
 
       // Побочный эффект: CLAUDE.md из node_modules НЕ скопирован
-      expect(
-        fs.existsSync(
-          path.join(overlayDir, "node_modules", "some-pkg", "CLAUDE.md"),
-        ),
-      ).toBe(false);
+      expect(fs.existsSync(path.join(overlayDir, "node_modules", "some-pkg", "CLAUDE.md"))).toBe(false);
 
       // Побочный эффект: CLAUDE.md из скрытого каталога НЕ скопирован (dot: false)
-      expect(fs.existsSync(path.join(overlayDir, ".hidden", "CLAUDE.md"))).toBe(
-        false,
-      );
+      expect(fs.existsSync(path.join(overlayDir, ".hidden", "CLAUDE.md"))).toBe(false);
 
       unmount();
     });
@@ -243,10 +214,7 @@ describe("CLI", () => {
     it("при --all для agentsmd резолвит glob-паттерны **/AGENTS.md и **/AGENTS.override.md", async () => {
       // Создаём AGENTS.md и AGENTS.override.md в корне
       fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "Root AGENTS.md");
-      fs.writeFileSync(
-        path.join(tmpDir, "AGENTS.override.md"),
-        "Root AGENTS.override.md",
-      );
+      fs.writeFileSync(path.join(tmpDir, "AGENTS.override.md"), "Root AGENTS.override.md");
 
       // Создаём AGENTS.md в подпапке
       const subDir = path.join(tmpDir, "packages", "core");
@@ -277,25 +245,12 @@ describe("CLI", () => {
       expect(process.exitCode).toBeUndefined();
 
       // Побочный эффект: agentsmd overlay содержит файлы из glob
-      const agentsOverlay = path.join(
-        tmpDir,
-        ".agloom",
-        "overlays",
-        "agentsmd",
-      );
+      const agentsOverlay = path.join(tmpDir, ".agloom", "overlays", "agentsmd");
       expect(fs.existsSync(path.join(agentsOverlay, "AGENTS.md"))).toBe(true);
-      expect(
-        fs.existsSync(path.join(agentsOverlay, "AGENTS.override.md")),
-      ).toBe(true);
-      expect(
-        fs.existsSync(
-          path.join(agentsOverlay, "packages", "core", "AGENTS.md"),
-        ),
-      ).toBe(true);
+      expect(fs.existsSync(path.join(agentsOverlay, "AGENTS.override.md"))).toBe(true);
+      expect(fs.existsSync(path.join(agentsOverlay, "packages", "core", "AGENTS.md"))).toBe(true);
       // .agents/ директория тоже скопирована
-      expect(
-        fs.existsSync(path.join(agentsOverlay, ".agents", "config.json")),
-      ).toBe(true);
+      expect(fs.existsSync(path.join(agentsOverlay, ".agents", "config.json"))).toBe(true);
 
       unmount();
     });
@@ -323,10 +278,7 @@ describe("CLI", () => {
       const { adapterRegistry } = await import("../adapter-registry.js");
       const agentsmdEntry = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmdEntry).toBeDefined();
-      expect(agentsmdEntry!.projectFiles).toEqual([
-        "AGENTS.md",
-        "AGENTS.override.md",
-      ]);
+      expect(agentsmdEntry!.projectFiles).toEqual(["AGENTS.md", "AGENTS.override.md"]);
     });
 
     // =====================================================================
@@ -338,11 +290,7 @@ describe("CLI", () => {
       const { adapterRegistry } = await import("../adapter-registry.js");
       const claudeEntry = adapterRegistry.find((e) => e.id === "claude");
       expect(claudeEntry).toBeDefined();
-      expect(claudeEntry!.overlayImportPaths).toEqual([
-        ".claude",
-        "**/CLAUDE.md",
-        ".mcp.json",
-      ]);
+      expect(claudeEntry!.overlayImportPaths).toEqual([".claude", "**/CLAUDE.md", ".mcp.json"]);
     });
 
     // =====================================================================
@@ -354,11 +302,7 @@ describe("CLI", () => {
       const { adapterRegistry } = await import("../adapter-registry.js");
       const agentsmdEntry = adapterRegistry.find((e) => e.id === "agentsmd");
       expect(agentsmdEntry).toBeDefined();
-      expect(agentsmdEntry!.overlayImportPaths).toEqual([
-        ".agents",
-        "**/AGENTS.md",
-        "**/AGENTS.override.md",
-      ]);
+      expect(agentsmdEntry!.overlayImportPaths).toEqual([".agents", "**/AGENTS.md", "**/AGENTS.override.md"]);
     });
 
     // =====================================================================
@@ -460,10 +404,7 @@ describe("CLI", () => {
       expect(process.exitCode).toBe(1);
 
       // Побочный эффект: существующие файлы не изменены
-      const existing = fs.readFileSync(
-        path.join(overlayDir, "existing.txt"),
-        "utf-8",
-      );
+      const existing = fs.readFileSync(path.join(overlayDir, "existing.txt"), "utf-8");
       expect(existing).toBe("existing");
 
       unmount();
@@ -478,10 +419,7 @@ describe("CLI", () => {
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       const overlayClaudeDir = path.join(overlayDir, ".claude");
       fs.mkdirSync(overlayClaudeDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayClaudeDir, "settings.json"),
-        '{"old": true}',
-      );
+      fs.writeFileSync(path.join(overlayClaudeDir, "settings.json"), '{"old": true}');
 
       const claudeDir = path.join(tmpDir, ".claude");
       fs.mkdirSync(claudeDir, { recursive: true });
@@ -511,10 +449,7 @@ describe("CLI", () => {
       expect(process.exitCode).toBeUndefined();
 
       // Побочный эффект: файл перезаписан новым содержимым
-      const settings = fs.readFileSync(
-        path.join(overlayClaudeDir, "settings.json"),
-        "utf-8",
-      );
+      const settings = fs.readFileSync(path.join(overlayClaudeDir, "settings.json"), "utf-8");
       expect(settings).toBe('{"new": true}');
 
       unmount();
@@ -642,15 +577,9 @@ describe("CLI", () => {
         { timeout: 5000 },
       );
 
-      expect(
-        fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "claude")),
-      ).toBe(false);
-      expect(
-        fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "opencode")),
-      ).toBe(false);
-      expect(
-        fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "agentsmd")),
-      ).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "claude"))).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "opencode"))).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "agentsmd"))).toBe(false);
 
       unmount();
     });
@@ -693,9 +622,7 @@ describe("CLI", () => {
 
         // Побочный эффект: ok-file.txt скопирован
         const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-        expect(
-          fs.existsSync(path.join(overlayDir, ".claude", "ok-file.txt")),
-        ).toBe(true);
+        expect(fs.existsSync(path.join(overlayDir, ".claude", "ok-file.txt"))).toBe(true);
 
         unmount();
       },
@@ -735,24 +662,9 @@ describe("CLI", () => {
 
       // Побочный эффект: структура каталогов сохранена
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-      expect(
-        fs.readFileSync(
-          path.join(overlayDir, ".claude", "root-file.txt"),
-          "utf-8",
-        ),
-      ).toBe("root");
-      expect(
-        fs.readFileSync(
-          path.join(overlayDir, ".claude", "commands", "cmd.md"),
-          "utf-8",
-        ),
-      ).toBe("cmd");
-      expect(
-        fs.readFileSync(
-          path.join(overlayDir, ".claude", "commands", "sub", "deep.md"),
-          "utf-8",
-        ),
-      ).toBe("deep");
+      expect(fs.readFileSync(path.join(overlayDir, ".claude", "root-file.txt"), "utf-8")).toBe("root");
+      expect(fs.readFileSync(path.join(overlayDir, ".claude", "commands", "cmd.md"), "utf-8")).toBe("cmd");
+      expect(fs.readFileSync(path.join(overlayDir, ".claude", "commands", "sub", "deep.md"), "utf-8")).toBe("deep");
 
       unmount();
     });
@@ -830,29 +742,11 @@ describe("CLI", () => {
       expect(process.exitCode).toBeUndefined();
 
       // Побочный эффект: файлы скопированы
+      expect(fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "claude", ".claude", "claude-file.txt"))).toBe(
+        true,
+      );
       expect(
-        fs.existsSync(
-          path.join(
-            tmpDir,
-            ".agloom",
-            "overlays",
-            "claude",
-            ".claude",
-            "claude-file.txt",
-          ),
-        ),
-      ).toBe(true);
-      expect(
-        fs.existsSync(
-          path.join(
-            tmpDir,
-            ".agloom",
-            "overlays",
-            "opencode",
-            ".opencode",
-            "opencode-file.txt",
-          ),
-        ),
+        fs.existsSync(path.join(tmpDir, ".agloom", "overlays", "opencode", ".opencode", "opencode-file.txt")),
       ).toBe(true);
 
       unmount();
@@ -992,9 +886,7 @@ describe("CLI", () => {
 
       // Побочный эффект: overlay-файлы НЕ скопированы
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
-      expect(fs.existsSync(path.join(overlayDir, ".claude", "file.txt"))).toBe(
-        false,
-      );
+      expect(fs.existsSync(path.join(overlayDir, ".claude", "file.txt"))).toBe(false);
 
       expect(process.exitCode).toBe(1);
 
@@ -1218,9 +1110,7 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain(
-        ".agloom/ already exists. Use --force to reinitialize.",
-      );
+      expect(output).toContain(".agloom/ already exists. Use --force to reinitialize.");
       expect(process.exitCode).toBe(1);
 
       unmount();
@@ -1292,10 +1182,7 @@ describe("CLI", () => {
     it("при --force перезаписывает существующий .agloom/config.yml новым списком адаптеров", async () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - opencode\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - opencode\n");
 
       const { lastFrame, unmount } = render(
         React.createElement(App, {
@@ -1354,10 +1241,7 @@ describe("CLI", () => {
     it("при отсутствии --adapter и --all с существующим конфигом использует конфиг и НЕ модифицирует config.yml", async () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
       const claudeDir = path.join(tmpDir, ".claude");
       fs.mkdirSync(claudeDir, { recursive: true });
@@ -1385,10 +1269,7 @@ describe("CLI", () => {
       expect(process.exitCode).toBeUndefined();
 
       // config.yml НЕ модифицирован
-      const configContent = fs.readFileSync(
-        path.join(configDir, "config.yml"),
-        "utf-8",
-      );
+      const configContent = fs.readFileSync(path.join(configDir, "config.yml"), "utf-8");
       expect(configContent).toBe("adapters:\n  - claude\n");
 
       unmount();

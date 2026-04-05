@@ -29,9 +29,7 @@ describe("CLI", () => {
     // Usage: agloom format [--check] [--all] [<file|glob>...]
     // Options должны включать --all
     it("format --help отображает usage с --all и <file|glob>...", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["format", "--help"] }),
-      );
+      const { lastFrame, unmount } = render(React.createElement(App, { args: ["format", "--help"] }));
 
       const output = lastFrame()!;
 

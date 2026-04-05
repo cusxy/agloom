@@ -37,9 +37,7 @@ function validateRuleArray(
 ): void {
   // Секция должна быть массивом
   if (!Array.isArray(section)) {
-    throw new TransformError(
-      `'${sectionName}' must be an array of permission rules`,
-    );
+    throw new TransformError(`'${sectionName}' must be an array of permission rules`);
   }
 
   for (const rule of section) {
@@ -77,15 +75,9 @@ function validateRuleArray(
  * 4. Если поле mcp присутствует — валидировать как упорядоченный массив правил.
  * 5. Если поле file присутствует — валидировать как упорядоченный массив правил.
  */
-export function validatePermissionsContent(
-  content: unknown,
-): PermissionsCanonicalContent {
+export function validatePermissionsContent(content: unknown): PermissionsCanonicalContent {
   // Шаг 1: content должен быть объектом
-  if (
-    typeof content !== "object" ||
-    content === null ||
-    Array.isArray(content)
-  ) {
+  if (typeof content !== "object" || content === null || Array.isArray(content)) {
     throw new TransformError("Permissions config must be an object");
   }
 
@@ -95,9 +87,7 @@ export function validatePermissionsContent(
   const allowedRootKeys = ["shell", "mcp", "file"];
   for (const key of Object.keys(obj)) {
     if (!allowedRootKeys.includes(key)) {
-      throw new TransformError(
-        `Unknown key '${key}' in permissions config. Allowed keys: shell, mcp, file`,
-      );
+      throw new TransformError(`Unknown key '${key}' in permissions config. Allowed keys: shell, mcp, file`);
     }
   }
 
@@ -111,9 +101,7 @@ export function validatePermissionsContent(
     validateRuleArray(obj.mcp, "mcp", ["allow", "ask", "deny"], (pattern) => {
       const colonCount = pattern.split(":").length - 1;
       if (colonCount !== 1) {
-        throw new TransformError(
-          `Invalid MCP pattern '${pattern}': must match format '<server>:<tool>'`,
-        );
+        throw new TransformError(`Invalid MCP pattern '${pattern}': must match format '<server>:<tool>'`);
       }
     });
   }

@@ -16,9 +16,7 @@ import type { TranspilerStepOutcome } from "./types.js";
  * @param outcomeGroups — массив массивов outcomes (по одному на источник).
  * @returns Агрегированные outcomes, по одному на тип шага.
  */
-export function aggregateOutcomes(
-  outcomeGroups: TranspilerStepOutcome[][],
-): TranspilerStepOutcome[] {
+export function aggregateOutcomes(outcomeGroups: TranspilerStepOutcome[][]): TranspilerStepOutcome[] {
   const byName = new Map<string, { writtenCount: number; errors: string[] }>();
 
   // Определить порядок шагов из первой непустой группы

@@ -17,9 +17,7 @@ import { classifyFile, runOverlayStep, applyPatch } from "../overlay-step.js";
 /**
  * Минимальный стаб AdapterRegistryEntry для тестов overlay.
  */
-function createTestEntry(
-  overrides: Partial<AdapterRegistryEntry> = {},
-): AdapterRegistryEntry {
+function createTestEntry(overrides: Partial<AdapterRegistryEntry> = {}): AdapterRegistryEntry {
   return {
     id: "test-adapter",
     description: "Test Adapter",
@@ -85,10 +83,7 @@ describe("Patch-механизм", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
-    function createLayer(
-      layerId: string,
-      files: Record<string, string | Buffer>,
-    ): string {
+    function createLayer(layerId: string, files: Record<string, string | Buffer>): string {
       const layerDir = path.join(tmpDir, "layers", layerId);
       for (const [relativePath, content] of Object.entries(files)) {
         const filePath = path.join(layerDir, relativePath);
@@ -923,10 +918,7 @@ describe("Patch-механизм", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
-    function createLayer(
-      layerId: string,
-      files: Record<string, string | Buffer>,
-    ): string {
+    function createLayer(layerId: string, files: Record<string, string | Buffer>): string {
       const layerDir = path.join(tmpDir, "layers", layerId);
       for (const [relativePath, content] of Object.entries(files)) {
         const filePath = path.join(layerDir, relativePath);
@@ -967,13 +959,9 @@ describe("Patch-механизм", () => {
 
       // Файл записан как settings.json
       expect(fs.existsSync(path.join(tmpDir, "settings.json"))).toBe(true);
-      expect(fs.existsSync(path.join(tmpDir, "settings.patch.json"))).toBe(
-        false,
-      );
+      expect(fs.existsSync(path.join(tmpDir, "settings.patch.json"))).toBe(false);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"));
       expect(written).toEqual({
         editor: { fontSize: 14, rulers: [80, 120, 140] },
       });
@@ -1007,9 +995,7 @@ describe("Patch-механизм", () => {
       expect(outcome.errors).toEqual([]);
       expect(outcome.writtenCount).toBe(1);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"));
       expect(written).toEqual({
         editor: { fontSize: 14, rulers: [80, 120, 140] },
       });
@@ -1042,9 +1028,7 @@ describe("Patch-механизм", () => {
 
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8"));
       expect(written).toEqual({
         editor: { fontSize: 14, rulers: [80, 120] },
       });
@@ -1079,9 +1063,7 @@ describe("Patch-механизм", () => {
 
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "tsconfig.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "tsconfig.json"), "utf-8"));
       expect(written).toEqual({
         compilerOptions: { strict: true, target: "es2022" },
       });
@@ -1092,10 +1074,7 @@ describe("Patch-механизм", () => {
       const entry = createTestEntry({ id: "claude" });
 
       // Существующий целевой файл (от предыдущих транспилерных шагов)
-      fs.writeFileSync(
-        path.join(tmpDir, "config.json"),
-        JSON.stringify({ items: [1, 2, 3] }),
-      );
+      fs.writeFileSync(path.join(tmpDir, "config.json"), JSON.stringify({ items: [1, 2, 3] }));
 
       const layerDir = createLayer("local", {
         "config.patch.json": JSON.stringify({
@@ -1111,9 +1090,7 @@ describe("Patch-механизм", () => {
 
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "config.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "config.json"), "utf-8"));
       expect(written).toEqual({ items: [1, 2, 3, 4, 5] });
     });
 
@@ -1165,10 +1142,7 @@ describe("Patch-механизм", () => {
     it("продолжает обработку оставшихся файлов после ошибки в одном patch-файле", () => {
       const entry = createTestEntry({ id: "claude" });
 
-      fs.writeFileSync(
-        path.join(tmpDir, "good.json"),
-        JSON.stringify({ items: [1, 2] }),
-      );
+      fs.writeFileSync(path.join(tmpDir, "good.json"), JSON.stringify({ items: [1, 2] }));
 
       const layerDir = createLayer("local", {
         // Невалидный patch — $append на не-массиве
@@ -1181,10 +1155,7 @@ describe("Patch-механизм", () => {
       });
 
       // Создаём целевой файл bad.json с не-массивом
-      fs.writeFileSync(
-        path.join(tmpDir, "bad.json"),
-        JSON.stringify({ value: "string" }),
-      );
+      fs.writeFileSync(path.join(tmpDir, "bad.json"), JSON.stringify({ value: "string" }));
 
       const outcome = runOverlayStep({
         entry,
@@ -1195,9 +1166,7 @@ describe("Patch-механизм", () => {
       // bad.patch.json вызвал ошибку, но good.patch.json обработан
       expect(outcome.errors.length).toBeGreaterThanOrEqual(1);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "good.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "good.json"), "utf-8"));
       expect(written).toEqual({ items: [1, 2, 3] });
     });
 
@@ -1219,9 +1188,7 @@ describe("Patch-механизм", () => {
 
       expect(outcome.errors).toEqual([]);
 
-      const written = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "new-config.json"), "utf-8"),
-      );
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "new-config.json"), "utf-8"));
       expect(written).toEqual({ key: "value" });
     });
   });

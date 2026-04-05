@@ -28,11 +28,7 @@ export function discover(projectRoot: string): CanonicalFile[] {
   }
 
   // Шаг 2: рекурсивно найти все AGLOOM.md в подпапках
-  const subdirFiles = scanDirectory(
-    projectRoot,
-    projectRoot,
-    gitignorePatterns,
-  );
+  const subdirFiles = scanDirectory(projectRoot, projectRoot, gitignorePatterns);
   files.push(...subdirFiles);
 
   return files;
@@ -61,11 +57,7 @@ function loadGitignorePatterns(projectRoot: string): string[] {
 /**
  * Проверяет, должен ли каталог быть исключён.
  */
-function isExcludedDir(
-  dirName: string,
-  relativeDirPath: string,
-  gitignorePatterns: string[],
-): boolean {
+function isExcludedDir(dirName: string, relativeDirPath: string, gitignorePatterns: string[]): boolean {
   // Шаг 5: исключить node_modules
   if (dirName === "node_modules") {
     return true;
@@ -92,11 +84,7 @@ function isExcludedDir(
 /**
  * Рекурсивно сканирует каталог на наличие AGLOOM.md файлов в подпапках.
  */
-function scanDirectory(
-  currentDir: string,
-  projectRoot: string,
-  gitignorePatterns: string[],
-): CanonicalFile[] {
+function scanDirectory(currentDir: string, projectRoot: string, gitignorePatterns: string[]): CanonicalFile[] {
   const files: CanonicalFile[] = [];
   let entries: fs.Dirent[];
 
@@ -104,9 +92,7 @@ function scanDirectory(
     entries = fs.readdirSync(currentDir, { withFileTypes: true });
   } catch (err) {
     const relativePath = path.relative(projectRoot, currentDir);
-    throw new DiscoverError(
-      `Failed to scan directory ${relativePath || "."}: ${(err as Error).message}`,
-    );
+    throw new DiscoverError(`Failed to scan directory ${relativePath || "."}: ${(err as Error).message}`);
   }
 
   for (const entry of entries) {
@@ -147,8 +133,6 @@ function readFileSafe(absolutePath: string, relativePath: string): string {
   try {
     return fs.readFileSync(absolutePath, "utf-8");
   } catch (err) {
-    throw new DiscoverError(
-      `Failed to read ${relativePath}: ${(err as Error).message}`,
-    );
+    throw new DiscoverError(`Failed to read ${relativePath}: ${(err as Error).message}`);
   }
 }

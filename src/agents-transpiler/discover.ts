@@ -13,10 +13,7 @@ import type { AgentDefinition } from "./types.js";
  * @param projectRoot - абсолютный путь к корню проекта.
  * @param agloomDir - относительный путь к agloom-директории (default: ".agloom").
  */
-export function discover(
-  projectRoot: string,
-  agloomDir: string = ".agloom",
-): AgentDefinition[] {
+export function discover(projectRoot: string, agloomDir: string = ".agloom"): AgentDefinition[] {
   const agentsDir = path.join(projectRoot, agloomDir, "agents");
 
   // Шаг 1: проверить наличие каталога .agloom/agents/
@@ -31,9 +28,7 @@ export function discover(
     entries = fs.readdirSync(agentsDir, { withFileTypes: true });
   } catch (err) {
     // Расширение 2a: ошибка доступа к каталогу (EACCES)
-    throw new AgentDiscoverError(
-      `Failed to scan directory .agloom/agents/: ${(err as Error).message}`,
-    );
+    throw new AgentDiscoverError(`Failed to scan directory .agloom/agents/: ${(err as Error).message}`);
   }
 
   const definitions: AgentDefinition[] = [];
@@ -58,9 +53,7 @@ export function discover(
       content = fs.readFileSync(absolutePath, "utf-8");
     } catch (err) {
       // Расширение 4a: ошибка чтения файла
-      throw new AgentDiscoverError(
-        `Failed to read ${relativePath}: ${(err as Error).message}`,
-      );
+      throw new AgentDiscoverError(`Failed to read ${relativePath}: ${(err as Error).message}`);
     }
 
     // Шаг 5: сформировать AgentDefinition

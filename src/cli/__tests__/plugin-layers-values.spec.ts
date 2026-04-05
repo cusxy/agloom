@@ -16,9 +16,7 @@ describe("CLI", () => {
       };
 
       const layers = buildLayers({
-        plugins: [
-          { name: "my-plugin", path: "/tmp/plugins/my-plugin", resolvedValues },
-        ],
+        plugins: [{ name: "my-plugin", path: "/tmp/plugins/my-plugin", resolvedValues }],
         projectRoot: "/tmp/project",
         entryId: "claude",
       });
@@ -107,9 +105,7 @@ describe("CLI", () => {
     //  вызывает InterpolationError."
     it("пустой resolvedValues устанавливается как values на LayerSource", () => {
       const layers = buildLayers({
-        plugins: [
-          { name: "empty-vals", path: "/tmp/plugins/ev", resolvedValues: {} },
-        ],
+        plugins: [{ name: "empty-vals", path: "/tmp/plugins/ev", resolvedValues: {} }],
         projectRoot: "/tmp/project",
         entryId: "claude",
       });

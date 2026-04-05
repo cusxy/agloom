@@ -4,11 +4,7 @@
  */
 
 /** Тип канонического файла. */
-export type CanonicalFileType =
-  | "root"
-  | "directory"
-  | "local"
-  | "directory-local";
+export type CanonicalFileType = "root" | "directory" | "local" | "directory-local";
 
 /** Канонический файл, обнаруженный в проекте. */
 export interface CanonicalFile {

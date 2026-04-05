@@ -18,12 +18,7 @@ export { CodexAdapter } from "./adapters/codex-adapter.js";
 export { InstructionsTranspiler } from "./transpiler.js";
 export { transformContent } from "./transform-content.js";
 export { filterBody } from "./filter-body.js";
-export {
-  ConfigError,
-  DiscoverError,
-  TransformError,
-  WriteError,
-} from "./errors.js";
+export { ConfigError, DiscoverError, TransformError, WriteError } from "./errors.js";
 export type {
   Adapter,
   CanonicalFile,
@@ -56,9 +51,7 @@ function isAdapter(value: unknown): value is Adapter {
  * 4. Валидировать, что значения agentId всех адаптеров уникальны.
  * 5. Сохранить конфигурацию в экземпляре.
  */
-export function createInstructionsTranspiler(
-  config: TranspilerConfig,
-): InstructionsTranspiler {
+export function createInstructionsTranspiler(config: TranspilerConfig): InstructionsTranspiler {
   // Шаг 1: projectRoot должен быть абсолютным путём
   // Расширение 1a
   if (!path.isAbsolute(config.projectRoot)) {
@@ -75,9 +68,7 @@ export function createInstructionsTranspiler(
   // Расширение 3a
   for (let i = 0; i < config.adapters.length; i++) {
     if (!isAdapter(config.adapters[i])) {
-      throw new ConfigError(
-        `Adapter at index ${i} does not implement Adapter interface`,
-      );
+      throw new ConfigError(`Adapter at index ${i} does not implement Adapter interface`);
     }
   }
 

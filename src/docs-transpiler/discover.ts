@@ -11,11 +11,7 @@ import type { ResourceFile, ResourceType } from "./types.js";
 /**
  * Обнаруживает все файлы ресурсов в проекте.
  */
-export function discover(
-  projectRoot: string,
-  agloomDir: string,
-  resourceType: ResourceType,
-): ResourceFile[] {
+export function discover(projectRoot: string, agloomDir: string, resourceType: ResourceType): ResourceFile[] {
   // Шаг 1: определить путь к каталогу ресурсов
   const resourceDir = path.join(projectRoot, agloomDir, resourceType);
 
@@ -33,20 +29,14 @@ export function discover(
 /**
  * Рекурсивно собирает все файлы в директории.
  */
-function collectFiles(
-  absoluteDir: string,
-  relativeDir: string,
-  projectRoot: string,
-): ResourceFile[] {
+function collectFiles(absoluteDir: string, relativeDir: string, projectRoot: string): ResourceFile[] {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(absoluteDir, { withFileTypes: true });
   } catch (err) {
     // Расширение 3a: ошибка доступа к каталогу
     const dirPath = path.relative(projectRoot, absoluteDir);
-    throw new ResourceDiscoverError(
-      `Failed to scan directory ${dirPath}: ${(err as Error).message}`,
-    );
+    throw new ResourceDiscoverError(`Failed to scan directory ${dirPath}: ${(err as Error).message}`);
   }
 
   const files: ResourceFile[] = [];
@@ -57,11 +47,7 @@ function collectFiles(
     if (entry.isFile()) {
       files.push({ relativePath: entryRelative });
     } else if (entry.isDirectory()) {
-      const subFiles = collectFiles(
-        path.join(absoluteDir, entry.name),
-        entryRelative,
-        projectRoot,
-      );
+      const subFiles = collectFiles(path.join(absoluteDir, entry.name), entryRelative, projectRoot);
       files.push(...subFiles);
     }
   }

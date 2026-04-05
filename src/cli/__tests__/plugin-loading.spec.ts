@@ -60,9 +60,10 @@ describe("CLI", () => {
       const result = loadConfig(tmpDir);
       // Расширенный Load Config должен возвращать объект с pluginPaths
       expect(result).toHaveProperty("pluginPaths");
-      expect(
-        (result as unknown as { pluginPaths: string[] }).pluginPaths,
-      ).toEqual(["../shared-config", "../team-standards"]);
+      expect((result as unknown as { pluginPaths: string[] }).pluginPaths).toEqual([
+        "../shared-config",
+        "../team-standards",
+      ]);
     });
 
     // --- Расширение 5a: поле plugins отсутствует → pluginPaths = null ---
@@ -71,16 +72,11 @@ describe("CLI", () => {
     it("при отсутствии поля plugins возвращает pluginPaths: null", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
       const result = loadConfig(tmpDir);
       expect(result).toHaveProperty("pluginPaths");
-      expect(
-        (result as unknown as { pluginPaths: null }).pluginPaths,
-      ).toBeNull();
+      expect((result as unknown as { pluginPaths: null }).pluginPaths).toBeNull();
     });
 
     // --- Расширение 6a: plugins не является массивом ---
@@ -89,14 +85,9 @@ describe("CLI", () => {
     it("при plugins как строке выбрасывает ошибку о формате массива", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\nplugins: ../shared-config\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\nplugins: ../shared-config\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        "Invalid config: 'plugins' must be an array of strings.",
-      );
+      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'plugins' must be an array of strings.");
     });
 
     // --- Расширение 6a: plugins содержит нестроковые элементы ---
@@ -104,14 +95,9 @@ describe("CLI", () => {
     it("при нестроковых элементах в plugins выбрасывает ошибку о формате массива", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\nplugins:\n  - 123\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\nplugins:\n  - 123\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        "Invalid config: 'plugins' must be an array of strings.",
-      );
+      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'plugins' must be an array of strings.");
     });
 
     // --- Граничное условие: пустой массив plugins ---
@@ -120,16 +106,11 @@ describe("CLI", () => {
     it("при пустом массиве plugins возвращает pluginPaths как пустой массив", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\nplugins: []\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\nplugins: []\n");
 
       const result = loadConfig(tmpDir);
       expect(result).toHaveProperty("pluginPaths");
-      expect(
-        (result as unknown as { pluginPaths: string[] }).pluginPaths,
-      ).toEqual([]);
+      expect((result as unknown as { pluginPaths: string[] }).pluginPaths).toEqual([]);
     });
 
     // --- Граничное условие: один плагин ---
@@ -137,15 +118,10 @@ describe("CLI", () => {
     it("при одном плагине в plugins возвращает массив с одним элементом", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\nplugins:\n  - ../single-plugin\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\nplugins:\n  - ../single-plugin\n");
 
       const result = loadConfig(tmpDir);
-      expect(
-        (result as unknown as { pluginPaths: string[] }).pluginPaths,
-      ).toEqual(["../single-plugin"]);
+      expect((result as unknown as { pluginPaths: string[] }).pluginPaths).toEqual(["../single-plugin"]);
     });
   });
 
@@ -204,10 +180,7 @@ describe("CLI", () => {
       writePluginYaml(pluginDirB, validManifest("plugin-b"));
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => { name: string; path: string }[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => { name: string; path: string }[];
       };
 
       const result = resolvePlugins({
@@ -229,10 +202,7 @@ describe("CLI", () => {
       const relativePath = path.relative(tmpDir, pluginDirA);
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => { name: string; path: string }[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => { name: string; path: string }[];
       };
 
       const result = resolvePlugins({
@@ -251,10 +221,7 @@ describe("CLI", () => {
       writePluginYaml(pluginDirA, validManifest("plugin-a"));
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => { name: string; path: string }[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => { name: string; path: string }[];
       };
 
       const result = resolvePlugins({
@@ -273,10 +240,7 @@ describe("CLI", () => {
       const nonexistentPath = path.join(tmpDir, "nonexistent");
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => unknown[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => unknown[];
       };
 
       expect(() =>
@@ -295,10 +259,7 @@ describe("CLI", () => {
       fs.writeFileSync(filePath, "I am a file");
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => unknown[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => unknown[];
       };
 
       expect(() =>
@@ -317,10 +278,7 @@ describe("CLI", () => {
       fs.mkdirSync(emptyPluginDir, { recursive: true });
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => unknown[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => unknown[];
       };
 
       expect(() =>
@@ -328,25 +286,17 @@ describe("CLI", () => {
           pluginPaths: [emptyPluginDir],
           projectRoot: tmpDir,
         }),
-      ).toThrow(
-        `Plugin manifest not found: '${path.join(emptyPluginDir, "plugin.yml")}'.`,
-      );
+      ).toThrow(`Plugin manifest not found: '${path.join(emptyPluginDir, "plugin.yml")}'.`);
     });
 
     // --- Расширение 2.4a: невалидный YAML → Error ---
     // § plugin-loading.md § Процедура Resolve Plugins § Расширения 2.4a:
     // Error("Invalid plugin manifest at '{путь}/plugin.yml': {parseErrorMessage}.")
     it("выбрасывает ошибку при невалидном YAML в plugin.yml", async () => {
-      fs.writeFileSync(
-        path.join(pluginDirA, "plugin.yml"),
-        "invalid: [yaml\n  : : :\n",
-      );
+      fs.writeFileSync(path.join(pluginDirA, "plugin.yml"), "invalid: [yaml\n  : : :\n");
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => unknown[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => unknown[];
       };
 
       expect(() =>
@@ -355,9 +305,7 @@ describe("CLI", () => {
           projectRoot: tmpDir,
         }),
       ).toThrow(
-        new RegExp(
-          `Invalid plugin manifest at '${pluginDirA.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/plugin\\.yml':`,
-        ),
+        new RegExp(`Invalid plugin manifest at '${pluginDirA.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/plugin\\.yml':`),
       );
     });
 
@@ -372,10 +320,7 @@ describe("CLI", () => {
       );
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => unknown[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => unknown[];
       };
 
       expect(() =>
@@ -384,9 +329,7 @@ describe("CLI", () => {
           projectRoot: tmpDir,
         }),
       ).toThrow(
-        new RegExp(
-          `Invalid plugin manifest at '${pluginDirA.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/plugin\\.yml':`,
-        ),
+        new RegExp(`Invalid plugin manifest at '${pluginDirA.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/plugin\\.yml':`),
       );
     });
 
@@ -398,10 +341,7 @@ describe("CLI", () => {
       writePluginYaml(pluginDirB, validManifest("same-name"));
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => unknown[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => unknown[];
       };
 
       expect(() =>
@@ -409,9 +349,7 @@ describe("CLI", () => {
           pluginPaths: [pluginDirA, pluginDirB],
           projectRoot: tmpDir,
         }),
-      ).toThrow(
-        `Duplicate plugin name 'same-name': declared at '${pluginDirA}' and '${pluginDirB}'.`,
-      );
+      ).toThrow(`Duplicate plugin name 'same-name': declared at '${pluginDirA}' and '${pluginDirB}'.`);
     });
 
     // --- Стратегия обработки ошибок § Уровень 1 — fail-fast ---
@@ -423,10 +361,7 @@ describe("CLI", () => {
       writePluginYaml(pluginDirB, validManifest("plugin-b"));
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => unknown[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => unknown[];
       };
 
       // Первый плагин невалиден (не существует), второй валиден.
@@ -444,10 +379,7 @@ describe("CLI", () => {
     // Инициализировать пустой массив resolved. При пустом входе — пустой результат.
     it("при пустом массиве pluginPaths возвращает пустой массив", async () => {
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => unknown[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => unknown[];
       };
 
       const result = resolvePlugins({
@@ -468,10 +400,7 @@ describe("CLI", () => {
       writePluginYaml(sharedPlugin, validManifest("shared-plugin"));
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => { name: string; path: string }[];
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => { name: string; path: string }[];
       };
 
       const result = resolvePlugins({
@@ -494,10 +423,7 @@ describe("CLI", () => {
       );
 
       const { resolvePlugins } = (await import("../resolve-plugins.js")) as {
-        resolvePlugins: (params: {
-          pluginPaths: string[];
-          projectRoot: string;
-        }) => {
+        resolvePlugins: (params: { pluginPaths: string[]; projectRoot: string }) => {
           name: string;
           path: string;
           manifest: { name: string; version: string; description: string };
@@ -566,8 +492,7 @@ describe("CLI", () => {
       // Локальный проект — последний (наивысший приоритет)
       expect(layers[2]).toEqual({
         id: "local",
-        overlayDir:
-          path.join("/project", ".agloom", "overlays", "claude") + "/",
+        overlayDir: path.join("/project", ".agloom", "overlays", "claude") + "/",
       });
     });
 
@@ -592,8 +517,7 @@ describe("CLI", () => {
       expect(layers).toHaveLength(1);
       expect(layers[0]).toEqual({
         id: "local",
-        overlayDir:
-          path.join("/project", ".agloom", "overlays", "claude") + "/",
+        overlayDir: path.join("/project", ".agloom", "overlays", "claude") + "/",
       });
     });
   });
@@ -607,9 +531,7 @@ describe("CLI", () => {
     let pluginDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-transpile-source-root-"),
-      );
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-transpile-source-root-"));
       pluginDir = path.join(tmpDir, "plugins", "my-plugin");
       fs.mkdirSync(pluginDir, { recursive: true });
     });
@@ -624,20 +546,15 @@ describe("CLI", () => {
     // transpilerFactory({ projectRoot: sourceRoot ?? projectRoot, adapters: [adapter] })
     it("при передаче sourceRoot обнаруживает файлы из sourceRoot и записывает в projectRoot", async () => {
       // Создаём AGLOOM.md в директории плагина (не в projectRoot)
-      fs.writeFileSync(
-        path.join(pluginDir, "AGLOOM.md"),
-        "Plugin instructions content.",
-      );
+      fs.writeFileSync(path.join(pluginDir, "AGLOOM.md"), "Plugin instructions content.");
 
       const { runTranspileStep } = await import("../transpile-step.js");
-      const { createInstructionsTranspiler, ClaudeAdapter } =
-        await import("../../instructions-transpiler/index.js");
+      const { createInstructionsTranspiler, ClaudeAdapter } = await import("../../instructions-transpiler/index.js");
 
       const outcome = runTranspileStep({
-        transpilerFactory:
-          createInstructionsTranspiler as unknown as Parameters<
-            typeof runTranspileStep
-          >[0]["transpilerFactory"],
+        transpilerFactory: createInstructionsTranspiler as unknown as Parameters<
+          typeof runTranspileStep
+        >[0]["transpilerFactory"],
         adapter: new ClaudeAdapter(),
         projectRoot: tmpDir,
         name: "Instructions",
@@ -652,9 +569,7 @@ describe("CLI", () => {
       // Файл должен быть записан в projectRoot, не в sourceRoot
       const writtenPath = path.join(tmpDir, "CLAUDE.md");
       expect(fs.existsSync(writtenPath)).toBe(true);
-      expect(fs.readFileSync(writtenPath, "utf-8")).toBe(
-        "Plugin instructions content.",
-      );
+      expect(fs.readFileSync(writtenPath, "utf-8")).toBe("Plugin instructions content.");
     });
 
     // --- Шаг 3 (изменённый): writeResults с targetRoot = projectRoot ---
@@ -662,20 +577,15 @@ describe("CLI", () => {
     // § Изменения в поведении шаг 3:
     // transpiler.writeResults(transpileResults, { targetRoot: projectRoot })
     it("записывает результаты в projectRoot, а не в sourceRoot", async () => {
-      fs.writeFileSync(
-        path.join(pluginDir, "AGLOOM.md"),
-        "Plugin content for write test.",
-      );
+      fs.writeFileSync(path.join(pluginDir, "AGLOOM.md"), "Plugin content for write test.");
 
       const { runTranspileStep } = await import("../transpile-step.js");
-      const { createInstructionsTranspiler, ClaudeAdapter } =
-        await import("../../instructions-transpiler/index.js");
+      const { createInstructionsTranspiler, ClaudeAdapter } = await import("../../instructions-transpiler/index.js");
 
       runTranspileStep({
-        transpilerFactory:
-          createInstructionsTranspiler as unknown as Parameters<
-            typeof runTranspileStep
-          >[0]["transpilerFactory"],
+        transpilerFactory: createInstructionsTranspiler as unknown as Parameters<
+          typeof runTranspileStep
+        >[0]["transpilerFactory"],
         adapter: new ClaudeAdapter(),
         projectRoot: tmpDir,
         name: "Instructions",
@@ -694,20 +604,15 @@ describe("CLI", () => {
     // Если sourceRoot не передан, targetRoot совпадает с projectRoot
     // и поведение идентично текущему.
     it("без sourceRoot поведение идентично текущему", async () => {
-      fs.writeFileSync(
-        path.join(tmpDir, "AGLOOM.md"),
-        "Local project instructions.",
-      );
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "Local project instructions.");
 
       const { runTranspileStep } = await import("../transpile-step.js");
-      const { createInstructionsTranspiler, ClaudeAdapter } =
-        await import("../../instructions-transpiler/index.js");
+      const { createInstructionsTranspiler, ClaudeAdapter } = await import("../../instructions-transpiler/index.js");
 
       const outcome = runTranspileStep({
-        transpilerFactory:
-          createInstructionsTranspiler as unknown as Parameters<
-            typeof runTranspileStep
-          >[0]["transpilerFactory"],
+        transpilerFactory: createInstructionsTranspiler as unknown as Parameters<
+          typeof runTranspileStep
+        >[0]["transpilerFactory"],
         adapter: new ClaudeAdapter(),
         projectRoot: tmpDir,
         name: "Instructions",
@@ -740,18 +645,13 @@ describe("CLI", () => {
     it("при отсутствии plugins в конфиге loadConfig возвращает pluginPaths: null", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
       const result = loadConfig(tmpDir);
 
       // loadConfig должен вернуть структуру с pluginPaths = null
       expect(result).toHaveProperty("pluginPaths");
-      expect(
-        (result as unknown as { pluginPaths: null }).pluginPaths,
-      ).toBeNull();
+      expect((result as unknown as { pluginPaths: null }).pluginPaths).toBeNull();
     });
   });
 
@@ -825,20 +725,19 @@ describe("CLI", () => {
     // writtenCount ДОЛЖНО быть суммой writtenCount по всем источникам.
     // errors ДОЛЖНО быть конкатенацией массивов errors по всем источникам.
     it("суммирует writtenCount и конкатенирует errors по всем источникам для каждого типа шага", async () => {
-      const { aggregateOutcomes } =
-        (await import("../plugin-aggregate.js")) as {
-          aggregateOutcomes: (
-            outcomes: {
-              name: "Instructions" | "Skills" | "Agents";
-              writtenCount: number;
-              errors: string[];
-            }[][],
-          ) => {
+      const { aggregateOutcomes } = (await import("../plugin-aggregate.js")) as {
+        aggregateOutcomes: (
+          outcomes: {
             name: "Instructions" | "Skills" | "Agents";
             writtenCount: number;
             errors: string[];
-          }[];
-        };
+          }[][],
+        ) => {
+          name: "Instructions" | "Skills" | "Agents";
+          writtenCount: number;
+          errors: string[];
+        }[];
+      };
 
       const pluginAOutcomes = [
         { name: "Instructions" as const, writtenCount: 2, errors: [] },
@@ -866,11 +765,7 @@ describe("CLI", () => {
         { name: "Agents" as const, writtenCount: 2, errors: [] },
       ];
 
-      const aggregated = aggregateOutcomes([
-        pluginAOutcomes,
-        pluginBOutcomes,
-        localOutcomes,
-      ]);
+      const aggregated = aggregateOutcomes([pluginAOutcomes, pluginBOutcomes, localOutcomes]);
 
       expect(aggregated).toHaveLength(3);
 
@@ -937,16 +832,10 @@ describe("CLI", () => {
       // Плагин B: валидный agents
       const pluginBAgents = path.join(pluginB, "agents");
       fs.mkdirSync(pluginBAgents, { recursive: true });
-      fs.writeFileSync(
-        path.join(pluginBAgents, "helper.md"),
-        "---\nname: helper\n---\nHelper agent from plugin B.",
-      );
+      fs.writeFileSync(path.join(pluginBAgents, "helper.md"), "---\nname: helper\n---\nHelper agent from plugin B.");
 
       // Локальный проект: валидный AGLOOM.md
-      fs.writeFileSync(
-        path.join(tmpDir, "AGLOOM.md"),
-        "Local project instructions.",
-      );
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "Local project instructions.");
 
       fs.writeFileSync(
         path.join(configDir, "config.yml"),
@@ -1008,26 +897,17 @@ describe("CLI", () => {
       // Overlay плагина: файл с невалидной интерполяцией
       const pluginOverlay = path.join(pluginDir, "overlays", "claude");
       fs.mkdirSync(pluginOverlay, { recursive: true });
-      fs.writeFileSync(
-        path.join(pluginOverlay, "bad-interp.md"),
-        "Value: ${agloom:NONEXISTENT_VARIABLE}",
-      );
+      fs.writeFileSync(path.join(pluginOverlay, "bad-interp.md"), "Value: ${agloom:NONEXISTENT_VARIABLE}");
 
       // Overlay локального проекта: валидный файл
       const localOverlay = path.join(configDir, "overlays", "claude");
       fs.mkdirSync(localOverlay, { recursive: true });
-      fs.writeFileSync(
-        path.join(localOverlay, "good-file.txt"),
-        "Good local overlay content.",
-      );
+      fs.writeFileSync(path.join(localOverlay, "good-file.txt"), "Good local overlay content.");
 
       // Локальный проект
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "Local instructions.");
 
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        `adapters:\n  - claude\nplugins:\n  - ${pluginDir}\n`,
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), `adapters:\n  - claude\nplugins:\n  - ${pluginDir}\n`);
 
       const React = await import("react");
       const { render } = await import("ink-testing-library");

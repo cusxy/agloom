@@ -70,9 +70,7 @@ export function isGitUrl(str: string): boolean {
 /**
  * Разбор элемента массива plugins из raw entry в ParsedPluginEntry.
  */
-export function parsePluginEntry(
-  entry: string | Record<string, unknown> | unknown,
-): ParsedPluginEntry {
+export function parsePluginEntry(entry: string | Record<string, unknown> | unknown): ParsedPluginEntry {
   // Шаг 1: определить тип entry
   if (typeof entry === "string") {
     // Шаг 2: проверить наличие #
@@ -113,16 +111,12 @@ export function parsePluginEntry(
 
     // Расширение 4a: пустой ref
     if (ref === "") {
-      throw new Error(
-        `Invalid config: git plugin ref must not be empty in '${entry}'.`,
-      );
+      throw new Error(`Invalid config: git plugin ref must not be empty in '${entry}'.`);
     }
 
     // Расширение 4b: пустой URL
     if (urlPart === "") {
-      throw new Error(
-        `Invalid config: git plugin URL must not be empty in '${entry}'.`,
-      );
+      throw new Error(`Invalid config: git plugin URL must not be empty in '${entry}'.`);
     }
 
     // Шаг 4.1: проверить наличие // (исключая :// в протоколе)
@@ -206,10 +200,7 @@ export function hashGitUrl(url: string): string {
   normalized = normalized.toLowerCase();
 
   // 4. SHA-256
-  const hash = crypto
-    .createHash("sha256")
-    .update(normalized, "utf-8")
-    .digest("hex");
+  const hash = crypto.createHash("sha256").update(normalized, "utf-8").digest("hex");
 
   // 5. Первые 16 hex-символов
   return hash.slice(0, 16);
@@ -323,13 +314,7 @@ function loadTtl(): number {
     const content = fs.readFileSync(settingsPath, "utf-8");
     const parsed = yaml.load(content) as Record<string, unknown> | null;
 
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      "cache" in parsed &&
-      parsed.cache &&
-      typeof parsed.cache === "object"
-    ) {
+    if (parsed && typeof parsed === "object" && "cache" in parsed && parsed.cache && typeof parsed.cache === "object") {
       const cache = parsed.cache as Record<string, unknown>;
       if ("ttl" in cache && cache.ttl != null) {
         return parseTtl(String(cache.ttl));
@@ -360,11 +345,10 @@ interface RefsYml {
 /**
  * Разрешение Git ref в commit SHA с учётом кеша и TTL.
  */
-export function resolveGitRef(params: {
-  gitUrl: string;
-  ref: string | null;
-  forceRefresh: boolean;
-}): { resolvedSha: string; cachePath: string } {
+export function resolveGitRef(params: { gitUrl: string; ref: string | null; forceRefresh: boolean }): {
+  resolvedSha: string;
+  cachePath: string;
+} {
   const { gitUrl, forceRefresh } = params;
 
   // Шаг 1: вычислить urlHash
@@ -373,13 +357,7 @@ export function resolveGitRef(params: {
   // Шаг 1b: если ref равен null — установить ref = "HEAD"
   const ref = params.ref ?? "HEAD";
 
-  const cacheBase = path.join(
-    os.homedir(),
-    ".agloom",
-    "cache",
-    "plugins",
-    urlHash,
-  );
+  const cacheBase = path.join(os.homedir(), ".agloom", "cache", "plugins", urlHash);
 
   // Шаг 2: определить тип ref
   const SHA_REGEX = /^[0-9a-f]{40}$/;
@@ -467,8 +445,7 @@ export function resolveGitRef(params: {
       env: gitEnv,
       stdio: ["pipe", "pipe", "pipe"],
     });
-    lsRemoteOutput =
-      typeof result === "string" ? result : result.toString("utf-8");
+    lsRemoteOutput = typeof result === "string" ? result : result.toString("utf-8");
   } catch (err) {
     cleanupAskpassScript(askpassScript);
     const error = err as Error & { stderr?: Buffer | string };
@@ -479,18 +456,11 @@ export function resolveGitRef(params: {
       : error.message;
 
     // Расширение 5a: ошибка аутентификации
-    if (
-      stderr.toLowerCase().includes("authentication") ||
-      stderr.toLowerCase().includes("could not read")
-    ) {
-      throw new Error(
-        `Authentication failed for '${gitUrl}': ${stderr.trim()}`,
-      );
+    if (stderr.toLowerCase().includes("authentication") || stderr.toLowerCase().includes("could not read")) {
+      throw new Error(`Authentication failed for '${gitUrl}': ${stderr.trim()}`);
     }
 
-    throw new Error(
-      `Failed to resolve ref '${ref}' for '${gitUrl}': ${stderr.trim()}`,
-    );
+    throw new Error(`Failed to resolve ref '${ref}' for '${gitUrl}': ${stderr.trim()}`);
   }
 
   cleanupAskpassScript(askpassScript);
@@ -550,23 +520,13 @@ export function resolveGitRef(params: {
 /**
  * Клонирование git-репозитория в кеш.
  */
-export function cloneGitRepository(params: {
-  gitUrl: string;
-  resolvedSha: string;
-  ref: string;
-  urlHash: string;
-}): { cachePath: string } {
+export function cloneGitRepository(params: { gitUrl: string; resolvedSha: string; ref: string; urlHash: string }): {
+  cachePath: string;
+} {
   const { gitUrl, resolvedSha, ref, urlHash } = params;
 
   // Шаг 1: определить целевой путь
-  const cachePath = path.join(
-    os.homedir(),
-    ".agloom",
-    "cache",
-    "plugins",
-    urlHash,
-    resolvedSha,
-  );
+  const cachePath = path.join(os.homedir(), ".agloom", "cache", "plugins", urlHash, resolvedSha);
 
   // Шаг 2: кеш hit
   if (fs.existsSync(cachePath)) {
@@ -606,13 +566,10 @@ export function cloneGitRepository(params: {
     } else if (!isSha) {
       // Шаг 4.2: тег/ветка (не SHA, не HEAD) → --depth 1 --branch
       try {
-        childProcess.execSync(
-          `git clone --depth 1 --branch ${ref} ${gitUrl} ${tmpDir}`,
-          {
-            env: gitEnv,
-            stdio: ["pipe", "pipe", "pipe"],
-          },
-        );
+        childProcess.execSync(`git clone --depth 1 --branch ${ref} ${gitUrl} ${tmpDir}`, {
+          env: gitEnv,
+          stdio: ["pipe", "pipe", "pipe"],
+        });
       } catch (err) {
         // Расширение 4.2a: clone ошибка
         const error = err as Error & { stderr?: Buffer | string };
@@ -631,13 +588,10 @@ export function cloneGitRepository(params: {
     } else {
       // Шаг 4.2: SHA → --filter=blob:none
       try {
-        childProcess.execSync(
-          `git clone --filter=blob:none ${gitUrl} ${tmpDir}`,
-          {
-            env: gitEnv,
-            stdio: ["pipe", "pipe", "pipe"],
-          },
-        );
+        childProcess.execSync(`git clone --filter=blob:none ${gitUrl} ${tmpDir}`, {
+          env: gitEnv,
+          stdio: ["pipe", "pipe", "pipe"],
+        });
       } catch {
         // Расширение 4.2a: fallback full clone
         try {
@@ -687,9 +641,7 @@ export function cloneGitRepository(params: {
           } catch {
             // best effort
           }
-          throw new Error(
-            `Failed to checkout '${resolvedSha}' from '${gitUrl}': ${stderr.trim()}`,
-          );
+          throw new Error(`Failed to checkout '${resolvedSha}' from '${gitUrl}': ${stderr.trim()}`);
         }
 
         // Перейти к шагу 6 (пропустить шаг 5 — checkout уже выполнен)
@@ -717,9 +669,7 @@ export function cloneGitRepository(params: {
         } catch {
           // best effort
         }
-        throw new Error(
-          `Failed to checkout '${resolvedSha}' from '${gitUrl}': ${stderr.trim()}`,
-        );
+        throw new Error(`Failed to checkout '${resolvedSha}' from '${gitUrl}': ${stderr.trim()}`);
       }
     }
 
@@ -798,9 +748,7 @@ export function resolvePlugins(
       const pluginPath = entry.path!;
 
       // Шаг 2.1: разрешить путь
-      const absolutePath = path.isAbsolute(pluginPath)
-        ? pluginPath
-        : path.resolve(projectRoot, pluginPath);
+      const absolutePath = path.isAbsolute(pluginPath) ? pluginPath : path.resolve(projectRoot, pluginPath);
 
       // Шаг 2.2: проверить существование
       if (!fs.existsSync(absolutePath)) {
@@ -826,21 +774,15 @@ export function resolvePlugins(
         const message = err instanceof Error ? err.message : String(err);
         if (message.startsWith("Invalid plugin manifest:")) {
           const detail = message.slice("Invalid plugin manifest: ".length);
-          throw new Error(
-            `Invalid plugin manifest at '${manifestPath}': ${detail}`,
-          );
+          throw new Error(`Invalid plugin manifest at '${manifestPath}': ${detail}`);
         }
-        throw new Error(
-          `Invalid plugin manifest at '${manifestPath}': ${message}`,
-        );
+        throw new Error(`Invalid plugin manifest at '${manifestPath}': ${message}`);
       }
 
       // Шаг 2.6-2.8: проверить дубликаты
       const name = manifest.name;
       if (name in nameToPath) {
-        throw new Error(
-          `Duplicate plugin name '${name}': declared at '${nameToPath[name]}' and '${absolutePath}'.`,
-        );
+        throw new Error(`Duplicate plugin name '${name}': declared at '${nameToPath[name]}' and '${absolutePath}'.`);
       }
       nameToPath[name] = absolutePath;
 
@@ -874,16 +816,12 @@ export function resolvePlugins(
 
       // Шаг 2.12: проверить существование
       if (!fs.existsSync(pluginRoot)) {
-        throw new Error(
-          `Plugin subpath '${entry.path}' not found in repository '${entry.url}' at ref '${entry.ref}'.`,
-        );
+        throw new Error(`Plugin subpath '${entry.path}' not found in repository '${entry.url}' at ref '${entry.ref}'.`);
       }
 
       const stat = fs.statSync(pluginRoot);
       if (!stat.isDirectory()) {
-        throw new Error(
-          `Plugin subpath '${entry.path}' is not a directory in repository '${entry.url}'.`,
-        );
+        throw new Error(`Plugin subpath '${entry.path}' is not a directory in repository '${entry.url}'.`);
       }
 
       // Шаг 2.13: загрузить манифест
@@ -899,21 +837,15 @@ export function resolvePlugins(
         const message = err instanceof Error ? err.message : String(err);
         if (message.startsWith("Invalid plugin manifest:")) {
           const detail = message.slice("Invalid plugin manifest: ".length);
-          throw new Error(
-            `Invalid plugin manifest at '${manifestPath}': ${detail}`,
-          );
+          throw new Error(`Invalid plugin manifest at '${manifestPath}': ${detail}`);
         }
-        throw new Error(
-          `Invalid plugin manifest at '${manifestPath}': ${message}`,
-        );
+        throw new Error(`Invalid plugin manifest at '${manifestPath}': ${message}`);
       }
 
       // Шаг 2.14: проверить уникальность имени
       const name = manifest.name;
       if (name in nameToPath) {
-        throw new Error(
-          `Duplicate plugin name '${name}': declared at '${nameToPath[name]}' and '${pluginRoot}'.`,
-        );
+        throw new Error(`Duplicate plugin name '${name}': declared at '${nameToPath[name]}' and '${pluginRoot}'.`);
       }
       nameToPath[name] = pluginRoot;
 

@@ -76,13 +76,9 @@ describe("AgentsTranspiler", () => {
 
     // --- Шаг 6: удаление строк тегов И контента для несовпадающего agentId ---
     it("удаляет теги и контент для несовпадающего agentId", () => {
-      const body = [
-        "Before.",
-        "<!-- agent:opencode -->",
-        "OpenCode only.",
-        "<!-- /agent:opencode -->",
-        "After.",
-      ].join("\n");
+      const body = ["Before.", "<!-- agent:opencode -->", "OpenCode only.", "<!-- /agent:opencode -->", "After."].join(
+        "\n",
+      );
 
       const result = filterBody(body, "claude");
 
@@ -213,60 +209,34 @@ describe("AgentsTranspiler", () => {
 
     // --- Расширение 2a: invalid agent-id (не соответствует [a-z][a-z0-9-]*) ---
     it("выбрасывает AgentTransformError при невалидном agent-id в теге (начинается с цифры)", () => {
-      const body = [
-        "Before.",
-        "<!-- agent:1invalid -->",
-        "Content.",
-        "<!-- /agent:1invalid -->",
-        "After.",
-      ].join("\n");
+      const body = ["Before.", "<!-- agent:1invalid -->", "Content.", "<!-- /agent:1invalid -->", "After."].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(AgentTransformError);
-      expect(() => filterBody(body, "claude")).toThrow(
-        /Invalid agent-id '1invalid' in tag at line 2/,
-      );
+      expect(() => filterBody(body, "claude")).toThrow(/Invalid agent-id '1invalid' in tag at line 2/);
     });
 
     // --- Расширение 2a: invalid agent-id (содержит заглавные буквы) ---
     it("выбрасывает AgentTransformError при невалидном agent-id с заглавными буквами", () => {
-      const body = [
-        "<!-- agent:Claude -->",
-        "Content.",
-        "<!-- /agent:Claude -->",
-      ].join("\n");
+      const body = ["<!-- agent:Claude -->", "Content.", "<!-- /agent:Claude -->"].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(AgentTransformError);
-      expect(() => filterBody(body, "claude")).toThrow(
-        /Invalid agent-id 'Claude' in tag at line 1/,
-      );
+      expect(() => filterBody(body, "claude")).toThrow(/Invalid agent-id 'Claude' in tag at line 1/);
     });
 
     // --- Расширение 2a: invalid agent-id (содержит подчёркивание) ---
     it("выбрасывает AgentTransformError при невалидном agent-id с подчёркиванием", () => {
-      const body = [
-        "<!-- agent:my_agent -->",
-        "Content.",
-        "<!-- /agent:my_agent -->",
-      ].join("\n");
+      const body = ["<!-- agent:my_agent -->", "Content.", "<!-- /agent:my_agent -->"].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(AgentTransformError);
-      expect(() => filterBody(body, "claude")).toThrow(
-        /Invalid agent-id 'my_agent' in tag at line 1/,
-      );
+      expect(() => filterBody(body, "claude")).toThrow(/Invalid agent-id 'my_agent' in tag at line 1/);
     });
 
     // --- Расширение 3a: тег открытия без закрытия ---
     it("выбрасывает AgentTransformError при отсутствии тега закрытия", () => {
-      const body = [
-        "Before.",
-        "<!-- agent:claude -->",
-        "Claude content without closing tag.",
-      ].join("\n");
+      const body = ["Before.", "<!-- agent:claude -->", "Claude content without closing tag."].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(AgentTransformError);
-      expect(() => filterBody(body, "claude")).toThrow(
-        /Unmatched opening tag for agent:claude/,
-      );
+      expect(() => filterBody(body, "claude")).toThrow(/Unmatched opening tag for agent:claude/);
     });
 
     // --- Расширение 3b: тег закрытия без открытия ---
@@ -274,18 +244,12 @@ describe("AgentsTranspiler", () => {
       const body = ["Before.", "<!-- /agent:claude -->", "After."].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(AgentTransformError);
-      expect(() => filterBody(body, "claude")).toThrow(
-        /Unmatched closing tag for agent:claude/,
-      );
+      expect(() => filterBody(body, "claude")).toThrow(/Unmatched closing tag for agent:claude/);
     });
 
     // --- Расширение 3c: несовпадение идентификаторов открытия и закрытия ---
     it("выбрасывает AgentTransformError при несовпадении идентификаторов в тегах открытия и закрытия", () => {
-      const body = [
-        "<!-- agent:claude -->",
-        "Content.",
-        "<!-- /agent:opencode -->",
-      ].join("\n");
+      const body = ["<!-- agent:claude -->", "Content.", "<!-- /agent:opencode -->"].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(AgentTransformError);
       expect(() => filterBody(body, "claude")).toThrow(
@@ -312,13 +276,7 @@ describe("AgentsTranspiler", () => {
 
     // --- Дополнительные правила: Markdown code blocks не учитываются ---
     it("обрабатывает теги внутри Markdown code blocks как обычные теги (не Markdown-aware)", () => {
-      const body = [
-        "```",
-        "<!-- agent:claude -->",
-        "Code block content.",
-        "<!-- /agent:claude -->",
-        "```",
-      ].join("\n");
+      const body = ["```", "<!-- agent:claude -->", "Code block content.", "<!-- /agent:claude -->", "```"].join("\n");
 
       // Библиотека НЕ учитывает контекст Markdown — тег обрабатывается
       const result = filterBody(body, "claude");

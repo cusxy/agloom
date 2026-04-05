@@ -12,17 +12,11 @@ const ENV_PATTERN = /\$\{env:([^}]+)\}/g;
  * Интерполирует ${env:*} в строке, используя переданный env.
  * Выбрасывает ошибку при undefined переменной окружения.
  */
-function interpolateEnv(
-  value: string,
-  env: Record<string, string | undefined>,
-  variableKey: string,
-): string {
+function interpolateEnv(value: string, env: Record<string, string | undefined>, variableKey: string): string {
   return value.replace(ENV_PATTERN, (_match, name: string) => {
     const envValue = env[name];
     if (envValue === undefined) {
-      throw new Error(
-        `Undefined environment variable: '${name}' in value for variable '${variableKey}'.`,
-      );
+      throw new Error(`Undefined environment variable: '${name}' in value for variable '${variableKey}'.`);
     }
     return envValue;
   });
@@ -45,9 +39,7 @@ export function resolvePluginValues(
   // Шаг 2/расширение 2a: declarations null, providedValues не null
   if (declarations === null && providedValues !== null) {
     const keys = Object.keys(providedValues).join(", ");
-    throw new Error(
-      `Unknown plugin values: '${keys}'. Plugin does not declare any variables.`,
-    );
+    throw new Error(`Unknown plugin values: '${keys}'. Plugin does not declare any variables.`);
   }
 
   // Шаг 3: проверить unknown variables
@@ -55,9 +47,7 @@ export function resolvePluginValues(
     for (const key of Object.keys(providedValues)) {
       if (!(key in declarations!)) {
         const declaredKeys = Object.keys(declarations!).join(", ");
-        throw new Error(
-          `Unknown plugin value: '${key}'. Declared variables: ${declaredKeys}.`,
-        );
+        throw new Error(`Unknown plugin value: '${key}'. Declared variables: ${declaredKeys}.`);
       }
     }
   }
@@ -102,9 +92,7 @@ export function resolvePluginValues(
   // Шаг 8: проверить required
   for (const [key, decl] of Object.entries(declarations!)) {
     if (decl.required && !(key in resolved)) {
-      throw new Error(
-        `Required plugin variable '${key}' is not set and has no default.`,
-      );
+      throw new Error(`Required plugin variable '${key}' is not set and has no default.`);
     }
   }
 
@@ -140,9 +128,7 @@ export function resolveLocalValues(
   // Шаг 5: проверить required
   for (const [key, decl] of Object.entries(declarations)) {
     if (decl.required && !(key in resolved)) {
-      throw new Error(
-        `Required config variable '${key}' is not set and has no default.`,
-      );
+      throw new Error(`Required config variable '${key}' is not set and has no default.`);
     }
   }
 

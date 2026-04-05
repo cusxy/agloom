@@ -24,10 +24,7 @@ describe("InstructionsTranspiler", () => {
 
     // --- Happy path: шаги 1–3 — полный цикл транспиляции ---
     it("выполняет полный цикл транспиляции: discover → adapter.transpile(CanonicalFile[]) → собрать результаты", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, "AGLOOM.md"),
-        "General instructions for all agents.",
-      );
+      fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "General instructions for all agents.");
 
       const transpiler = createInstructionsTranspiler({
         projectRoot: tmpDir,
@@ -42,9 +39,7 @@ describe("InstructionsTranspiler", () => {
       expect(claudeResult).toBeDefined();
       expect(claudeResult!.files).toHaveLength(1);
       expect(claudeResult!.files[0].relativePath).toBe("CLAUDE.md");
-      expect(claudeResult!.files[0].content).toBe(
-        "General instructions for all agents.",
-      );
+      expect(claudeResult!.files[0].content).toBe("General instructions for all agents.");
       expect(claudeResult!.errors).toHaveLength(0);
 
       // OpenCode адаптер — no-op: возвращает пустой массив files
@@ -115,9 +110,7 @@ describe("InstructionsTranspiler", () => {
       expect(failingResult).toBeDefined();
       expect(failingResult!.files).toHaveLength(0);
       expect(failingResult!.errors).toHaveLength(1);
-      expect(failingResult!.errors[0].message).toContain(
-        "Adapter internal failure",
-      );
+      expect(failingResult!.errors[0].message).toContain("Adapter internal failure");
       expect(failingResult!.errors[0].agentId).toBe("failing");
       expect(failingResult!.errors[0].cause).toBeInstanceOf(Error);
 
@@ -199,9 +192,7 @@ describe("InstructionsTranspiler", () => {
       expect(claudeResult).toBeDefined();
       expect(claudeResult!.files).toHaveLength(1);
       // override применён
-      expect(claudeResult!.files[0].content).toContain(
-        "title: Claude Instructions",
-      );
+      expect(claudeResult!.files[0].content).toContain("title: Claude Instructions");
       expect(claudeResult!.files[0].content).not.toContain("override:");
       // agent-specific секции отфильтрованы
       expect(claudeResult!.files[0].content).toContain("Claude only.");

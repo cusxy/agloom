@@ -246,9 +246,7 @@ describe("MarkdownTools", () => {
 
       // markdownlint должен был добавить ошибку для unreadable.md
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(
-        result.errors.some((e: string) => e.includes("unreadable.md")),
-      ).toBe(true);
+      expect(result.errors.some((e: string) => e.includes("unreadable.md"))).toBe(true);
       // good.json всё равно обработан (prettier, без markdownlint)
       expect(result.formattedCount).toBeGreaterThanOrEqual(1);
 
@@ -408,9 +406,7 @@ describe("MarkdownTools", () => {
       const result = await tools.check([jsonFile]);
 
       expect(result.failures.length).toBeGreaterThan(0);
-      expect(result.failures.some((f: string) => f.includes("test.json"))).toBe(
-        true,
-      );
+      expect(result.failures.some((f: string) => f.includes("test.json"))).toBe(true);
     });
 
     // § format.md § Метод check § Расширения 2a:
@@ -424,9 +420,7 @@ describe("MarkdownTools", () => {
       const result = await tools.check([mdFile]);
 
       // Должен быть хотя бы один failure (prettier или markdownlint)
-      expect(
-        result.failures.length > 0 || result.errors.length > 0,
-      ).toBeTruthy();
+      expect(result.failures.length > 0 || result.errors.length > 0).toBeTruthy();
     });
 
     // --- Расширение 3a ---
@@ -475,14 +469,10 @@ describe("MarkdownTools", () => {
 
       // Ошибка выполнения должна попасть в errors с информативным сообщением
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(
-        result.errors.some((e: string) => e.includes("unreadable.md")),
-      ).toBe(true);
+      expect(result.errors.some((e: string) => e.includes("unreadable.md"))).toBe(true);
       // Ошибка выполнения НЕ должна попасть в failures
       // (failures — это нарушения формата, а не runtime errors)
-      const failuresForFile = result.failures.filter((f: string) =>
-        f.includes("unreadable.md"),
-      );
+      const failuresForFile = result.failures.filter((f: string) => f.includes("unreadable.md"));
       expect(failuresForFile).toEqual([]);
 
       // Восстанавливаем права для cleanup
@@ -609,9 +599,7 @@ describe("MarkdownTools", () => {
 
       const formatted = fs.readFileSync(mdFile, "utf-8");
       // С proseWrap: preserve длинная строка не должна быть разбита
-      expect(formatted).toContain(
-        "This is a very long line that should not be wrapped",
-      );
+      expect(formatted).toContain("This is a very long line that should not be wrapped");
     });
 
     // § format.md § Встроенные дефолтные конфиги § Markdownlint:
@@ -656,9 +644,7 @@ describe("MarkdownTools", () => {
       const result = await tools.check([mdFile]);
 
       // Строка 120 символов не должна вызывать failure от MD013
-      const md013Failures = result.failures.filter((f: string) =>
-        f.includes("MD013"),
-      );
+      const md013Failures = result.failures.filter((f: string) => f.includes("MD013"));
       expect(md013Failures).toEqual([]);
     });
 
@@ -684,10 +670,7 @@ describe("MarkdownTools", () => {
     // Нативный .prettierrc перекрывает встроенный дефолт
     it("нативный .prettierrc в projectRoot перекрывает встроенный дефолт", async () => {
       // Создаём .prettierrc с tabWidth: 8
-      fs.writeFileSync(
-        path.join(tmpDir, ".prettierrc"),
-        JSON.stringify({ tabWidth: 8 }),
-      );
+      fs.writeFileSync(path.join(tmpDir, ".prettierrc"), JSON.stringify({ tabWidth: 8 }));
 
       const tools = createMarkdownTools({ projectRoot: tmpDir });
       const jsonFile = path.join(tmpDir, "test.json");
@@ -704,10 +687,7 @@ describe("MarkdownTools", () => {
     // prettierOverrides мержатся поверх нативного файла
     it("prettierOverrides перекрывает нативный .prettierrc", async () => {
       // Нативный: tabWidth: 8
-      fs.writeFileSync(
-        path.join(tmpDir, ".prettierrc"),
-        JSON.stringify({ tabWidth: 8 }),
-      );
+      fs.writeFileSync(path.join(tmpDir, ".prettierrc"), JSON.stringify({ tabWidth: 8 }));
 
       const tools = createMarkdownTools({
         projectRoot: tmpDir,

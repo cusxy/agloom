@@ -71,9 +71,7 @@ interface OverlayStepParams {
  *          "patch" для файлов с .patch и merge-eligible расширением,
  *          "override" для остальных.
  */
-export function classifyFile(
-  filename: string,
-): "overlay" | "override" | "patch" {
+export function classifyFile(filename: string): "overlay" | "override" | "patch" {
   const basename = path.basename(filename);
 
   // Правило 1: суффикс .override → override
@@ -164,10 +162,7 @@ export function stripOverrideSuffix(filePath: string): string {
  * Рекурсивный deep merge двух объектов.
  * Spec: docs/specs/layer-model.md § Алгоритм deep merge
  */
-export function deepMerge(
-  base: Record<string, unknown>,
-  incoming: Record<string, unknown>,
-): Record<string, unknown> {
+export function deepMerge(base: Record<string, unknown>, incoming: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = { ...base };
 
   for (const key of Object.keys(incoming)) {
@@ -190,10 +185,7 @@ export function deepMerge(
       const baseVal = result[key];
       if (isPlainObject(baseVal)) {
         // Правило 1: оба объекта → рекурсия
-        result[key] = deepMerge(
-          baseVal as Record<string, unknown>,
-          incomingVal as Record<string, unknown>,
-        );
+        result[key] = deepMerge(baseVal as Record<string, unknown>, incomingVal as Record<string, unknown>);
       } else {
         // Правило 5: base не объект → замена
         result[key] = incomingVal;
@@ -216,10 +208,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * Парсит содержимое файла в соответствии с расширением.
  * Spec: docs/specs/layer-model.md § Парсинг файлов для merge
  */
-function parseContent(
-  content: string,
-  ext: string,
-): Record<string, unknown> | null {
+function parseContent(content: string, ext: string): Record<string, unknown> | null {
   const lower = ext.toLowerCase();
   switch (lower) {
     case ".json":
@@ -279,16 +268,7 @@ function discoverFiles(dir: string): string[] {
 // =============================================================================
 
 /** Known patch markers in application order. */
-const PATCH_MARKERS = [
-  "$unset",
-  "$merge",
-  "$mergeBy",
-  "$set",
-  "$remove",
-  "$insertAt",
-  "$prepend",
-  "$append",
-] as const;
+const PATCH_MARKERS = ["$unset", "$merge", "$mergeBy", "$set", "$remove", "$insertAt", "$prepend", "$append"] as const;
 
 /** Set for O(1) lookup. */
 const PATCH_MARKER_SET = new Set<string>(PATCH_MARKERS);
@@ -322,10 +302,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
     const keysA = Object.keys(a);
     const keysB = Object.keys(b);
     if (keysA.length !== keysB.length) return false;
-    return keysA.every(
-      (key) =>
-        key in (b as Record<string, unknown>) && deepEqual(a[key], b[key]),
-    );
+    return keysA.every((key) => key in (b as Record<string, unknown>) && deepEqual(a[key], b[key]));
   }
 
   return false;
@@ -348,9 +325,7 @@ function validateMarkerCombinations(markers: string[], nodePath: string): void {
     throw new PatchError(`$set and $merge cannot be combined at '${nodePath}'`);
   }
   if (markerSet.has("$set") && markerSet.has("$mergeBy")) {
-    throw new PatchError(
-      `$set and $mergeBy cannot be combined at '${nodePath}'`,
-    );
+    throw new PatchError(`$set and $mergeBy cannot be combined at '${nodePath}'`);
   }
 }
 
@@ -358,69 +333,45 @@ function validateMarkerCombinations(markers: string[], nodePath: string): void {
  * Validates the value type of a marker.
  * Spec: docs/specs/patch-mechanism.md § Валидация типа значения маркера
  */
-function validateMarkerValue(
-  marker: string,
-  value: unknown,
-  nodePath: string,
-): void {
+function validateMarkerValue(marker: string, value: unknown, nodePath: string): void {
   switch (marker) {
     case "$append":
-      if (!Array.isArray(value))
-        throw new PatchError(`$append value must be array at '${nodePath}'`);
+      if (!Array.isArray(value)) throw new PatchError(`$append value must be array at '${nodePath}'`);
       break;
     case "$prepend":
-      if (!Array.isArray(value))
-        throw new PatchError(`$prepend value must be array at '${nodePath}'`);
+      if (!Array.isArray(value)) throw new PatchError(`$prepend value must be array at '${nodePath}'`);
       break;
     case "$remove":
-      if (!Array.isArray(value))
-        throw new PatchError(`$remove value must be array at '${nodePath}'`);
+      if (!Array.isArray(value)) throw new PatchError(`$remove value must be array at '${nodePath}'`);
       break;
     case "$unset":
       if (!Array.isArray(value) || !value.every((v) => typeof v === "string"))
-        throw new PatchError(
-          `$unset value must be array of strings at '${nodePath}'`,
-        );
+        throw new PatchError(`$unset value must be array of strings at '${nodePath}'`);
       break;
     case "$merge":
-      if (!isPlainObject(value))
-        throw new PatchError(`$merge value must be object at '${nodePath}'`);
+      if (!isPlainObject(value)) throw new PatchError(`$merge value must be object at '${nodePath}'`);
       break;
     case "$mergeBy":
-      if (!isPlainObject(value))
-        throw new PatchError(`$mergeBy value must be object at '${nodePath}'`);
+      if (!isPlainObject(value)) throw new PatchError(`$mergeBy value must be object at '${nodePath}'`);
       {
         const obj = value as Record<string, unknown>;
-        if (typeof obj.key !== "string")
-          throw new PatchError(`$mergeBy key must be string at '${nodePath}'`);
-        if (!Array.isArray(obj.items))
-          throw new PatchError(`$mergeBy items must be array at '${nodePath}'`);
+        if (typeof obj.key !== "string") throw new PatchError(`$mergeBy key must be string at '${nodePath}'`);
+        if (!Array.isArray(obj.items)) throw new PatchError(`$mergeBy items must be array at '${nodePath}'`);
         // Validate each item
         for (const item of obj.items as unknown[]) {
-          if (!isPlainObject(item))
-            throw new PatchError(
-              `$mergeBy items must contain objects at '${nodePath}'`,
-            );
+          if (!isPlainObject(item)) throw new PatchError(`$mergeBy items must contain objects at '${nodePath}'`);
           if (!((obj.key as string) in (item as Record<string, unknown>)))
-            throw new PatchError(
-              `$mergeBy item missing key field '${obj.key}' at '${nodePath}'`,
-            );
+            throw new PatchError(`$mergeBy item missing key field '${obj.key}' at '${nodePath}'`);
         }
       }
       break;
     case "$insertAt":
-      if (!isPlainObject(value))
-        throw new PatchError(`$insertAt value must be object at '${nodePath}'`);
+      if (!isPlainObject(value)) throw new PatchError(`$insertAt value must be object at '${nodePath}'`);
       {
         const obj = value as Record<string, unknown>;
         if (typeof obj.index !== "number" || !Number.isInteger(obj.index))
-          throw new PatchError(
-            `$insertAt index must be integer at '${nodePath}'`,
-          );
-        if (!Array.isArray(obj.items))
-          throw new PatchError(
-            `$insertAt items must be array at '${nodePath}'`,
-          );
+          throw new PatchError(`$insertAt index must be integer at '${nodePath}'`);
+        if (!Array.isArray(obj.items)) throw new PatchError(`$insertAt items must be array at '${nodePath}'`);
       }
       break;
     // $set: any value is valid
@@ -431,28 +382,19 @@ function validateMarkerValue(
  * Validates the target type for a marker.
  * Spec: docs/specs/patch-mechanism.md § Валидация целевого типа
  */
-function validateTargetType(
-  marker: string,
-  base: unknown,
-  nodePath: string,
-): void {
+function validateTargetType(marker: string, base: unknown, nodePath: string): void {
   switch (marker) {
     case "$append":
     case "$prepend":
     case "$remove":
     case "$insertAt":
-      if (!Array.isArray(base))
-        throw new PatchError(
-          `${marker} requires array target at '${nodePath}'`,
-        );
+      if (!Array.isArray(base)) throw new PatchError(`${marker} requires array target at '${nodePath}'`);
       break;
     case "$unset":
-      if (!isPlainObject(base))
-        throw new PatchError(`$unset requires object target at '${nodePath}'`);
+      if (!isPlainObject(base)) throw new PatchError(`$unset requires object target at '${nodePath}'`);
       break;
     case "$mergeBy":
-      if (!Array.isArray(base))
-        throw new PatchError(`$mergeBy requires array target at '${nodePath}'`);
+      if (!Array.isArray(base)) throw new PatchError(`$mergeBy requires array target at '${nodePath}'`);
       break;
   }
 }
@@ -461,10 +403,7 @@ function validateTargetType(
  * Applies $mergeBy logic to an array.
  * Spec: docs/specs/patch-mechanism.md § $mergeBy — Поведение
  */
-function applyMergeByToArray(
-  arr: unknown[],
-  mergeByVal: { key: string; items: Record<string, unknown>[] },
-): void {
+function applyMergeByToArray(arr: unknown[], mergeByVal: { key: string; items: Record<string, unknown>[] }): void {
   for (const incoming of mergeByVal.items) {
     const keyField = mergeByVal.key;
     const incomingKeyVal = incoming[keyField];
@@ -520,10 +459,7 @@ function applyMarker(
       if (target === undefined) {
         parent[parentKey] = deepMerge({}, value as Record<string, unknown>);
       } else if (isPlainObject(target)) {
-        parent[parentKey] = deepMerge(
-          target as Record<string, unknown>,
-          value as Record<string, unknown>,
-        );
+        parent[parentKey] = deepMerge(target as Record<string, unknown>, value as Record<string, unknown>);
       } else {
         // base is not object and not undefined — set to value
         parent[parentKey] = value;
@@ -552,9 +488,7 @@ function applyMarker(
           const arr = obj[objKey] as unknown[];
           // Check if this array contains objects with the key field
           const hasMatchingObjects = arr.some(
-            (el) =>
-              isPlainObject(el) &&
-              mergeByVal.key in (el as Record<string, unknown>),
+            (el) => isPlainObject(el) && mergeByVal.key in (el as Record<string, unknown>),
           );
           if (!hasMatchingObjects && arr.length > 0) continue;
           applyMergeByToArray(arr, mergeByVal);
@@ -572,9 +506,7 @@ function applyMarker(
       validateTargetType(marker, target, nodePath);
       const arr = target as unknown[];
       const toRemove = value as unknown[];
-      parent[parentKey] = arr.filter(
-        (el) => !toRemove.some((r) => deepEqual(el, r)),
-      );
+      parent[parentKey] = arr.filter((el) => !toRemove.some((r) => deepEqual(el, r)));
       break;
     }
 
@@ -672,9 +604,7 @@ function applyPatchRecursive(
     if (key.startsWith("$")) {
       // Check for unknown markers
       if (!PATCH_MARKER_SET.has(key)) {
-        throw new PatchError(
-          `Unknown patch marker '${key}' in ${pathPrefix || "root"}`,
-        );
+        throw new PatchError(`Unknown patch marker '${key}' in ${pathPrefix || "root"}`);
       }
       markers.push(key);
     } else {
@@ -697,16 +627,10 @@ function applyPatchRecursive(
       // Handle non-existing target fields
       // Spec: docs/specs/patch-mechanism.md § Обработка несуществующего целевого поля
       if (currentVal === undefined) {
-        if (
-          marker === "$append" ||
-          marker === "$prepend" ||
-          marker === "$insertAt"
-        ) {
+        if (marker === "$append" || marker === "$prepend" || marker === "$insertAt") {
           // Warning: field does not exist, skip operation
           const fieldPath = pathPrefix || "root";
-          warnings.push(
-            `Patch target field '${fieldPath}' does not exist, skipping`,
-          );
+          warnings.push(`Patch target field '${fieldPath}' does not exist, skipping`);
           continue;
         }
         if (marker === "$remove" || marker === "$unset") {
@@ -731,14 +655,7 @@ function applyPatchRecursive(
         }
       }
 
-      applyMarker(
-        parent[parentKey],
-        marker,
-        value,
-        parentKey,
-        parent,
-        pathPrefix || "root",
-      );
+      applyMarker(parent[parentKey], marker, value, parentKey, parent, pathPrefix || "root");
     }
   }
 
@@ -761,12 +678,8 @@ function applyPatchRecursive(
       // Create intermediate object for navigation
       if (hasMarkerKeys(patchObj)) {
         // Check what markers are present — some create the field, some skip
-        const patchMarkers = Object.keys(patchObj).filter((k) =>
-          k.startsWith("$"),
-        );
-        const needsCreation = patchMarkers.some(
-          (m) => m === "$set" || m === "$merge" || m === "$mergeBy",
-        );
+        const patchMarkers = Object.keys(patchObj).filter((k) => k.startsWith("$"));
+        const needsCreation = patchMarkers.some((m) => m === "$set" || m === "$merge" || m === "$mergeBy");
         if (!needsCreation) {
           // Only has markers that skip on undefined — still recurse
           // to let those markers handle the undefined case
@@ -779,14 +692,7 @@ function applyPatchRecursive(
     }
 
     // Recurse
-    applyPatchRecursive(
-      baseObj[key],
-      patchObj,
-      key,
-      baseObj,
-      currentPath,
-      warnings,
-    );
+    applyPatchRecursive(baseObj[key], patchObj, key, baseObj, currentPath, warnings);
   }
 }
 
@@ -797,9 +703,7 @@ function applyPatchRecursive(
  * Spec: docs/specs/provider-overlay.md § Операция overlay
  * Spec: docs/specs/layer-model.md § Рефакторинг операции overlay
  */
-export function runOverlayStep(
-  params: OverlayStepParams,
-): TranspilerStepOutcome {
+export function runOverlayStep(params: OverlayStepParams): TranspilerStepOutcome {
   const { entry, projectRoot, variables, env, layers, values } = params;
 
   // Если layers передан — используем multi-layer режим
@@ -853,8 +757,7 @@ function runLegacyOverlay(
     }
 
     const ext = path.extname(filePath).toLowerCase();
-    const shouldInterpolate =
-      variables !== undefined && INTERPOLATABLE_EXTENSIONS.includes(ext);
+    const shouldInterpolate = variables !== undefined && INTERPOLATABLE_EXTENSIONS.includes(ext);
 
     if (shouldInterpolate) {
       try {
@@ -864,9 +767,7 @@ function runLegacyOverlay(
         writtenCount++;
       } catch (err) {
         if (err instanceof InterpolationError) {
-          errors.push(
-            `Interpolation failed for ${relativePath}: ${err.message}`,
-          );
+          errors.push(`Interpolation failed for ${relativePath}: ${err.message}`);
         } else {
           const error = err instanceof Error ? err : new Error(String(err));
           errors.push(error.message);
@@ -934,9 +835,7 @@ function runMultiLayerOverlay(
       // Check mutual exclusivity of .patch and .override
       // Spec: docs/specs/patch-mechanism.md § Взаимоисключаемость с .override
       if (hasBothPatchAndOverride(relativePath)) {
-        errors.push(
-          `File '${relativePath}' has both .patch and .override suffixes in layer ${layer.id}`,
-        );
+        errors.push(`File '${relativePath}' has both .patch and .override suffixes in layer ${layer.id}`);
         continue;
       }
 
@@ -945,8 +844,7 @@ function runMultiLayerOverlay(
 
       // Шаг 2.6: интерполяция
       const ext = path.extname(filePath).toLowerCase();
-      const shouldInterpolate =
-        variables !== undefined && INTERPOLATABLE_EXTENSIONS.includes(ext);
+      const shouldInterpolate = variables !== undefined && INTERPOLATABLE_EXTENSIONS.includes(ext);
 
       let content: string | null = null;
 
@@ -966,9 +864,7 @@ function runMultiLayerOverlay(
           } catch (err) {
             if (err instanceof InterpolationError) {
               // Расширение 2.6a
-              errors.push(
-                `Interpolation failed for ${layer.id}:${relativePath}: ${err.message}`,
-              );
+              errors.push(`Interpolation failed for ${layer.id}:${relativePath}: ${err.message}`);
               continue;
             }
             throw err;
@@ -984,18 +880,14 @@ function runMultiLayerOverlay(
           const result = parseContent(content!, fileExt);
           if (result === null) {
             // Should not happen for merge-eligible files, but handle gracefully
-            errors.push(
-              `Parse failed for ${layer.id}:${relativePath}: unsupported format`,
-            );
+            errors.push(`Parse failed for ${layer.id}:${relativePath}: unsupported format`);
             continue;
           }
           parsed = result;
         } catch (err) {
           // Расширение 2.7a
           const error = err instanceof Error ? err : new Error(String(err));
-          errors.push(
-            `Parse failed for ${layer.id}:${relativePath}: ${error.message}`,
-          );
+          errors.push(`Parse failed for ${layer.id}:${relativePath}: ${error.message}`);
           continue;
         }
 
@@ -1011,11 +903,7 @@ function runMultiLayerOverlay(
           // No mergeState entry yet — try to merge with existing target file
           const targetPath = path.join(projectRoot, targetRelativePath);
           let baseData: Record<string, unknown> = {};
-          if (
-            !existing &&
-            fs.existsSync(targetPath) &&
-            fs.statSync(targetPath).isFile()
-          ) {
+          if (!existing && fs.existsSync(targetPath) && fs.statSync(targetPath).isFile()) {
             try {
               const existingContent = fs.readFileSync(targetPath, "utf-8");
               const existingParsed = parseContent(existingContent, fileExt);
@@ -1043,18 +931,14 @@ function runMultiLayerOverlay(
         try {
           const result = parseContent(content!, patchFileExt);
           if (result === null) {
-            errors.push(
-              `Patch parse failed for ${layer.id}:${relativePath}: unsupported format`,
-            );
+            errors.push(`Patch parse failed for ${layer.id}:${relativePath}: unsupported format`);
             continue;
           }
           patchData = result;
         } catch (err) {
           // Расширение 2.9a
           const error = err instanceof Error ? err : new Error(String(err));
-          errors.push(
-            `Patch parse failed for ${layer.id}:${relativePath}: ${error.message}`,
-          );
+          errors.push(`Patch parse failed for ${layer.id}:${relativePath}: ${error.message}`);
           continue;
         }
 
@@ -1071,11 +955,8 @@ function runMultiLayerOverlay(
               try {
                 overrideContent = fs.readFileSync(existing.sourcePath, "utf-8");
               } catch (err) {
-                const error =
-                  err instanceof Error ? err : new Error(String(err));
-                errors.push(
-                  `Target parse failed for ${targetRelativePath}: ${error.message}`,
-                );
+                const error = err instanceof Error ? err : new Error(String(err));
+                errors.push(`Target parse failed for ${targetRelativePath}: ${error.message}`);
                 continue;
               }
             }
@@ -1084,11 +965,8 @@ function runMultiLayerOverlay(
                 const parsed = parseContent(overrideContent, targetExt);
                 baseData = parsed ?? undefined;
               } catch (err) {
-                const error =
-                  err instanceof Error ? err : new Error(String(err));
-                errors.push(
-                  `Target parse failed for ${targetRelativePath}: ${error.message}`,
-                );
+                const error = err instanceof Error ? err : new Error(String(err));
+                errors.push(`Target parse failed for ${targetRelativePath}: ${error.message}`);
                 continue;
               }
             }
@@ -1104,9 +982,7 @@ function runMultiLayerOverlay(
             } catch (err) {
               // Расширение 2.9b
               const error = err instanceof Error ? err : new Error(String(err));
-              errors.push(
-                `Target parse failed for ${targetRelativePath}: ${error.message}`,
-              );
+              errors.push(`Target parse failed for ${targetRelativePath}: ${error.message}`);
               continue;
             }
           }

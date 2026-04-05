@@ -7,10 +7,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { runTranspileStep } from "../transpile-step.js";
 import type { TranspilerStepOutcome } from "../types.js";
-import {
-  createInstructionsTranspiler,
-  ClaudeAdapter,
-} from "../../instructions-transpiler/index.js";
+import { createInstructionsTranspiler, ClaudeAdapter } from "../../instructions-transpiler/index.js";
 
 describe("CLI", () => {
   describe("Шаг транспиляции", () => {
@@ -62,8 +59,7 @@ describe("CLI", () => {
       });
 
       const outcome: TranspilerStepOutcome = runTranspileStep({
-        transpilerFactory:
-          throwingFactory as typeof createInstructionsTranspiler,
+        transpilerFactory: throwingFactory as typeof createInstructionsTranspiler,
         adapter: new ClaudeAdapter(),
         projectRoot: tmpDir,
         name: "Instructions",

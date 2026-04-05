@@ -6,23 +6,14 @@
 import * as path from "node:path";
 import { ConfigError } from "./errors.js";
 import { PermissionsTranspiler } from "./transpiler.js";
-import type {
-  PermissionsAdapter,
-  PermissionsTranspilerConfig,
-} from "./types.js";
+import type { PermissionsAdapter, PermissionsTranspilerConfig } from "./types.js";
 
 // Barrel exports
 export { ClaudePermissionsAdapter } from "./adapters/claude-adapter.js";
 export { OpenCodePermissionsAdapter } from "./adapters/opencode-adapter.js";
 export { PermissionsTranspiler } from "./transpiler.js";
 export { validatePermissionsContent } from "./validate.js";
-export {
-  ConfigError,
-  DiscoverError,
-  TransformError,
-  TranspileError,
-  WriteError,
-} from "./errors.js";
+export { ConfigError, DiscoverError, TransformError, TranspileError, WriteError } from "./errors.js";
 export type {
   PermissionsAdapter,
   PermissionsCanonicalContent,
@@ -54,9 +45,7 @@ function isPermissionsAdapter(value: unknown): value is PermissionsAdapter {
  * 4. Валидировать, что значения agentId всех адаптеров уникальны.
  * 5. Сохранить конфигурацию в экземпляре.
  */
-export function createPermissionsTranspiler(
-  config: PermissionsTranspilerConfig,
-): PermissionsTranspiler {
+export function createPermissionsTranspiler(config: PermissionsTranspilerConfig): PermissionsTranspiler {
   // Шаг 1: projectRoot должен быть абсолютным путём
   // Расширение 1a
   if (!path.isAbsolute(config.projectRoot)) {
@@ -73,9 +62,7 @@ export function createPermissionsTranspiler(
   // Расширение 3a
   for (let i = 0; i < config.adapters.length; i++) {
     if (!isPermissionsAdapter(config.adapters[i])) {
-      throw new ConfigError(
-        `Adapter at index ${i} does not implement PermissionsAdapter interface`,
-      );
+      throw new ConfigError(`Adapter at index ${i} does not implement PermissionsAdapter interface`);
     }
   }
 
@@ -90,9 +77,5 @@ export function createPermissionsTranspiler(
   }
 
   // Шаг 5: создать экземпляр
-  return new PermissionsTranspiler(
-    config.projectRoot,
-    config.adapters,
-    config.agloomDir,
-  );
+  return new PermissionsTranspiler(config.projectRoot, config.adapters, config.agloomDir);
 }

@@ -7,11 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  loadConfig,
-  resolveAdaptersFromConfig,
-  resolveAdaptersFromCLIArgs,
-} from "../config.js";
+import { loadConfig, resolveAdaptersFromConfig, resolveAdaptersFromCLIArgs } from "../config.js";
 
 describe("CLI", () => {
   // =====================================================================
@@ -36,10 +32,7 @@ describe("CLI", () => {
     it("при валидном config.yml с adapters: [claude] возвращает ['claude']", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
       const result = loadConfig(tmpDir);
       expect(result).not.toBeNull();
@@ -52,10 +45,7 @@ describe("CLI", () => {
     it("при валидном config.yml с adapters: [claude, opencode] возвращает ['claude', 'opencode']", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\n  - opencode\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n  - opencode\n");
 
       const result = loadConfig(tmpDir);
       expect(result).not.toBeNull();
@@ -76,10 +66,7 @@ describe("CLI", () => {
     it('при невалидном YAML выбрасывает ошибку "Invalid config file: ..."', () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters: [invalid yaml\n  : : :\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters: [invalid yaml\n  : : :\n");
 
       expect(() => loadConfig(tmpDir)).toThrow(/Invalid config file:/);
     });
@@ -92,9 +79,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "foo: bar\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        "Invalid config: 'adapters' field is required.",
-      );
+      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'adapters' field is required.");
     });
 
     // --- Расширение 3b: adapters не является массивом ---
@@ -103,14 +88,9 @@ describe("CLI", () => {
     it("при adapters как строке выбрасывает ошибку о формате массива", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters: claude\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters: claude\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        "Invalid config: 'adapters' must be an array of strings.",
-      );
+      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'adapters' must be an array of strings.");
     });
 
     // --- Расширение 3b: массив содержит нестроковые элементы ---
@@ -118,14 +98,9 @@ describe("CLI", () => {
     it("при нестроковых элементах в adapters выбрасывает ошибку о формате массива", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - 123\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - 123\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        "Invalid config: 'adapters' must be an array of strings.",
-      );
+      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'adapters' must be an array of strings.");
     });
 
     // --- Расширение 3c: массив adapters пуст ---
@@ -136,9 +111,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters: []\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        "Invalid config: 'adapters' must not be empty.",
-      );
+      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'adapters' must not be empty.");
     });
 
     // --- Расширение 4a: неизвестный адаптер ---
@@ -147,14 +120,9 @@ describe("CLI", () => {
     it("при неизвестном адаптере выбрасывает ошибку с id адаптера", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - foo\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - foo\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        "Invalid config: unknown adapter 'foo'.",
-      );
+      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: unknown adapter 'foo'.");
     });
 
     // --- Расширение 4b: скрытый адаптер ---
@@ -163,14 +131,9 @@ describe("CLI", () => {
     it("при скрытом адаптере agentsmd в конфиге выбрасывает ошибку", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - agentsmd\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - agentsmd\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow(
-        "Invalid config: adapter 'agentsmd' cannot be specified in config.",
-      );
+      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: adapter 'agentsmd' cannot be specified in config.");
     });
   });
 
@@ -270,10 +233,7 @@ describe("CLI", () => {
     it("при отсутствии adapter и all с существующим конфигом возвращает записи из конфига", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
       const result = resolveAdaptersFromCLIArgs({
         adapter: null,
@@ -297,9 +257,7 @@ describe("CLI", () => {
           projectRoot: tmpDir,
           command: "transpile",
         }),
-      ).toThrow(
-        "No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.",
-      );
+      ).toThrow("No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.");
     });
 
     // --- Расширение 4a: конфиг не найден, command === "init" ---
@@ -314,9 +272,7 @@ describe("CLI", () => {
           projectRoot: tmpDir,
           command: "init",
         }),
-      ).toThrow(
-        "No config found. Use --adapter <id> or --all to specify adapters.",
-      );
+      ).toThrow("No config found. Use --adapter <id> or --all to specify adapters.");
     });
 
     // --- Расширение 2a: Resolve Adapter вернул ошибку (адаптер не найден) ---
@@ -353,10 +309,7 @@ describe("CLI", () => {
     it("при невалидном config.yml пробрасывает ошибку Load Config", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters: [invalid yaml\n  : : :\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters: [invalid yaml\n  : : :\n");
 
       expect(() =>
         resolveAdaptersFromCLIArgs({

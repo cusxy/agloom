@@ -17,9 +17,7 @@ import type { McpServerConfig } from "../types.js";
  * 3. Если env присутствует и непуст — добавить поле env.
  * 4. includeTools и excludeTools отбрасываются.
  */
-export function buildBaseServerConfig(
-  serverConfig: McpServerConfig,
-): Record<string, unknown> {
+export function buildBaseServerConfig(serverConfig: McpServerConfig): Record<string, unknown> {
   const base: Record<string, unknown> = { command: serverConfig.command };
 
   // Шаг 2: args — только если присутствует и непуст

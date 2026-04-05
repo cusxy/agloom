@@ -114,15 +114,9 @@ describe("AgentsTranspiler", () => {
 
     // --- Трансформация: шаг 7 — ключ override удаляется из результата ---
     it("удаляет ключ override из результирующего frontmatter", () => {
-      const rawContent = [
-        "---",
-        "name: agent",
-        "override:",
-        "  claude:",
-        "    extra: value",
-        "---",
-        "Body.",
-      ].join("\n");
+      const rawContent = ["---", "name: agent", "override:", "  claude:", "    extra: value", "---", "Body."].join(
+        "\n",
+      );
 
       const result = transformContent(rawContent, "claude");
 
@@ -193,31 +187,15 @@ describe("AgentsTranspiler", () => {
     // --- Расширение 1a: ошибка парсинга frontmatter ---
     it("выбрасывает AgentTransformError при ошибке парсинга frontmatter", () => {
       // Невалидный YAML
-      const rawContent = [
-        "---",
-        "name: agent",
-        "  invalid: yaml: content: [broken",
-        "---",
-        "Body.",
-      ].join("\n");
+      const rawContent = ["---", "name: agent", "  invalid: yaml: content: [broken", "---", "Body."].join("\n");
 
-      expect(() => transformContent(rawContent, "claude")).toThrow(
-        AgentTransformError,
-      );
-      expect(() => transformContent(rawContent, "claude")).toThrow(
-        /Failed to parse frontmatter/,
-      );
+      expect(() => transformContent(rawContent, "claude")).toThrow(AgentTransformError);
+      expect(() => transformContent(rawContent, "claude")).toThrow(/Failed to parse frontmatter/);
     });
 
     // --- Расширение 2a: ключ override отсутствует → пропустить шаги 3–6 ---
     it("пропускает merge, если ключ override отсутствует в frontmatter", () => {
-      const rawContent = [
-        "---",
-        "name: agent",
-        "model: sonnet",
-        "---",
-        "Body.",
-      ].join("\n");
+      const rawContent = ["---", "name: agent", "model: sonnet", "---", "Body."].join("\n");
 
       const result = transformContent(rawContent, "claude");
 
@@ -229,20 +207,10 @@ describe("AgentsTranspiler", () => {
 
     // --- Расширение 3a: значение override не является объектом ---
     it("выбрасывает AgentTransformError, если override не является объектом", () => {
-      const rawContent = [
-        "---",
-        "name: agent",
-        "override: not-an-object",
-        "---",
-        "Body.",
-      ].join("\n");
+      const rawContent = ["---", "name: agent", "override: not-an-object", "---", "Body."].join("\n");
 
-      expect(() => transformContent(rawContent, "claude")).toThrow(
-        AgentTransformError,
-      );
-      expect(() => transformContent(rawContent, "claude")).toThrow(
-        "Override must be an object",
-      );
+      expect(() => transformContent(rawContent, "claude")).toThrow(AgentTransformError);
+      expect(() => transformContent(rawContent, "claude")).toThrow("Override must be an object");
     });
 
     // --- Расширение 4a: ключ agentId отсутствует в override → пропустить merge ---
@@ -267,33 +235,15 @@ describe("AgentsTranspiler", () => {
 
     // --- Расширение 5a: значение override[agentId] не является объектом ---
     it("выбрасывает AgentTransformError, если override[agentId] не является объектом", () => {
-      const rawContent = [
-        "---",
-        "name: agent",
-        "override:",
-        "  claude: just-a-string",
-        "---",
-        "Body.",
-      ].join("\n");
+      const rawContent = ["---", "name: agent", "override:", "  claude: just-a-string", "---", "Body."].join("\n");
 
-      expect(() => transformContent(rawContent, "claude")).toThrow(
-        AgentTransformError,
-      );
-      expect(() => transformContent(rawContent, "claude")).toThrow(
-        "Override for 'claude' must be an object",
-      );
+      expect(() => transformContent(rawContent, "claude")).toThrow(AgentTransformError);
+      expect(() => transformContent(rawContent, "claude")).toThrow("Override for 'claude' must be an object");
     });
 
     // --- Расширение 9a: пустой data после удаления override → без frontmatter ---
     it("опускает frontmatter-разделители, если data пуст после удаления override", () => {
-      const rawContent = [
-        "---",
-        "override:",
-        "  claude:",
-        "    key: value",
-        "---",
-        "Body only.",
-      ].join("\n");
+      const rawContent = ["---", "override:", "  claude:", "    key: value", "---", "Body only."].join("\n");
 
       // Для agentId = "opencode" нет override, и единственный ключ — override,
       // который удаляется. data становится пустым.
@@ -305,17 +255,11 @@ describe("AgentsTranspiler", () => {
 
     // --- Расширение 8a: filterBody выбрасывает AgentTransformError → пробросить ---
     it("пробрасывает AgentTransformError от filterBody к вызывающему коду", () => {
-      const rawContent = [
-        "---",
-        "name: agent",
-        "---",
-        "<!-- agent:claude -->",
-        "Content without closing tag.",
-      ].join("\n");
-
-      expect(() => transformContent(rawContent, "claude")).toThrow(
-        AgentTransformError,
+      const rawContent = ["---", "name: agent", "---", "<!-- agent:claude -->", "Content without closing tag."].join(
+        "\n",
       );
+
+      expect(() => transformContent(rawContent, "claude")).toThrow(AgentTransformError);
     });
 
     // --- Трансформация: шаги 8–10 — body интегрируется с frontmatter ---
@@ -352,12 +296,7 @@ describe("AgentsTranspiler", () => {
 
     // --- Новый шаг 11: интерполяция выполняется, когда variables передан ---
     it("выполняет интерполяцию переменных в результате, когда variables передан", () => {
-      const rawContent = [
-        "---",
-        "name: agent",
-        "---",
-        "Path: ${agloom:AGENTS_DIR}/spec-writer.md",
-      ].join("\n");
+      const rawContent = ["---", "name: agent", "---", "Path: ${agloom:AGENTS_DIR}/spec-writer.md"].join("\n");
 
       const variables: Record<string, string> = {
         AGENTS_DIR: ".claude/agents",
@@ -371,12 +310,7 @@ describe("AgentsTranspiler", () => {
 
     // --- Обратная совместимость: интерполяция пропускается, когда variables не передан ---
     it("пропускает интерполяцию, когда variables не передан (обратная совместимость)", () => {
-      const rawContent = [
-        "---",
-        "name: agent",
-        "---",
-        "Path: ${agloom:AGENTS_DIR}/spec-writer.md",
-      ].join("\n");
+      const rawContent = ["---", "name: agent", "---", "Path: ${agloom:AGENTS_DIR}/spec-writer.md"].join("\n");
 
       // Без variables — ${agloom:AGENTS_DIR} остаётся как есть
       const result = transformContent(rawContent, "claude");
@@ -386,21 +320,12 @@ describe("AgentsTranspiler", () => {
 
     // --- Расширение 11a: AgentTransformError при InterpolationError ---
     it('выбрасывает AgentTransformError("Interpolation failed: ...") при ошибке интерполяции', () => {
-      const rawContent = [
-        "---",
-        "name: agent",
-        "---",
-        "Path: ${agloom:NONEXISTENT}",
-      ].join("\n");
+      const rawContent = ["---", "name: agent", "---", "Path: ${agloom:NONEXISTENT}"].join("\n");
 
       const variables: Record<string, string> = {};
 
-      expect(() => transformContent(rawContent, "claude", variables)).toThrow(
-        AgentTransformError,
-      );
-      expect(() => transformContent(rawContent, "claude", variables)).toThrow(
-        /Interpolation failed/,
-      );
+      expect(() => transformContent(rawContent, "claude", variables)).toThrow(AgentTransformError);
+      expect(() => transformContent(rawContent, "claude", variables)).toThrow(/Interpolation failed/);
     });
   });
 });

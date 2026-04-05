@@ -6,12 +6,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { createMcpTranspiler } from "../index.js";
-import {
-  ConfigError,
-  DiscoverError,
-  TransformError,
-  WriteError,
-} from "../errors.js";
+import { ConfigError, DiscoverError, TransformError, WriteError } from "../errors.js";
 import { validateCanonicalContent } from "../validate.js";
 import { ClaudeMcpAdapter } from "../adapters/claude-adapter.js";
 
@@ -178,22 +173,13 @@ describe("McpTranspiler", () => {
       expect(result!.relativePath).toBe(".agloom/mcp.json");
       expect(result!.format).toBe("json");
       expect(result!.content.mcpServers.context7.command).toBe("npx");
-      expect(result!.content.mcpServers.context7.args).toEqual([
-        "-y",
-        "@upstash/context7-mcp@latest",
-      ]);
+      expect(result!.content.mcpServers.context7.args).toEqual(["-y", "@upstash/context7-mcp@latest"]);
     });
 
     // --- Расширение 3a: оба файла существуют ---
     it("выбрасывает DiscoverError, если оба .agloom/mcp.yml и .agloom/mcp.json существуют", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "mcp.yml"),
-        "mcpServers: {}",
-      );
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "mcp.json"),
-        '{"mcpServers": {}}',
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.yml"), "mcpServers: {}");
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.json"), '{"mcpServers": {}}');
 
       const transpiler = createMcpTranspiler({
         projectRoot: tmpDir,
@@ -220,10 +206,7 @@ describe("McpTranspiler", () => {
 
     // --- Расширение 5a: ошибка парсинга YAML ---
     it("выбрасывает DiscoverError при невалидном YAML", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "mcp.yml"),
-        "mcpServers:\n  - invalid: [yaml: {\n",
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.yml"), "mcpServers:\n  - invalid: [yaml: {\n");
 
       const transpiler = createMcpTranspiler({
         projectRoot: tmpDir,
@@ -231,17 +214,12 @@ describe("McpTranspiler", () => {
       });
 
       expect(() => transpiler.discover()).toThrow(DiscoverError);
-      expect(() => transpiler.discover()).toThrow(
-        /Failed to parse \.agloom\/mcp\.yml/,
-      );
+      expect(() => transpiler.discover()).toThrow(/Failed to parse \.agloom\/mcp\.yml/);
     });
 
     // --- Расширение 5b: ошибка парсинга JSON ---
     it("выбрасывает DiscoverError при невалидном JSON", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "mcp.json"),
-        "{invalid json",
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.json"), "{invalid json");
 
       const transpiler = createMcpTranspiler({
         projectRoot: tmpDir,
@@ -249,9 +227,7 @@ describe("McpTranspiler", () => {
       });
 
       expect(() => transpiler.discover()).toThrow(DiscoverError);
-      expect(() => transpiler.discover()).toThrow(
-        /Failed to parse \.agloom\/mcp\.json/,
-      );
+      expect(() => transpiler.discover()).toThrow(/Failed to parse \.agloom\/mcp\.json/);
     });
 
     // --- Расширение 4a: ошибка чтения файла ---
@@ -275,10 +251,7 @@ describe("McpTranspiler", () => {
 
     // --- Граничное условие: пустой mcpServers ---
     it("обнаруживает файл с пустым mcpServers", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "mcp.yml"),
-        "mcpServers: {}",
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.yml"), "mcpServers: {}");
 
       const transpiler = createMcpTranspiler({
         projectRoot: tmpDir,
@@ -313,10 +286,7 @@ describe("McpTranspiler", () => {
       const result = transpiler.discover();
 
       expect(result).not.toBeNull();
-      expect(result!.content.mcpServers.filesystem.args).toEqual([
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-      ]);
+      expect(result!.content.mcpServers.filesystem.args).toEqual(["-y", "@modelcontextprotocol/server-filesystem"]);
       expect(result!.content.mcpServers.filesystem.env).toEqual({
         ROOT_DIR: "/home/user",
       });
@@ -372,10 +342,7 @@ describe("McpTranspiler", () => {
 
       const result = validateCanonicalContent(content);
 
-      expect(result.mcpServers.filesystem.includeTools).toEqual([
-        "read_file",
-        "list_directory",
-      ]);
+      expect(result.mcpServers.filesystem.includeTools).toEqual(["read_file", "list_directory"]);
     });
 
     // --- Happy path: контент с excludeTools ---
@@ -391,55 +358,37 @@ describe("McpTranspiler", () => {
 
       const result = validateCanonicalContent(content);
 
-      expect(result.mcpServers.filesystem.excludeTools).toEqual([
-        "delete_file",
-      ]);
+      expect(result.mcpServers.filesystem.excludeTools).toEqual(["delete_file"]);
     });
 
     // --- Расширение 1a: content не является объектом ---
     it("выбрасывает TransformError, если content не является объектом", () => {
-      expect(() => validateCanonicalContent("not an object" as any)).toThrow(
-        TransformError,
-      );
-      expect(() => validateCanonicalContent("not an object" as any)).toThrow(
-        "MCP config must be an object",
-      );
+      expect(() => validateCanonicalContent("not an object" as any)).toThrow(TransformError);
+      expect(() => validateCanonicalContent("not an object" as any)).toThrow("MCP config must be an object");
     });
 
     it("выбрасывает TransformError, если content равен null", () => {
-      expect(() => validateCanonicalContent(null as any)).toThrow(
-        TransformError,
-      );
-      expect(() => validateCanonicalContent(null as any)).toThrow(
-        "MCP config must be an object",
-      );
+      expect(() => validateCanonicalContent(null as any)).toThrow(TransformError);
+      expect(() => validateCanonicalContent(null as any)).toThrow("MCP config must be an object");
     });
 
     // --- Расширение 2a: поле mcpServers отсутствует ---
     it("выбрасывает TransformError, если mcpServers отсутствует", () => {
       expect(() => validateCanonicalContent({} as any)).toThrow(TransformError);
-      expect(() => validateCanonicalContent({} as any)).toThrow(
-        "MCP config must contain 'mcpServers' field",
-      );
+      expect(() => validateCanonicalContent({} as any)).toThrow("MCP config must contain 'mcpServers' field");
     });
 
     // --- Расширение 2b: mcpServers не является объектом ---
     it("выбрасывает TransformError, если mcpServers не является объектом", () => {
-      expect(() =>
-        validateCanonicalContent({ mcpServers: "not an object" } as any),
-      ).toThrow(TransformError);
-      expect(() =>
-        validateCanonicalContent({ mcpServers: "not an object" } as any),
-      ).toThrow("'mcpServers' must be an object");
+      expect(() => validateCanonicalContent({ mcpServers: "not an object" } as any)).toThrow(TransformError);
+      expect(() => validateCanonicalContent({ mcpServers: "not an object" } as any)).toThrow(
+        "'mcpServers' must be an object",
+      );
     });
 
     it("выбрасывает TransformError, если mcpServers является массивом", () => {
-      expect(() => validateCanonicalContent({ mcpServers: [] } as any)).toThrow(
-        TransformError,
-      );
-      expect(() => validateCanonicalContent({ mcpServers: [] } as any)).toThrow(
-        "'mcpServers' must be an object",
-      );
+      expect(() => validateCanonicalContent({ mcpServers: [] } as any)).toThrow(TransformError);
+      expect(() => validateCanonicalContent({ mcpServers: [] } as any)).toThrow("'mcpServers' must be an object");
     });
 
     // --- Расширение 3b: command отсутствует ---
@@ -453,9 +402,7 @@ describe("McpTranspiler", () => {
         validateCanonicalContent({
           mcpServers: { myserver: { args: ["--port", "8080"] } },
         } as any),
-      ).toThrow(
-        "Server 'myserver': 'command' is required and must be a string",
-      );
+      ).toThrow("Server 'myserver': 'command' is required and must be a string");
     });
 
     // --- Расширение 3b: command не является строкой ---
@@ -469,9 +416,7 @@ describe("McpTranspiler", () => {
         validateCanonicalContent({
           mcpServers: { myserver: { command: 123 } },
         } as any),
-      ).toThrow(
-        "Server 'myserver': 'command' is required and must be a string",
-      );
+      ).toThrow("Server 'myserver': 'command' is required and must be a string");
     });
 
     // --- Расширение 3c: args не является массивом строк ---
@@ -512,9 +457,7 @@ describe("McpTranspiler", () => {
         validateCanonicalContent({
           mcpServers: { myserver: { command: "npx", env: "not-object" } },
         } as any),
-      ).toThrow(
-        "Server 'myserver': 'env' must be an object with string values",
-      );
+      ).toThrow("Server 'myserver': 'env' must be an object with string values");
     });
 
     it("выбрасывает TransformError, если env содержит нестроковые значения", () => {
@@ -531,9 +474,7 @@ describe("McpTranspiler", () => {
             myserver: { command: "npx", env: { PORT: 8080 } },
           },
         } as any),
-      ).toThrow(
-        "Server 'myserver': 'env' must be an object with string values",
-      );
+      ).toThrow("Server 'myserver': 'env' must be an object with string values");
     });
 
     // --- Расширение 3e: includeTools не является массивом строк ---
@@ -551,9 +492,7 @@ describe("McpTranspiler", () => {
             myserver: { command: "npx", includeTools: "read_file" },
           },
         } as any),
-      ).toThrow(
-        "Server 'myserver': 'includeTools' must be an array of strings",
-      );
+      ).toThrow("Server 'myserver': 'includeTools' must be an array of strings");
     });
 
     // --- Расширение 3f: excludeTools не является массивом строк ---
@@ -571,9 +510,7 @@ describe("McpTranspiler", () => {
             myserver: { command: "npx", excludeTools: 42 },
           },
         } as any),
-      ).toThrow(
-        "Server 'myserver': 'excludeTools' must be an array of strings",
-      );
+      ).toThrow("Server 'myserver': 'excludeTools' must be an array of strings");
     });
 
     // --- Расширение 3a: includeTools и excludeTools одновременно ---
@@ -599,9 +536,7 @@ describe("McpTranspiler", () => {
             },
           },
         }),
-      ).toThrow(
-        "Server 'myserver': 'includeTools' and 'excludeTools' are mutually exclusive",
-      );
+      ).toThrow("Server 'myserver': 'includeTools' and 'excludeTools' are mutually exclusive");
     });
 
     // --- Граничное условие: пустой mcpServers ---
@@ -698,14 +633,8 @@ describe("McpTranspiler", () => {
 
     // --- Расширение 1b: discover() выбрасывает DiscoverError ---
     it("пробрасывает DiscoverError к вызывающему коду", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "mcp.yml"),
-        "mcpServers: {}",
-      );
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "mcp.json"),
-        '{"mcpServers": {}}',
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.yml"), "mcpServers: {}");
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.json"), '{"mcpServers": {}}');
 
       const transpiler = createMcpTranspiler({
         projectRoot: tmpDir,
@@ -717,10 +646,7 @@ describe("McpTranspiler", () => {
 
     // --- Расширение 2a: валидация выбрасывает TransformError ---
     it("пробрасывает TransformError при невалидном каноническом файле", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "mcp.yml"),
-        "notMcpServers: true",
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.yml"), "notMcpServers: true");
 
       const transpiler = createMcpTranspiler({
         projectRoot: tmpDir,
@@ -732,10 +658,7 @@ describe("McpTranspiler", () => {
 
     // --- Расширение 4a: адаптер выбрасывает исключение ---
     it("создаёт TranspileResult с ошибкой при исключении адаптера и продолжает остальные", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, ".agloom", "mcp.yml"),
-        "mcpServers:\n  s1:\n    command: npx\n",
-      );
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.yml"), "mcpServers:\n  s1:\n    command: npx\n");
 
       const failingAdapter = {
         agentId: "failing",
@@ -761,9 +684,7 @@ describe("McpTranspiler", () => {
       expect(failingResult).toBeDefined();
       expect(failingResult!.files).toHaveLength(0);
       expect(failingResult!.errors).toHaveLength(1);
-      expect(failingResult!.errors[0].message).toContain(
-        "Adapter internal failure",
-      );
+      expect(failingResult!.errors[0].message).toContain("Adapter internal failure");
       expect(failingResult!.errors[0].agentId).toBe("failing");
       expect(failingResult!.errors[0].cause).toBeInstanceOf(Error);
 
@@ -793,9 +714,7 @@ describe("McpTranspiler", () => {
         const results = transpiler.transpile();
         transpiler.writeResults(results);
 
-        const written = JSON.parse(
-          fs.readFileSync(path.join(tmpDir, ".mcp.json"), "utf-8"),
-        );
+        const written = JSON.parse(fs.readFileSync(path.join(tmpDir, ".mcp.json"), "utf-8"));
         expect(written.mcpServers.s1.env.ROOT).toBe("/custom/path");
       } finally {
         if (originalEnv === undefined) {
@@ -853,9 +772,7 @@ describe("McpTranspiler", () => {
         const results = transpiler.transpile();
         transpiler.writeResults(results);
 
-        const written = JSON.parse(
-          fs.readFileSync(path.join(tmpDir, ".mcp.json"), "utf-8"),
-        );
+        const written = JSON.parse(fs.readFileSync(path.join(tmpDir, ".mcp.json"), "utf-8"));
         expect(written.mcpServers.s1.command).toBe("custom-npx");
         expect(written.mcpServers.s1.args[0]).toBe("custom-npx");
       } finally {
@@ -926,10 +843,7 @@ describe("McpTranspiler", () => {
       expect(writeResult.written).toContain(".mcp.json");
       expect(writeResult.errors).toHaveLength(0);
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".mcp.json"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".mcp.json"), "utf-8");
       expect(writtenContent).toBe('{\n  "mcpServers": {}\n}\n');
     });
 
@@ -954,9 +868,7 @@ describe("McpTranspiler", () => {
       ]);
 
       expect(writeResult.written).toContain("deep/nested/config.json");
-      expect(
-        fs.existsSync(path.join(tmpDir, "deep", "nested", "config.json")),
-      ).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, "deep", "nested", "config.json"))).toBe(true);
     });
 
     // --- Расширение 1a: TranspileResult содержит ошибки ---
@@ -985,9 +897,7 @@ describe("McpTranspiler", () => {
         },
       ]);
 
-      expect(fs.existsSync(path.join(tmpDir, "should-not-exist.json"))).toBe(
-        false,
-      );
+      expect(fs.existsSync(path.join(tmpDir, "should-not-exist.json"))).toBe(false);
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.written).not.toContain("should-not-exist.json");
     });
@@ -996,10 +906,7 @@ describe("McpTranspiler", () => {
     it("выполняет deep merge при одинаковом relativePath для JSON-файлов из разных адаптеров", () => {
       const transpiler = createMcpTranspiler({
         projectRoot: tmpDir,
-        adapters: [
-          createStubAdapter("adapter1"),
-          createStubAdapter("adapter2"),
-        ],
+        adapters: [createStubAdapter("adapter1"), createStubAdapter("adapter2")],
       });
 
       const writeResult = transpiler.writeResults([
@@ -1008,12 +915,7 @@ describe("McpTranspiler", () => {
           files: [
             {
               relativePath: "opencode.json",
-              content:
-                JSON.stringify(
-                  { mcp: { server1: { command: "npx" } } },
-                  null,
-                  2,
-                ) + "\n",
+              content: JSON.stringify({ mcp: { server1: { command: "npx" } } }, null, 2) + "\n",
             },
           ],
           errors: [],
@@ -1023,8 +925,7 @@ describe("McpTranspiler", () => {
           files: [
             {
               relativePath: "opencode.json",
-              content:
-                JSON.stringify({ other: { key: "value" } }, null, 2) + "\n",
+              content: JSON.stringify({ other: { key: "value" } }, null, 2) + "\n",
             },
           ],
           errors: [],
@@ -1033,9 +934,7 @@ describe("McpTranspiler", () => {
 
       expect(writeResult.written).toContain("opencode.json");
 
-      const writtenContent = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"),
-      );
+      const writtenContent = JSON.parse(fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"));
       // deep merge: оба ключа должны присутствовать
       expect(writtenContent.mcp).toBeDefined();
       expect(writtenContent.mcp.server1.command).toBe("npx");
@@ -1050,10 +949,7 @@ describe("McpTranspiler", () => {
         existing: { key: "preserved" },
         replaced: { old: true },
       };
-      fs.writeFileSync(
-        path.join(tmpDir, "opencode.json"),
-        JSON.stringify(existingContent, null, 2),
-      );
+      fs.writeFileSync(path.join(tmpDir, "opencode.json"), JSON.stringify(existingContent, null, 2));
 
       const transpiler = createMcpTranspiler({
         projectRoot: tmpDir,
@@ -1083,9 +979,7 @@ describe("McpTranspiler", () => {
 
       expect(writeResult.written).toContain("opencode.json");
 
-      const writtenContent = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"),
-      );
+      const writtenContent = JSON.parse(fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"));
       expect(writtenContent.existing.key).toBe("preserved");
       expect(writtenContent.mcp.server1.command).toBe("npx");
       expect(writtenContent.replaced.new).toBe(true);
@@ -1093,10 +987,7 @@ describe("McpTranspiler", () => {
 
     // --- Расширение 4a: существующий файл содержит невалидный JSON ---
     it("перезаписывает файл целиком, если существующий файл содержит невалидный JSON", () => {
-      fs.writeFileSync(
-        path.join(tmpDir, "opencode.json"),
-        "{invalid json content",
-      );
+      fs.writeFileSync(path.join(tmpDir, "opencode.json"), "{invalid json content");
 
       const transpiler = createMcpTranspiler({
         projectRoot: tmpDir,
@@ -1119,9 +1010,7 @@ describe("McpTranspiler", () => {
 
       expect(writeResult.written).toContain("opencode.json");
 
-      const writtenContent = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"),
-      );
+      const writtenContent = JSON.parse(fs.readFileSync(path.join(tmpDir, "opencode.json"), "utf-8"));
       expect(writtenContent.mcp.s1.command).toBe("npx");
     });
 
@@ -1150,9 +1039,7 @@ describe("McpTranspiler", () => {
 
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(WriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Failed to write blocker\/config\.json/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Failed to write blocker\/config\.json/);
     });
 
     // --- Запись UTF-8 ---
@@ -1162,8 +1049,7 @@ describe("McpTranspiler", () => {
         adapters: [createStubAdapter("claude")],
       });
 
-      const unicodeContent =
-        '{\n  "mcpServers": {\n    "description": "Описание на русском"\n  }\n}\n';
+      const unicodeContent = '{\n  "mcpServers": {\n    "description": "Описание на русском"\n  }\n}\n';
 
       transpiler.writeResults([
         {
@@ -1173,10 +1059,7 @@ describe("McpTranspiler", () => {
         },
       ]);
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".mcp.json"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".mcp.json"), "utf-8");
       expect(writtenContent).toBe(unicodeContent);
     });
 

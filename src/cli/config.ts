@@ -24,10 +24,7 @@ export interface LoadConfigResult {
   /** Список разобранных записей плагинов из конфига, или null. */
   pluginEntries: ParsedPluginEntry[] | null;
   /** Нормализованная карта переменных локального проекта, или null. */
-  configVariables: Record<
-    string,
-    import("./plugin-manifest.js").VariableDeclaration
-  > | null;
+  configVariables: Record<string, import("./plugin-manifest.js").VariableDeclaration> | null;
 }
 
 /**
@@ -101,9 +98,7 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
 
     // Расширение 4b: Скрытый адаптер
     if (entry.hidden) {
-      throw new Error(
-        `Invalid config: adapter '${id}' cannot be specified in config.`,
-      );
+      throw new Error(`Invalid config: adapter '${id}' cannot be specified in config.`);
     }
   }
 
@@ -127,13 +122,8 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
 
     for (const item of plugins) {
       // Backward compatibility: non-string/non-object → old error message
-      if (
-        typeof item !== "string" &&
-        (typeof item !== "object" || item === null)
-      ) {
-        throw new Error(
-          "Invalid config: 'plugins' must be an array of strings.",
-        );
+      if (typeof item !== "string" && (typeof item !== "object" || item === null)) {
+        throw new Error("Invalid config: 'plugins' must be an array of strings.");
       }
 
       // Шаг 6.3: валидация values в объектных форматах
@@ -141,22 +131,12 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
         const obj = item as Record<string, unknown>;
         if ("values" in obj) {
           const values = obj.values;
-          if (
-            typeof values !== "object" ||
-            values === null ||
-            Array.isArray(values)
-          ) {
-            throw new Error(
-              "Invalid config: plugin 'values' must be an object.",
-            );
+          if (typeof values !== "object" || values === null || Array.isArray(values)) {
+            throw new Error("Invalid config: plugin 'values' must be an object.");
           }
-          for (const [vKey, vVal] of Object.entries(
-            values as Record<string, unknown>,
-          )) {
+          for (const [vKey, vVal] of Object.entries(values as Record<string, unknown>)) {
             if (typeof vVal !== "string") {
-              throw new Error(
-                `Invalid config: plugin 'values' entry '${vKey}' must be a string.`,
-              );
+              throw new Error(`Invalid config: plugin 'values' entry '${vKey}' must be a string.`);
             }
           }
         }
@@ -177,19 +157,12 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
         const isHttps = url.startsWith("https://");
         const isSsh = url.startsWith("ssh://") || /^git@[^:]+:/.test(url);
         if (!isHttps && !isSsh) {
-          throw new Error(
-            "Invalid config: plugin entry 'git' must be an HTTPS or SSH git URL.",
-          );
+          throw new Error("Invalid config: plugin entry 'git' must be an HTTPS or SSH git URL.");
         }
 
         // Шаг 6.2.2: проверить ref (опционально — null допустим)
-        if (
-          parsed.ref != null &&
-          (typeof parsed.ref !== "string" || parsed.ref === "")
-        ) {
-          throw new Error(
-            "Invalid config: plugin entry 'ref' must be a non-empty string or absent.",
-          );
+        if (parsed.ref != null && (typeof parsed.ref !== "string" || parsed.ref === "")) {
+          throw new Error("Invalid config: plugin entry 'ref' must be a non-empty string or absent.");
         }
 
         // Шаг 6.2.3: проверить path
@@ -200,9 +173,7 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
             parsed.path.startsWith("/") ||
             parsed.path.includes("..")
           ) {
-            throw new Error(
-              "Invalid config: plugin entry 'path' must be a relative path without '..' components.",
-            );
+            throw new Error("Invalid config: plugin entry 'path' must be a relative path without '..' components.");
           }
         }
       }
@@ -215,35 +186,24 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
     if (entries.every((e) => e.type === "local")) {
       pluginPaths = entries.map((e) => e.path!);
     } else {
-      pluginPaths = entries
-        .filter((e) => e.type === "local")
-        .map((e) => e.path!);
+      pluginPaths = entries.filter((e) => e.type === "local").map((e) => e.path!);
     }
   }
 
   // Шаг 7-9: обработка variables
-  let configVariables: Record<
-    string,
-    import("./plugin-manifest.js").VariableDeclaration
-  > | null = null;
+  let configVariables: Record<string, import("./plugin-manifest.js").VariableDeclaration> | null = null;
 
   if ("variables" in config) {
     const rawVariables = config.variables;
 
     // Шаг 8: проверить, что variables — объект
-    if (
-      typeof rawVariables !== "object" ||
-      rawVariables === null ||
-      Array.isArray(rawVariables)
-    ) {
+    if (typeof rawVariables !== "object" || rawVariables === null || Array.isArray(rawVariables)) {
       throw new Error("Invalid config: 'variables' must be an object.");
     }
 
     configVariables = {};
 
-    for (const [key, value] of Object.entries(
-      rawVariables as Record<string, unknown>,
-    )) {
+    for (const [key, value] of Object.entries(rawVariables as Record<string, unknown>)) {
       // Шаг 9.1: строка → нормализовать
       if (typeof value === "string") {
         configVariables[key] = {
@@ -257,9 +217,7 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
 
       // Шаг 9.2: объект → валидировать поля
       if (typeof value !== "object" || value === null || Array.isArray(value)) {
-        throw new Error(
-          `Invalid config: variable '${key}' must be a string or an object.`,
-        );
+        throw new Error(`Invalid config: variable '${key}' must be a string or an object.`);
       }
 
       const varObj = value as Record<string, unknown>;
@@ -268,9 +226,7 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
       let description = "";
       if (varObj.description != null) {
         if (typeof varObj.description !== "string") {
-          throw new Error(
-            `Invalid config: variable '${key}' field 'description' must be a string.`,
-          );
+          throw new Error(`Invalid config: variable '${key}' field 'description' must be a string.`);
         }
         description = varObj.description;
       }
@@ -279,9 +235,7 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
       let required = false;
       if (varObj.required != null) {
         if (typeof varObj.required !== "boolean") {
-          throw new Error(
-            `Invalid config: variable '${key}' field 'required' must be a boolean.`,
-          );
+          throw new Error(`Invalid config: variable '${key}' field 'required' must be a boolean.`);
         }
         required = varObj.required;
       }
@@ -290,9 +244,7 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
       let defaultValue: string | null = null;
       if (varObj.default != null) {
         if (typeof varObj.default !== "string") {
-          throw new Error(
-            `Invalid config: variable '${key}' field 'default' must be a string.`,
-          );
+          throw new Error(`Invalid config: variable '${key}' field 'default' must be a string.`);
         }
         defaultValue = varObj.default;
       }
@@ -301,9 +253,7 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
       let sensitive = false;
       if (varObj.sensitive != null) {
         if (typeof varObj.sensitive !== "boolean") {
-          throw new Error(
-            `Invalid config: variable '${key}' field 'sensitive' must be a boolean.`,
-          );
+          throw new Error(`Invalid config: variable '${key}' field 'sensitive' must be a boolean.`);
         }
         sensitive = varObj.sensitive;
       }
@@ -332,9 +282,7 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
  * @param adapterIds — список идентификаторов адаптеров из конфига.
  * @returns Дедуплицированный упорядоченный список записей адаптеров.
  */
-export function resolveAdaptersFromConfig(
-  adapterIds: string[],
-): AdapterRegistryEntry[] {
+export function resolveAdaptersFromConfig(adapterIds: string[]): AdapterRegistryEntry[] {
   const visited = new Set<string>();
   const result: AdapterRegistryEntry[] = [];
 
@@ -390,13 +338,9 @@ export function resolveAdaptersFromCLIArgs(options: {
   // Расширение 4a: Load Config вернул null
   if (configResult === null) {
     if (command !== "init") {
-      throw new Error(
-        "No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.",
-      );
+      throw new Error("No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.");
     } else {
-      throw new Error(
-        "No config found. Use --adapter <id> or --all to specify adapters.",
-      );
+      throw new Error("No config found. Use --adapter <id> or --all to specify adapters.");
     }
   }
 

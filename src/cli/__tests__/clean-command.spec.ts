@@ -332,10 +332,7 @@ describe("CLI", () => {
       // Создаём .agloom/config.yml
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(configDir, "config.yml"),
-        "adapters:\n  - claude\n",
-      );
+      fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
       // Создаём файлы в paths-поддиректориях адаптера claude
       const skillsDir = path.join(tmpDir, ".claude", "skills");

@@ -7,23 +7,14 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { discover } from "./discover.js";
 import { AgentWriteError } from "./errors.js";
-import type {
-  AgentAdapter,
-  AgentDefinition,
-  AgentTranspileResult,
-  AgentWriteResult,
-} from "./types.js";
+import type { AgentAdapter, AgentDefinition, AgentTranspileResult, AgentWriteResult } from "./types.js";
 
 export class AgentsTranspiler {
   private readonly projectRoot: string;
   private readonly adapters: AgentAdapter[];
   private readonly agloomDir: string;
 
-  constructor(
-    projectRoot: string,
-    adapters: AgentAdapter[],
-    agloomDir: string = ".agloom",
-  ) {
+  constructor(projectRoot: string, adapters: AgentAdapter[], agloomDir: string = ".agloom") {
     this.projectRoot = projectRoot;
     this.adapters = adapters;
     this.agloomDir = agloomDir;
@@ -96,10 +87,7 @@ export class AgentsTranspiler {
    * Записывает результаты транспиляции в файловую систему.
    * Spec: § Запись результатов
    */
-  writeResults(
-    results: AgentTranspileResult[],
-    options?: { targetRoot?: string },
-  ): AgentWriteResult {
+  writeResults(results: AgentTranspileResult[], options?: { targetRoot?: string }): AgentWriteResult {
     const writeRoot = options?.targetRoot ?? this.projectRoot;
     const written: string[] = [];
     const errors: AgentWriteError[] = [];
@@ -130,11 +118,7 @@ export class AgentsTranspiler {
           written.push(file.relativePath);
         } catch (err) {
           // Расширение 2a: ошибка записи
-          errors.push(
-            new AgentWriteError(
-              `Failed to write ${file.relativePath}: ${(err as Error).message}`,
-            ),
-          );
+          errors.push(new AgentWriteError(`Failed to write ${file.relativePath}: ${(err as Error).message}`));
         }
       }
     }

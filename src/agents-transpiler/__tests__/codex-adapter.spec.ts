@@ -47,9 +47,7 @@ describe("CodexAgentAdapter", () => {
         "Review all code changes for...",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeDefinition("code-reviewer", rawContent),
-      ]);
+      const files = adapter.transpile([makeDefinition("code-reviewer", rawContent)]);
 
       expect(files).toHaveLength(1);
 
@@ -58,9 +56,7 @@ describe("CodexAgentAdapter", () => {
       expect(parsed.name).toBe("code-reviewer");
       expect(parsed.description).toBe("Reviews code for best practices");
       expect(parsed.model).toBe("sonnet");
-      expect(parsed.developer_instructions).toBe(
-        "Review all code changes for...",
-      );
+      expect(parsed.developer_instructions).toBe("Review all code changes for...");
     });
 
     // --- Трансформация: шаг 5 — расширение файла .md → .toml ---
@@ -71,9 +67,7 @@ describe("CodexAgentAdapter", () => {
 
       const rawContent = "---\nname: test\n---\nBody.";
 
-      const files = adapter.transpile([
-        makeDefinition("test-agent", rawContent),
-      ]);
+      const files = adapter.transpile([makeDefinition("test-agent", rawContent)]);
 
       expect(files).toHaveLength(1);
       expect(files[0].relativePath).toBe(".agloom/agents/test-agent.toml");
@@ -99,17 +93,13 @@ describe("CodexAgentAdapter", () => {
         "Review all code changes for...",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeDefinition("code-reviewer", rawContent),
-      ]);
+      const files = adapter.transpile([makeDefinition("code-reviewer", rawContent)]);
 
       const parsed = parseToml(files[0].content);
       expect(parsed.model).toBe("gpt-5-codex");
       // override не должен присутствовать в результате
       expect(parsed).not.toHaveProperty("override");
-      expect(parsed.developer_instructions).toBe(
-        "Review all code changes for...",
-      );
+      expect(parsed.developer_instructions).toBe("Review all code changes for...");
     });
 
     // --- Граничное условие: пустой body → developer_instructions отсутствует ---
@@ -118,16 +108,9 @@ describe("CodexAgentAdapter", () => {
     it("не включает developer_instructions при пустом body", () => {
       const adapter = new CodexAgentAdapter();
 
-      const rawContent = [
-        "---",
-        "name: minimal-agent",
-        "model: gpt-5",
-        "---",
-      ].join("\n");
+      const rawContent = ["---", "name: minimal-agent", "model: gpt-5", "---"].join("\n");
 
-      const files = adapter.transpile([
-        makeDefinition("minimal-agent", rawContent),
-      ]);
+      const files = adapter.transpile([makeDefinition("minimal-agent", rawContent)]);
 
       const parsed = parseToml(files[0].content);
       expect(parsed.name).toBe("minimal-agent");
@@ -156,17 +139,11 @@ describe("CodexAgentAdapter", () => {
         "<!-- /agent:claude -->",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeDefinition("multi-agent", rawContent),
-      ]);
+      const files = adapter.transpile([makeDefinition("multi-agent", rawContent)]);
 
       const parsed = parseToml(files[0].content);
-      expect(parsed.developer_instructions).toContain(
-        "Codex-specific instructions.",
-      );
-      expect(parsed.developer_instructions).not.toContain(
-        "Claude-specific instructions.",
-      );
+      expect(parsed.developer_instructions).toContain("Codex-specific instructions.");
+      expect(parsed.developer_instructions).not.toContain("Claude-specific instructions.");
       expect(parsed.developer_instructions).toContain("General instructions.");
     });
 
@@ -189,9 +166,7 @@ describe("CodexAgentAdapter", () => {
         "Instructions.",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeDefinition("typed-agent", rawContent),
-      ]);
+      const files = adapter.transpile([makeDefinition("typed-agent", rawContent)]);
 
       const parsed = parseToml(files[0].content);
       expect(parsed.name).toBe("typed-agent");
@@ -219,17 +194,9 @@ describe("CodexAgentAdapter", () => {
     it("пробрасывает AgentTransformError от transformContent к вызывающему коду", () => {
       const adapter = new CodexAgentAdapter();
 
-      const rawContent = [
-        "---",
-        "name: agent",
-        "override: not-an-object",
-        "---",
-        "Body.",
-      ].join("\n");
+      const rawContent = ["---", "name: agent", "override: not-an-object", "---", "Body."].join("\n");
 
-      expect(() =>
-        adapter.transpile([makeDefinition("agent", rawContent)]),
-      ).toThrow(AgentTransformError);
+      expect(() => adapter.transpile([makeDefinition("agent", rawContent)])).toThrow(AgentTransformError);
     });
 
     // --- Расширение 2a: ошибка парсинга gray-matter результата transformContent ---
@@ -264,9 +231,7 @@ describe("CodexAgentAdapter", () => {
       // Спецификация требует, чтобы при ошибке повторного парсинга
       // адаптер выбрасывал AgentTransformError с именем определения.
       // Тест падает, потому что адаптер ещё не реализован.
-      expect(() =>
-        adapter.transpile([makeDefinition("bad-agent", rawContent)]),
-      ).toThrow(AgentTransformError);
+      expect(() => adapter.transpile([makeDefinition("bad-agent", rawContent)])).toThrow(AgentTransformError);
     });
 
     // --- Расширение 4a: ошибка сериализации TOML через smol-toml ---
@@ -280,32 +245,21 @@ describe("CodexAgentAdapter", () => {
       // YAML frontmatter с `~` (null) в массиве из gray-matter
       // вызывает ошибку сериализации в smol-toml:
       // "arrays cannot contain null or undefined values"
-      const rawContent = [
-        "---",
-        "name: null-array-agent",
-        "items:",
-        "  - a",
-        "  - ~",
-        "  - b",
-        "---",
-        "Body.",
-      ].join("\n");
+      const rawContent = ["---", "name: null-array-agent", "items:", "  - a", "  - ~", "  - b", "---", "Body."].join(
+        "\n",
+      );
 
       // gray-matter парсит "~" как null внутри массива.
       // smol-toml не может сериализовать массивы с null.
       // Адаптер ДОЛЖЕН поймать ошибку и обернуть в AgentTransformError.
-      expect(() =>
-        adapter.transpile([makeDefinition("null-array-agent", rawContent)]),
-      ).toThrow(AgentTransformError);
+      expect(() => adapter.transpile([makeDefinition("null-array-agent", rawContent)])).toThrow(AgentTransformError);
     });
 
     // --- Happy path: контент без frontmatter → body только ---
     it("обрабатывает определения без frontmatter", () => {
       const adapter = new CodexAgentAdapter();
 
-      const files = adapter.transpile([
-        makeDefinition("simple-agent", "Just plain markdown body."),
-      ]);
+      const files = adapter.transpile([makeDefinition("simple-agent", "Just plain markdown body.")]);
 
       expect(files).toHaveLength(1);
       const parsed = parseToml(files[0].content);

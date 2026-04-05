@@ -52,10 +52,7 @@ describe("AgentsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Проверяем, что файл действительно записан
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "agents", "code-reviewer.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "agents", "code-reviewer.md"), "utf-8");
       expect(writtenContent).toBe("Generated content.");
     });
 
@@ -81,10 +78,7 @@ describe("AgentsTranspiler", () => {
 
       expect(writeResult.written).toContain(".opencode/agents/deep-agent.md");
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".opencode", "agents", "deep-agent.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".opencode", "agents", "deep-agent.md"), "utf-8");
       expect(writtenContent).toBe("Deep content.");
     });
 
@@ -115,9 +109,7 @@ describe("AgentsTranspiler", () => {
       ]);
 
       // Файл НЕ должен быть записан
-      expect(
-        fs.existsSync(path.join(tmpDir, ".failing", "agents", "agent.md")),
-      ).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, ".failing", "agents", "agent.md"))).toBe(false);
 
       // Ошибки включены в AgentWriteResult.errors
       expect(writeResult.errors.length).toBeGreaterThan(0);
@@ -163,20 +155,13 @@ describe("AgentsTranspiler", () => {
       ]);
 
       // Файл failing адаптера НЕ записан
-      expect(
-        fs.existsSync(path.join(tmpDir, ".failing", "agents", "agent.md")),
-      ).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, ".failing", "agents", "agent.md"))).toBe(false);
       expect(writeResult.written).not.toContain(".failing/agents/agent.md");
 
       // Файл claude адаптера записан
-      expect(
-        fs.existsSync(path.join(tmpDir, ".claude", "agents", "agent.md")),
-      ).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "agents", "agent.md"))).toBe(true);
       expect(writeResult.written).toContain(".claude/agents/agent.md");
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "agents", "agent.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "agents", "agent.md"), "utf-8");
       expect(writtenContent).toBe("Should be written.");
 
       // Ошибки failing адаптера включены в результат
@@ -208,9 +193,7 @@ describe("AgentsTranspiler", () => {
 
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(AgentWriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Failed to write blocker\/agents\/agent\.md/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Failed to write blocker\/agents\/agent\.md/);
     });
 
     // --- Happy path: запись результатов нескольких адаптеров ---
@@ -270,10 +253,7 @@ describe("AgentsTranspiler", () => {
         },
       ]);
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "agents", "agent.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "agents", "agent.md"), "utf-8");
       expect(writtenContent).toBe(unicodeContent);
     });
   });

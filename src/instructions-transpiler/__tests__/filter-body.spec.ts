@@ -34,32 +34,18 @@ describe("InstructionsTranspiler", () => {
 
     // --- Шаг 3: валидация agent-id по паттерну [a-z][a-z0-9-]* ---
     it("выбрасывает TransformError при невалидном agent-id (начинается с цифры)", () => {
-      const body = [
-        "Before.",
-        "<!-- agent:1invalid -->",
-        "Content.",
-        "<!-- /agent:1invalid -->",
-        "After.",
-      ].join("\n");
+      const body = ["Before.", "<!-- agent:1invalid -->", "Content.", "<!-- /agent:1invalid -->", "After."].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(TransformError);
-      expect(() => filterBody(body, "claude")).toThrow(
-        /Invalid agent-id '1invalid' in tag at line 2/,
-      );
+      expect(() => filterBody(body, "claude")).toThrow(/Invalid agent-id '1invalid' in tag at line 2/);
     });
 
     // --- Расширение 3a: невалидный agent-id с заглавными буквами ---
     it("выбрасывает TransformError при невалидном agent-id с заглавными буквами", () => {
-      const body = [
-        "<!-- agent:Claude -->",
-        "Content.",
-        "<!-- /agent:Claude -->",
-      ].join("\n");
+      const body = ["<!-- agent:Claude -->", "Content.", "<!-- /agent:Claude -->"].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(TransformError);
-      expect(() => filterBody(body, "claude")).toThrow(
-        /Invalid agent-id 'Claude' in tag at line 1/,
-      );
+      expect(() => filterBody(body, "claude")).toThrow(/Invalid agent-id 'Claude' in tag at line 1/);
     });
 
     // --- Расширение 4a: agent-id не входит в allowedAgentIds ---
@@ -72,9 +58,7 @@ describe("InstructionsTranspiler", () => {
         "<!-- /agent:opencode -->",
       ].join("\n");
 
-      expect(() => filterBody(body, "claude", ["claude", "agentsmd"])).toThrow(
-        TransformError,
-      );
+      expect(() => filterBody(body, "claude", ["claude", "agentsmd"])).toThrow(TransformError);
       expect(() => filterBody(body, "claude", ["claude", "agentsmd"])).toThrow(
         /Invalid agent-id 'opencode' in instruction file: 'opencode' does not have its own instruction format/,
       );
@@ -93,9 +77,7 @@ describe("InstructionsTranspiler", () => {
         "<!-- /agent:agentsmd -->",
       ].join("\n");
 
-      expect(() =>
-        filterBody(body, "claude", ["claude", "agentsmd"]),
-      ).not.toThrow();
+      expect(() => filterBody(body, "claude", ["claude", "agentsmd"])).not.toThrow();
 
       const result = filterBody(body, "claude", ["claude", "agentsmd"]);
       expect(result).toContain("Claude content.");
@@ -104,11 +86,7 @@ describe("InstructionsTranspiler", () => {
 
     // --- Расширение 4a: allowedAgentIds не передан → валидация не выполняется ---
     it("не выполняет валидацию allowedAgentIds, если параметр не передан", () => {
-      const body = [
-        "<!-- agent:opencode -->",
-        "OpenCode content.",
-        "<!-- /agent:opencode -->",
-      ].join("\n");
+      const body = ["<!-- agent:opencode -->", "OpenCode content.", "<!-- /agent:opencode -->"].join("\n");
 
       // Без allowedAgentIds — ошибки быть не должно, даже для "opencode"
       expect(() => filterBody(body, "claude")).not.toThrow();
@@ -116,16 +94,10 @@ describe("InstructionsTranspiler", () => {
 
     // --- Расширение 5a: тег открытия без закрытия ---
     it("выбрасывает TransformError при отсутствии тега закрытия", () => {
-      const body = [
-        "Before.",
-        "<!-- agent:claude -->",
-        "Claude content without closing tag.",
-      ].join("\n");
+      const body = ["Before.", "<!-- agent:claude -->", "Claude content without closing tag."].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(TransformError);
-      expect(() => filterBody(body, "claude")).toThrow(
-        /Unmatched opening tag for agent:claude/,
-      );
+      expect(() => filterBody(body, "claude")).toThrow(/Unmatched opening tag for agent:claude/);
     });
 
     // --- Расширение 5b: тег закрытия без открытия ---
@@ -133,18 +105,12 @@ describe("InstructionsTranspiler", () => {
       const body = ["Before.", "<!-- /agent:claude -->", "After."].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(TransformError);
-      expect(() => filterBody(body, "claude")).toThrow(
-        /Unmatched closing tag for agent:claude/,
-      );
+      expect(() => filterBody(body, "claude")).toThrow(/Unmatched closing tag for agent:claude/);
     });
 
     // --- Расширение 5c: несовпадение идентификаторов в тегах ---
     it("выбрасывает TransformError при несовпадении идентификаторов в тегах открытия и закрытия", () => {
-      const body = [
-        "<!-- agent:claude -->",
-        "Content.",
-        "<!-- /agent:agentsmd -->",
-      ].join("\n");
+      const body = ["<!-- agent:claude -->", "Content.", "<!-- /agent:agentsmd -->"].join("\n");
 
       expect(() => filterBody(body, "claude")).toThrow(TransformError);
       expect(() => filterBody(body, "claude")).toThrow(
@@ -214,13 +180,7 @@ describe("InstructionsTranspiler", () => {
 
     // --- Дополнительные правила: Markdown code blocks не учитываются ---
     it("обрабатывает теги внутри Markdown code blocks как обычные теги", () => {
-      const body = [
-        "```",
-        "<!-- agent:claude -->",
-        "Code block content.",
-        "<!-- /agent:claude -->",
-        "```",
-      ].join("\n");
+      const body = ["```", "<!-- agent:claude -->", "Code block content.", "<!-- /agent:claude -->", "```"].join("\n");
 
       const result = filterBody(body, "claude");
 
@@ -230,18 +190,10 @@ describe("InstructionsTranspiler", () => {
 
     // --- Кросс-расширение: валидация 4a с конкретным примером "opencode" ---
     it("выбрасывает TransformError для opencode при allowedAgentIds=['claude','agentsmd'] с правильным сообщением", () => {
-      const body = [
-        "<!-- agent:opencode -->",
-        "OpenCode specific.",
-        "<!-- /agent:opencode -->",
-      ].join("\n");
+      const body = ["<!-- agent:opencode -->", "OpenCode specific.", "<!-- /agent:opencode -->"].join("\n");
 
-      expect(() =>
-        filterBody(body, "agentsmd", ["claude", "agentsmd"]),
-      ).toThrow(TransformError);
-      expect(() =>
-        filterBody(body, "agentsmd", ["claude", "agentsmd"]),
-      ).toThrow(
+      expect(() => filterBody(body, "agentsmd", ["claude", "agentsmd"])).toThrow(TransformError);
+      expect(() => filterBody(body, "agentsmd", ["claude", "agentsmd"])).toThrow(
         "Invalid agent-id 'opencode' in instruction file: 'opencode' does not have its own instruction format. Use the corresponding format-specific agent-id instead.",
       );
     });

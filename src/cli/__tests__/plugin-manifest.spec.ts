@@ -117,9 +117,7 @@ keywords:
       const pluginDir = path.join(tmpDir, "no-manifest");
       fs.mkdirSync(pluginDir, { recursive: true });
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        `Plugin manifest not found: ${pluginDir}/plugin.yml`,
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow(`Plugin manifest not found: ${pluginDir}/plugin.yml`);
     });
 
     // =================================================================
@@ -131,9 +129,7 @@ keywords:
       const pluginDir = path.join(tmpDir, "invalid-yaml");
       writeManifest(pluginDir, "name: [invalid yaml\n  : : :\n");
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        /Invalid plugin manifest:/,
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow(/Invalid plugin manifest:/);
     });
 
     // =================================================================
@@ -153,9 +149,7 @@ author:
 `,
       );
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        "Invalid plugin manifest: 'name' is required.",
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow("Invalid plugin manifest: 'name' is required.");
     });
 
     // =================================================================
@@ -353,9 +347,7 @@ author:
 `,
       );
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        /Invalid plugin manifest: 'name'/,
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow(/Invalid plugin manifest: 'name'/);
     });
 
     // § Валидация имени плагина: имя с цифрой в конце — валидно
@@ -412,9 +404,7 @@ author:
 `,
       );
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        "Invalid plugin manifest: 'version' is required.",
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow("Invalid plugin manifest: 'version' is required.");
     });
 
     // =================================================================
@@ -531,9 +521,7 @@ author:
 `,
       );
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        "Invalid plugin manifest: 'description' is required.",
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow("Invalid plugin manifest: 'description' is required.");
     });
 
     // =================================================================
@@ -574,9 +562,7 @@ description: "A plugin"
 `,
       );
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        "Invalid plugin manifest: 'author' is required.",
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow("Invalid plugin manifest: 'author' is required.");
     });
 
     // =================================================================
@@ -595,9 +581,7 @@ author: "John Doe"
 `,
       );
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        "Invalid plugin manifest: 'author' must be an object.",
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow("Invalid plugin manifest: 'author' must be an object.");
     });
 
     // =================================================================
@@ -701,9 +685,7 @@ author:
 `,
       );
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        "Invalid plugin manifest: 'author.url' must be a valid URL.",
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow("Invalid plugin manifest: 'author.url' must be a valid URL.");
     });
 
     // § Поведение шаг 8: author.url присутствует и валиден — не выбрасывает ошибку
@@ -787,9 +769,7 @@ author:
 `,
       );
 
-      expect(() => loadPluginManifest(pluginDir)).toThrow(
-        "Invalid plugin manifest: 'homepage' must be a valid URL.",
-      );
+      expect(() => loadPluginManifest(pluginDir)).toThrow("Invalid plugin manifest: 'homepage' must be a valid URL.");
     });
 
     // § Поведение шаг 10: homepage присутствует и валиден — возвращается в результате

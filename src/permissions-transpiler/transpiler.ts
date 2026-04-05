@@ -8,21 +8,13 @@ import * as path from "node:path";
 import yaml from "js-yaml";
 import { DiscoverError, WriteError } from "./errors.js";
 import { validatePermissionsContent } from "./validate.js";
-import type {
-  PermissionsAdapter,
-  PermissionsCanonicalFile,
-  TranspileResult,
-  WriteResult,
-} from "./types.js";
+import type { PermissionsAdapter, PermissionsCanonicalFile, TranspileResult, WriteResult } from "./types.js";
 
 /**
  * Deep merge двух объектов. Позднее значение (source) перезаписывает target.
  * Для вложенных объектов — рекурсивный merge.
  */
-function deepMerge(
-  target: Record<string, unknown>,
-  source: Record<string, unknown>,
-): Record<string, unknown> {
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
   const result = { ...target };
   for (const key of Object.keys(source)) {
     if (
@@ -33,10 +25,7 @@ function deepMerge(
       source[key] !== null &&
       !Array.isArray(source[key])
     ) {
-      result[key] = deepMerge(
-        result[key] as Record<string, unknown>,
-        source[key] as Record<string, unknown>,
-      );
+      result[key] = deepMerge(result[key] as Record<string, unknown>, source[key] as Record<string, unknown>);
     } else {
       result[key] = source[key];
     }
@@ -49,11 +38,7 @@ export class PermissionsTranspiler {
   private readonly adapters: PermissionsAdapter[];
   private readonly agloomDir: string;
 
-  constructor(
-    projectRoot: string,
-    adapters: PermissionsAdapter[],
-    agloomDir: string = ".agloom",
-  ) {
+  constructor(projectRoot: string, adapters: PermissionsAdapter[], agloomDir: string = ".agloom") {
     this.projectRoot = projectRoot;
     this.adapters = adapters;
     this.agloomDir = agloomDir;
@@ -64,16 +49,8 @@ export class PermissionsTranspiler {
    * Spec: § Обнаружение канонического файла
    */
   discover(): PermissionsCanonicalFile | null {
-    const ymlPath = path.join(
-      this.projectRoot,
-      this.agloomDir,
-      "permissions.yml",
-    );
-    const jsonPath = path.join(
-      this.projectRoot,
-      this.agloomDir,
-      "permissions.json",
-    );
+    const ymlPath = path.join(this.projectRoot, this.agloomDir, "permissions.yml");
+    const jsonPath = path.join(this.projectRoot, this.agloomDir, "permissions.json");
 
     // Шаги 1-2: проверить наличие файлов
     const ymlExists = fs.existsSync(ymlPath);
@@ -93,10 +70,7 @@ export class PermissionsTranspiler {
 
     const isYaml = ymlExists;
     const filePath = isYaml ? ymlPath : jsonPath;
-    const relativePath = path.join(
-      this.agloomDir,
-      isYaml ? "permissions.yml" : "permissions.json",
-    );
+    const relativePath = path.join(this.agloomDir, isYaml ? "permissions.yml" : "permissions.json");
 
     // Шаг 4: прочитать содержимое
     let raw: string;
@@ -104,9 +78,7 @@ export class PermissionsTranspiler {
       raw = fs.readFileSync(filePath, "utf-8");
     } catch (err) {
       // Расширение 4a
-      throw new DiscoverError(
-        `Failed to read ${relativePath}: ${(err as Error).message}`,
-      );
+      throw new DiscoverError(`Failed to read ${relativePath}: ${(err as Error).message}`);
     }
 
     // Шаг 5: распарсить
@@ -116,18 +88,14 @@ export class PermissionsTranspiler {
         parsed = yaml.load(raw);
       } catch (err) {
         // Расширение 5a
-        throw new DiscoverError(
-          `Failed to parse .agloom/permissions.yml: ${(err as Error).message}`,
-        );
+        throw new DiscoverError(`Failed to parse .agloom/permissions.yml: ${(err as Error).message}`);
       }
     } else {
       try {
         parsed = JSON.parse(raw);
       } catch (err) {
         // Расширение 5b
-        throw new DiscoverError(
-          `Failed to parse .agloom/permissions.json: ${(err as Error).message}`,
-        );
+        throw new DiscoverError(`Failed to parse .agloom/permissions.json: ${(err as Error).message}`);
       }
     }
 
@@ -220,10 +188,7 @@ export class PermissionsTranspiler {
               const existing = JSON.parse(mergedFiles.get(file.relativePath)!);
               const incoming = JSON.parse(file.content);
               const merged = deepMerge(existing, incoming);
-              mergedFiles.set(
-                file.relativePath,
-                JSON.stringify(merged, null, 2) + "\n",
-              );
+              mergedFiles.set(file.relativePath, JSON.stringify(merged, null, 2) + "\n");
             } catch {
               // If parse fails, overwrite
               mergedFiles.set(file.relativePath, file.content);
@@ -267,11 +232,7 @@ export class PermissionsTranspiler {
         written.push(relativePath);
       } catch (err) {
         // Расширение 5a: ошибка записи
-        errors.push(
-          new WriteError(
-            `Failed to write ${relativePath}: ${(err as Error).message}`,
-          ),
-        );
+        errors.push(new WriteError(`Failed to write ${relativePath}: ${(err as Error).message}`));
       }
     }
 

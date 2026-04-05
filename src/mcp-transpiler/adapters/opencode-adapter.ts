@@ -17,9 +17,7 @@ export class OpenCodeMcpAdapter implements McpAdapter {
     const mcpSection: Record<string, unknown> = {};
 
     // Шаг 2: для каждого сервера — Build Base Server Config
-    for (const [serverId, serverConfig] of Object.entries(
-      file.content.mcpServers,
-    )) {
+    for (const [serverId, serverConfig] of Object.entries(file.content.mcpServers)) {
       mcpSection[serverId] = buildBaseServerConfig(serverConfig);
     }
 

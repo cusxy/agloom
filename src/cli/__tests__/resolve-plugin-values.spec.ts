@@ -176,9 +176,7 @@ describe("CLI", () => {
         unknown_key: "value",
       };
 
-      expect(() =>
-        resolvePluginValues(declarations, providedValues, {}),
-      ).toThrow(
+      expect(() => resolvePluginValues(declarations, providedValues, {})).toThrow(
         "Unknown plugin value: 'unknown_key'. Declared variables: team_name.",
       );
     });
@@ -201,9 +199,7 @@ describe("CLI", () => {
         api_token: "my-secret-token",
       };
 
-      expect(() =>
-        resolvePluginValues(declarations, providedValues, {}),
-      ).toThrow(
+      expect(() => resolvePluginValues(declarations, providedValues, {})).toThrow(
         "Sensitive variable 'api_token' must not be set inline. Use ${env:VAR_NAME} to reference an environment variable.",
       );
     });
@@ -282,9 +278,7 @@ describe("CLI", () => {
         api_url: "${env:API_URL}",
       };
 
-      expect(() =>
-        resolvePluginValues(declarations, providedValues, {}),
-      ).toThrow(
+      expect(() => resolvePluginValues(declarations, providedValues, {})).toThrow(
         "Undefined environment variable: 'API_URL' in value for variable 'api_url'.",
       );
     });

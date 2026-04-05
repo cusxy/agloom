@@ -49,10 +49,7 @@ describe("ClaudeMcpAdapter", () => {
 
       const parsed = JSON.parse(files[0].content);
       expect(parsed.mcpServers.context7.command).toBe("npx");
-      expect(parsed.mcpServers.context7.args).toEqual([
-        "-y",
-        "@upstash/context7-mcp@latest",
-      ]);
+      expect(parsed.mcpServers.context7.args).toEqual(["-y", "@upstash/context7-mcp@latest"]);
     });
 
     // --- Трансформация: шаг 3 -- JSON с отступом 2 пробела и завершающим переводом строки ---
@@ -87,10 +84,7 @@ describe("ClaudeMcpAdapter", () => {
       const parsed = JSON.parse(files[0].content);
       expect(parsed.mcpServers.filesystem.includeTools).toBeUndefined();
       expect(parsed.mcpServers.filesystem.command).toBe("npx");
-      expect(parsed.mcpServers.filesystem.args).toEqual([
-        "-y",
-        "@mcp/server-filesystem",
-      ]);
+      expect(parsed.mcpServers.filesystem.args).toEqual(["-y", "@mcp/server-filesystem"]);
     });
 
     it("отбрасывает excludeTools из выходного файла", () => {
@@ -181,10 +175,7 @@ describe("ClaudeMcpAdapter", () => {
       );
 
       const parsed = JSON.parse(files[0].content);
-      expect(parsed.mcpServers.filesystem.args).toEqual([
-        "-y",
-        "@mcp/server-filesystem",
-      ]);
+      expect(parsed.mcpServers.filesystem.args).toEqual(["-y", "@mcp/server-filesystem"]);
       expect(parsed.mcpServers.filesystem.env).toEqual({
         ROOT_DIR: "/home/user/project",
       });
@@ -295,10 +286,7 @@ describe("OpenCodeMcpAdapter", () => {
       expect(parsed.mcp).toBeDefined();
       expect(parsed.mcp.context7).toBeDefined();
       expect(parsed.mcp.context7.command).toBe("npx");
-      expect(parsed.mcp.context7.args).toEqual([
-        "-y",
-        "@upstash/context7-mcp@latest",
-      ]);
+      expect(parsed.mcp.context7.args).toEqual(["-y", "@upstash/context7-mcp@latest"]);
     });
 
     // --- Трансформация: шаг 4 -- JSON с отступом 2 пробела и завершающим переводом строки ---

@@ -19,9 +19,7 @@ describe("ClaudeAdapter", () => {
     it('генерирует CLAUDE.md из AGLOOM.md в корне проекта (тип "root")', () => {
       const adapter = new ClaudeAdapter();
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", "General instructions."),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", "General instructions.")]);
 
       expect(files).toHaveLength(1);
       expect(files[0].relativePath).toBe("CLAUDE.md");
@@ -32,13 +30,7 @@ describe("ClaudeAdapter", () => {
     it('генерирует CLAUDE.md в подпапке из AGLOOM.md в подпапке (тип "directory")', () => {
       const adapter = new ClaudeAdapter();
 
-      const files = adapter.transpile([
-        makeCanonicalFile(
-          "src/module/AGLOOM.md",
-          "directory",
-          "Module instructions.",
-        ),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("src/module/AGLOOM.md", "directory", "Module instructions.")]);
 
       expect(files).toHaveLength(1);
       expect(files[0].relativePath).toBe("src/module/CLAUDE.md");
@@ -52,9 +44,7 @@ describe("ClaudeAdapter", () => {
     it('НЕ генерирует файлы для типа "local" (тип удалён из спецификации)', () => {
       const adapter = new ClaudeAdapter();
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.local.md", "local", "Personal settings."),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.local.md", "local", "Personal settings.")]);
 
       expect(files).toHaveLength(0);
     });
@@ -66,11 +56,7 @@ describe("ClaudeAdapter", () => {
       const adapter = new ClaudeAdapter();
 
       const files = adapter.transpile([
-        makeCanonicalFile(
-          "src/feature/AGLOOM.local.md",
-          "directory-local",
-          "Feature local settings.",
-        ),
+        makeCanonicalFile("src/feature/AGLOOM.local.md", "directory-local", "Feature local settings."),
       ]);
 
       expect(files).toHaveLength(0);
@@ -86,11 +72,7 @@ describe("ClaudeAdapter", () => {
         makeCanonicalFile("AGLOOM.md", "root", "Root."),
         makeCanonicalFile("src/AGLOOM.md", "directory", "Dir."),
         makeCanonicalFile("AGLOOM.local.md", "local", "Local."),
-        makeCanonicalFile(
-          "src/AGLOOM.local.md",
-          "directory-local",
-          "Dir local.",
-        ),
+        makeCanonicalFile("src/AGLOOM.local.md", "directory-local", "Dir local."),
       ]);
 
       // Только root и directory обработаны, local и directory-local игнорированы
@@ -105,12 +87,9 @@ describe("ClaudeAdapter", () => {
     // --- Трансформация: шаг 4 — контент берётся из file.content напрямую ---
     it("использует file.content напрямую как содержимое выходного файла", () => {
       const adapter = new ClaudeAdapter();
-      const originalContent =
-        "# Instructions\n\nMultiline content with **markdown**.";
+      const originalContent = "# Instructions\n\nMultiline content with **markdown**.";
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", originalContent),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", originalContent)]);
 
       expect(files[0].content).toBe(originalContent);
     });
@@ -141,9 +120,7 @@ describe("ClaudeAdapter", () => {
         "Body content.",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", content),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]);
 
       expect(files).toHaveLength(1);
       // Если transformContent вызван, override будет применён
@@ -166,9 +143,7 @@ describe("ClaudeAdapter", () => {
         "<!-- /agent:agentsmd -->",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeCanonicalFile("AGLOOM.md", "root", content),
-      ]);
+      const files = adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]);
 
       expect(files).toHaveLength(1);
       // Если transformContent вызван, claude секция раскрыта, agentsmd удалена
@@ -181,17 +156,11 @@ describe("ClaudeAdapter", () => {
     it("пробрасывает TransformError от transformContent к вызывающему коду", () => {
       const adapter = new ClaudeAdapter();
 
-      const content = [
-        "---",
-        "title: Test",
-        "override: not-an-object",
-        "---",
-        "Body.",
-      ].join("\n");
+      const content = ["---", "title: Test", "override: not-an-object", "---", "Body."].join("\n");
 
-      expect(() =>
-        adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]),
-      ).toThrow(/Override must be an object/);
+      expect(() => adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)])).toThrow(
+        /Override must be an object/,
+      );
     });
 
     // --- Конструктор: allowedAgentIds передаётся и используется ---
@@ -207,9 +176,9 @@ describe("ClaudeAdapter", () => {
       ].join("\n");
 
       // "opencode" не входит в allowedAgentIds — должна быть ошибка
-      expect(() =>
-        adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)]),
-      ).toThrow(/Invalid agent-id 'opencode'/);
+      expect(() => adapter.transpile([makeCanonicalFile("AGLOOM.md", "root", content)])).toThrow(
+        /Invalid agent-id 'opencode'/,
+      );
     });
   });
 });

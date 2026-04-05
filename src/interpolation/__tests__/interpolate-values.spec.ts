@@ -30,8 +30,7 @@ describe("Interpolation", () => {
 
     // § Поведение шаг 7: несколько ${values:*} в одной строке
     it("подставляет несколько ${values:*} в одной строке", () => {
-      const content =
-        "Team: ${values:team_name}, Command: ${values:lint_command}";
+      const content = "Team: ${values:team_name}, Command: ${values:lint_command}";
       const values: Record<string, string> = {
         team_name: "platform",
         lint_command: "pnpm run lint",
@@ -67,14 +66,7 @@ describe("Interpolation", () => {
 
       const result = interpolate(content, variables, env, values);
 
-      expect(result).toBe(
-        [
-          "Root: .claude",
-          "Env: myapp",
-          "Team: platform",
-          "Escaped: ${values:team_name}",
-        ].join("\n"),
-      );
+      expect(result).toBe(["Root: .claude", "Env: myapp", "Team: platform", "Escaped: ${values:team_name}"].join("\n"));
     });
 
     // =================================================================
@@ -85,12 +77,8 @@ describe("Interpolation", () => {
     it('выбрасывает InterpolationError "Unknown values variable: {NAME}" при неизвестной переменной', () => {
       const content = "Value: ${values:nonexistent}";
 
-      expect(() => interpolate(content, {}, {}, {})).toThrow(
-        InterpolationError,
-      );
-      expect(() => interpolate(content, {}, {}, {})).toThrow(
-        "Unknown values variable: nonexistent",
-      );
+      expect(() => interpolate(content, {}, {}, {})).toThrow(InterpolationError);
+      expect(() => interpolate(content, {}, {}, {})).toThrow("Unknown values variable: nonexistent");
     });
 
     // § Расширения 7a: values не передан (undefined/default) → InterpolationError
@@ -98,9 +86,7 @@ describe("Interpolation", () => {
       const content = "Value: ${values:team_name}";
 
       expect(() => interpolate(content, {}, {})).toThrow(InterpolationError);
-      expect(() => interpolate(content, {}, {})).toThrow(
-        "Unknown values variable: team_name",
-      );
+      expect(() => interpolate(content, {}, {})).toThrow("Unknown values variable: team_name");
     });
 
     // =================================================================
@@ -165,9 +151,7 @@ describe("Interpolation", () => {
       const valuesPluginA: Record<string, string> = { team_a: "alpha" };
 
       // Plugin A не имеет доступа к team_b
-      expect(() => interpolate(content, {}, {}, valuesPluginA)).toThrow(
-        "Unknown values variable: team_b",
-      );
+      expect(() => interpolate(content, {}, {}, valuesPluginA)).toThrow("Unknown values variable: team_b");
     });
   });
 });

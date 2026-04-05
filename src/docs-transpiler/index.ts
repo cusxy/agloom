@@ -6,19 +6,11 @@
 import * as path from "node:path";
 import { ResourceConfigError } from "./errors.js";
 import { ResourceTranspiler } from "./transpiler.js";
-import type {
-  ResourceAdapter,
-  ResourceTranspilerConfig,
-  ResourceType,
-} from "./types.js";
+import type { ResourceAdapter, ResourceTranspilerConfig, ResourceType } from "./types.js";
 
 // Barrel exports
 export { ResourceTranspiler } from "./transpiler.js";
-export {
-  ResourceConfigError,
-  ResourceDiscoverError,
-  ResourceWriteError,
-} from "./errors.js";
+export { ResourceConfigError, ResourceDiscoverError, ResourceWriteError } from "./errors.js";
 export type {
   ResourceAdapter,
   ResourceFile,
@@ -52,9 +44,7 @@ function isResourceAdapter(value: unknown): value is ResourceAdapter {
  * 5. Валидировать, что resourceType равен "docs" или "schemas".
  * 6. Сохранить конфигурацию в экземпляре.
  */
-export function createResourceTranspiler(
-  config: ResourceTranspilerConfig,
-): ResourceTranspiler {
+export function createResourceTranspiler(config: ResourceTranspilerConfig): ResourceTranspiler {
   // Шаг 1: projectRoot должен быть абсолютным путём
   // Расширение 1a
   if (!path.isAbsolute(config.projectRoot)) {
@@ -71,9 +61,7 @@ export function createResourceTranspiler(
   // Расширение 3a
   for (let i = 0; i < config.adapters.length; i++) {
     if (!isResourceAdapter(config.adapters[i])) {
-      throw new ResourceConfigError(
-        `Adapter at index ${i} does not implement ResourceAdapter interface`,
-      );
+      throw new ResourceConfigError(`Adapter at index ${i} does not implement ResourceAdapter interface`);
     }
   }
 
@@ -90,19 +78,12 @@ export function createResourceTranspiler(
   // Шаг 5: resourceType должен быть "docs" или "schemas"
   // Расширение 5a
   if (config.resourceType !== "docs" && config.resourceType !== "schemas") {
-    throw new ResourceConfigError(
-      `Invalid resourceType: ${config.resourceType}`,
-    );
+    throw new ResourceConfigError(`Invalid resourceType: ${config.resourceType}`);
   }
 
   // Шаг 6: создать экземпляр
   const agloomDir = config.agloomDir ?? ".agloom";
-  return new ResourceTranspiler(
-    config.projectRoot,
-    config.adapters,
-    agloomDir,
-    config.resourceType,
-  );
+  return new ResourceTranspiler(config.projectRoot, config.adapters, agloomDir, config.resourceType);
 }
 
 /**

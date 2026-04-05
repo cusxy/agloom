@@ -41,10 +41,7 @@ describe("InstructionsTranspiler", () => {
       const subDir = path.join(tmpDir, "src", "module");
       fs.mkdirSync(subDir, { recursive: true });
       fs.writeFileSync(path.join(subDir, "AGLOOM.md"), "directory content");
-      fs.writeFileSync(
-        path.join(subDir, "AGLOOM.local.md"),
-        "directory-local content",
-      );
+      fs.writeFileSync(path.join(subDir, "AGLOOM.local.md"), "directory-local content");
 
       const transpiler = createInstructionsTranspiler({
         projectRoot: tmpDir,
@@ -80,10 +77,7 @@ describe("InstructionsTranspiler", () => {
     it("НЕ обнаруживает AGLOOM.local.md в подпапках (тип directory-local удалён)", () => {
       const subDir = path.join(tmpDir, "src", "feature");
       fs.mkdirSync(subDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(subDir, "AGLOOM.local.md"),
-        "feature local content",
-      );
+      fs.writeFileSync(path.join(subDir, "AGLOOM.local.md"), "feature local content");
 
       const transpiler = createInstructionsTranspiler({
         projectRoot: tmpDir,
@@ -102,10 +96,7 @@ describe("InstructionsTranspiler", () => {
       const nmDir = path.join(tmpDir, "node_modules", "pkg");
       fs.mkdirSync(nmDir, { recursive: true });
       fs.writeFileSync(path.join(nmDir, "AGLOOM.md"), "should be ignored");
-      fs.writeFileSync(
-        path.join(nmDir, "AGLOOM.local.md"),
-        "should be ignored",
-      );
+      fs.writeFileSync(path.join(nmDir, "AGLOOM.local.md"), "should be ignored");
 
       const transpiler = createInstructionsTranspiler({
         projectRoot: tmpDir,
@@ -124,10 +115,7 @@ describe("InstructionsTranspiler", () => {
       const hiddenDir = path.join(tmpDir, ".hidden", "sub");
       fs.mkdirSync(hiddenDir, { recursive: true });
       fs.writeFileSync(path.join(hiddenDir, "AGLOOM.md"), "should be ignored");
-      fs.writeFileSync(
-        path.join(hiddenDir, "AGLOOM.local.md"),
-        "should be ignored",
-      );
+      fs.writeFileSync(path.join(hiddenDir, "AGLOOM.local.md"), "should be ignored");
 
       const transpiler = createInstructionsTranspiler({
         projectRoot: tmpDir,
@@ -147,10 +135,7 @@ describe("InstructionsTranspiler", () => {
       const distDir = path.join(tmpDir, "dist");
       fs.mkdirSync(distDir, { recursive: true });
       fs.writeFileSync(path.join(distDir, "AGLOOM.md"), "should be ignored");
-      fs.writeFileSync(
-        path.join(distDir, "AGLOOM.local.md"),
-        "should be ignored",
-      );
+      fs.writeFileSync(path.join(distDir, "AGLOOM.local.md"), "should be ignored");
 
       const transpiler = createInstructionsTranspiler({
         projectRoot: tmpDir,

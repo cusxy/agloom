@@ -6,12 +6,7 @@
  * Генерирует файл opencode.json с ключом "permission".
  */
 
-import type {
-  PermissionsAdapter,
-  PermissionsCanonicalFile,
-  PermissionsOutputFile,
-  PermissionRule,
-} from "../types.js";
+import type { PermissionsAdapter, PermissionsCanonicalFile, PermissionsOutputFile, PermissionRule } from "../types.js";
 
 /**
  * Трансформирует MCP-паттерн для OpenCode: ':' заменяется на '_'.

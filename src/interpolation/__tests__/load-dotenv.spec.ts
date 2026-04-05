@@ -48,10 +48,7 @@ describe("Interpolation", () => {
 
       process.env[envKey] = "existing-value";
 
-      fs.writeFileSync(
-        path.join(tmpDir, ".env"),
-        `${envKey}=dotenv-override\n`,
-      );
+      fs.writeFileSync(path.join(tmpDir, ".env"), `${envKey}=dotenv-override\n`);
 
       loadDotenv(tmpDir);
 
@@ -114,10 +111,7 @@ describe("Interpolation", () => {
       delete process.env[keyNew];
       process.env[keyExisting] = "keep-me";
 
-      fs.writeFileSync(
-        path.join(tmpDir, ".env"),
-        `${keyNew}=new-value\n${keyExisting}=override-value\n`,
-      );
+      fs.writeFileSync(path.join(tmpDir, ".env"), `${keyNew}=new-value\n${keyExisting}=override-value\n`);
 
       loadDotenv(tmpDir);
 

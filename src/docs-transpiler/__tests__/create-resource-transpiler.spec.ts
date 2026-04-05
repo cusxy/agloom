@@ -10,10 +10,7 @@ import { ResourceConfigError } from "../errors.js";
  * Стаб-адаптер, реализующий минимальный интерфейс ResourceAdapter.
  * Используется для тестирования фабричной функции, а не поведения адаптера.
  */
-function createStubAdapter(
-  agentId: string,
-  targetDir: string = `.${agentId}/docs`,
-) {
+function createStubAdapter(agentId: string, targetDir: string = `.${agentId}/docs`) {
   return {
     agentId,
     targetDir,
@@ -123,9 +120,7 @@ describe("ResourceTranspiler", () => {
           adapters: [invalidAdapter],
           resourceType: "docs",
         }),
-      ).toThrow(
-        "Adapter at index 0 does not implement ResourceAdapter interface",
-      );
+      ).toThrow("Adapter at index 0 does not implement ResourceAdapter interface");
     });
 
     // --- Расширение 3a: адаптер без targetDir ---
@@ -146,9 +141,7 @@ describe("ResourceTranspiler", () => {
           adapters: [invalidAdapter],
           resourceType: "docs",
         }),
-      ).toThrow(
-        "Adapter at index 0 does not implement ResourceAdapter interface",
-      );
+      ).toThrow("Adapter at index 0 does not implement ResourceAdapter interface");
     });
 
     // --- Расширение 4a: дублирующийся agentId ---

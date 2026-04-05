@@ -20,9 +20,7 @@ describe("SkillsTranspiler", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-skills-path-mapping-"),
-      );
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-skills-path-mapping-"));
     });
 
     afterEach(() => {
@@ -45,12 +43,8 @@ describe("SkillsTranspiler", () => {
       const results = transpiler.transpile();
 
       expect(results).toHaveLength(1);
-      expect(results[0].files[0].relativePath).toBe(
-        ".claude/skills/my-skill/SKILL.md",
-      );
-      expect(results[0].files[0].sourcePath).toBe(
-        ".agloom/skills/my-skill/SKILL.md",
-      );
+      expect(results[0].files[0].relativePath).toBe(".claude/skills/my-skill/SKILL.md");
+      expect(results[0].files[0].sourcePath).toBe(".agloom/skills/my-skill/SKILL.md");
     });
 
     // --- Спецификация: § Транспиляция, шаг 2 ---
@@ -60,10 +54,7 @@ describe("SkillsTranspiler", () => {
       fs.mkdirSync(path.join(skillDir, "src", "helpers"), { recursive: true });
       fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# Skill");
       fs.writeFileSync(path.join(skillDir, "src", "index.ts"), "export {};");
-      fs.writeFileSync(
-        path.join(skillDir, "src", "helpers", "format.ts"),
-        "export {};",
-      );
+      fs.writeFileSync(path.join(skillDir, "src", "helpers", "format.ts"), "export {};");
 
       const transpiler = createSkillsTranspiler({
         projectRoot: tmpDir,
@@ -98,9 +89,7 @@ describe("SkillsTranspiler", () => {
       const results = transpiler.transpile();
 
       expect(results).toHaveLength(1);
-      expect(results[0].files[0].relativePath).toBe(
-        ".claude/skills/demo-skill/SKILL.md",
-      );
+      expect(results[0].files[0].relativePath).toBe(".claude/skills/demo-skill/SKILL.md");
       expect(results[0].files[0].sourcePath).toBe("skills/demo-skill/SKILL.md");
     });
 
@@ -124,14 +113,10 @@ describe("SkillsTranspiler", () => {
       expect(results).toHaveLength(2);
 
       const claudeResult = results.find((r) => r.agentId === "claude");
-      expect(claudeResult!.files[0].relativePath).toBe(
-        ".claude/skills/my-skill/SKILL.md",
-      );
+      expect(claudeResult!.files[0].relativePath).toBe(".claude/skills/my-skill/SKILL.md");
 
       const opencodeResult = results.find((r) => r.agentId === "opencode");
-      expect(opencodeResult!.files[0].relativePath).toBe(
-        ".opencode/skills/my-skill/SKILL.md",
-      );
+      expect(opencodeResult!.files[0].relativePath).toBe(".opencode/skills/my-skill/SKILL.md");
     });
 
     // --- Спецификация: § Транспиляция, шаг 2 ---
@@ -150,12 +135,8 @@ describe("SkillsTranspiler", () => {
       const results = transpiler.transpile();
 
       expect(results).toHaveLength(1);
-      expect(results[0].files[0].relativePath).toBe(
-        ".claude/skills/my-skill/SKILL.md",
-      );
-      expect(results[0].files[0].sourcePath).toBe(
-        "custom-dir/skills/my-skill/SKILL.md",
-      );
+      expect(results[0].files[0].relativePath).toBe(".claude/skills/my-skill/SKILL.md");
+      expect(results[0].files[0].sourcePath).toBe("custom-dir/skills/my-skill/SKILL.md");
     });
   });
 });

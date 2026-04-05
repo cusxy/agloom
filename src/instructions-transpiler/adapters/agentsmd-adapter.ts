@@ -29,19 +29,11 @@ export class AgentsMdAdapter implements Adapter {
     const output: OutputFile[] = [];
 
     // Шаг 1: отфильтровать файлы типов root и directory
-    const relevantFiles = files.filter(
-      (f) => f.type === "root" || f.type === "directory",
-    );
+    const relevantFiles = files.filter((f) => f.type === "root" || f.type === "directory");
 
     for (const file of relevantFiles) {
       // Шаг 2: трансформация контента для agentId = "agentsmd"
-      const content = transformContent(
-        file.content,
-        "agentsmd",
-        this.allowedAgentIds,
-        this.variables,
-        this.values,
-      );
+      const content = transformContent(file.content, "agentsmd", this.allowedAgentIds, this.variables, this.values);
 
       // Шаг 3: заменить AGLOOM.md → AGENTS.md
       const relativePath = file.relativePath.replace("AGLOOM.md", "AGENTS.md");

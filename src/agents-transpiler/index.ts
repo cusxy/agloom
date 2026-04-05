@@ -18,12 +18,7 @@ export { CodexAgentAdapter } from "./adapters/codex-adapter.js";
 export { AgentsTranspiler } from "./transpiler.js";
 export { transformContent } from "./transform-content.js";
 export { filterBody } from "./filter-body.js";
-export {
-  AgentConfigError,
-  AgentDiscoverError,
-  AgentTransformError,
-  AgentWriteError,
-} from "./errors.js";
+export { AgentConfigError, AgentDiscoverError, AgentTransformError, AgentWriteError } from "./errors.js";
 export type {
   AgentAdapter,
   AgentDefinition,
@@ -42,11 +37,7 @@ function isAgentAdapter(value: unknown): value is AgentAdapter {
     return false;
   }
   const obj = value as Record<string, unknown>;
-  return (
-    typeof obj.agentId === "string" &&
-    typeof obj.targetDir === "string" &&
-    typeof obj.transpile === "function"
-  );
+  return typeof obj.agentId === "string" && typeof obj.targetDir === "string" && typeof obj.transpile === "function";
 }
 
 /**
@@ -59,9 +50,7 @@ function isAgentAdapter(value: unknown): value is AgentAdapter {
  * 4. Валидировать, что значения agentId всех адаптеров уникальны.
  * 5. Сохранить конфигурацию в экземпляре.
  */
-export function createAgentsTranspiler(
-  config: AgentsTranspilerConfig,
-): AgentsTranspiler {
+export function createAgentsTranspiler(config: AgentsTranspilerConfig): AgentsTranspiler {
   // Шаг 1: projectRoot должен быть абсолютным путём
   // Расширение 1a
   if (!path.isAbsolute(config.projectRoot)) {
@@ -78,9 +67,7 @@ export function createAgentsTranspiler(
   // Расширение 3a
   for (let i = 0; i < config.adapters.length; i++) {
     if (!isAgentAdapter(config.adapters[i])) {
-      throw new AgentConfigError(
-        `Adapter at index ${i} does not implement AgentAdapter interface`,
-      );
+      throw new AgentConfigError(`Adapter at index ${i} does not implement AgentAdapter interface`);
     }
   }
 
@@ -95,9 +82,5 @@ export function createAgentsTranspiler(
   }
 
   // Шаг 5: создать экземпляр
-  return new AgentsTranspiler(
-    config.projectRoot,
-    config.adapters,
-    config.agloomDir,
-  );
+  return new AgentsTranspiler(config.projectRoot, config.adapters, config.agloomDir);
 }

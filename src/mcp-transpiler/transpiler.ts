@@ -9,21 +9,13 @@ import yaml from "js-yaml";
 import { interpolate } from "../interpolation/index.js";
 import { DiscoverError, WriteError } from "./errors.js";
 import { validateCanonicalContent } from "./validate.js";
-import type {
-  McpAdapter,
-  McpCanonicalFile,
-  TranspileResult,
-  WriteResult,
-} from "./types.js";
+import type { McpAdapter, McpCanonicalFile, TranspileResult, WriteResult } from "./types.js";
 
 /**
  * Deep merge двух объектов. Позднее значение (source) перезаписывает target.
  * Для вложенных объектов — рекурсивный merge.
  */
-function deepMerge(
-  target: Record<string, unknown>,
-  source: Record<string, unknown>,
-): Record<string, unknown> {
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
   const result = { ...target };
   for (const key of Object.keys(source)) {
     if (
@@ -34,10 +26,7 @@ function deepMerge(
       source[key] !== null &&
       !Array.isArray(source[key])
     ) {
-      result[key] = deepMerge(
-        result[key] as Record<string, unknown>,
-        source[key] as Record<string, unknown>,
-      );
+      result[key] = deepMerge(result[key] as Record<string, unknown>, source[key] as Record<string, unknown>);
     } else {
       result[key] = source[key];
     }
@@ -50,11 +39,7 @@ export class McpTranspiler {
   private readonly adapters: McpAdapter[];
   private readonly agloomDir: string;
 
-  constructor(
-    projectRoot: string,
-    adapters: McpAdapter[],
-    agloomDir: string = ".agloom",
-  ) {
+  constructor(projectRoot: string, adapters: McpAdapter[], agloomDir: string = ".agloom") {
     this.projectRoot = projectRoot;
     this.adapters = adapters;
     this.agloomDir = agloomDir;
@@ -75,9 +60,7 @@ export class McpTranspiler {
     // Расширение 3a: оба файла существуют
     if (ymlExists && jsonExists) {
       const dir = this.agloomDir;
-      throw new DiscoverError(
-        `Both ${dir}/mcp.yml and ${dir}/mcp.json exist. Remove one to resolve the conflict.`,
-      );
+      throw new DiscoverError(`Both ${dir}/mcp.yml and ${dir}/mcp.json exist. Remove one to resolve the conflict.`);
     }
 
     // Расширение 3b: ни один файл не обнаружен
@@ -87,10 +70,7 @@ export class McpTranspiler {
 
     const isYaml = ymlExists;
     const filePath = isYaml ? ymlPath : jsonPath;
-    const relativePath = path.join(
-      this.agloomDir,
-      isYaml ? "mcp.yml" : "mcp.json",
-    );
+    const relativePath = path.join(this.agloomDir, isYaml ? "mcp.yml" : "mcp.json");
 
     // Шаг 4: прочитать содержимое
     let raw: string;
@@ -98,9 +78,7 @@ export class McpTranspiler {
       raw = fs.readFileSync(filePath, "utf-8");
     } catch (err) {
       // Расширение 4a
-      throw new DiscoverError(
-        `Failed to read ${relativePath}: ${(err as Error).message}`,
-      );
+      throw new DiscoverError(`Failed to read ${relativePath}: ${(err as Error).message}`);
     }
 
     // Шаг 5: распарсить
@@ -110,18 +88,14 @@ export class McpTranspiler {
         parsed = yaml.load(raw);
       } catch (err) {
         // Расширение 5a
-        throw new DiscoverError(
-          `Failed to parse .agloom/mcp.yml: ${(err as Error).message}`,
-        );
+        throw new DiscoverError(`Failed to parse .agloom/mcp.yml: ${(err as Error).message}`);
       }
     } else {
       try {
         parsed = JSON.parse(raw);
       } catch (err) {
         // Расширение 5b
-        throw new DiscoverError(
-          `Failed to parse .agloom/mcp.json: ${(err as Error).message}`,
-        );
+        throw new DiscoverError(`Failed to parse .agloom/mcp.json: ${(err as Error).message}`);
       }
     }
 
@@ -219,18 +193,9 @@ export class McpTranspiler {
         // Interpolate content with agloom vars, env, and values
         let interpolatedContent: string;
         try {
-          interpolatedContent = interpolate(
-            rawFile.content,
-            vars,
-            undefined,
-            vals,
-          );
+          interpolatedContent = interpolate(rawFile.content, vars, undefined, vals);
         } catch (err) {
-          errors.push(
-            new WriteError(
-              `Interpolation failed for ${rawFile.relativePath}: ${(err as Error).message}`,
-            ),
-          );
+          errors.push(new WriteError(`Interpolation failed for ${rawFile.relativePath}: ${(err as Error).message}`));
           continue;
         }
         const file = { ...rawFile, content: interpolatedContent };
@@ -241,10 +206,7 @@ export class McpTranspiler {
               const existing = JSON.parse(mergedFiles.get(file.relativePath)!);
               const incoming = JSON.parse(file.content);
               const merged = deepMerge(existing, incoming);
-              mergedFiles.set(
-                file.relativePath,
-                JSON.stringify(merged, null, 2) + "\n",
-              );
+              mergedFiles.set(file.relativePath, JSON.stringify(merged, null, 2) + "\n");
             } catch {
               // If parse fails, overwrite
               mergedFiles.set(file.relativePath, file.content);
@@ -288,11 +250,7 @@ export class McpTranspiler {
         written.push(relativePath);
       } catch (err) {
         // Расширение 5a: ошибка записи
-        errors.push(
-          new WriteError(
-            `Failed to write ${relativePath}: ${(err as Error).message}`,
-          ),
-        );
+        errors.push(new WriteError(`Failed to write ${relativePath}: ${(err as Error).message}`));
       }
     }
 

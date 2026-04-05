@@ -46,10 +46,7 @@ describe("InstructionsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Проверяем, что файл действительно записан
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, "CLAUDE.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, "CLAUDE.md"), "utf-8");
       expect(writtenContent).toBe("Generated content.");
     });
 
@@ -75,10 +72,7 @@ describe("InstructionsTranspiler", () => {
 
       expect(writeResult.written).toContain("src/deep/nested/CLAUDE.md");
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, "src", "deep", "nested", "CLAUDE.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, "src", "deep", "nested", "CLAUDE.md"), "utf-8");
       expect(writtenContent).toBe("Nested content.");
     });
 
@@ -159,10 +153,7 @@ describe("InstructionsTranspiler", () => {
       // Файл claude адаптера записан
       expect(fs.existsSync(path.join(tmpDir, "CLAUDE.md"))).toBe(true);
       expect(writeResult.written).toContain("CLAUDE.md");
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, "CLAUDE.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, "CLAUDE.md"), "utf-8");
       expect(writtenContent).toBe("Should be written.");
 
       // Ошибки failing адаптера включены в результат
@@ -194,9 +185,7 @@ describe("InstructionsTranspiler", () => {
 
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(WriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Failed to write blocker\/CLAUDE\.md/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Failed to write blocker\/CLAUDE\.md/);
     });
 
     // --- Happy path: запись результатов нескольких адаптеров ---
@@ -241,10 +230,7 @@ describe("InstructionsTranspiler", () => {
         },
       ]);
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, "CLAUDE.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, "CLAUDE.md"), "utf-8");
       expect(writtenContent).toBe(unicodeContent);
     });
 
@@ -265,32 +251,23 @@ describe("InstructionsTranspiler", () => {
       const writeResult = transpiler.writeResults([
         {
           agentId: "claude",
-          files: [
-            { relativePath: "AGENTS.md", content: "Content from claude." },
-          ],
+          files: [{ relativePath: "AGENTS.md", content: "Content from claude." }],
           errors: [],
         },
         {
           agentId: "agentsmd",
-          files: [
-            { relativePath: "AGENTS.md", content: "Content from agentsmd." },
-          ],
+          files: [{ relativePath: "AGENTS.md", content: "Content from agentsmd." }],
           errors: [],
         },
       ]);
 
       // Файл должен быть записан только один раз
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, "AGENTS.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, "AGENTS.md"), "utf-8");
       // Первый встреченный — "Content from claude."
       expect(writtenContent).toBe("Content from claude.");
 
       // written должен содержать путь только один раз
-      const agentsMdCount = writeResult.written.filter(
-        (p) => p === "AGENTS.md",
-      ).length;
+      const agentsMdCount = writeResult.written.filter((p) => p === "AGENTS.md").length;
       expect(agentsMdCount).toBe(1);
 
       expect(writeResult.errors).toHaveLength(0);
@@ -306,24 +283,17 @@ describe("InstructionsTranspiler", () => {
       const writeResult = transpiler.writeResults([
         {
           agentId: "first",
-          files: [
-            { relativePath: "SHARED.md", content: "First adapter content." },
-          ],
+          files: [{ relativePath: "SHARED.md", content: "First adapter content." }],
           errors: [],
         },
         {
           agentId: "second",
-          files: [
-            { relativePath: "SHARED.md", content: "Second adapter content." },
-          ],
+          files: [{ relativePath: "SHARED.md", content: "Second adapter content." }],
           errors: [],
         },
       ]);
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, "SHARED.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, "SHARED.md"), "utf-8");
       expect(writtenContent).toBe("First adapter content.");
       expect(writeResult.written).toContain("SHARED.md");
     });
@@ -372,15 +342,10 @@ describe("InstructionsTranspiler", () => {
         },
       ]);
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, "CLAUDE.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, "CLAUDE.md"), "utf-8");
       expect(writtenContent).toBe("First occurrence.");
 
-      const claudeMdCount = writeResult.written.filter(
-        (p) => p === "CLAUDE.md",
-      ).length;
+      const claudeMdCount = writeResult.written.filter((p) => p === "CLAUDE.md").length;
       expect(claudeMdCount).toBe(1);
     });
   });

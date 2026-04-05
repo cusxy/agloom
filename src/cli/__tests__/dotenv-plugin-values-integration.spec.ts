@@ -19,9 +19,7 @@ describe("CLI Integration", () => {
     const envKeysToClean: string[] = [];
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-dotenv-plugin-values-"),
-      );
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-dotenv-plugin-values-"));
       pluginDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-dotenv-plugin-"));
       originalExitCode = process.exitCode;
     });
@@ -67,10 +65,7 @@ describe("CLI Integration", () => {
       // Overlay с ${values:api_token}
       const overlayDir = path.join(pluginDir, "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDir, "token-check.md"),
-        "Token: ${values:api_token}",
-      );
+      fs.writeFileSync(path.join(overlayDir, "token-check.md"), "Token: ${values:api_token}");
 
       // --- Project setup ---
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "Test instructions.");

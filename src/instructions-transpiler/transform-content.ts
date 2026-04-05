@@ -37,9 +37,7 @@ export function transformContent(
     parsed = matter(rawContent, {});
   } catch (err) {
     // Расширение 1a: ошибка парсинга
-    throw new TransformError(
-      `Failed to parse frontmatter: ${(err as Error).message}`,
-    );
+    throw new TransformError(`Failed to parse frontmatter: ${(err as Error).message}`);
   }
 
   const data: Record<string, unknown> = { ...parsed.data };
@@ -48,11 +46,7 @@ export function transformContent(
   if ("override" in data) {
     // Шаг 3: валидировать, что override — объект
     // Расширение 3a: значение override не является объектом
-    if (
-      typeof data.override !== "object" ||
-      data.override === null ||
-      Array.isArray(data.override)
-    ) {
+    if (typeof data.override !== "object" || data.override === null || Array.isArray(data.override)) {
       throw new TransformError("Override must be an object");
     }
 
@@ -64,11 +58,7 @@ export function transformContent(
 
       // Шаг 5: валидировать, что override[agentId] — объект
       // Расширение 5a
-      if (
-        typeof agentOverride !== "object" ||
-        agentOverride === null ||
-        Array.isArray(agentOverride)
-      ) {
+      if (typeof agentOverride !== "object" || agentOverride === null || Array.isArray(agentOverride)) {
         throw new TransformError(`Override for '${agentId}' must be an object`);
       }
 

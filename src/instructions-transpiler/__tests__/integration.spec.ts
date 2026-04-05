@@ -5,11 +5,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  createInstructionsTranspiler,
-  ClaudeAdapter,
-  AgentsMdAdapter,
-} from "../index.js";
+import { createInstructionsTranspiler, ClaudeAdapter, AgentsMdAdapter } from "../index.js";
 
 describe("InstructionsTranspiler", () => {
   describe("Integration — полный pipeline", () => {
@@ -30,10 +26,7 @@ describe("InstructionsTranspiler", () => {
       // Вход: создать каноническую структуру (только root и directory)
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "root instructions");
       fs.mkdirSync(path.join(tmpDir, "src", "module"), { recursive: true });
-      fs.writeFileSync(
-        path.join(tmpDir, "src", "module", "AGLOOM.md"),
-        "directory instructions",
-      );
+      fs.writeFileSync(path.join(tmpDir, "src", "module", "AGLOOM.md"), "directory instructions");
 
       // Поведение: шаги 1–3
       const transpiler = createInstructionsTranspiler({
@@ -47,17 +40,11 @@ describe("InstructionsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаги 5–6: CLAUDE.md в корне
-      const rootContent = fs.readFileSync(
-        path.join(tmpDir, "CLAUDE.md"),
-        "utf-8",
-      );
+      const rootContent = fs.readFileSync(path.join(tmpDir, "CLAUDE.md"), "utf-8");
       expect(rootContent).toBe("root instructions");
 
       // Шаги 7–8: src/module/CLAUDE.md
-      const dirContent = fs.readFileSync(
-        path.join(tmpDir, "src", "module", "CLAUDE.md"),
-        "utf-8",
-      );
+      const dirContent = fs.readFileSync(path.join(tmpDir, "src", "module", "CLAUDE.md"), "utf-8");
       expect(dirContent).toBe("directory instructions");
 
       // Результат: writeResult.written содержит два пути
@@ -88,10 +75,7 @@ describe("InstructionsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаг 5–6: AGENTS.md создан из AGLOOM.md
-      const agentsContent = fs.readFileSync(
-        path.join(tmpDir, "AGENTS.md"),
-        "utf-8",
-      );
+      const agentsContent = fs.readFileSync(path.join(tmpDir, "AGENTS.md"), "utf-8");
       expect(agentsContent).toBe("root instructions");
 
       // CLAUDE.md НЕ существует
@@ -126,17 +110,11 @@ describe("InstructionsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // CLAUDE.md создан с правильным содержимым
-      const claudeContent = fs.readFileSync(
-        path.join(tmpDir, "CLAUDE.md"),
-        "utf-8",
-      );
+      const claudeContent = fs.readFileSync(path.join(tmpDir, "CLAUDE.md"), "utf-8");
       expect(claudeContent).toBe("shared instructions");
 
       // AGENTS.md создан с правильным содержимым
-      const agentsContent = fs.readFileSync(
-        path.join(tmpDir, "AGENTS.md"),
-        "utf-8",
-      );
+      const agentsContent = fs.readFileSync(path.join(tmpDir, "AGENTS.md"), "utf-8");
       expect(agentsContent).toBe("shared instructions");
 
       // Результат: writeResult.written содержит CLAUDE.md и AGENTS.md

@@ -47,18 +47,12 @@ describe("CLI", () => {
       // Skills: .agloom/skills/my-skill/SKILL.md
       const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nSkill content.",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nSkill content.");
 
       // Agents: .agloom/agents/reviewer.md
       const agentDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentDir, "reviewer.md"),
-        "---\nname: reviewer\n---\nReviewer body.",
-      );
+      fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
     });
 
     afterEach(() => {

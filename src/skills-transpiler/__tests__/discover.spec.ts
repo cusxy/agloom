@@ -143,9 +143,7 @@ describe("SkillsTranspiler", () => {
 
       try {
         expect(() => transpiler.discover()).toThrow(SkillDiscoverError);
-        expect(() => transpiler.discover()).toThrow(
-          /Failed to scan directory \.agloom\/skills\//,
-        );
+        expect(() => transpiler.discover()).toThrow(/Failed to scan directory \.agloom\/skills\//);
       } finally {
         fs.chmodSync(skillsDir, 0o755);
       }
@@ -191,9 +189,7 @@ describe("SkillsTranspiler", () => {
 
       try {
         expect(() => transpiler.discover()).toThrow(SkillDiscoverError);
-        expect(() => transpiler.discover()).toThrow(
-          /Failed to scan skill directory/,
-        );
+        expect(() => transpiler.discover()).toThrow(/Failed to scan skill directory/);
       } finally {
         fs.chmodSync(restrictedSubDir, 0o755);
       }

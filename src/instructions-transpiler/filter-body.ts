@@ -29,11 +29,7 @@ const VALID_ID_RE = /^[a-z][a-z0-9-]*$/;
  * 9. Строки вне секций — сохранить без изменений.
  * 10. Собрать результирующие строки.
  */
-export function filterBody(
-  body: string,
-  agentId: string,
-  allowedAgentIds?: string[],
-): string {
+export function filterBody(body: string, agentId: string, allowedAgentIds?: string[]): string {
   const lines = body.split("\n");
   const result: string[] = [];
   let currentSection: { id: string } | null = null;
@@ -50,9 +46,7 @@ export function filterBody(
 
       // Расширение 3a: невалидный agent-id
       if (!VALID_ID_RE.test(id)) {
-        throw new TransformError(
-          `Invalid agent-id '${id}' in tag at line ${lineNum}`,
-        );
+        throw new TransformError(`Invalid agent-id '${id}' in tag at line ${lineNum}`);
       }
 
       // Расширение 4a: agent-id не входит в allowedAgentIds
@@ -64,9 +58,7 @@ export function filterBody(
 
       // Расширение 6a: вложенная секция
       if (currentSection !== null) {
-        throw new TransformError(
-          `Nested agent section detected: agent:${id} inside agent:${currentSection.id}`,
-        );
+        throw new TransformError(`Nested agent section detected: agent:${id} inside agent:${currentSection.id}`);
       }
 
       currentSection = { id };
@@ -78,9 +70,7 @@ export function filterBody(
 
       // Расширение 3a: невалидный agent-id
       if (!VALID_ID_RE.test(id)) {
-        throw new TransformError(
-          `Invalid agent-id '${id}' in tag at line ${lineNum}`,
-        );
+        throw new TransformError(`Invalid agent-id '${id}' in tag at line ${lineNum}`);
       }
 
       // Расширение 5b: тег закрытия без открытия
@@ -90,9 +80,7 @@ export function filterBody(
 
       // Расширение 5c: несовпадение идентификаторов
       if (currentSection.id !== id) {
-        throw new TransformError(
-          `Mismatched closing tag: expected agent:${currentSection.id}, got agent:${id}`,
-        );
+        throw new TransformError(`Mismatched closing tag: expected agent:${currentSection.id}, got agent:${id}`);
       }
 
       currentSection = null;
@@ -114,9 +102,7 @@ export function filterBody(
 
   // Расширение 5a: тег открытия без соответствующего закрытия
   if (currentSection !== null) {
-    throw new TransformError(
-      `Unmatched opening tag for agent:${currentSection.id}`,
-    );
+    throw new TransformError(`Unmatched opening tag for agent:${currentSection.id}`);
   }
 
   // Шаг 10: собрать результирующие строки

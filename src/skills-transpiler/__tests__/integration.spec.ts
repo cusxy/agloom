@@ -5,20 +5,14 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  createSkillsTranspiler,
-  ClaudeSkillAdapter,
-  OpenCodeSkillAdapter,
-} from "../index.js";
+import { createSkillsTranspiler, ClaudeSkillAdapter, OpenCodeSkillAdapter } from "../index.js";
 
 describe("SkillsTranspiler", () => {
   describe("Integration — полный pipeline", () => {
     let tmpDir: string;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-skills-integration-"),
-      );
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-skills-integration-"));
     });
 
     afterEach(() => {
@@ -30,15 +24,9 @@ describe("SkillsTranspiler", () => {
       // Вход: создать каноническую структуру
       const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: my-skill\n---\nSkill body",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "---\nname: my-skill\n---\nSkill body");
       fs.mkdirSync(path.join(skillDir, "helpers"), { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "helpers", "util.ts"),
-        "export const x = 1;",
-      );
+      fs.writeFileSync(path.join(skillDir, "helpers", "util.ts"), "export const x = 1;");
 
       // Поведение: шаги 1–3
       const transpiler = createSkillsTranspiler({
@@ -52,35 +40,20 @@ describe("SkillsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаги 5–6: SKILL.md побайтово совпадает
-      const sourceSkillContent = fs.readFileSync(
-        path.join(skillDir, "SKILL.md"),
-      );
-      const targetSkillContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
-      );
+      const sourceSkillContent = fs.readFileSync(path.join(skillDir, "SKILL.md"));
+      const targetSkillContent = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"));
       expect(targetSkillContent.equals(sourceSkillContent)).toBe(true);
 
       // Шаги 7–8: helpers/util.ts побайтово совпадает
-      const sourceHelperContent = fs.readFileSync(
-        path.join(skillDir, "helpers", "util.ts"),
-      );
+      const sourceHelperContent = fs.readFileSync(path.join(skillDir, "helpers", "util.ts"));
       const targetHelperContent = fs.readFileSync(
-        path.join(
-          tmpDir,
-          ".claude",
-          "skills",
-          "my-skill",
-          "helpers",
-          "util.ts",
-        ),
+        path.join(tmpDir, ".claude", "skills", "my-skill", "helpers", "util.ts"),
       );
       expect(targetHelperContent.equals(sourceHelperContent)).toBe(true);
 
       // Результат: writeResult.written содержит оба файла
       expect(writeResult.written).toContain(".claude/skills/my-skill/SKILL.md");
-      expect(writeResult.written).toContain(
-        ".claude/skills/my-skill/helpers/util.ts",
-      );
+      expect(writeResult.written).toContain(".claude/skills/my-skill/helpers/util.ts");
     });
 
     // --- IT-SKILL-02: Pipeline с несколькими skill-пакетами ---
@@ -106,16 +79,12 @@ describe("SkillsTranspiler", () => {
 
       // Шаги 5–6: alpha/SKILL.md побайтово совпадает
       const sourceAlpha = fs.readFileSync(path.join(alphaDir, "SKILL.md"));
-      const targetAlpha = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "alpha", "SKILL.md"),
-      );
+      const targetAlpha = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "alpha", "SKILL.md"));
       expect(targetAlpha.equals(sourceAlpha)).toBe(true);
 
       // Шаги 7–8: beta/SKILL.md побайтово совпадает
       const sourceBeta = fs.readFileSync(path.join(betaDir, "SKILL.md"));
-      const targetBeta = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "beta", "SKILL.md"),
-      );
+      const targetBeta = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "beta", "SKILL.md"));
       expect(targetBeta.equals(sourceBeta)).toBe(true);
 
       // Результат: writeResult.written содержит оба файла
@@ -143,15 +112,11 @@ describe("SkillsTranspiler", () => {
 
       // Шаг 5: .opencode/skills/my-skill/SKILL.md побайтово совпадает
       const sourceContent = fs.readFileSync(path.join(skillDir, "SKILL.md"));
-      const targetContent = fs.readFileSync(
-        path.join(tmpDir, ".opencode", "skills", "my-skill", "SKILL.md"),
-      );
+      const targetContent = fs.readFileSync(path.join(tmpDir, ".opencode", "skills", "my-skill", "SKILL.md"));
       expect(targetContent.equals(sourceContent)).toBe(true);
 
       // Результат: writeResult.written содержит целевой файл
-      expect(writeResult.written).toContain(
-        ".opencode/skills/my-skill/SKILL.md",
-      );
+      expect(writeResult.written).toContain(".opencode/skills/my-skill/SKILL.md");
     });
 
     // --- IT-SKILL-04: Pipeline при отсутствии каталога .agloom/skills/ ---
@@ -196,34 +161,24 @@ describe("SkillsTranspiler", () => {
 
       // Шаги 5–6: SKILL.md побайтово совпадает
       const sourceSkill = fs.readFileSync(path.join(skillDir, "SKILL.md"));
-      const targetSkill = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
-      );
+      const targetSkill = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"));
       expect(targetSkill.equals(sourceSkill)).toBe(true);
 
       // Шаги 7–8: docs/readme.md побайтово совпадает
       const sourceReadme = fs.readFileSync(path.join(docsDir, "readme.md"));
-      const targetReadme = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "docs", "readme.md"),
-      );
+      const targetReadme = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "docs", "readme.md"));
       expect(targetReadme.equals(sourceReadme)).toBe(true);
 
       // Результат: writeResult.written содержит оба файла
       expect(writeResult.written).toContain(".claude/skills/my-skill/SKILL.md");
-      expect(writeResult.written).toContain(
-        ".claude/skills/my-skill/docs/readme.md",
-      );
+      expect(writeResult.written).toContain(".claude/skills/my-skill/docs/readme.md");
     });
 
     // --- IT-SKILL-06: Pipeline с writeResults targetRoot ---
     it("IT-SKILL-06: writeResults записывает файлы в targetRoot, а не в projectRoot", () => {
       // Вход: создать sourceDir и targetDir
-      const sourceDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-skills-source-"),
-      );
-      const targetDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-skills-target-"),
-      );
+      const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-skills-source-"));
+      const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-skills-target-"));
 
       try {
         const skillDir = path.join(sourceDir, "skills", "my-skill");
@@ -246,22 +201,14 @@ describe("SkillsTranspiler", () => {
 
         // Шаги 5–6: файл в targetDir побайтово совпадает с исходным
         const sourceContent = fs.readFileSync(path.join(skillDir, "SKILL.md"));
-        const targetContent = fs.readFileSync(
-          path.join(targetDir, ".claude", "skills", "my-skill", "SKILL.md"),
-        );
+        const targetContent = fs.readFileSync(path.join(targetDir, ".claude", "skills", "my-skill", "SKILL.md"));
         expect(targetContent.equals(sourceContent)).toBe(true);
 
         // Шаг 7: файл НЕ существует в sourceDir
-        expect(
-          fs.existsSync(
-            path.join(sourceDir, ".claude", "skills", "my-skill", "SKILL.md"),
-          ),
-        ).toBe(false);
+        expect(fs.existsSync(path.join(sourceDir, ".claude", "skills", "my-skill", "SKILL.md"))).toBe(false);
 
         // Результат: writeResult.written содержит целевой файл
-        expect(writeResult.written).toContain(
-          ".claude/skills/my-skill/SKILL.md",
-        );
+        expect(writeResult.written).toContain(".claude/skills/my-skill/SKILL.md");
       } finally {
         fs.rmSync(sourceDir, { recursive: true, force: true });
         fs.rmSync(targetDir, { recursive: true, force: true });
@@ -271,25 +218,15 @@ describe("SkillsTranspiler", () => {
     // --- IT-SKILL-07: Pipeline с writeResults { targetRoot, variablesByAgentId } ---
     it("IT-SKILL-07: writeResults записывает в targetRoot и интерполирует .md файлы", () => {
       // Вход: создать sourceDir и targetDir
-      const sourceDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-skills-source-"),
-      );
-      const targetDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "agl-skills-target-"),
-      );
+      const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-skills-source-"));
+      const targetDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-skills-target-"));
 
       try {
         const skillDir = path.join(sourceDir, "skills", "my-skill");
         const helpersDir = path.join(skillDir, "helpers");
         fs.mkdirSync(helpersDir, { recursive: true });
-        fs.writeFileSync(
-          path.join(skillDir, "SKILL.md"),
-          "Root: ${agloom:ROOT_DIR}",
-        );
-        fs.writeFileSync(
-          path.join(helpersDir, "util.ts"),
-          "export const x = 1;",
-        );
+        fs.writeFileSync(path.join(skillDir, "SKILL.md"), "Root: ${agloom:ROOT_DIR}");
+        fs.writeFileSync(path.join(helpersDir, "util.ts"), "export const x = 1;");
 
         // Поведение: шаги 1–3
         const transpiler = createSkillsTranspiler({
@@ -307,33 +244,17 @@ describe("SkillsTranspiler", () => {
         expect(writeResult.errors).toHaveLength(0);
 
         // Шаги 5–6: SKILL.md интерполирован
-        const mdContent = fs.readFileSync(
-          path.join(targetDir, ".claude", "skills", "my-skill", "SKILL.md"),
-          "utf-8",
-        );
+        const mdContent = fs.readFileSync(path.join(targetDir, ".claude", "skills", "my-skill", "SKILL.md"), "utf-8");
         expect(mdContent).toBe("Root: .claude");
 
         // Шаги 7–8: util.ts скопирован побайтово
         const sourceTs = fs.readFileSync(path.join(helpersDir, "util.ts"));
-        const targetTs = fs.readFileSync(
-          path.join(
-            targetDir,
-            ".claude",
-            "skills",
-            "my-skill",
-            "helpers",
-            "util.ts",
-          ),
-        );
+        const targetTs = fs.readFileSync(path.join(targetDir, ".claude", "skills", "my-skill", "helpers", "util.ts"));
         expect(targetTs.equals(sourceTs)).toBe(true);
 
         // Результат: writeResult.written содержит оба файла
-        expect(writeResult.written).toContain(
-          ".claude/skills/my-skill/SKILL.md",
-        );
-        expect(writeResult.written).toContain(
-          ".claude/skills/my-skill/helpers/util.ts",
-        );
+        expect(writeResult.written).toContain(".claude/skills/my-skill/SKILL.md");
+        expect(writeResult.written).toContain(".claude/skills/my-skill/helpers/util.ts");
       } finally {
         fs.rmSync(sourceDir, { recursive: true, force: true });
         fs.rmSync(targetDir, { recursive: true, force: true });
@@ -346,14 +267,8 @@ describe("SkillsTranspiler", () => {
       const skillDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       const helpersDir = path.join(skillDir, "helpers");
       fs.mkdirSync(helpersDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillDir, "SKILL.md"),
-        "Agents: ${agloom:AGENTS_DIR}",
-      );
-      fs.writeFileSync(
-        path.join(helpersDir, "util.ts"),
-        "// ${agloom:AGENTS_DIR}",
-      );
+      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "Agents: ${agloom:AGENTS_DIR}");
+      fs.writeFileSync(path.join(helpersDir, "util.ts"), "// ${agloom:AGENTS_DIR}");
 
       // Поведение: шаги 1–3
       const transpiler = createSkillsTranspiler({
@@ -369,31 +284,17 @@ describe("SkillsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Шаги 5–6: SKILL.md интерполирован
-      const mdContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
-        "utf-8",
-      );
+      const mdContent = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"), "utf-8");
       expect(mdContent).toBe("Agents: .claude/agents");
 
       // Шаги 7–8: util.ts скопирован побайтово (без интерполяции)
       const sourceTs = fs.readFileSync(path.join(helpersDir, "util.ts"));
-      const targetTs = fs.readFileSync(
-        path.join(
-          tmpDir,
-          ".claude",
-          "skills",
-          "my-skill",
-          "helpers",
-          "util.ts",
-        ),
-      );
+      const targetTs = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "helpers", "util.ts"));
       expect(targetTs.equals(sourceTs)).toBe(true);
 
       // Результат: writeResult.written содержит оба файла
       expect(writeResult.written).toContain(".claude/skills/my-skill/SKILL.md");
-      expect(writeResult.written).toContain(
-        ".claude/skills/my-skill/helpers/util.ts",
-      );
+      expect(writeResult.written).toContain(".claude/skills/my-skill/helpers/util.ts");
     });
   });
 });

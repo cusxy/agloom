@@ -11,11 +11,7 @@
  */
 
 import { transformContent } from "../transform-content.js";
-import type {
-  AgentAdapter,
-  AgentDefinition,
-  AgentOutputFile,
-} from "../types.js";
+import type { AgentAdapter, AgentDefinition, AgentOutputFile } from "../types.js";
 
 export class KiloCodeAgentAdapter implements AgentAdapter {
   readonly agentId = "kilocode";
@@ -29,12 +25,7 @@ export class KiloCodeAgentAdapter implements AgentAdapter {
 
     for (const def of definitions) {
       // Шаг 1: трансформация контента для agentId = "kilocode"
-      const content = transformContent(
-        def.rawContent,
-        "kilocode",
-        this.variables,
-        this.values,
-      );
+      const content = transformContent(def.rawContent, "kilocode", this.variables, this.values);
 
       // Шаг 2: сформировать AgentOutputFile с definition.relativePath
       // Ремаппинг relativePath выполняется транспилером (§ Транспиляция, шаг 3)

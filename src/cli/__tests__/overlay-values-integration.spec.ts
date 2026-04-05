@@ -12,9 +12,7 @@ import type { LayerSource } from "../overlay-step.js";
 /**
  * Минимальный стаб AdapterRegistryEntry для тестов overlay.
  */
-function createTestEntry(
-  overrides: Partial<AdapterRegistryEntry> = {},
-): AdapterRegistryEntry {
+function createTestEntry(overrides: Partial<AdapterRegistryEntry> = {}): AdapterRegistryEntry {
   return {
     id: "test-adapter",
     description: "Test Adapter",
@@ -50,10 +48,7 @@ describe("CLI", () => {
       // Создаём overlay для плагина с ${values:team_name}
       const pluginOverlayDir = path.join(tmpDir, "plugin-overlay", "claude");
       fs.mkdirSync(pluginOverlayDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(pluginOverlayDir, "config.md"),
-        "Team: ${values:team_name}",
-      );
+      fs.writeFileSync(path.join(pluginOverlayDir, "config.md"), "Team: ${values:team_name}");
 
       const layers: LayerSource[] = [
         {
@@ -90,18 +85,12 @@ describe("CLI", () => {
       // Плагин A: overlay с ${values:name} = "alpha"
       const overlayDirA = path.join(tmpDir, "plugin-a-overlay", "claude");
       fs.mkdirSync(overlayDirA, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDirA, "settings.json"),
-        '{"source": "${values:name}"}',
-      );
+      fs.writeFileSync(path.join(overlayDirA, "settings.json"), '{"source": "${values:name}"}');
 
       // Плагин B: overlay с ${values:name} = "beta"
       const overlayDirB = path.join(tmpDir, "plugin-b-overlay", "claude");
       fs.mkdirSync(overlayDirB, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDirB, "settings.json"),
-        '{"plugin": "${values:name}"}',
-      );
+      fs.writeFileSync(path.join(overlayDirB, "settings.json"), '{"plugin": "${values:name}"}');
 
       const layers: LayerSource[] = [
         {
@@ -130,10 +119,7 @@ describe("CLI", () => {
 
       // settings.json подвержен deep merge: plugin-a создаёт {"source":"alpha"},
       // plugin-b добавляет {"plugin":"beta"} → merge = {"source":"alpha","plugin":"beta"}
-      const content = fs.readFileSync(
-        path.join(tmpDir, "settings.json"),
-        "utf-8",
-      );
+      const content = fs.readFileSync(path.join(tmpDir, "settings.json"), "utf-8");
       const parsed = JSON.parse(content);
       expect(parsed.source).toBe("alpha");
       expect(parsed.plugin).toBe("beta");
@@ -147,10 +133,7 @@ describe("CLI", () => {
 
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDir, "readme.md"),
-        "Project: ${values:project_name}",
-      );
+      fs.writeFileSync(path.join(overlayDir, "readme.md"), "Project: ${values:project_name}");
 
       const variables: Record<string, string> = {};
       const values: Record<string, string> = { project_name: "agloom" };
@@ -197,10 +180,7 @@ describe("CLI", () => {
       expect(outcome.errors).toEqual([]);
       expect(outcome.writtenCount).toBe(1);
 
-      const content = fs.readFileSync(
-        path.join(tmpDir, "combined.md"),
-        "utf-8",
-      );
+      const content = fs.readFileSync(path.join(tmpDir, "combined.md"), "utf-8");
       expect(content).toBe("Root: .claude, Env: production, Val: custom");
     });
 
@@ -212,10 +192,7 @@ describe("CLI", () => {
 
       const overlayDirPlugin = path.join(tmpDir, "plugin-overlay", "claude");
       fs.mkdirSync(overlayDirPlugin, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDirPlugin, "bad.md"),
-        "Missing: ${values:nonexistent}",
-      );
+      fs.writeFileSync(path.join(overlayDirPlugin, "bad.md"), "Missing: ${values:nonexistent}");
 
       const layers: LayerSource[] = [
         {
@@ -248,10 +225,7 @@ describe("CLI", () => {
 
       const overlayDirPlugin = path.join(tmpDir, "plugin-overlay", "claude");
       fs.mkdirSync(overlayDirPlugin, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDirPlugin, "info.md"),
-        "Root: ${agloom:ROOT_DIR}",
-      );
+      fs.writeFileSync(path.join(overlayDirPlugin, "info.md"), "Root: ${agloom:ROOT_DIR}");
 
       const layers: LayerSource[] = [
         {
@@ -285,10 +259,7 @@ describe("CLI", () => {
 
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(overlayDir, "fail.md"),
-        "Val: ${values:missing}",
-      );
+      fs.writeFileSync(path.join(overlayDir, "fail.md"), "Val: ${values:missing}");
 
       const variables: Record<string, string> = {};
 

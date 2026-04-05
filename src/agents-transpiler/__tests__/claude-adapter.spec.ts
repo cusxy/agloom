@@ -47,9 +47,7 @@ describe("ClaudeAgentAdapter", () => {
         "<!-- /agent:opencode -->",
       ].join("\n");
 
-      const files = adapter.transpile([
-        makeDefinition("code-reviewer", rawContent),
-      ]);
+      const files = adapter.transpile([makeDefinition("code-reviewer", rawContent)]);
 
       expect(files).toHaveLength(1);
       // Адаптер возвращает definition.relativePath (без ремаппинга)
@@ -68,9 +66,7 @@ describe("ClaudeAgentAdapter", () => {
     it("возвращает definition.relativePath в качестве relativePath (ремаппинг делает транспилер)", () => {
       const adapter = new ClaudeAgentAdapter();
 
-      const files = adapter.transpile([
-        makeDefinition("test-agent", "---\nname: test-agent\n---\nBody."),
-      ]);
+      const files = adapter.transpile([makeDefinition("test-agent", "---\nname: test-agent\n---\nBody.")]);
 
       expect(files[0].relativePath).toBe(".agloom/agents/test-agent.md");
     });
@@ -95,26 +91,16 @@ describe("ClaudeAgentAdapter", () => {
       const adapter = new ClaudeAgentAdapter();
 
       // Невалидный frontmatter
-      const rawContent = [
-        "---",
-        "name: agent",
-        "override: not-an-object",
-        "---",
-        "Body.",
-      ].join("\n");
+      const rawContent = ["---", "name: agent", "override: not-an-object", "---", "Body."].join("\n");
 
-      expect(() =>
-        adapter.transpile([makeDefinition("agent", rawContent)]),
-      ).toThrow(AgentTransformError);
+      expect(() => adapter.transpile([makeDefinition("agent", rawContent)])).toThrow(AgentTransformError);
     });
 
     // --- Happy path: контент без frontmatter ---
     it("обрабатывает определения без frontmatter", () => {
       const adapter = new ClaudeAgentAdapter();
 
-      const files = adapter.transpile([
-        makeDefinition("simple-agent", "Just plain markdown body."),
-      ]);
+      const files = adapter.transpile([makeDefinition("simple-agent", "Just plain markdown body.")]);
 
       expect(files).toHaveLength(1);
       expect(files[0].content).toContain("Just plain markdown body.");

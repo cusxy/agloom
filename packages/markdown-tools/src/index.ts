@@ -8,14 +8,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 // § format.md § Поддерживаемые форматы
-const PRETTIER_EXTENSIONS = new Set([
-  ".md",
-  ".mdx",
-  ".json",
-  ".yaml",
-  ".yml",
-  ".toml",
-]);
+const PRETTIER_EXTENSIONS = new Set([".md", ".mdx", ".json", ".yaml", ".yml", ".toml"]);
 const MARKDOWNLINT_EXTENSIONS = new Set([".md", ".mdx"]);
 
 // § format.md § Встроенные дефолтные конфиги § Prettier
@@ -103,16 +96,12 @@ async function resolvePrettierConfig(
  * Level 3: markdownlintOverrides (shallow merge on top)
  * Level 2 (native files) is handled by markdownlint itself.
  */
-function resolveMarkdownlintConfig(
-  markdownlintOverrides: Record<string, unknown>,
-): Record<string, unknown> {
+function resolveMarkdownlintConfig(markdownlintOverrides: Record<string, unknown>): Record<string, unknown> {
   return { ...DEFAULT_MARKDOWNLINT_CONFIG, ...markdownlintOverrides };
 }
 
 // § format.md § Инициализация — createMarkdownTools(config)
-export function createMarkdownTools(
-  config: MarkdownToolsConfig,
-): MarkdownTools {
+export function createMarkdownTools(config: MarkdownToolsConfig): MarkdownTools {
   const { projectRoot } = config;
   const prettierOverrides = config.prettierOverrides ?? {};
   const markdownlintOverrides = config.markdownlintOverrides ?? {};
@@ -139,10 +128,7 @@ export function createMarkdownTools(
         // Step 2: prettier --write
         try {
           const content = fs.readFileSync(filePath, "utf-8");
-          const prettierConfig = await resolvePrettierConfig(
-            filePath,
-            prettierOverrides,
-          );
+          const prettierConfig = await resolvePrettierConfig(filePath, prettierOverrides);
           const parser = getPrettierParser(ext);
           const plugins = ext === ".toml" ? ["prettier-plugin-toml"] : [];
           const formatted = await prettier.format(content, {
@@ -212,10 +198,7 @@ export function createMarkdownTools(
         // Step 2: prettier --check
         try {
           const content = fs.readFileSync(filePath, "utf-8");
-          const prettierConfig = await resolvePrettierConfig(
-            filePath,
-            prettierOverrides,
-          );
+          const prettierConfig = await resolvePrettierConfig(filePath, prettierOverrides);
           const parser = getPrettierParser(ext);
           const plugins = ext === ".toml" ? ["prettier-plugin-toml"] : [];
           const isFormatted = await prettier.check(content, {
@@ -232,10 +215,7 @@ export function createMarkdownTools(
         } catch (err: unknown) {
           // Extension 2b: prettier runtime error → add to errors
           const message = err instanceof Error ? err.message : String(err);
-          const isReadError =
-            err instanceof Error &&
-            "code" in err &&
-            (err as NodeJS.ErrnoException).code === "EACCES";
+          const isReadError = err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "EACCES";
           if (isReadError) {
             prettierReadError = true;
           }
@@ -260,12 +240,8 @@ export function createMarkdownTools(
               for (const violation of fileResults) {
                 const ruleName = violation.ruleNames[0] || "unknown";
                 const desc = violation.ruleDescription || "";
-                const detail = violation.errorDetail
-                  ? `: ${violation.errorDetail}`
-                  : "";
-                failures.push(
-                  `${filePath}:${violation.lineNumber}: ${ruleName} ${desc}${detail}`,
-                );
+                const detail = violation.errorDetail ? `: ${violation.errorDetail}` : "";
+                failures.push(`${filePath}:${violation.lineNumber}: ${ruleName} ${desc}${detail}`);
               }
             }
           } catch (err: unknown) {

@@ -59,10 +59,7 @@ describe("SkillsTranspiler", () => {
       expect(writeResult.errors).toHaveLength(0);
 
       // Проверяем, что файл действительно записан с тем же содержимым
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"), "utf-8");
       expect(writtenContent).toBe(sourceContent);
     });
 
@@ -72,9 +69,7 @@ describe("SkillsTranspiler", () => {
       const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
       // Создаём буфер с произвольными байтами (включая null bytes)
-      const binaryContent = Buffer.from([
-        0x00, 0x01, 0x02, 0xff, 0xfe, 0xfd, 0x89, 0x50, 0x4e, 0x47,
-      ]);
+      const binaryContent = Buffer.from([0x00, 0x01, 0x02, 0xff, 0xfe, 0xfd, 0x89, 0x50, 0x4e, 0x47]);
       fs.writeFileSync(path.join(sourceDir, "image.png"), binaryContent);
 
       const transpiler = createSkillsTranspiler({
@@ -97,27 +92,16 @@ describe("SkillsTranspiler", () => {
       ]);
 
       // Assert
-      expect(writeResult.written).toContain(
-        ".claude/skills/my-skill/image.png",
-      );
+      expect(writeResult.written).toContain(".claude/skills/my-skill/image.png");
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "image.png"),
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "image.png"));
       expect(Buffer.compare(writtenContent, binaryContent)).toBe(0);
     });
 
     // --- Трансформация: шаг 3 — создание промежуточных каталогов ---
     it("создаёт промежуточные каталоги при записи файла", () => {
       // Arrange
-      const sourceDir = path.join(
-        tmpDir,
-        ".agloom",
-        "skills",
-        "my-skill",
-        "deep",
-        "nested",
-      );
+      const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill", "deep", "nested");
       fs.mkdirSync(sourceDir, { recursive: true });
       fs.writeFileSync(path.join(sourceDir, "file.ts"), "export const x = 1;");
 
@@ -141,20 +125,10 @@ describe("SkillsTranspiler", () => {
       ]);
 
       // Assert
-      expect(writeResult.written).toContain(
-        ".claude/skills/my-skill/deep/nested/file.ts",
-      );
+      expect(writeResult.written).toContain(".claude/skills/my-skill/deep/nested/file.ts");
 
       const writtenContent = fs.readFileSync(
-        path.join(
-          tmpDir,
-          ".claude",
-          "skills",
-          "my-skill",
-          "deep",
-          "nested",
-          "file.ts",
-        ),
+        path.join(tmpDir, ".claude", "skills", "my-skill", "deep", "nested", "file.ts"),
         "utf-8",
       );
       expect(writtenContent).toBe("export const x = 1;");
@@ -193,14 +167,8 @@ describe("SkillsTranspiler", () => {
       ]);
 
       // Assert: файл НЕ записан
-      expect(
-        fs.existsSync(
-          path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
-        ),
-      ).toBe(false);
-      expect(writeResult.written).not.toContain(
-        ".claude/skills/my-skill/SKILL.md",
-      );
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"))).toBe(false);
+      expect(writeResult.written).not.toContain(".claude/skills/my-skill/SKILL.md");
 
       // Assert: ошибка с правильным сообщением
       expect(writeResult.errors).toHaveLength(1);
@@ -251,18 +219,10 @@ describe("SkillsTranspiler", () => {
       ]);
 
       // Assert: failing адаптер НЕ записан
-      expect(
-        fs.existsSync(
-          path.join(tmpDir, ".failing", "skills", "my-skill", "SKILL.md"),
-        ),
-      ).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, ".failing", "skills", "my-skill", "SKILL.md"))).toBe(false);
 
       // Assert: claude адаптер записан
-      expect(
-        fs.existsSync(
-          path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
-        ),
-      ).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"))).toBe(true);
       expect(writeResult.written).toContain(".claude/skills/my-skill/SKILL.md");
 
       // Assert: ошибки failing адаптера в результате
@@ -293,9 +253,7 @@ describe("SkillsTranspiler", () => {
       // Assert
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(SkillWriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Failed to read source \.agloom\/skills\/missing\/SKILL\.md/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Failed to read source \.agloom\/skills\/missing\/SKILL\.md/);
     });
 
     // --- Расширение 3b: ошибка записи целевого файла → SkillWriteError ---
@@ -330,9 +288,7 @@ describe("SkillsTranspiler", () => {
       // Assert
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(SkillWriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Failed to write \.claude\/skills\/my-skill\/SKILL\.md/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Failed to write \.claude\/skills\/my-skill\/SKILL\.md/);
     });
 
     // --- Happy path: запись результатов нескольких адаптеров ---
@@ -386,10 +342,7 @@ describe("SkillsTranspiler", () => {
       // Arrange: создаём .md файл с agloom-переменной
       const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(sourceDir, "SKILL.md"),
-        "Path: ${agloom:ROOT_DIR}/skills",
-      );
+      fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "Path: ${agloom:ROOT_DIR}/skills");
 
       const transpiler = createSkillsTranspiler({
         projectRoot: tmpDir,
@@ -421,10 +374,7 @@ describe("SkillsTranspiler", () => {
       expect(writeResult.written).toContain(".claude/skills/my-skill/SKILL.md");
       expect(writeResult.errors).toHaveLength(0);
 
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"), "utf-8");
       expect(writtenContent).toBe("Path: .claude/skills");
     });
 
@@ -463,13 +413,8 @@ describe("SkillsTranspiler", () => {
       );
 
       // Assert: файл скопирован побайтово, без интерполяции
-      expect(writeResult.written).toContain(
-        ".claude/skills/my-skill/helper.ts",
-      );
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "helper.ts"),
-        "utf-8",
-      );
+      expect(writeResult.written).toContain(".claude/skills/my-skill/helper.ts");
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "helper.ts"), "utf-8");
       expect(writtenContent).toBe(tsContent);
     });
 
@@ -502,10 +447,7 @@ describe("SkillsTranspiler", () => {
 
       // Assert: файл скопирован побайтово, без интерполяции
       expect(writeResult.written).toContain(".claude/skills/my-skill/SKILL.md");
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"),
-        "utf-8",
-      );
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"), "utf-8");
       expect(writtenContent).toBe(mdContent);
     });
 
@@ -514,10 +456,7 @@ describe("SkillsTranspiler", () => {
       // Arrange: создаём .md файл
       const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(sourceDir, "SKILL.md"),
-        "Path: ${agloom:ROOT_DIR}",
-      );
+      fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "Path: ${agloom:ROOT_DIR}");
 
       const transpiler = createSkillsTranspiler({
         projectRoot: tmpDir,
@@ -549,9 +488,7 @@ describe("SkillsTranspiler", () => {
       // Assert
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(SkillWriteError);
-      expect(writeResult.errors[0].message).toBe(
-        "No interpolation variables for adapter: claude",
-      );
+      expect(writeResult.errors[0].message).toBe("No interpolation variables for adapter: claude");
     });
 
     // --- Расширение 3d: SkillWriteError при InterpolationError в .md файле ---
@@ -559,10 +496,7 @@ describe("SkillsTranspiler", () => {
       // Arrange: создаём .md файл с несуществующей agloom-переменной
       const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(sourceDir, "SKILL.md"),
-        "Path: ${agloom:NONEXISTENT}",
-      );
+      fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "Path: ${agloom:NONEXISTENT}");
 
       const transpiler = createSkillsTranspiler({
         projectRoot: tmpDir,
@@ -593,9 +527,7 @@ describe("SkillsTranspiler", () => {
       // Assert
       expect(writeResult.errors.length).toBeGreaterThan(0);
       expect(writeResult.errors[0]).toBeInstanceOf(SkillWriteError);
-      expect(writeResult.errors[0].message).toMatch(
-        /Interpolation failed for \.agloom\/skills\/my-skill\/SKILL\.md/,
-      );
+      expect(writeResult.errors[0].message).toMatch(/Interpolation failed for \.agloom\/skills\/my-skill\/SKILL\.md/);
     });
 
     // --- Изменения в поведении: шаг 3 — case-insensitive проверка расширения .md ---
@@ -603,10 +535,7 @@ describe("SkillsTranspiler", () => {
       // Arrange
       const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(sourceDir, "README.MD"),
-        "Path: ${agloom:ROOT_DIR}",
-      );
+      fs.writeFileSync(path.join(sourceDir, "README.MD"), "Path: ${agloom:ROOT_DIR}");
 
       const transpiler = createSkillsTranspiler({
         projectRoot: tmpDir,
@@ -635,13 +564,8 @@ describe("SkillsTranspiler", () => {
       );
 
       // Assert
-      expect(writeResult.written).toContain(
-        ".claude/skills/my-skill/README.MD",
-      );
-      const writtenContent = fs.readFileSync(
-        path.join(tmpDir, ".claude", "skills", "my-skill", "README.MD"),
-        "utf-8",
-      );
+      expect(writeResult.written).toContain(".claude/skills/my-skill/README.MD");
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "skills", "my-skill", "README.MD"), "utf-8");
       expect(writtenContent).toBe("Path: .claude");
     });
   });

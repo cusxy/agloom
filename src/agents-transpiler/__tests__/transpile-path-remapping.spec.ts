@@ -54,10 +54,7 @@ describe("AgentsTranspiler", () => {
     it("заменяет префикс <agloomDir>/agents/ на <adapter.targetDir>/ в relativePath", () => {
       const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentsDir, "my-agent.md"),
-        "---\nname: my-agent\n---\nBody.",
-      );
+      fs.writeFileSync(path.join(agentsDir, "my-agent.md"), "---\nname: my-agent\n---\nBody.");
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
@@ -67,9 +64,7 @@ describe("AgentsTranspiler", () => {
       const results = transpiler.transpile();
 
       expect(results).toHaveLength(1);
-      expect(results[0].files[0].relativePath).toBe(
-        ".claude/agents/my-agent.md",
-      );
+      expect(results[0].files[0].relativePath).toBe(".claude/agents/my-agent.md");
     });
 
     // --- Спецификация: § Транспиляция, шаг 3 ---
@@ -78,10 +73,7 @@ describe("AgentsTranspiler", () => {
       // Создаём agents/ в корне tmpDir (не в .agloom/)
       const agentsDir = path.join(tmpDir, "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentsDir, "my-agent.md"),
-        "---\nname: my-agent\n---\nBody.",
-      );
+      fs.writeFileSync(path.join(agentsDir, "my-agent.md"), "---\nname: my-agent\n---\nBody.");
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
@@ -94,9 +86,7 @@ describe("AgentsTranspiler", () => {
       expect(results).toHaveLength(1);
       // Адаптер вернул relativePath = "agents/my-agent.md" (от discover при agloomDir=".")
       // Транспилер должен заменить "agents/" (то есть "./agents/") на ".claude/agents/"
-      expect(results[0].files[0].relativePath).toBe(
-        ".claude/agents/my-agent.md",
-      );
+      expect(results[0].files[0].relativePath).toBe(".claude/agents/my-agent.md");
     });
 
     // --- Спецификация: § Транспиляция, шаг 3 ---
@@ -104,10 +94,7 @@ describe("AgentsTranspiler", () => {
     it("ремаппит relativePath для нескольких адаптеров с разными targetDir", () => {
       const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentsDir, "agent.md"),
-        "---\nname: agent\n---\nBody.",
-      );
+      fs.writeFileSync(path.join(agentsDir, "agent.md"), "---\nname: agent\n---\nBody.");
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
@@ -122,14 +109,10 @@ describe("AgentsTranspiler", () => {
       expect(results).toHaveLength(2);
 
       const claudeResult = results.find((r) => r.agentId === "claude");
-      expect(claudeResult!.files[0].relativePath).toBe(
-        ".claude/agents/agent.md",
-      );
+      expect(claudeResult!.files[0].relativePath).toBe(".claude/agents/agent.md");
 
       const opencodeResult = results.find((r) => r.agentId === "opencode");
-      expect(opencodeResult!.files[0].relativePath).toBe(
-        ".opencode/agents/agent.md",
-      );
+      expect(opencodeResult!.files[0].relativePath).toBe(".opencode/agents/agent.md");
     });
 
     // --- Спецификация: § Транспиляция, шаг 3 ---
@@ -137,10 +120,7 @@ describe("AgentsTranspiler", () => {
     it("ремаппит relativePath при кастомном agloomDir", () => {
       const agentsDir = path.join(tmpDir, "custom-dir", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentsDir, "agent.md"),
-        "---\nname: agent\n---\nBody.",
-      );
+      fs.writeFileSync(path.join(agentsDir, "agent.md"), "---\nname: agent\n---\nBody.");
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
@@ -161,25 +141,18 @@ describe("AgentsTranspiler", () => {
     it("адаптер возвращает definition.relativePath без ремаппинга", () => {
       const agentsDir = path.join(tmpDir, ".agloom", "agents");
       fs.mkdirSync(agentsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(agentsDir, "reviewer.md"),
-        "---\nname: reviewer\n---\nBody.",
-      );
+      fs.writeFileSync(path.join(agentsDir, "reviewer.md"), "---\nname: reviewer\n---\nBody.");
 
       // Адаптер, который проверяет что definition.relativePath
       // начинается с agloomDir/agents/ (не targetDir)
       const adapterCalls: AgentDefinition[][] = [];
-      const adapter = createAdapterWithTargetDir(
-        "claude",
-        ".claude/agents",
-        (defs) => {
-          adapterCalls.push(defs);
-          return defs.map((d) => ({
-            relativePath: d.relativePath,
-            content: d.rawContent,
-          }));
-        },
-      );
+      const adapter = createAdapterWithTargetDir("claude", ".claude/agents", (defs) => {
+        adapterCalls.push(defs);
+        return defs.map((d) => ({
+          relativePath: d.relativePath,
+          content: d.rawContent,
+        }));
+      });
 
       const transpiler = createAgentsTranspiler({
         projectRoot: tmpDir,
@@ -190,14 +163,10 @@ describe("AgentsTranspiler", () => {
 
       // Адаптер получил definition с relativePath = ".agloom/agents/reviewer.md"
       expect(adapterCalls).toHaveLength(1);
-      expect(adapterCalls[0][0].relativePath).toBe(
-        ".agloom/agents/reviewer.md",
-      );
+      expect(adapterCalls[0][0].relativePath).toBe(".agloom/agents/reviewer.md");
 
       // Транспилер ремаппил в ".claude/agents/reviewer.md"
-      expect(results[0].files[0].relativePath).toBe(
-        ".claude/agents/reviewer.md",
-      );
+      expect(results[0].files[0].relativePath).toBe(".claude/agents/reviewer.md");
     });
   });
 });
