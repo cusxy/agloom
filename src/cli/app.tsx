@@ -17,6 +17,7 @@ import * as path from "node:path";
 import { marked } from "marked";
 // @ts-expect-error marked-terminal has no type declarations
 import { markedTerminal } from "marked-terminal";
+import matter from "gray-matter";
 import { Chalk } from "chalk";
 import { adapterRegistry } from "./adapter-registry.js";
 import { runTranspileStep } from "./transpile-step.js";
@@ -265,84 +266,185 @@ function HelpCommandHelpView(): React.ReactElement {
       <Text> </Text>
       <Text>Arguments:</Text>
       <Text>
-        {"  "}&lt;topic&gt;{"  "}Help topic name (e.g., configuration,
-        transpile)
+        {"  "}&lt;topic&gt;{"  "}Help topic name (e.g., guide/getting-started,
+        reference/cli)
       </Text>
     </Box>
   );
 }
 
 /**
- * Вычисляет абсолютный путь к директории документации.
+ * Вычисляет абсолютный путь к базовой директории документации.
  * Spec: docs/specs/help-command.md § Поведение шаг 2
  */
-function getDocsDir(): string {
-  return path.resolve(import.meta.dirname, "../../docs/usage");
+function getBaseDocsDir(): string {
+  return path.resolve(import.meta.dirname, "../../docs");
 }
 
+/**
+ * Spec: docs/specs/help-command.md § DocCategory
+ */
+interface DocCategory {
+  id: string;
+  label: string;
+  order: number;
+}
+
+const DOC_CATEGORIES: DocCategory[] = [
+  { id: "guide", label: "Guide", order: 1 },
+  { id: "reference", label: "Reference", order: 2 },
+];
+
+/**
+ * Spec: docs/specs/help-command.md § TopicEntry
+ */
 interface TopicEntry {
   name: string;
   description: string;
+  order: number;
+  category: string;
 }
 
 /**
- * Извлекает описание из Markdown-файла: первая непустая строка после H1.
+ * Читает и возвращает отсортированный список topics из docs/guide/ и docs/reference/.
+ * Spec: docs/specs/help-command.md § Поведение шаги 3-7
  */
-function extractDescription(filePath: string): string {
-  try {
-    const content = fs.readFileSync(filePath, "utf-8");
-    const lines = content.split("\n");
-    let pastH1 = false;
-    for (const line of lines) {
-      if (line.startsWith("# ")) {
-        pastH1 = true;
+function loadTopics(baseDocsDir: string): TopicEntry[] {
+  const allTopics: TopicEntry[] = [];
+
+  for (const category of DOC_CATEGORIES) {
+    const categoryDir = path.join(baseDocsDir, category.id);
+    let entries: string[];
+    try {
+      entries = fs.readdirSync(categoryDir);
+    } catch {
+      // Расширение 3a: директория не существует → пустой список для этой категории
+      continue;
+    }
+
+    const mdFiles = entries.filter((f) => f.endsWith(".md"));
+
+    const categoryTopics: TopicEntry[] = [];
+    for (const file of mdFiles) {
+      const slug = file.slice(0, -3);
+      let content: string;
+      try {
+        content = fs.readFileSync(path.join(categoryDir, file), "utf-8");
+      } catch {
+        // Файл не может быть прочитан (например, нет прав) —
+        // включить в список с defaults, ошибка проявится при шаге 10
+        categoryTopics.push({
+          name: `${category.id}/${slug}`,
+          description: "",
+          order: Infinity,
+          category: category.id,
+        });
         continue;
       }
-      if (pastH1 && line.trim() !== "") {
-        return line.trim();
+
+      // Расширение 5a: файл без валидного YAML frontmatter → skip
+      const parsed = matter(content);
+      if (!parsed.data || Object.keys(parsed.data).length === 0) {
+        continue;
       }
+
+      categoryTopics.push({
+        name: `${category.id}/${slug}`,
+        // Расширение 5b: без description → ""
+        description:
+          typeof parsed.data.description === "string"
+            ? parsed.data.description
+            : "",
+        // Расширение 5c: без order → Infinity
+        order:
+          typeof parsed.data.order === "number" ? parsed.data.order : Infinity,
+        category: category.id,
+      });
     }
-  } catch {
-    // Ошибка чтения — описание недоступно
+
+    // Шаг 7: отсортировать по order
+    categoryTopics.sort((a, b) => a.order - b.order);
+    allTopics.push(...categoryTopics);
   }
-  return "";
+
+  return allTopics;
 }
 
 /**
- * Читает и возвращает отсортированный список topics из docs/usage/.
- * Spec: docs/specs/help-command.md § Поведение шаги 3-6
- */
-function loadTopics(docsDir: string): TopicEntry[] {
-  let entries: string[];
-  try {
-    entries = fs.readdirSync(docsDir);
-  } catch {
-    // Расширение 3a: директория не существует → пустой список
-    return [];
-  }
-  return entries
-    .filter((f) => f.endsWith(".md"))
-    .map((f) => ({
-      name: f.slice(0, -3),
-      description: extractDescription(path.join(docsDir, f)),
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-/**
- * Форматирует вывод списка topics.
+ * Форматирует категоризированный вывод списка topics.
  * Spec: docs/specs/help-command.md § Вывод списка topics
  */
 function formatTopicsList(topics: TopicEntry[]): string {
   const maxName = Math.max(...topics.map((t) => t.name.length));
-  const lines = [
-    "Available help topics:",
-    "",
-    ...topics.map((t) => `  ${t.name.padEnd(maxName + 3)}${t.description}`),
-    "",
-    "Run 'agloom help <topic>' to learn more.",
-  ];
+  const lines: string[] = ["Available help topics:", ""];
+
+  // Группировка по категориям в порядке DOC_CATEGORIES
+  let firstCategory = true;
+  for (const category of DOC_CATEGORIES) {
+    const categoryTopics = topics.filter((t) => t.category === category.id);
+    if (categoryTopics.length === 0) continue;
+
+    if (!firstCategory) {
+      lines.push("");
+    }
+    firstCategory = false;
+
+    lines.push(`  ${category.label}:`);
+    for (const t of categoryTopics) {
+      lines.push(`    ${t.name.padEnd(maxName + 2)}${t.description}`);
+    }
+  }
+
+  lines.push("");
+  lines.push("Run 'agloom help <topic>' to learn more.");
   return lines.join("\n");
+}
+
+/**
+ * Разрешает имя topic.
+ * Spec: docs/specs/help-command.md § Разрешение имени topic
+ */
+function resolveTopic(
+  topicArg: string,
+  topics: TopicEntry[],
+): { entry: TopicEntry } | { error: string } {
+  if (topicArg.includes("/")) {
+    // Шаг 1: интерпретировать как {category}/{slug}
+    const found = topics.find((t) => t.name === topicArg);
+    if (found) {
+      return { entry: found };
+    }
+    // Расширение 1a/1b
+    if (topics.length === 0) {
+      return { error: `Unknown help topic: ${topicArg}.` };
+    }
+    return {
+      error: `Unknown help topic: ${topicArg}.\n\n${formatTopicsList(topics)}`,
+    };
+  }
+
+  // Шаг 2: без "/" — поиск по slug
+  const matches = topics.filter((t) => t.name.split("/")[1] === topicArg);
+
+  if (matches.length === 1) {
+    return { entry: matches[0] };
+  }
+
+  if (matches.length > 1) {
+    // Расширение 2a: ambiguous
+    const namesList = matches.map((m) => `  ${m.name}`).join("\n");
+    return {
+      error: `Ambiguous help topic: ${topicArg}. Did you mean one of these?\n\n${namesList}`,
+    };
+  }
+
+  // Расширение 2b/2c: не найден
+  if (topics.length === 0) {
+    return { error: `Unknown help topic: ${topicArg}.` };
+  }
+  return {
+    error: `Unknown help topic: ${topicArg}.\n\n${formatTopicsList(topics)}`,
+  };
 }
 
 function HelpCommandView({
@@ -351,12 +453,12 @@ function HelpCommandView({
   topic: string | null;
 }): React.ReactElement {
   const [output] = useState(() => {
-    const docsDir = getDocsDir();
-    const topics = loadTopics(docsDir);
+    const baseDocsDir = getBaseDocsDir();
+    const topics = loadTopics(baseDocsDir);
 
-    // § Поведение шаг 7: <topic> не указан — отобразить список topics
+    // § Поведение шаг 8: <topic> не указан — отобразить список topics
     if (topic === null) {
-      // Расширение 7a: пустой список
+      // Расширение 8a: пустой список
       if (topics.length === 0) {
         process.exitCode = 1;
         return "No help topics available.";
@@ -364,28 +466,32 @@ function HelpCommandView({
       return formatTopicsList(topics);
     }
 
-    // § Поведение шаг 8: найти topic
-    if (!topics.some((t) => t.name === topic)) {
+    // § Поведение шаг 9: разрешить topic
+    const resolved = resolveTopic(topic, topics);
+    if ("error" in resolved) {
       process.exitCode = 1;
-      // Расширение 8b: пустой список
-      if (topics.length === 0) {
-        return `Unknown help topic: ${topic}.`;
-      }
-      // Расширение 8a: непустой список
-      return `Unknown help topic: ${topic}.\n\n${formatTopicsList(topics)}`;
+      return resolved.error;
     }
 
-    // § Поведение шаг 9: прочитать файл
-    let content: string;
+    const entry = resolved.entry;
+    const slug = entry.name.split("/")[1];
+    const filePath = path.join(baseDocsDir, entry.category, `${slug}.md`);
+
+    // § Поведение шаг 10: прочитать файл
+    let rawContent: string;
     try {
-      content = fs.readFileSync(path.join(docsDir, `${topic}.md`), "utf-8");
+      rawContent = fs.readFileSync(filePath, "utf-8");
     } catch {
-      // Расширение 9a: ошибка чтения
+      // Расширение 10a: ошибка чтения
       process.exitCode = 1;
       return `Failed to read help topic: ${topic}.`;
     }
 
-    // § Поведение шаг 10: отрендерить Markdown
+    // § Поведение шаг 11: strip frontmatter
+    const parsed = matter(rawContent);
+    const content = parsed.content;
+
+    // § Поведение шаг 12: отрендерить Markdown
     try {
       const forcedChalk = new Chalk({ level: 1 });
       marked.use(
@@ -406,7 +512,7 @@ function HelpCommandView({
       );
       return marked.parse(content, { async: false }).trimEnd();
     } catch {
-      // Расширение 10a: ошибка рендеринга
+      // Расширение 12a: ошибка рендеринга
       process.exitCode = 1;
       return `Failed to render help topic: ${topic}.`;
     }

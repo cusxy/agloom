@@ -22,7 +22,8 @@
   ],
   "files": [
     "dist",
-    "docs/usage"
+    "docs/guide",
+    "docs/reference"
   ],
   "bin": {
     "agloom": "dist/cli/index.js"

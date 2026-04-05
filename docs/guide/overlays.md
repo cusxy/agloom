@@ -1,0 +1,132 @@
+---
+title: Overlays
+description: How to use overlays for adapter-specific file customization
+order: 7
+---
+
+# Overlays
+
+This guide teaches you how to use overlays to add adapter-specific files that
+do not fit the canonical format.
+
+## What Are Overlays
+
+Overlays are raw files placed in `.agloom/overlays/<adapter>/`. After
+transpilation, these files are copied to the project root, preserving their
+relative path within the overlay directory.
+
+Overlays run **after** all transpiler steps (instructions, skills, agents, docs,
+schemas). If an overlay file has the same path as a transpiled file, the overlay
+takes precedence.
+
+## When to Use Overlays
+
+Use overlays for adapter-specific configuration files that Agloom does not
+generate through its canonical format:
+
+- Claude Code settings (`settings.json`)
+- Claude Code slash commands
+- MCP configuration overrides
+- OpenCode configuration files
+- Any tool-specific config that needs to be in a specific format
+
+## Example
+
+To add a Claude Code `settings.json`, create the overlay file:
+
+```
+.agloom/overlays/claude/.claude/settings.json
+```
+
+```json
+{
+  "permissions": {
+    "allow": ["Bash(npm run *)"],
+    "deny": ["Bash(rm -rf *)"]
+  }
+}
+```
+
+When you run `agloom transpile`, this file is copied to
+`.claude/settings.json` in your project root.
+
+Another example -- a Claude Code slash command:
+
+```
+.agloom/overlays/claude/.claude/commands/deploy.md
+```
+
+This copies to `.claude/commands/deploy.md` after transpilation.
+
+## File Merge Strategies
+
+When an overlay file targets a path that already has content from a previous
+layer (e.g., a plugin), the merge strategy depends on the file format:
+
+**Deep merge** applies to structured file formats:
+
+- `.json`, `.jsonc`
+- `.yaml`, `.yml`
+- `.toml`
+
+For these formats, Agloom performs a deep merge -- objects are merged
+recursively, and arrays are replaced.
+
+**Full replacement** applies to everything else (`.md`, `.txt`, images, etc.).
+The overlay file completely replaces the existing file.
+
+## Suffix Modifiers
+
+Two special suffixes let you control the merge behavior:
+
+### `.override` -- Force Replacement
+
+Add `.override` before the file extension to force full replacement, even for
+merge-eligible formats:
+
+```
+.agloom/overlays/claude/.claude/settings.override.json
+```
+
+This replaces the entire `settings.json` instead of deep-merging it.
+
+### `.patch` -- Patch Operations
+
+Add `.patch` before the file extension to apply fine-grained modifications:
+
+```
+.agloom/overlays/claude/.claude/settings.patch.json
+```
+
+Patch files contain declarative operations that modify specific parts of the
+target file:
+
+```json
+{
+  "permissions": {
+    "allow": {
+      "$append": ["Bash(docker *)"]
+    }
+  }
+}
+```
+
+This appends `"Bash(docker *)"` to the `permissions.allow` array without
+replacing the entire file or array.
+
+Available patch operations: `$set`, `$merge`, `$append`, `$prepend`, `$remove`,
+`$unset`, `$mergeBy`, `$insertAt`.
+
+See [reference/patch-operations](../reference/patch-operations.md) for the
+full list of operations with examples.
+
+## Interpolation in Overlays
+
+Overlay files with certain extensions (`.md`, `.txt`, `.json`, `.jsonc`,
+`.jsonl`, `.xml`, `.html`, `.svg`, `.toml`, `.yml`, `.yaml`) go through
+variable interpolation before being written. You can use `${agloom:VAR}`,
+`${env:VAR}`, and `${values:VAR}` in these files.
+
+Binary files and files with other extensions are copied as-is.
+
+See [Variables](variables.md) for more on interpolation.

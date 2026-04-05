@@ -6,3 +6,11 @@ adapters:
   - opencode
 plugins:
   - git@github.com:cusxy/skill-cycling
+  - path: ../agloom-plugins-private/alfa-mobile
+    values:
+      bitbucket_mcp_home: "~/bitbucket-mcp"
+      bitbucket_api_token: "${env:BITBUCKET_API_TOKEN}"
+      jira_api_token: "${env:JIRA_API_TOKEN}"
+      confluence_api_token: "${env:CONFLUENCE_API_TOKEN}"
+      jenkins_username: "${env:JENKINS_USERNAME}"
+      jenkins_password: "${env:JENKINS_PASSWORD}"

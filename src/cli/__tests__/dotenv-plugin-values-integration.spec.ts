@@ -91,10 +91,7 @@ describe("CLI Integration", () => {
       );
 
       // .env файл с переменной
-      fs.writeFileSync(
-        path.join(tmpDir, ".env"),
-        `${envKey}=${envValue}\n`,
-      );
+      fs.writeFileSync(path.join(tmpDir, ".env"), `${envKey}=${envValue}\n`);
 
       // --- Act ---
       const { lastFrame, unmount } = render(

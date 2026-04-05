@@ -1,107 +1,67 @@
 # agloom
 
-> **⚠️ Warning:** This project is in active development and experimentation. Its API is unstable and may introduce breaking changes at any time. Use at your own risk.
+> **Warning:** This project is in active development and experimentation. Its API is unstable and may introduce breaking changes at any time. Use at your own risk.
 
 Transpile canonical agent configurations across AI coding assistants.
 
-Write your instructions, skills, and agent definitions once — agloom generates the correct config files for each target (Claude Code, OpenCode, Agents.md, and more).
+Write your instructions, skills, and agent definitions once in a single `.agloom/` directory — agloom generates the correct config files for each target tool.
 
-## Problem
+## The problem
 
-AI coding assistants each expect their own config format: Claude Code reads `CLAUDE.md` and `.claude/`, OpenCode reads `AGENTS.md` and `.opencode/`, Agents.md-compatible tools read `AGENTS.md`, etc. Maintaining configs for multiple agents by hand is tedious and error-prone.
+AI coding assistants each expect their own config format: Claude Code reads `CLAUDE.md` and `.claude/`, OpenCode reads `AGENTS.md` and `.opencode/`, Agents.md-compatible tools read `AGENTS.md`. Maintaining these by hand is tedious and error-prone.
 
-## Solution
+## The solution
 
-agloom introduces a **canonical format** (Markdown files under `.agloom/`) and **transpiles** them into agent-specific files. One source of truth, multiple outputs.
+agloom introduces a **canonical format** — Markdown files under `.agloom/` — and **transpiles** them into agent-specific outputs. One source of truth, multiple outputs. Think Sass to CSS, or TypeScript to JavaScript.
 
-```
-.agloom/
-  config.yml            # project configuration
-  instructions/         # project-wide instructions
-  skills/               # reusable skill definitions
-  agents/               # sub-agent definitions
-  overlays/<adapter>/   # per-adapter overrides
-```
-
-## Installation
+## Quick start
 
 ```bash
 npm install -g agloom
+
+mkdir -p .agloom/instructions
+echo "adapters:\n  - claude" > .agloom/config.yml
+echo "# My Project\n\nInstructions for AI assistants." > .agloom/instructions/AGLOOM.md
+
+agloom transpile
 ```
 
-## Usage
-
-### Transpile configs for an adapter
-
-```bash
-agloom transpile --adapter claude
-agloom transpile --adapter opencode
-agloom transpile --adapter agentsmd
-```
-
-Use `--verbose` for detailed output.
-
-### Clean generated files
-
-```bash
-agloom clean --adapter claude
-agloom clean --all              # clean all adapters
-```
-
-### Import existing configs
-
-```bash
-agloom init --adapter claude
-```
-
-### List available adapters
-
-```bash
-agloom adapters
-```
+This generates `CLAUDE.md` and `.claude/` from your canonical config. See the [Getting Started](docs/guide/getting-started.md) guide for a full walkthrough.
 
 ## Supported adapters
 
-| Adapter    | Description                        |
-|------------|------------------------------------|
-| `claude`   | Claude Code (`CLAUDE.md`, `.claude/`) |
-| `opencode` | OpenCode (`AGENTS.md`, `.opencode/`)  |
-| `agentsmd` | Agents.md (`AGENTS.md`)               |
+| Adapter    | Description                             | Key outputs                     |
+| ---------- | --------------------------------------- | ------------------------------- |
+| `claude`   | Claude Code                             | `CLAUDE.md`, `.claude/`         |
+| `opencode` | OpenCode                                | `AGENTS.md`, `.opencode/`       |
+| `agentsmd` | Agents.md (Codex, KiloCode, Goose, ...) | `AGENTS.md`                     |
 
-## How it works
+## Documentation
 
-agloom has five transpiler modules that run in sequence:
+### Guide
 
-1. **Instructions Transpiler** — converts `.agloom/instructions/*.md` into the agent's instruction file format
-2. **Skills Transpiler** — converts `.agloom/skills/` into agent-specific skill configs
-3. **Agents Transpiler** — converts `.agloom/agents/` into sub-agent definitions
-4. **Docs Transpiler** — copies `.agloom/docs/` to agent-specific documentation directories
-5. **Schemas Transpiler** — copies `.agloom/schemas/` to agent-specific schema directories
+Step-by-step tutorials for learning agloom:
 
-Each module uses an **adapter** that knows how to write output for its target agent. The adapter system is extensible — you can add support for new agents by implementing the adapter interface.
+- [Introduction](docs/guide/introduction.md) — The problem, the solution, and core principles
+- [Getting Started](docs/guide/getting-started.md) — From zero to first transpile in 5 minutes
+- [Project Structure](docs/guide/project-structure.md) — Anatomy of the `.agloom/` directory
+- [Instructions](docs/guide/instructions.md) — Writing instructions with agent-specific blocks
+- [Skills & Agents](docs/guide/skills-and-agents.md) — Creating reusable skills and sub-agents
+- [Plugins](docs/guide/plugins.md) — Using and creating plugins
+- [Overlays](docs/guide/overlays.md) — Per-adapter customization with merge, override, and patch
+- [Variables](docs/guide/variables.md) — Interpolation and the values system
 
-Instructions support **agent-specific blocks** — sections that are only included when transpiling for a particular adapter.
+### Reference
 
-### Plugins
+Complete specifications for every feature:
 
-agloom supports **plugins** — reusable packages of agents, skills, docs, and schemas that can be shared across projects. Plugins are loaded from local paths or git repositories.
-
-```yaml
-# .agloom/config.yml
-plugins:
-  - git@github.com:user/my-plugin
-  - ../local-plugin
-```
-
-Plugins go through the same transpilation pipeline as local `.agloom/` content and are merged into the project's output.
-
-### Configuration
-
-Project-level settings live in `.agloom/config.yml`. See [config spec](docs/specs/config.md) for details.
-
-### Overlays
-
-After transpiling, agloom applies **overlays** from `.agloom/overlays/<adapter>/`. These are raw files copied directly to the adapter's output directory, letting you add adapter-specific config that doesn't fit the canonical format.
+- [CLI Commands](docs/reference/cli.md) — All commands, flags, and exit codes
+- [Configuration](docs/reference/config.md) — Full `.agloom/config.yml` schema
+- [Plugin Manifest](docs/reference/plugin-manifest.md) — Full `plugin.yml` schema
+- [Adapters](docs/reference/adapters.md) — Adapter capabilities and output paths
+- [Interpolation](docs/reference/interpolation.md) — Variable namespaces, syntax, and resolution
+- [Patch Operations](docs/reference/patch-operations.md) — `$set`, `$merge`, `$append`, and more
+- [Transpilers](docs/reference/transpilers.md) — Pipeline modules and processing order
 
 ## License
 

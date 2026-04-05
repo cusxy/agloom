@@ -16,8 +16,9 @@ node_modules/
 dist/
 out/
 
-# Chache
+# Cache
 .turbo
+*.tsbuildinfo
 
 # Environment
 .env

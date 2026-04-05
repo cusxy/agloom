@@ -1,6 +1,6 @@
 // help-command.spec.ts
 // Спецификация: docs/specs/help-command.md § Команда help, § Вывод списка topics,
-//               § Справка, § Изменения в cli.md
+//               § Разрешение имени topic, § Справка, § Изменения в cli.md
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
@@ -10,34 +10,117 @@ import React from "react";
 import { render } from "ink-testing-library";
 import { App } from "../app.js";
 
+/**
+ * Вспомогательная функция: создаёт Markdown-файл с frontmatter.
+ */
+function createDocFile(
+  dir: string,
+  filename: string,
+  opts: { title: string; description?: string; order?: number; body?: string },
+): void {
+  const fm = [
+    "---",
+    `title: ${opts.title}`,
+    ...(opts.description !== undefined
+      ? [`description: ${opts.description}`]
+      : []),
+    ...(opts.order !== undefined ? [`order: ${opts.order}`] : []),
+    "---",
+  ].join("\n");
+  const body = opts.body ?? `\n# ${opts.title}\n\nContent of ${opts.title}.`;
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, filename), `${fm}\n${body}`, "utf-8");
+}
+
+/**
+ * Вычисляет абсолютный путь к docs/ как его видит код через import.meta.dirname.
+ * Spec: docs/specs/help-command.md § Поведение шаг 2
+ */
+function getBaseDocsDir(): string {
+  return path.resolve(import.meta.dirname, "../../../docs");
+}
+
 describe("CLI", () => {
   describe("Команда help", () => {
-    let tmpDir: string;
     let originalExitCode: number | undefined;
+    let guideDir: string;
+    let referenceDir: string;
+    let guideBackup: string | null = null;
+    let referenceBackup: string | null = null;
 
     beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-help-cmd-"));
       originalExitCode = process.exitCode;
+      const baseDocsDir = getBaseDocsDir();
+      guideDir = path.join(baseDocsDir, "guide");
+      referenceDir = path.join(baseDocsDir, "reference");
+
+      // Бэкап существующих директорий (если существуют)
+      if (fs.existsSync(guideDir)) {
+        guideBackup = fs.mkdtempSync(
+          path.join(os.tmpdir(), "agl-guide-backup-"),
+        );
+        fs.cpSync(guideDir, guideBackup, { recursive: true });
+        fs.rmSync(guideDir, { recursive: true, force: true });
+      }
+      if (fs.existsSync(referenceDir)) {
+        referenceBackup = fs.mkdtempSync(
+          path.join(os.tmpdir(), "agl-ref-backup-"),
+        );
+        fs.cpSync(referenceDir, referenceBackup, { recursive: true });
+        fs.rmSync(referenceDir, { recursive: true, force: true });
+      }
     });
 
     afterEach(() => {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
       process.exitCode = originalExitCode;
+      const baseDocsDir = getBaseDocsDir();
+
+      // Очистить созданные тестовые директории
+      const gDir = path.join(baseDocsDir, "guide");
+      const rDir = path.join(baseDocsDir, "reference");
+      if (fs.existsSync(gDir)) {
+        fs.rmSync(gDir, { recursive: true, force: true });
+      }
+      if (fs.existsSync(rDir)) {
+        fs.rmSync(rDir, { recursive: true, force: true });
+      }
+
+      // Восстановить бэкап
+      if (guideBackup) {
+        fs.cpSync(guideBackup, gDir, { recursive: true });
+        fs.rmSync(guideBackup, { recursive: true, force: true });
+        guideBackup = null;
+      }
+      if (referenceBackup) {
+        fs.cpSync(referenceBackup, rDir, { recursive: true });
+        fs.rmSync(referenceBackup, { recursive: true, force: true });
+        referenceBackup = null;
+      }
     });
 
     // =====================================================================
-    // Happy path: agloom help (без topic) — список topics
-    // § help-command.md § Команда help § Поведение шаги 1-7
-    // 1. Распарсить позиционный аргумент <topic>.
-    // 2. Вычислить абсолютный путь к директории документации.
-    // 3. Прочитать содержимое директории документации.
-    // 4. Отобрать файлы с расширением .md.
-    // 5. Для каждого файла определить имя topic.
-    // 6. Отсортировать список topics по имени.
-    // 7. Если <topic> не указан — отобразить список topics.
+    // Happy path: agloom help (без topic) — категоризированный список topics
+    // § help-command.md § Команда help § Поведение шаги 1-8
     // =====================================================================
 
-    it("без аргумента topic отображает список доступных topics в алфавитном порядке и exit code 0", () => {
+    it("без аргумента topic отображает категоризированный список topics с секциями Guide и Reference", () => {
+      // Arrange: создать файлы в docs/guide/ и docs/reference/
+      createDocFile(guideDir, "getting-started.md", {
+        title: "Getting Started",
+        description: "How to get started with Agloom",
+        order: 1,
+      });
+      createDocFile(guideDir, "configuration.md", {
+        title: "Configuration",
+        description: "Configure Agloom for your project",
+        order: 2,
+      });
+      createDocFile(referenceDir, "cli.md", {
+        title: "CLI Reference",
+        description: "Complete CLI reference",
+        order: 1,
+      });
+
       const { lastFrame, unmount } = render(
         React.createElement(App, { args: ["help"] }),
       );
@@ -47,271 +130,769 @@ describe("CLI", () => {
       // § Вывод списка topics: "Available help topics:"
       expect(output).toContain("Available help topics:");
 
-      // § Вывод списка topics: "Run 'agloom help <topic>' to learn more."
+      // § Вывод списка topics: категория Guide с отступом 2 пробела + двоеточие
+      expect(output).toMatch(/^ {2}Guide:/m);
+
+      // § Вывод списка topics: topics с отступом 4 пробела
+      expect(output).toMatch(/^ {4}guide\/getting-started/m);
+      expect(output).toMatch(/^ {4}guide\/configuration/m);
+
+      // § Вывод списка topics: категория Reference
+      expect(output).toMatch(/^ {2}Reference:/m);
+      expect(output).toMatch(/^ {4}reference\/cli/m);
+
+      // § Вывод списка topics: descriptions
+      expect(output).toContain("How to get started with Agloom");
+      expect(output).toContain("Configure Agloom for your project");
+      expect(output).toContain("Complete CLI reference");
+
+      // § Вывод списка topics: footer
       expect(output).toContain("Run 'agloom help <topic>' to learn more.");
 
-      // § Начальные topics: файлы из docs/usage/ должны быть перечислены
-      // (adapters, clean, configuration, init, transpile — алфавитный порядок)
-      expect(output).toContain("adapters");
-      expect(output).toContain("clean");
-      expect(output).toContain("configuration");
-      expect(output).toContain("init");
-      expect(output).toContain("transpile");
-
-      // § Exit codes: 0 — список topics отображён успешно
+      // § Exit codes: 0
       expect(process.exitCode).toBeUndefined();
 
       unmount();
     });
 
-    // --- Трансформация: сортировка topics в алфавитном порядке (шаг 6) ---
-    // § help-command.md § Команда help § Поведение шаг 6:
-    // Отсортировать список topics по имени в алфавитном порядке.
-    it("отображает topics в алфавитном порядке", () => {
+    // =====================================================================
+    // Трансформация: сортировка topics по frontmatter order (шаг 7)
+    // § help-command.md § Команда help § Поведение шаг 7
+    // =====================================================================
+
+    it("отображает topics внутри категории в порядке frontmatter order", () => {
+      createDocFile(guideDir, "advanced.md", {
+        title: "Advanced",
+        description: "Advanced usage",
+        order: 10,
+      });
+      createDocFile(guideDir, "getting-started.md", {
+        title: "Getting Started",
+        description: "Get started",
+        order: 1,
+      });
+      createDocFile(guideDir, "configuration.md", {
+        title: "Configuration",
+        description: "Config",
+        order: 5,
+      });
+
       const { lastFrame, unmount } = render(
         React.createElement(App, { args: ["help"] }),
       );
 
       const output = lastFrame()!;
 
-      // Проверяем порядок: adapters < clean < configuration < init < transpile
-      const adaptersIdx = output.indexOf("adapters");
-      const cleanIdx = output.indexOf("clean");
-      const configIdx = output.indexOf("configuration");
-      const initIdx = output.indexOf("init");
-      const transpileIdx = output.indexOf("transpile");
+      // Порядок: getting-started (1) < configuration (5) < advanced (10)
+      const gsIdx = output.indexOf("guide/getting-started");
+      const cfgIdx = output.indexOf("guide/configuration");
+      const advIdx = output.indexOf("guide/advanced");
 
-      expect(adaptersIdx).toBeLessThan(cleanIdx);
-      expect(cleanIdx).toBeLessThan(configIdx);
-      expect(configIdx).toBeLessThan(initIdx);
-      expect(initIdx).toBeLessThan(transpileIdx);
+      expect(gsIdx).toBeGreaterThan(-1);
+      expect(cfgIdx).toBeGreaterThan(-1);
+      expect(advIdx).toBeGreaterThan(-1);
+      expect(gsIdx).toBeLessThan(cfgIdx);
+      expect(cfgIdx).toBeLessThan(advIdx);
 
       unmount();
     });
 
-    // --- Трансформация: каждый topic на отдельной строке с отступом в два пробела ---
-    // § help-command.md § Вывод списка topics:
-    // Каждый topic — на отдельной строке с отступом в два пробела.
-    it("отображает каждый topic на отдельной строке с отступом в два пробела и описанием", () => {
+    // =====================================================================
+    // Трансформация: порядок категорий Guide → Reference
+    // § help-command.md § Вывод списка topics: категории в порядке DocCategory.order
+    // =====================================================================
+
+    it("отображает категории в порядке Guide → Reference", () => {
+      createDocFile(guideDir, "intro.md", {
+        title: "Intro",
+        description: "Introduction",
+        order: 1,
+      });
+      createDocFile(referenceDir, "api.md", {
+        title: "API",
+        description: "API reference",
+        order: 1,
+      });
+
       const { lastFrame, unmount } = render(
         React.createElement(App, { args: ["help"] }),
       );
 
       const output = lastFrame()!;
 
-      // Каждый topic с отступом в два пробела, имя и описание
-      expect(output).toMatch(/^ {2}adapters\s+\S/m);
-      expect(output).toMatch(/^ {2}configuration\s+\S/m);
-      expect(output).toMatch(/^ {2}transpile\s+\S/m);
+      const guideIdx = output.indexOf("Guide:");
+      const refIdx = output.indexOf("Reference:");
+
+      expect(guideIdx).toBeGreaterThan(-1);
+      expect(refIdx).toBeGreaterThan(-1);
+      expect(guideIdx).toBeLessThan(refIdx);
 
       unmount();
     });
 
     // =====================================================================
-    // Happy path: agloom help <topic> — рендер конкретного topic
-    // § help-command.md § Команда help § Поведение шаги 8-11
-    // 8. Найти topic, имя которого совпадает с <topic>.
-    // 9. Прочитать содержимое файла <docsDir>/<topic>.md.
-    // 10. Отрендерить Markdown-содержимое через marked + marked-terminal.
-    // 11. Отобразить результат рендеринга в stdout.
+    // Трансформация: ширина колонки name по самому длинному name среди ВСЕХ категорий
+    // § help-command.md § Вывод списка topics: правила форматирования
     // =====================================================================
 
-    it("при указании существующего topic отрендеривает Markdown-содержимое и exit code 0", () => {
-      // "configuration" — один из начальных topics из docs/usage/
-      // Читаем содержимое topic-файла для позитивной проверки
-      const docsDir = path.resolve(import.meta.dirname, "../../../docs/usage");
-      const topicContent = fs.readFileSync(
-        path.join(docsDir, "configuration.md"),
-        "utf-8",
-      );
-      // Извлекаем первый заголовок Markdown (# Title) для позитивного assert
-      const headingMatch = topicContent.match(/^#\s+(.+)$/m);
-      const headingText = headingMatch?.[1] ?? "";
+    it("выравнивает колонку name по самому длинному name среди всех категорий", () => {
+      // guide/getting-started — длинное имя (24 символа)
+      createDocFile(guideDir, "getting-started.md", {
+        title: "Getting Started",
+        description: "Desc A",
+        order: 1,
+      });
+      // reference/cli — короткое имя (13 символов)
+      createDocFile(referenceDir, "cli.md", {
+        title: "CLI",
+        description: "Desc B",
+        order: 1,
+      });
 
       const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["help", "configuration"] }),
+        React.createElement(App, { args: ["help"] }),
+      );
+
+      const output = lastFrame()!;
+      const lines = output.split("\n");
+
+      // Найти строки с topics
+      const gsLine = lines.find((l) => l.includes("guide/getting-started"));
+      const cliLine = lines.find((l) => l.includes("reference/cli"));
+
+      expect(gsLine).toBeDefined();
+      expect(cliLine).toBeDefined();
+
+      // Описания должны начинаться в одной и той же колонке
+      const gsDescStart = gsLine!.indexOf("Desc A");
+      const cliDescStart = cliLine!.indexOf("Desc B");
+      expect(gsDescStart).toBeGreaterThan(0);
+      expect(cliDescStart).toBeGreaterThan(0);
+      expect(gsDescStart).toBe(cliDescStart);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение: пустая категория не отображается
+    // § help-command.md § Вывод списка topics: категория, не содержащая topics,
+    //   НЕ ДОЛЖНА отображаться
+    // =====================================================================
+
+    it("не отображает категорию, если она не содержит topics", () => {
+      // Только guide, reference пустой (не создаём)
+      createDocFile(guideDir, "intro.md", {
+        title: "Intro",
+        description: "Introduction",
+        order: 1,
+      });
+      // reference директорию не создаём
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help"] }),
       );
 
       const output = lastFrame()!;
 
-      // Позитивный assert: вывод содержит текст заголовка из topic-файла
-      // (подтверждает, что файл был прочитан и содержимое отрендерено)
-      expect(headingText.length).toBeGreaterThan(0);
-      expect(output).toContain(headingText);
+      expect(output).toContain("Guide:");
+      expect(output).not.toContain("Reference:");
 
-      // § Поведение шаг 10: рендеринг через marked + marked-terminal
-      // Вывод содержит ANSI-коды (терминал-совместимый формат),
-      // что подтверждает использование marked-terminal, а не raw Markdown.
-      // eslint-disable-next-line no-control-regex
-      expect(output).toMatch(/\x1b\[/);
+      unmount();
+    });
 
-      // Не должен содержать список topics — это рендер конкретного topic
+    // =====================================================================
+    // Happy path: agloom help guide/getting-started — рендер topic с префиксом
+    // § help-command.md § Команда help § Поведение шаги 9-13
+    // § help-command.md § Разрешение имени topic § Поведение шаг 1
+    // =====================================================================
+
+    it("при указании topic с префиксом (guide/getting-started) рендерит содержимое без frontmatter", () => {
+      createDocFile(guideDir, "getting-started.md", {
+        title: "Getting Started",
+        description: "How to get started",
+        order: 1,
+        body: "\n# Getting Started\n\nWelcome to Agloom guide.",
+      });
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["help", "guide/getting-started"],
+        }),
+      );
+
+      const output = lastFrame()!;
+
+      // § Поведение шаг 11: frontmatter удалён перед рендерингом
+      expect(output).not.toContain("title:");
+      expect(output).not.toContain("description:");
+      expect(output).not.toContain("order:");
+      expect(output).not.toContain("---");
+
+      // § Поведение шаг 12-13: содержимое отрендерено
+      expect(output).toContain("Getting Started");
+      expect(output).toContain("Welcome to Agloom guide");
+
+      // Не должен содержать список topics
       expect(output).not.toContain("Available help topics:");
 
-      // Не должен содержать общую справку CLI — это рендер topic, не HelpView
-      expect(output).not.toContain(
-        "Transpile canonical configs for a target adapter",
-      );
-      expect(output).not.toContain("Commands:");
-
-      // § Exit codes: 0 — topic отрендерен успешно
+      // § Exit codes: 0
       expect(process.exitCode).toBeUndefined();
 
       unmount();
     });
 
     // =====================================================================
-    // Happy path: agloom help <topic> — topic с именем, совпадающим с командой
-    // § help-command.md § Команда help § Поведение шаги 8-11
-    // Имя topic "transpile" совпадает с именем команды "transpile".
-    // parseArgs направляет позиционный аргумент после "help" в helpTopic,
-    // поэтому система ДОЛЖНА отрендерить docs/usage/transpile.md,
-    // а не выполнить команду transpile.
+    // Happy path: agloom help reference/cli — рендер topic из reference
+    // § help-command.md § Команда help § Поведение шаги 9-13
     // =====================================================================
 
-    it("при указании topic с именем команды (transpile) отрендеривает Markdown, а не выполняет команду", () => {
-      // "transpile" — topic, чьё имя совпадает с командой CLI
-      const docsDir = path.resolve(import.meta.dirname, "../../../docs/usage");
-      const topicContent = fs.readFileSync(
-        path.join(docsDir, "transpile.md"),
-        "utf-8",
-      );
-      // Извлекаем первый заголовок Markdown (# Transpile) для позитивного assert
-      const headingMatch = topicContent.match(/^#\s+(.+)$/m);
-      const headingText = headingMatch?.[1] ?? "";
+    it("при указании topic с префиксом reference/ рендерит содержимое", () => {
+      createDocFile(referenceDir, "cli.md", {
+        title: "CLI Reference",
+        description: "Complete CLI reference",
+        order: 1,
+        body: "\n# CLI Reference\n\nAll CLI commands documented here.",
+      });
 
       const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["help", "transpile"] }),
+        React.createElement(App, { args: ["help", "reference/cli"] }),
       );
 
       const output = lastFrame()!;
 
-      // Позитивный assert: вывод содержит текст заголовка из topic-файла
-      // (подтверждает, что файл docs/usage/transpile.md был прочитан и отрендерен)
-      expect(headingText.length).toBeGreaterThan(0);
-      expect(output).toContain(headingText);
-
-      // § Поведение шаг 10: рендеринг через marked + marked-terminal
-      // Вывод содержит ANSI-коды (терминал-совместимый формат)
-      // eslint-disable-next-line no-control-regex
-      expect(output).toMatch(/\x1b\[/);
-
-      // НЕ должен содержать вывод команды transpile (результаты транспиляции)
-      expect(output).not.toContain("Transpiling for");
-      expect(output).not.toContain("files written");
-
-      // НЕ должен содержать список topics (это рендер конкретного topic)
+      expect(output).toContain("CLI Reference");
+      expect(output).toContain("All CLI commands documented here");
       expect(output).not.toContain("Available help topics:");
-
-      // НЕ должен содержать общую справку CLI
-      expect(output).not.toContain("Commands:");
-
-      // § Exit codes: 0 — topic отрендерен успешно
       expect(process.exitCode).toBeUndefined();
 
       unmount();
     });
 
     // =====================================================================
-    // Расширение 3a: Директория документации не существует
-    // § help-command.md § Расширения 3a:
-    // Директория документации не существует → список topics считается пустым.
-    // Это приводит к расширению 7a (пустой список).
+    // Happy path: agloom help getting-started (без префикса) — resolve unique
+    // § help-command.md § Разрешение имени topic § Поведение шаги 2-3
     // =====================================================================
 
-    // Этот тест не может быть непосредственно проверен через CLI, т.к.
-    // docs/usage/ поставляется вместе с кодом. Покрывается косвенно
-    // через расширение 7a.
+    it("при указании topic без префикса находит unique match и рендерит", () => {
+      createDocFile(guideDir, "getting-started.md", {
+        title: "Getting Started",
+        description: "How to get started",
+        order: 1,
+        body: "\n# Getting Started\n\nThis is the getting started guide.",
+      });
 
-    // =====================================================================
-    // Расширение 7a: Список topics пуст
-    // § help-command.md § Расширения 7a:
-    // Список topics пуст (директория отсутствует или не содержит .md-файлов) →
-    // отобразить "No help topics available."; exit code 1.
-    // =====================================================================
-
-    // Примечание: для тестирования этого расширения нужно моделировать
-    // отсутствие docs/usage/ или пустую директорию. Однако путь
-    // вычисляется через import.meta.dirname (шаг 2), поэтому прямой
-    // тест затруднён без мока файловой системы. Тест написан как
-    // unit-тест на уровне функции, если она будет экспортирована.
-    // Для integration-теста потребуется отдельный механизм.
-
-    // =====================================================================
-    // Расширение 8a: Topic не найден, список topics непуст
-    // § help-command.md § Расширения 8a:
-    // Topic с указанным именем не найден, список topics непуст →
-    // отобразить "Unknown help topic: {topic}.", пустую строку
-    // и список доступных topics; exit code 1.
-    // =====================================================================
-
-    it('при несуществующем topic и непустом списке отображает "Unknown help topic" со списком topics и exit code 1', () => {
       const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["help", "nonexistent-topic"] }),
+        React.createElement(App, { args: ["help", "getting-started"] }),
       );
 
       const output = lastFrame()!;
 
-      // Точный формат сообщения из спецификации
-      expect(output).toContain("Unknown help topic: nonexistent-topic.");
+      expect(output).toContain("Getting Started");
+      expect(output).toContain("This is the getting started guide");
+      expect(output).not.toContain("Available help topics:");
+      expect(process.exitCode).toBeUndefined();
 
-      // § Расширение 8a: пустая строка между сообщением об ошибке и списком topics
-      expect(output).toMatch(
-        /Unknown help topic: nonexistent-topic\.\n\nAvailable help topics:/,
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение 2a: Ambiguous topic (одинаковый slug в двух категориях)
+    // § help-command.md § Разрешение имени topic § Расширения 2a
+    // =====================================================================
+
+    it("при ambiguous topic (slug в двух категориях) отображает ошибку с перечнем", () => {
+      // Одинаковый slug 'overview' в guide и reference
+      createDocFile(guideDir, "overview.md", {
+        title: "Guide Overview",
+        description: "Guide overview",
+        order: 1,
+      });
+      createDocFile(referenceDir, "overview.md", {
+        title: "Reference Overview",
+        description: "Reference overview",
+        order: 1,
+      });
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help", "overview"] }),
       );
 
-      // Список доступных topics (§ Вывод списка topics)
-      expect(output).toContain("Available help topics:");
-      expect(output).toContain("Run 'agloom help <topic>' to learn more.");
+      const output = lastFrame()!;
 
-      // § Exit codes: 1 — topic не найден
+      // § Расширение 2a: "Ambiguous help topic: {topic}. Did you mean one of these?"
+      expect(output).toContain(
+        "Ambiguous help topic: overview. Did you mean one of these?",
+      );
+
+      // Список совпавших topic names с отступом 2 пробела
+      expect(output).toMatch(/^ {2}guide\/overview$/m);
+      expect(output).toMatch(/^ {2}reference\/overview$/m);
+
+      // § Exit codes: 1
       expect(process.exitCode).toBe(1);
 
       unmount();
     });
 
     // =====================================================================
-    // Расширение 8b: Topic не найден, список topics пуст
-    // § help-command.md § Расширения 8b:
-    // Topic с указанным именем не найден, список topics пуст →
-    // отобразить "Unknown help topic: {topic}."; exit code 1.
+    // Расширение 1a: Topic с префиксом не найден, список topics непуст
+    // § help-command.md § Разрешение имени topic § Расширения 1a
     // =====================================================================
 
-    // Примечание: тестирование затруднено по той же причине, что и 7a —
-    // docs/usage/ поставляется вместе с кодом. В реальном окружении
-    // список topics непуст (начальные topics).
+    it("при несуществующем topic с префиксом и непустом списке отображает Unknown + список", () => {
+      createDocFile(guideDir, "intro.md", {
+        title: "Intro",
+        description: "Introduction",
+        order: 1,
+      });
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["help", "guide/nonexistent"],
+        }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Unknown help topic: guide/nonexistent.");
+      // Пустая строка между сообщением и списком
+      expect(output).toMatch(
+        /Unknown help topic: guide\/nonexistent\.\n\nAvailable help topics:/,
+      );
+      expect(output).toContain("Available help topics:");
+
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
 
     // =====================================================================
-    // Расширение 9a: Ошибка чтения файла
-    // § help-command.md § Расширения 9a:
-    // Ошибка чтения файла → отобразить "Failed to read help topic: {topic}.";
-    // exit code 1.
+    // Расширение 1b: Topic с префиксом не найден, список topics пуст
+    // § help-command.md § Разрешение имени topic § Расширения 1b
     // =====================================================================
 
-    // Примечание: для моделирования ошибки чтения потребуется chmod 000
-    // на файле docs/usage/<topic>.md, что нежелательно в тестах —
-    // повлияет на другие тесты и CI. Тест будет реализован при наличии
-    // injectable file reader.
+    it("при несуществующем topic с префиксом и пустом списке отображает Unknown без списка", () => {
+      // Не создаём никаких файлов → пустой список topics
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["help", "guide/nonexistent"],
+        }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Unknown help topic: guide/nonexistent.");
+      expect(output).not.toContain("Available help topics:");
+
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
 
     // =====================================================================
-    // Расширение 10a: Ошибка рендеринга Markdown
-    // § help-command.md § Расширения 10a:
-    // Ошибка рендеринга Markdown → отобразить
+    // Расширение 2b: Topic без префикса не найден, список topics непуст
+    // § help-command.md § Разрешение имени topic § Расширения 2b
+    // =====================================================================
+
+    it("при несуществующем topic без префикса и непустом списке отображает Unknown + список", () => {
+      createDocFile(guideDir, "intro.md", {
+        title: "Intro",
+        description: "Introduction",
+        order: 1,
+      });
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help", "nonexistent"] }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Unknown help topic: nonexistent.");
+      expect(output).toMatch(
+        /Unknown help topic: nonexistent\.\n\nAvailable help topics:/,
+      );
+
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение 2c: Topic без префикса не найден, список topics пуст
+    // § help-command.md § Разрешение имени topic § Расширения 2c
+    // =====================================================================
+
+    it("при несуществующем topic без префикса и пустом списке отображает Unknown без списка", () => {
+      // Не создаём файлов
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help", "nonexistent"] }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("Unknown help topic: nonexistent.");
+      expect(output).not.toContain("Available help topics:");
+
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение 8a: Список topics пуст по всем категориям
+    // § help-command.md § Команда help § Расширения 8a
+    // =====================================================================
+
+    it("при пустом списке topics отображает 'No help topics available.' и exit code 1", () => {
+      // Не создаём файлов → оба каталога пусты или не существуют
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help"] }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("No help topics available.");
+      expect(process.exitCode).toBe(1);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение 3a: Директория категории не существует → пустой список для неё
+    // § help-command.md § Команда help § Расширения 3a
+    // =====================================================================
+
+    it("при отсутствии директории категории считает её пустой", () => {
+      // Создаём только guide, reference не существует
+      createDocFile(guideDir, "intro.md", {
+        title: "Intro",
+        description: "Introduction",
+        order: 1,
+      });
+      // referenceDir не создаём
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help"] }),
+      );
+
+      const output = lastFrame()!;
+
+      // Список отображается (guide содержит topics)
+      expect(output).toContain("Available help topics:");
+      expect(output).toContain("guide/intro");
+      // Reference не отображается (категория пуста)
+      expect(output).not.toContain("Reference:");
+
+      expect(process.exitCode).toBeUndefined();
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение 5a: Файл без валидного YAML frontmatter → skip
+    // § help-command.md § Команда help § Расширения 5a
+    // =====================================================================
+
+    it("пропускает файл без валидного YAML frontmatter", () => {
+      createDocFile(guideDir, "valid.md", {
+        title: "Valid",
+        description: "Valid topic",
+        order: 1,
+      });
+      // Создаём файл без frontmatter
+      fs.writeFileSync(
+        path.join(guideDir, "invalid.md"),
+        "# No Frontmatter\n\nJust plain content.",
+        "utf-8",
+      );
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help"] }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("guide/valid");
+      // Файл без frontmatter НЕ должен быть в списке
+      expect(output).not.toContain("guide/invalid");
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение 5b: Frontmatter без description → description = ""
+    // § help-command.md § Команда help § Расширения 5b
+    // =====================================================================
+
+    it("при отсутствии description в frontmatter использует пустую строку", () => {
+      // Файл с frontmatter без description
+      fs.mkdirSync(guideDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(guideDir, "no-desc.md"),
+        "---\ntitle: No Desc\norder: 1\n---\n\n# No Desc\n\nContent.",
+        "utf-8",
+      );
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help"] }),
+      );
+
+      const output = lastFrame()!;
+
+      // Topic должен быть в списке (не пропущен)
+      expect(output).toContain("guide/no-desc");
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение 5c: Frontmatter без order → order = Infinity (в конце)
+    // § help-command.md § Команда help § Расширения 5c
+    // =====================================================================
+
+    it("при отсутствии order в frontmatter помещает topic в конец категории", () => {
+      createDocFile(guideDir, "first.md", {
+        title: "First",
+        description: "First topic",
+        order: 1,
+      });
+      // Файл без order
+      fs.mkdirSync(guideDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(guideDir, "last.md"),
+        "---\ntitle: Last\ndescription: Last topic\n---\n\n# Last\n\nContent.",
+        "utf-8",
+      );
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help"] }),
+      );
+
+      const output = lastFrame()!;
+
+      const firstIdx = output.indexOf("guide/first");
+      const lastIdx = output.indexOf("guide/last");
+
+      expect(firstIdx).toBeGreaterThan(-1);
+      expect(lastIdx).toBeGreaterThan(-1);
+      expect(firstIdx).toBeLessThan(lastIdx);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение 10a: Ошибка чтения файла
+    // § help-command.md § Команда help § Расширения 10a
+    // =====================================================================
+
+    it("при ошибке чтения файла отображает 'Failed to read help topic' и exit code 1", () => {
+      createDocFile(guideDir, "unreadable.md", {
+        title: "Unreadable",
+        description: "Unreadable topic",
+        order: 1,
+      });
+
+      // Создаём topic, затем делаем файл нечитаемым
+      const filePath = path.join(guideDir, "unreadable.md");
+      fs.chmodSync(filePath, 0o000);
+
+      try {
+        const { lastFrame, unmount } = render(
+          React.createElement(App, {
+            args: ["help", "guide/unreadable"],
+          }),
+        );
+
+        const output = lastFrame()!;
+
+        expect(output).toContain(
+          "Failed to read help topic: guide/unreadable.",
+        );
+        expect(process.exitCode).toBe(1);
+
+        unmount();
+      } finally {
+        // Восстановить права для cleanup
+        fs.chmodSync(filePath, 0o644);
+      }
+    });
+
+    // =====================================================================
+    // Расширение 12a: Ошибка рендеринга Markdown
+    // § help-command.md § Команда help § Расширения 12a:
+    // Ошибка рендеринга Markdown → отобразить сообщение
     // "Failed to render help topic: {topic}."; exit code 1.
+    //
+    // Обоснование подхода: marked + marked-terminal являются
+    // детерминистичными библиотеками, которые не выбрасывают исключений
+    // на произвольном строковом вводе. Единственный способ вызвать
+    // ошибку рендеринга — нарушение внутреннего состояния marked
+    // (например, дефектный extension). Для проверки защитного catch-блока
+    // используется vi.mock на уровне модуля marked — это обоснованное
+    // исключение из правила «не мокать детерминистичные библиотеки»,
+    // т.к. тестируется именно поведение при невоспроизводимой ошибке,
+    // а не корректность вызова marked.
     // =====================================================================
 
-    // Примечание: ошибка рендеринга marked + marked-terminal крайне
-    // маловероятна при корректном Markdown-файле. Тест будет реализован
-    // при наличии injectable renderer.
+    it("при ошибке рендеринга Markdown отображает 'Failed to render help topic' и exit code 1", async () => {
+      createDocFile(guideDir, "render-error.md", {
+        title: "Render Error",
+        description: "Topic that triggers render error",
+        order: 1,
+        body: "\n# Render Error\n\nContent that should be rendered.",
+      });
+
+      // Динамический import для доступа к модулю marked
+      const markedModule = await import("marked");
+      const originalParse = markedModule.marked.parse;
+
+      // Временно подменяем parse, чтобы выбросить исключение
+      // Обоснование: единственный способ проверить защитный catch-блок
+      // для ошибки рендеринга — marked не выбрасывает на строковом вводе
+      markedModule.marked.parse = () => {
+        throw new Error("Simulated render failure");
+      };
+
+      try {
+        const { lastFrame, unmount } = render(
+          React.createElement(App, {
+            args: ["help", "guide/render-error"],
+          }),
+        );
+
+        const output = lastFrame()!;
+
+        expect(output).toContain(
+          "Failed to render help topic: guide/render-error.",
+        );
+        expect(process.exitCode).toBe(1);
+
+        unmount();
+      } finally {
+        // Восстановить оригинальный parse
+        markedModule.marked.parse = originalParse;
+      }
+    });
 
     // =====================================================================
-    // Трансформация: Вычисление пути через import.meta.dirname (шаг 2)
-    // § help-command.md § Команда help § Поведение шаг 2:
-    // Путь разрешается через import.meta.dirname, не process.cwd().
+    // Трансформация: frontmatter stripped при рендеринге topic
+    // § help-command.md § Команда help § Поведение шаг 11
     // =====================================================================
 
-    it("резолвит путь к docs/usage/ через import.meta.dirname, а не process.cwd()", () => {
-      // Вызываем из tmpDir (отличного от projectRoot) — help всё равно должен работать
+    it("удаляет frontmatter при рендеринге topic (не показывается в output)", () => {
+      createDocFile(guideDir, "test-strip.md", {
+        title: "Strip Test",
+        description: "Testing frontmatter stripping",
+        order: 1,
+        body: "\n# Strip Test\n\nBody content only.",
+      });
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["help", "guide/test-strip"],
+        }),
+      );
+
+      const output = lastFrame()!;
+
+      // Frontmatter не должен быть в выводе
+      expect(output).not.toContain("title: Strip Test");
+      expect(output).not.toContain(
+        "description: Testing frontmatter stripping",
+      );
+      expect(output).not.toContain("order: 1");
+
+      // Содержимое должно быть
+      expect(output).toContain("Body content only");
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Трансформация: topic name = {category}/{slug}
+    // § help-command.md § Команда help § Поведение шаг 6
+    // =====================================================================
+
+    it("формирует имя topic в формате {category}/{slug}", () => {
+      createDocFile(guideDir, "getting-started.md", {
+        title: "Getting Started",
+        description: "Get started",
+        order: 1,
+      });
+      createDocFile(referenceDir, "cli.md", {
+        title: "CLI",
+        description: "CLI ref",
+        order: 1,
+      });
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help"] }),
+      );
+
+      const output = lastFrame()!;
+
+      // Имена в формате category/slug
+      expect(output).toContain("guide/getting-started");
+      expect(output).toContain("reference/cli");
+
+      // Не должно быть имён без префикса в списке
+      // (description может содержать слово "getting-started", но в строке topic
+      // с отступом 4 пробела должен быть полный формат)
+      expect(output).toMatch(/^ {4}guide\/getting-started/m);
+      expect(output).toMatch(/^ {4}reference\/cli/m);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Расширение: Markdown рендерится через marked + marked-terminal
+    // § help-command.md § Команда help § Поведение шаг 12
+    // =====================================================================
+
+    it("рендерит Markdown через marked + marked-terminal (ANSI-коды в выводе)", () => {
+      createDocFile(guideDir, "md-test.md", {
+        title: "Markdown Test",
+        description: "Test markdown rendering",
+        order: 1,
+        body: "\n# Markdown Test\n\nSome **bold** and `code` content.",
+      });
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, {
+          args: ["help", "guide/md-test"],
+        }),
+      );
+
+      const output = lastFrame()!;
+
+      // Вывод содержит ANSI-коды (терминал-совместимый формат)
+      // eslint-disable-next-line no-control-regex
+      expect(output).toMatch(/\x1b\[/);
+
+      expect(output).toContain("Markdown Test");
+      expect(process.exitCode).toBeUndefined();
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Трансформация: import.meta.dirname для резолва пути
+    // § help-command.md § Команда help § Поведение шаг 2
+    // =====================================================================
+
+    it("резолвит путь к docs/ через import.meta.dirname, а не process.cwd()", () => {
+      createDocFile(guideDir, "intro.md", {
+        title: "Intro",
+        description: "Introduction",
+        order: 1,
+      });
+
+      const tmpDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "agl-help-cwd-test-"),
+      );
       const originalCwd = process.cwd();
       try {
         process.chdir(tmpDir);
@@ -324,52 +905,20 @@ describe("CLI", () => {
 
         // Список topics должен загрузиться, т.к. путь через import.meta.dirname
         expect(output).toContain("Available help topics:");
+        expect(output).toContain("guide/intro");
 
         unmount();
       } finally {
         process.chdir(originalCwd);
+        fs.rmSync(tmpDir, { recursive: true, force: true });
       }
     });
 
     // =====================================================================
-    // Трансформация: Фильтрация только .md файлов (шаг 4)
-    // § help-command.md § Команда help § Поведение шаг 4:
-    // Отобрать файлы с расширением .md.
+    // § help-command.md § Справка: agloom help --help
     // =====================================================================
 
-    // Примечание: проверка фильтрации .md файлов — косвенно покрывается
-    // happy path тестом (список содержит только имена topics, не .txt/.json).
-
-    // =====================================================================
-    // Трансформация: Имя topic = имя файла без .md (шаг 5)
-    // § help-command.md § Команда help § Поведение шаг 5:
-    // Для каждого файла определить имя topic как имя файла без расширения .md.
-    // =====================================================================
-
-    it("отображает имена topics без расширения .md", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["help"] }),
-      );
-
-      const output = lastFrame()!;
-
-      // § Поведение шаг 5: имя topic = имя файла без расширения .md
-      // Вывод должен содержать "Available help topics:" (контекст списка)
-      expect(output).toContain("Available help topics:");
-
-      // Topics без .md расширения
-      expect(output).toContain("configuration");
-      expect(output).not.toContain("configuration.md");
-
-      unmount();
-    });
-
-    // =====================================================================
-    // § help-command.md § Справка
-    // Команда help ДОЛЖНА поддерживать agloom help --help.
-    // =====================================================================
-
-    it("help --help отображает справку по команде help", () => {
+    it("help --help отображает справку с примерами guide/getting-started, reference/cli", () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, { args: ["help", "--help"] }),
       );
@@ -384,11 +933,13 @@ describe("CLI", () => {
         "Show help topics or display a specific help topic.",
       );
 
-      // § Справка: Arguments section с описанием аргумента
+      // § Справка: Arguments section
       expect(output).toContain("Arguments:");
       expect(output).toContain("<topic>");
-      // § Справка: "<topic>  Help topic name (e.g., configuration, transpile)"
-      expect(output).toContain("Help topic name");
+
+      // § Справка: примеры с новым форматом имён
+      expect(output).toContain("guide/getting-started");
+      expect(output).toContain("reference/cli");
 
       // Exit code 0
       expect(process.exitCode).toBeUndefined();
@@ -398,7 +949,6 @@ describe("CLI", () => {
 
     // =====================================================================
     // § help-command.md § Изменения в cli.md § Добавление help в список команд
-    // Команда help ДОЛЖНА быть добавлена в вывод agloom --help.
     // =====================================================================
 
     it('содержит команду "help" с описанием в выводе agloom --help', () => {
@@ -408,9 +958,6 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // § Изменения в cli.md § Добавление help в список команд:
-      // "  help         Show help topics or display a specific help topic"
-      // Regex отличает команду help от флага --help / "Show help"
       expect(output).toMatch(
         / {2}help\s+Show help topics or display a specific help topic/,
       );
@@ -420,10 +967,16 @@ describe("CLI", () => {
 
     // =====================================================================
     // § help-command.md § Изменения в cli.md § Изменение секции --help
-    // agloom help больше НЕ является алиасом --help.
+    // agloom help больше НЕ является алиасом --help
     // =====================================================================
 
-    it("agloom help отображает список topics, а не общую справку (не алиас --help)", () => {
+    it("agloom help отображает категоризированный список topics, а не общую справку", () => {
+      createDocFile(guideDir, "intro.md", {
+        title: "Intro",
+        description: "Introduction",
+        order: 1,
+      });
+
       const { lastFrame: helpFrame, unmount: unmountHelp } = render(
         React.createElement(App, { args: ["help"] }),
       );
@@ -436,53 +989,156 @@ describe("CLI", () => {
       const globalHelpOutput = globalHelpFrame()!;
       unmountGlobalHelp();
 
-      // help должен отображать список topics, а не общую справку
+      // help должен отображать категоризированный список topics
       expect(helpOutput).toContain("Available help topics:");
+      expect(helpOutput).toContain("Guide:");
       // Не должен быть идентичен выводу --help
       expect(helpOutput).not.toEqual(globalHelpOutput);
     });
 
     // =====================================================================
     // § help-command.md § Изменения в cli.md § Изменение секции «Неизвестная команда»
-    // Список известных команд дополняется значением help.
     // =====================================================================
 
-    it("help распознаётся как команда и отображает список topics, а не Unknown command", () => {
+    it("help распознаётся как команда, а не Unknown command", () => {
+      // Создаём минимальные данные
+      createDocFile(guideDir, "intro.md", {
+        title: "Intro",
+        description: "Introduction",
+        order: 1,
+      });
+
       const { lastFrame, unmount } = render(
         React.createElement(App, { args: ["help"] }),
       );
 
       const output = lastFrame()!;
 
-      // Не должно быть "Unknown command: help"
       expect(output).not.toContain("Unknown command");
-
-      // Должен отображать список topics (не общую справку)
       expect(output).toContain("Available help topics:");
 
       unmount();
     });
 
     // =====================================================================
-    // Расширение 8a: формат сообщения "Unknown help topic" с другим topic
-    // § help-command.md § Расширения 8a:
-    // Сообщение содержит подставленное имя topic и список доступных topics.
-    // (8b не тестируется — требуется пустая docs/usage/, недоступная
-    // без injectable docs path.)
+    // Граничное условие: topic с именем команды (transpile)
+    // § help-command.md § Команда help § Поведение шаги 9-13
     // =====================================================================
 
-    it('расширение 8a: "Unknown help topic: {topic}." с подставленным именем и списком topics', () => {
+    it("при указании topic с именем команды (guide/transpile) рендерит topic, а не выполняет команду", () => {
+      createDocFile(guideDir, "transpile.md", {
+        title: "Transpile",
+        description: "How to transpile",
+        order: 1,
+        body: "\n# Transpile Guide\n\nStep-by-step transpile instructions.",
+      });
+
       const { lastFrame, unmount } = render(
-        React.createElement(App, { args: ["help", "nonexistent"] }),
+        React.createElement(App, {
+          args: ["help", "guide/transpile"],
+        }),
       );
 
       const output = lastFrame()!;
 
-      // Сообщение содержит подставленное имя topic
-      expect(output).toContain("Unknown help topic: nonexistent.");
+      expect(output).toContain("Transpile Guide");
+      expect(output).toContain("Step-by-step transpile instructions");
+      expect(output).not.toContain("Available help topics:");
+      expect(output).not.toContain("Transpiling for");
+      expect(process.exitCode).toBeUndefined();
 
-      // § Расширение 8a: список topics присутствует (т.к. docs/usage/ содержит topics)
-      expect(output).toContain("Available help topics:");
+      unmount();
+    });
+
+    // =====================================================================
+    // Граничное условие: description из frontmatter (не из H1)
+    // § help-command.md § Команда help § Поведение шаг 6
+    // =====================================================================
+
+    it("берёт description из frontmatter, а не из первой строки после H1", () => {
+      createDocFile(guideDir, "desc-test.md", {
+        title: "Desc Test",
+        description: "Frontmatter description value",
+        order: 1,
+        body: "\n# Title\n\nBody text that is not description.",
+      });
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help"] }),
+      );
+
+      const output = lastFrame()!;
+
+      // Description из frontmatter
+      expect(output).toContain("Frontmatter description value");
+      // Body текст не является описанием в списке topics
+      // (он может быть в output если содержится где-то в formatting,
+      // но строка topic должна содержать frontmatter description)
+      const topicLine = output
+        .split("\n")
+        .find((l) => l.includes("guide/desc-test"));
+      expect(topicLine).toBeDefined();
+      expect(topicLine).toContain("Frontmatter description value");
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Граничное условие: пустая строка между категориями
+    // § help-command.md § Вывод списка topics: между категориями — пустая строка
+    // =====================================================================
+
+    it("между категориями в списке topics присутствует пустая строка", () => {
+      createDocFile(guideDir, "intro.md", {
+        title: "Intro",
+        description: "Introduction",
+        order: 1,
+      });
+      createDocFile(referenceDir, "api.md", {
+        title: "API",
+        description: "API reference",
+        order: 1,
+      });
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help"] }),
+      );
+
+      const output = lastFrame()!;
+
+      // Между последним topic Guide и заголовком Reference — пустая строка
+      // Паттерн: строка с guide/intro, затем пустая строка, затем "  Reference:"
+      expect(output).toMatch(/guide\/intro.*\n\n {2}Reference:/s);
+
+      unmount();
+    });
+
+    // =====================================================================
+    // Граничное условие: только .md файлы включаются (шаг 4)
+    // § help-command.md § Команда help § Поведение шаг 4
+    // =====================================================================
+
+    it("включает только .md файлы, игнорируя другие расширения", () => {
+      createDocFile(guideDir, "valid.md", {
+        title: "Valid",
+        description: "Valid topic",
+        order: 1,
+      });
+      // Создаём .txt файл — не должен попасть в список
+      fs.writeFileSync(
+        path.join(guideDir, "invalid.txt"),
+        "---\ntitle: Invalid\ndescription: Should not appear\norder: 2\n---\n\nContent.",
+        "utf-8",
+      );
+
+      const { lastFrame, unmount } = render(
+        React.createElement(App, { args: ["help"] }),
+      );
+
+      const output = lastFrame()!;
+
+      expect(output).toContain("guide/valid");
+      expect(output).not.toContain("guide/invalid");
 
       unmount();
     });
