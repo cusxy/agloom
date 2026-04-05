@@ -9,11 +9,7 @@ import type { TranspilerStepOutcome } from "./types.js";
 /** Параметры шага транспиляции. */
 interface TranspileStepParams {
   /** Фабричная функция транспилера. */
-  transpilerFactory: (config: {
-    projectRoot: string;
-    adapters: unknown[];
-    agloomDir?: string;
-  }) => {
+  transpilerFactory: (config: { projectRoot: string; adapters: unknown[]; agloomDir?: string }) => {
     transpile: () => unknown[];
     writeResults: (
       results: unknown[],
@@ -31,14 +27,7 @@ interface TranspileStepParams {
   /** Абсолютный путь к корню проекта. */
   projectRoot: string;
   /** Имя шага. */
-  name:
-    | "Instructions"
-    | "Skills"
-    | "Agents"
-    | "Docs"
-    | "Schemas"
-    | "MCP"
-    | "Permissions";
+  name: "Instructions" | "Commands" | "Skills" | "Agents" | "Docs" | "Schemas" | "MCP" | "Permissions";
   /** Карта переменных по agentId для интерполяции (skills transpiler). */
   variablesByAgentId?: Record<string, Record<string, string>>;
   /** Карта resolved values по agentId для интерполяции ${values:*}. */
@@ -68,18 +57,8 @@ interface TranspileStepParams {
  * Расширение 2a: transpile() выбрасывает исключение →
  * TranspilerStepOutcome с writtenCount: 0 и [exception.message] в errors.
  */
-export function runTranspileStep(
-  params: TranspileStepParams,
-): TranspilerStepOutcome {
-  const {
-    transpilerFactory,
-    adapter,
-    projectRoot,
-    name,
-    variablesByAgentId,
-    valuesByAgentId,
-    sourceRoot,
-  } = params;
+export function runTranspileStep(params: TranspileStepParams): TranspilerStepOutcome {
+  const { transpilerFactory, adapter, projectRoot, name, variablesByAgentId, valuesByAgentId, sourceRoot } = params;
 
   // Шаг 1: создать экземпляр транспилера
   // Spec: docs/specs/plugin-loading.md § Расширение процедуры «Шаг транспиляции» шаг 1

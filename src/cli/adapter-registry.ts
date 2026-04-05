@@ -27,13 +27,14 @@ import {
   CodexAgentAdapter,
 } from "../agents-transpiler/index.js";
 import {
-  ClaudeMcpAdapter,
-  OpenCodeMcpAdapter,
-} from "../mcp-transpiler/index.js";
-import {
-  ClaudePermissionsAdapter,
-  OpenCodePermissionsAdapter,
-} from "../permissions-transpiler/index.js";
+  ClaudeCommandAdapter,
+  OpenCodeCommandAdapter,
+  KiloCodeCommandAdapter,
+  GeminiCommandAdapter,
+  CodexCommandAdapter,
+} from "../commands-transpiler/index.js";
+import { ClaudeMcpAdapter, OpenCodeMcpAdapter } from "../mcp-transpiler/index.js";
+import { ClaudePermissionsAdapter, OpenCodePermissionsAdapter } from "../permissions-transpiler/index.js";
 import type { AdapterRegistryEntry } from "./types.js";
 
 /**
@@ -54,6 +55,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new ClaudeAdapter(allowedAgentIds),
     skills: new ClaudeSkillAdapter(),
     agents: new ClaudeAgentAdapter(),
+    commands: new ClaudeCommandAdapter(),
     mcp: new ClaudeMcpAdapter(),
     permissions: new ClaudePermissionsAdapter(),
     targetFiles: ["CLAUDE.md", ".mcp.json"],
@@ -65,6 +67,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     paths: {
       skills: ".claude/skills",
       agents: ".claude/agents",
+      commands: ".claude/commands",
       docs: ".claude/docs",
       schemas: ".claude/schemas",
     },
@@ -75,6 +78,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new OpenCodeAdapter(),
     skills: new OpenCodeSkillAdapter(),
     agents: new OpenCodeAgentAdapter(),
+    commands: new OpenCodeCommandAdapter(),
     mcp: new OpenCodeMcpAdapter(),
     permissions: new OpenCodePermissionsAdapter(),
     targetFiles: ["opencode.json"],
@@ -86,6 +90,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     paths: {
       skills: ".opencode/skills",
       agents: ".opencode/agents",
+      commands: ".opencode/commands",
       docs: ".opencode/docs",
       schemas: ".opencode/schemas",
     },
@@ -96,6 +101,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new AgentsMdAdapter(allowedAgentIds),
     skills: null,
     agents: null,
+    commands: null,
     mcp: null,
     permissions: null,
     targetFiles: ["AGENTS.md", "AGENTS.override.md"],
@@ -112,6 +118,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new KiloCodeAdapter(),
     skills: new KiloCodeSkillAdapter(),
     agents: new KiloCodeAgentAdapter(),
+    commands: new KiloCodeCommandAdapter(),
     mcp: null,
     permissions: null,
     targetFiles: [],
@@ -123,6 +130,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     paths: {
       skills: ".kilo/skills",
       agents: ".kilo/agents",
+      commands: ".kilo/commands",
       docs: ".kilo/docs",
       schemas: ".kilo/schemas",
     },
@@ -133,6 +141,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new CodexAdapter(),
     skills: new CodexSkillAdapter(),
     agents: new CodexAgentAdapter(),
+    commands: new CodexCommandAdapter(),
     mcp: null,
     permissions: null,
     targetFiles: [],
@@ -152,6 +161,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     instructions: new GeminiAdapter(allowedAgentIds),
     skills: new GeminiSkillAdapter(),
     agents: new GeminiAgentAdapter(),
+    commands: new GeminiCommandAdapter(),
     mcp: null,
     permissions: null,
     targetFiles: ["GEMINI.md"],
@@ -163,6 +173,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     paths: {
       skills: ".gemini/skills",
       agents: ".gemini/agents",
+      commands: ".gemini/commands",
       docs: ".gemini/docs",
       schemas: ".gemini/schemas",
     },

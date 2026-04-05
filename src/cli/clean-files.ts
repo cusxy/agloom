@@ -37,20 +37,12 @@ function countFilesInDir(dir: string): number {
  * @param projectRoot — абсолютный путь к корню проекта.
  * @returns Результат выполнения очистки.
  */
-export function cleanFiles(
-  entry: AdapterRegistryEntry,
-  projectRoot: string,
-): CleanOutcome {
+export function cleanFiles(entry: AdapterRegistryEntry, projectRoot: string): CleanOutcome {
   let removedCount = 0;
   const errors: string[] = [];
 
   // Шаг 1: Собрать значения всех определённых полей из entry.paths
-  const pathKeys: (keyof typeof entry.paths)[] = [
-    "skills",
-    "agents",
-    "docs",
-    "schemas",
-  ];
+  const pathKeys: (keyof typeof entry.paths)[] = ["skills", "agents", "docs", "schemas", "commands"];
   const definedPaths: string[] = [];
   for (const key of pathKeys) {
     const value = entry.paths[key];

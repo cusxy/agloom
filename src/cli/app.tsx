@@ -25,34 +25,25 @@ import { runOverlayStep } from "./overlay-step.js";
 import { cleanFiles } from "./clean-files.js";
 import { initFiles, createConfigFile } from "./init-files.js";
 import { resolveAdaptersFromCLIArgs, loadConfig } from "./config.js";
-import type {
-  AdapterRegistryEntry,
-  TranspilerStepOutcome,
-  CleanOutcome,
-  InitOutcome,
-} from "./types.js";
+import type { AdapterRegistryEntry, TranspilerStepOutcome, CleanOutcome, InitOutcome } from "./types.js";
 import { createInstructionsTranspiler } from "../instructions-transpiler/index.js";
 import { createSkillsTranspiler } from "../skills-transpiler/index.js";
 import { createAgentsTranspiler } from "../agents-transpiler/index.js";
-import {
-  createResourceTranspiler,
-  createResourceAdapter,
-} from "../docs-transpiler/index.js";
+import { createCommandsTranspiler } from "../commands-transpiler/index.js";
+import { createResourceTranspiler, createResourceAdapter } from "../docs-transpiler/index.js";
 import { createMcpTranspiler } from "../mcp-transpiler/index.js";
 import { createPermissionsTranspiler } from "../permissions-transpiler/index.js";
 import type { ResourceType } from "../docs-transpiler/index.js";
 import { buildVariables, loadDotenv } from "../interpolation/index.js";
 import { resolvePlugins } from "./resolve-plugins.js";
 import type { ResolvedPlugin } from "./resolve-plugins.js";
-import {
-  resolvePluginValues,
-  resolveLocalValues,
-} from "./resolve-plugin-values.js";
+import { resolvePluginValues, resolveLocalValues } from "./resolve-plugin-values.js";
 import { buildLayers } from "./plugin-layers.js";
 import { aggregateOutcomes } from "./plugin-aggregate.js";
 import { createMarkdownTools } from "@agloom/markdown-tools";
 import type { FormatResult, CheckResult } from "@agloom/markdown-tools";
 import fg from "fast-glob";
+import { normalizeGlobPatterns } from "./normalize-glob-patterns.js";
 
 // Re-export resolveDeps for backward compatibility (tests import from app.js)
 export { resolveDeps } from "./resolve-deps.js";
@@ -102,10 +93,7 @@ function parseArgs(args: string[]): {
       help = true;
     } else if (arg === "--version" || arg === "version") {
       version = true;
-    } else if (
-      (arg === "--agent" || arg === "--adapter") &&
-      i + 1 < args.length
-    ) {
+    } else if ((arg === "--agent" || arg === "--adapter") && i + 1 < args.length) {
       agent = args[i + 1];
       i++;
     } else if (arg === "--all") {
@@ -165,10 +153,7 @@ function parseArgs(args: string[]): {
 }
 
 function getVersion(): string {
-  const packageJsonPath = path.resolve(
-    import.meta.dirname,
-    "../../package.json",
-  );
+  const packageJsonPath = path.resolve(import.meta.dirname, "../../package.json");
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
   return packageJson.version;
 }
@@ -176,10 +161,7 @@ function getVersion(): string {
 function HelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>
-        agloom — CLI for transpiling canonical Agloom configurations into
-        agent-specific files.
-      </Text>
+      <Text>agloom — CLI for transpiling canonical Agloom configurations into agent-specific files.</Text>
       <Text> </Text>
       <Text>Commands:</Text>
       <Text>
@@ -215,15 +197,9 @@ function HelpView(): React.ReactElement {
 function TranspileHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>
-        Usage: agloom transpile [--adapter &lt;adapterId&gt; | --all] [--clean]
-        [--verbose]
-      </Text>
+      <Text>Usage: agloom transpile [--adapter &lt;adapterId&gt; | --all] [--clean] [--verbose]</Text>
       <Text> </Text>
-      <Text>
-        Transpile canonical configs for all transpilers using the specified
-        adapter.
-      </Text>
+      <Text>Transpile canonical configs for all transpilers using the specified adapter.</Text>
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
@@ -266,8 +242,7 @@ function HelpCommandHelpView(): React.ReactElement {
       <Text> </Text>
       <Text>Arguments:</Text>
       <Text>
-        {"  "}&lt;topic&gt;{"  "}Help topic name (e.g., guide/getting-started,
-        reference/cli)
+        {"  "}&lt;topic&gt;{"  "}Help topic name (e.g., guide/getting-started, reference/cli)
       </Text>
     </Box>
   );
@@ -301,8 +276,82 @@ const DOC_CATEGORIES: DocCategory[] = [
 interface TopicEntry {
   name: string;
   description: string;
-  order: number;
+  prev: string | undefined;
+  next: string | undefined;
   category: string;
+}
+
+/**
+ * Resolves a doubly-linked list of topics into sorted order.
+ * Each topic has `prev` and `next` fields pointing to slugs in the same category.
+ * Head = topic with no `prev`. Tail = topic with no `next`.
+ * Topics not reachable from the chain are appended as orphans sorted alphabetically.
+ *
+ * Spec: docs/specs/help-command.md § Команда help § Поведение шаг 7
+ * Extensions: 7a (no head), 7b (multiple heads), 7c (broken next ref)
+ */
+function resolveLinkedList(topics: TopicEntry[]): TopicEntry[] {
+  if (topics.length === 0) return [];
+
+  // Build map: slug → topic
+  const bySlug = new Map<string, TopicEntry>();
+  for (const t of topics) {
+    const slug = t.name.split("/")[1];
+    bySlug.set(slug, t);
+  }
+
+  // Find heads: topics with prev === undefined
+  const heads = topics.filter((t) => t.prev === undefined);
+
+  // Extension 7a: no head found → all topics are orphans, sorted alphabetically
+  if (heads.length === 0) {
+    return [...topics].sort((a, b) => {
+      const slugA = a.name.split("/")[1];
+      const slugB = b.name.split("/")[1];
+      return slugA.localeCompare(slugB);
+    });
+  }
+
+  // Extension 7b: multiple heads → pick alphabetically first slug as head
+  let head: TopicEntry;
+  if (heads.length === 1) {
+    head = heads[0];
+  } else {
+    heads.sort((a, b) => {
+      const slugA = a.name.split("/")[1];
+      const slugB = b.name.split("/")[1];
+      return slugA.localeCompare(slugB);
+    });
+    head = heads[0];
+  }
+
+  // Walk next pointers to build chain
+  const sorted: TopicEntry[] = [];
+  const visited = new Set<string>();
+  let current: TopicEntry | undefined = head;
+
+  while (current) {
+    const slug = current.name.split("/")[1];
+    if (visited.has(slug)) break; // Guard against cycles
+    sorted.push(current);
+    visited.add(slug);
+
+    // Extension 7c: next references non-existent slug → stop walk
+    if (current.next === undefined) break;
+    current = bySlug.get(current.next);
+  }
+
+  // Collect orphans (not in chain), sorted alphabetically by slug
+  const orphans = topics
+    .filter((t) => !visited.has(t.name.split("/")[1]))
+    .sort((a, b) => {
+      const slugA = a.name.split("/")[1];
+      const slugB = b.name.split("/")[1];
+      return slugA.localeCompare(slugB);
+    });
+
+  sorted.push(...orphans);
+  return sorted;
 }
 
 /**
@@ -336,7 +385,8 @@ function loadTopics(baseDocsDir: string): TopicEntry[] {
         categoryTopics.push({
           name: `${category.id}/${slug}`,
           description: "",
-          order: Infinity,
+          prev: undefined,
+          next: undefined,
           category: category.id,
         });
         continue;
@@ -351,20 +401,17 @@ function loadTopics(baseDocsDir: string): TopicEntry[] {
       categoryTopics.push({
         name: `${category.id}/${slug}`,
         // Расширение 5b: без description → ""
-        description:
-          typeof parsed.data.description === "string"
-            ? parsed.data.description
-            : "",
-        // Расширение 5c: без order → Infinity
-        order:
-          typeof parsed.data.order === "number" ? parsed.data.order : Infinity,
+        description: typeof parsed.data.description === "string" ? parsed.data.description : "",
+        // Расширение 5c: без prev/next → undefined (orphan)
+        prev: typeof parsed.data.prev === "string" ? parsed.data.prev : undefined,
+        next: typeof parsed.data.next === "string" ? parsed.data.next : undefined,
         category: category.id,
       });
     }
 
-    // Шаг 7: отсортировать по order
-    categoryTopics.sort((a, b) => a.order - b.order);
-    allTopics.push(...categoryTopics);
+    // Шаг 7: resolve linked list order
+    const sorted = resolveLinkedList(categoryTopics);
+    allTopics.push(...sorted);
   }
 
   return allTopics;
@@ -404,10 +451,7 @@ function formatTopicsList(topics: TopicEntry[]): string {
  * Разрешает имя topic.
  * Spec: docs/specs/help-command.md § Разрешение имени topic
  */
-function resolveTopic(
-  topicArg: string,
-  topics: TopicEntry[],
-): { entry: TopicEntry } | { error: string } {
+function resolveTopic(topicArg: string, topics: TopicEntry[]): { entry: TopicEntry } | { error: string } {
   if (topicArg.includes("/")) {
     // Шаг 1: интерпретировать как {category}/{slug}
     const found = topics.find((t) => t.name === topicArg);
@@ -447,11 +491,7 @@ function resolveTopic(
   };
 }
 
-function HelpCommandView({
-  topic,
-}: {
-  topic: string | null;
-}): React.ReactElement {
+function HelpCommandView({ topic }: { topic: string | null }): React.ReactElement {
   const [output] = useState(() => {
     const baseDocsDir = getBaseDocsDir();
     const topics = loadTopics(baseDocsDir);
@@ -521,13 +561,7 @@ function HelpCommandView({
   return <Text>{output}</Text>;
 }
 
-function AdaptersView({
-  projectRoot,
-  all,
-}: {
-  projectRoot: string;
-  all: boolean;
-}): React.ReactElement {
+function AdaptersView({ projectRoot, all }: { projectRoot: string; all: boolean }): React.ReactElement {
   const [state] = useState(() => {
     let heading = "Available adapters:";
     let entries: AdapterRegistryEntry[];
@@ -542,9 +576,7 @@ function AdaptersView({
         if (configResult !== null) {
           // Конфиг найден — показать активные
           heading = "Active adapters:";
-          entries = configResult.adapterIds
-            .map((id) => adapterRegistry.find((e) => e.id === id)!)
-            .filter(Boolean);
+          entries = configResult.adapterIds.map((id) => adapterRegistry.find((e) => e.id === id)!).filter(Boolean);
         } else {
           // Конфиг отсутствует — показать все нескрытые
           entries = adapterRegistry.filter((e) => !e.hidden);
@@ -586,13 +618,9 @@ function AdaptersView({
 function CleanHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>
-        Usage: agloom clean [--adapter &lt;adapterId&gt; | --all] [--verbose]
-      </Text>
+      <Text>Usage: agloom clean [--adapter &lt;adapterId&gt; | --all] [--verbose]</Text>
       <Text> </Text>
-      <Text>
-        Remove generated agent-specific files for the specified adapter.
-      </Text>
+      <Text>Remove generated agent-specific files for the specified adapter.</Text>
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
@@ -608,13 +636,7 @@ function CleanHelpView(): React.ReactElement {
   );
 }
 
-function CleanResultView({
-  adapterId,
-  outcome,
-}: {
-  adapterId: string;
-  outcome: CleanOutcome;
-}): React.ReactElement {
+function CleanResultView({ adapterId, outcome }: { adapterId: string; outcome: CleanOutcome }): React.ReactElement {
   const hasErrors = outcome.errors.length > 0;
 
   return (
@@ -663,10 +685,7 @@ function CleanEntriesView({
     return outcomes;
   });
 
-  const totalRemoved = results.reduce(
-    (sum, r) => sum + r.outcome.removedCount,
-    0,
-  );
+  const totalRemoved = results.reduce((sum, r) => sum + r.outcome.removedCount, 0);
   const hasAnyErrors = results.some((r) => r.outcome.errors.length > 0);
 
   return (
@@ -689,16 +708,13 @@ function CleanEntriesView({
             {!hasErrors && (verbose || r.outcome.removedCount > 0) && (
               <Text>
                 {"  "}
-                <Text color="green">✓</Text> {r.outcome.removedCount} files
-                removed
+                <Text color="green">✓</Text> {r.outcome.removedCount} files removed
               </Text>
             )}
           </React.Fragment>
         );
       })}
-      {!verbose && !hasAnyErrors && totalRemoved === 0 && (
-        <Text>Nothing to clean.</Text>
-      )}
+      {!verbose && !hasAnyErrors && totalRemoved === 0 && <Text>Nothing to clean.</Text>}
       <Text> </Text>
       <Text>Done. {totalRemoved} files removed.</Text>
     </Box>
@@ -717,8 +733,7 @@ function FormatHelpView(): React.ReactElement {
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
-        {"  "}--check{"  "}Check files without modifying (exit code 1 if
-        unformatted)
+        {"  "}--check{"  "}Check files without modifying (exit code 1 if unformatted)
       </Text>
       <Text>
         {"  "}--all{"    "}Format all supported files in the project
@@ -743,19 +758,14 @@ function FormatView({
 }): React.ReactElement {
   const { exit } = useApp();
   // § Расширение 1a: --all и <file|glob>... взаимоисключающие (sync check)
-  const conflictError =
-    all && globs.length > 0 ? "Cannot use --all with file arguments." : null;
+  const conflictError = all && globs.length > 0 ? "Cannot use --all with file arguments." : null;
 
   const [status, setStatus] = useState<
     | { phase: "running" }
     | { phase: "done"; result: FormatResult | CheckResult; isCheck: boolean }
     | { phase: "error"; message: string }
     | { phase: "empty" }
-  >(() =>
-    conflictError
-      ? { phase: "error", message: conflictError }
-      : { phase: "running" },
-  );
+  >(() => (conflictError ? { phase: "error", message: conflictError } : { phase: "running" }));
 
   // Exit after final render (same pattern as TranspileView)
   useEffect(() => {
@@ -773,10 +783,7 @@ function FormatView({
     (async () => {
       try {
         // § Команда format шаг 3-4: определить glob-паттерны и раскрыть
-        const defaultPatterns = [
-          ".agloom/**/*.{md,mdx,json,yaml,yml,toml}",
-          "**/AGLOOM.md",
-        ];
+        const defaultPatterns = [".agloom/**/*.{md,mdx,json,yaml,yml,toml}", "**/AGLOOM.md"];
         let patterns: string[];
         if (all) {
           patterns = ["**/*.{md,mdx,json,yaml,yml,toml}"];
@@ -796,7 +803,10 @@ function FormatView({
           "**/.cache/**",
         ];
 
-        const filePaths = await fg(patterns, {
+        // § Команда format шаг 4: нормализация glob-паттернов
+        const normalizedPatterns = normalizeGlobPatterns(patterns);
+
+        const filePaths = await fg(normalizedPatterns, {
           cwd: projectRoot,
           absolute: true,
           ignore,
@@ -822,14 +832,8 @@ function FormatView({
               if (parsed.prettier && typeof parsed.prettier === "object") {
                 prettierOverrides = parsed.prettier as Record<string, unknown>;
               }
-              if (
-                parsed.markdownlint &&
-                typeof parsed.markdownlint === "object"
-              ) {
-                markdownlintOverrides = parsed.markdownlint as Record<
-                  string,
-                  unknown
-                >;
+              if (parsed.markdownlint && typeof parsed.markdownlint === "object") {
+                markdownlintOverrides = parsed.markdownlint as Record<string, unknown>;
               }
             }
           } catch {
@@ -853,8 +857,7 @@ function FormatView({
         // § Команда format шаг 7-8: вызвать check или format
         if (check) {
           const result = await tools.check(filePaths);
-          const hasFailures =
-            result.failures.length > 0 || result.errors.length > 0;
+          const hasFailures = result.failures.length > 0 || result.errors.length > 0;
           if (hasFailures) process.exitCode = 1;
           setStatus({ phase: "done", result, isCheck: true });
         } else {
@@ -875,8 +878,7 @@ function FormatView({
   if (status.phase === "running") {
     return (
       <Text>
-        <Spinner type="dots" />{" "}
-        {check ? "Checking files…" : "Formatting files…"}
+        <Spinner type="dots" /> {check ? "Checking files…" : "Formatting files…"}
       </Text>
     );
   }
@@ -914,8 +916,7 @@ function FormatView({
         {hasFailures && (
           <>
             <Text>
-              <Text color="red">✗</Text> {r.failures.length} files need
-              formatting:
+              <Text color="red">✗</Text> {r.failures.length} files need formatting:
             </Text>
             {r.failures.map((f, i) => (
               <Text key={i}>
@@ -956,8 +957,7 @@ function FormatView({
   return (
     <Box flexDirection="column">
       <Text>
-        <Text color="red">✗</Text> Formatted {r.formattedCount} files with{" "}
-        {r.errors.length} errors.
+        <Text color="red">✗</Text> Formatted {r.formattedCount} files with {r.errors.length} errors.
       </Text>
       {r.errors.map((e, i) => (
         <Text key={i}>
@@ -972,10 +972,7 @@ function FormatView({
 function InitHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>
-        Usage: agloom init [--adapter &lt;adapterId&gt; | --all] [--force]
-        [--verbose]
-      </Text>
+      <Text>Usage: agloom init [--adapter &lt;adapterId&gt; | --all] [--force] [--verbose]</Text>
       <Text> </Text>
       <Text>Import existing agent configs into .agloom/</Text>
       <Text> </Text>
@@ -1088,9 +1085,7 @@ function InitView({
   }, 0);
 
   const hasAnyErrors = overlayResults.some(
-    (r) =>
-      typeof r.outcome === "string" ||
-      (typeof r.outcome !== "string" && r.outcome.errors.length > 0),
+    (r) => typeof r.outcome === "string" || (typeof r.outcome !== "string" && r.outcome.errors.length > 0),
   );
 
   const hasVisibleResults = hasAnyErrors || totalCopied > 0 || verbose;
@@ -1125,14 +1120,11 @@ function InitView({
         return (
           <Text key={r.entryId}>
             {"  "}
-            <Text color="green">✓</Text> {r.outcome.copiedCount} files copied to
-            .agloom/overlays/{r.entryId}/
+            <Text color="green">✓</Text> {r.outcome.copiedCount} files copied to .agloom/overlays/{r.entryId}/
           </Text>
         );
       })}
-      {!verbose && !hasAnyErrors && totalCopied === 0 && (
-        <Text>Nothing to import.</Text>
-      )}
+      {!verbose && !hasAnyErrors && totalCopied === 0 && <Text>Nothing to import.</Text>}
       <Text> </Text>
       <Text>Done. {totalCopied} files copied.</Text>
     </Box>
@@ -1144,16 +1136,10 @@ function InitView({
  * Spec: docs/specs/docs-transpiler.md § Расширение шага транспиляции
  */
 function createResourceTranspilerFactory(resourceType: ResourceType) {
-  return (config: {
-    projectRoot: string;
-    adapters: unknown[];
-    agloomDir?: string;
-  }) =>
+  return (config: { projectRoot: string; adapters: unknown[]; agloomDir?: string }) =>
     createResourceTranspiler({
       projectRoot: config.projectRoot,
-      adapters: config.adapters as Parameters<
-        typeof createResourceTranspiler
-      >[0]["adapters"],
+      adapters: config.adapters as Parameters<typeof createResourceTranspiler>[0]["adapters"],
       resourceType,
       agloomDir: config.agloomDir,
     });
@@ -1178,9 +1164,7 @@ function TranspileView({
 }): React.ReactElement {
   const { exit } = useApp();
   const [cleanOutcome, setCleanOutcome] = useState<CleanOutcome | null>(null);
-  const [entryResults, setEntryResults] = useState<
-    { adapterId: string; outcomes: TranspilerStepOutcome[] }[]
-  >([]);
+  const [entryResults, setEntryResults] = useState<{ adapterId: string; outcomes: TranspilerStepOutcome[] }[]>([]);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -1256,10 +1240,9 @@ function TranspileView({
         const pluginOutcomes: TranspilerStepOutcome[] = [];
 
         // § plugin-values.md: per-plugin valuesByAgentId
-        const pluginValuesByAgentId: Record<
-          string,
-          Record<string, string>
-        > = plugin.resolvedValues ? { [entry.id]: plugin.resolvedValues } : {};
+        const pluginValuesByAgentId: Record<string, Record<string, string>> = plugin.resolvedValues
+          ? { [entry.id]: plugin.resolvedValues }
+          : {};
 
         // Установить values на адаптерах для текущего плагина
         instrAdapter.values = plugin.resolvedValues;
@@ -1283,13 +1266,28 @@ function TranspileView({
           }),
         );
 
+        // 4.2.1.5: Commands
+        if (entry.commands) {
+          pluginOutcomes.push(
+            runTranspileStep({
+              transpilerFactory: createCommandsTranspiler as Parameters<
+                typeof runTranspileStep
+              >[0]["transpilerFactory"],
+              adapter: entry.commands,
+              projectRoot,
+              name: "Commands",
+              variablesByAgentId,
+              valuesByAgentId: pluginValuesByAgentId,
+              sourceRoot: plugin.path,
+            }),
+          );
+        }
+
         // 4.2.2: Skills
         if (entry.skills) {
           pluginOutcomes.push(
             runTranspileStep({
-              transpilerFactory: createSkillsTranspiler as Parameters<
-                typeof runTranspileStep
-              >[0]["transpilerFactory"],
+              transpilerFactory: createSkillsTranspiler as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
               adapter: entry.skills,
               projectRoot,
               name: "Skills",
@@ -1304,9 +1302,7 @@ function TranspileView({
         if (entry.agents) {
           pluginOutcomes.push(
             runTranspileStep({
-              transpilerFactory: createAgentsTranspiler as Parameters<
-                typeof runTranspileStep
-              >[0]["transpilerFactory"],
+              transpilerFactory: createAgentsTranspiler as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
               adapter: entry.agents,
               projectRoot,
               name: "Agents",
@@ -1319,9 +1315,7 @@ function TranspileView({
         if (entry.mcp !== null) {
           pluginOutcomes.push(
             runTranspileStep({
-              transpilerFactory: createMcpTranspiler as Parameters<
-                typeof runTranspileStep
-              >[0]["transpilerFactory"],
+              transpilerFactory: createMcpTranspiler as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
               adapter: entry.mcp,
               projectRoot,
               name: "MCP",
@@ -1351,9 +1345,7 @@ function TranspileView({
         if (docsAdapter !== null) {
           pluginOutcomes.push(
             runTranspileStep({
-              transpilerFactory: docsFactory as Parameters<
-                typeof runTranspileStep
-              >[0]["transpilerFactory"],
+              transpilerFactory: docsFactory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
               adapter: docsAdapter,
               projectRoot,
               name: "Docs",
@@ -1368,9 +1360,7 @@ function TranspileView({
         if (schemasAdapter !== null) {
           pluginOutcomes.push(
             runTranspileStep({
-              transpilerFactory: schemasFactory as Parameters<
-                typeof runTranspileStep
-              >[0]["transpilerFactory"],
+              transpilerFactory: schemasFactory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
               adapter: schemasAdapter,
               projectRoot,
               name: "Schemas",
@@ -1388,10 +1378,7 @@ function TranspileView({
       const localOutcomes: TranspilerStepOutcome[] = [];
 
       // § plugin-values.md: local valuesByAgentId
-      const localValuesByAgentId: Record<
-        string,
-        Record<string, string>
-      > = Object.keys(localValues).length > 0
+      const localValuesByAgentId: Record<string, Record<string, string>> = Object.keys(localValues).length > 0
         ? { [entry.id]: localValues }
         : {};
 
@@ -1416,13 +1403,25 @@ function TranspileView({
         }),
       );
 
+      // 4.3.5: Commands
+      if (entry.commands) {
+        localOutcomes.push(
+          runTranspileStep({
+            transpilerFactory: createCommandsTranspiler as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
+            adapter: entry.commands,
+            projectRoot,
+            name: "Commands",
+            variablesByAgentId,
+            valuesByAgentId: localValuesByAgentId,
+          }),
+        );
+      }
+
       // 4.4: Skills
       if (entry.skills) {
         localOutcomes.push(
           runTranspileStep({
-            transpilerFactory: createSkillsTranspiler as Parameters<
-              typeof runTranspileStep
-            >[0]["transpilerFactory"],
+            transpilerFactory: createSkillsTranspiler as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
             adapter: entry.skills,
             projectRoot,
             name: "Skills",
@@ -1436,9 +1435,7 @@ function TranspileView({
       if (entry.agents) {
         localOutcomes.push(
           runTranspileStep({
-            transpilerFactory: createAgentsTranspiler as Parameters<
-              typeof runTranspileStep
-            >[0]["transpilerFactory"],
+            transpilerFactory: createAgentsTranspiler as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
             adapter: entry.agents,
             projectRoot,
             name: "Agents",
@@ -1450,9 +1447,7 @@ function TranspileView({
       if (entry.mcp !== null) {
         localOutcomes.push(
           runTranspileStep({
-            transpilerFactory: createMcpTranspiler as Parameters<
-              typeof runTranspileStep
-            >[0]["transpilerFactory"],
+            transpilerFactory: createMcpTranspiler as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
             adapter: entry.mcp,
             projectRoot,
             name: "MCP",
@@ -1480,9 +1475,7 @@ function TranspileView({
       if (docsAdapter !== null) {
         localOutcomes.push(
           runTranspileStep({
-            transpilerFactory: docsFactory as Parameters<
-              typeof runTranspileStep
-            >[0]["transpilerFactory"],
+            transpilerFactory: docsFactory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
             adapter: docsAdapter,
             projectRoot,
             name: "Docs",
@@ -1496,9 +1489,7 @@ function TranspileView({
       if (schemasAdapter !== null) {
         localOutcomes.push(
           runTranspileStep({
-            transpilerFactory: schemasFactory as Parameters<
-              typeof runTranspileStep
-            >[0]["transpilerFactory"],
+            transpilerFactory: schemasFactory as Parameters<typeof runTranspileStep>[0]["transpilerFactory"],
             adapter: schemasAdapter,
             projectRoot,
             name: "Schemas",
@@ -1532,9 +1523,7 @@ function TranspileView({
     setEntryResults(results);
 
     // Exit code
-    const hasTranspileErrors = results.some((r) =>
-      r.outcomes.some((s) => s.errors.length > 0),
-    );
+    const hasTranspileErrors = results.some((r) => r.outcomes.some((s) => s.errors.length > 0));
     const hasCleanErrors = cleanResult ? cleanResult.errors.length > 0 : false;
     if (hasTranspileErrors || hasCleanErrors) {
       process.exitCode = 1;
@@ -1544,10 +1533,7 @@ function TranspileView({
   }, [entries, projectRoot, clean]);
 
   // totalWritten
-  const totalWritten = entryResults.reduce(
-    (sum, r) => sum + r.outcomes.reduce((s, o) => s + o.writtenCount, 0),
-    0,
-  );
+  const totalWritten = entryResults.reduce((sum, r) => sum + r.outcomes.reduce((s, o) => s + o.writtenCount, 0), 0);
 
   return (
     <Box flexDirection="column">
@@ -1566,15 +1552,7 @@ function TranspileView({
         return (
           <React.Fragment key={r.adapterId}>
             <Text>
-              {done ? (
-                hasErrors ? (
-                  <Text color="red">✗</Text>
-                ) : (
-                  <Text color="green">✓</Text>
-                )
-              ) : (
-                <Spinner type="dots" />
-              )}{" "}
+              {done ? hasErrors ? <Text color="red">✗</Text> : <Text color="green">✓</Text> : <Spinner type="dots" />}{" "}
               Transpiling for {r.adapterId}...
             </Text>
             {visibleOutcomes.map((outcome) =>
@@ -1611,19 +1589,13 @@ function TranspileView({
       {done &&
         !verbose &&
         totalWritten === 0 &&
-        !entryResults.some((r) =>
-          r.outcomes.some((o) => o.errors.length > 0),
-        ) && <Text>Nothing to transpile.</Text>}
+        !entryResults.some((r) => r.outcomes.some((o) => o.errors.length > 0)) && <Text>Nothing to transpile.</Text>}
       {done && (
         <>
           <Text> </Text>
           <Text>
-            {entryResults.some((r) =>
-              r.outcomes.some((o) => o.errors.length > 0),
-            )
-              ? "Failed."
-              : "Done."}{" "}
-            {totalWritten} files written.
+            {entryResults.some((r) => r.outcomes.some((o) => o.errors.length > 0)) ? "Failed." : "Done."} {totalWritten}{" "}
+            files written.
           </Text>
         </>
       )}
@@ -1672,12 +1644,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
   // § Неизвестный флаг
   if (parsed.unknownFlag && !parsed.help) {
     process.exitCode = 1;
-    return (
-      <Text>
-        Unknown option: {parsed.unknownFlag}. Run &apos;agloom --help&apos; to
-        see available options.
-      </Text>
-    );
+    return <Text>Unknown option: {parsed.unknownFlag}. Run &apos;agloom --help&apos; to see available options.</Text>;
   }
 
   // § transpile --help
@@ -1719,10 +1686,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
   if (parsed.unknownCommand) {
     process.exitCode = 1;
     return (
-      <Text>
-        Unknown command: {parsed.unknownCommand}. Run &apos;agloom --help&apos;
-        to see available commands.
-      </Text>
+      <Text>Unknown command: {parsed.unknownCommand}. Run &apos;agloom --help&apos; to see available commands.</Text>
     );
   }
 
@@ -1760,9 +1724,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       configAdapterIds = [parsed.agent];
     } else if (parsed.all) {
       // All non-hidden adapters
-      configAdapterIds = adapterRegistry
-        .filter((e) => !e.hidden)
-        .map((e) => e.id);
+      configAdapterIds = adapterRegistry.filter((e) => !e.hidden).map((e) => e.id);
     }
 
     return (
@@ -1779,14 +1741,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
 
   // § Команда format (Spec: docs/specs/format.md § Команда format)
   if (parsed.command === "format") {
-    return (
-      <FormatView
-        projectRoot={root}
-        check={parsed.check}
-        globs={parsed.globs}
-        all={parsed.all}
-      />
-    );
+    return <FormatView projectRoot={root} check={parsed.check} globs={parsed.globs} all={parsed.all} />;
   }
 
   // § Команда clean
@@ -1806,13 +1761,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       return <Text>{message}</Text>;
     }
 
-    return (
-      <CleanEntriesView
-        entries={entries}
-        projectRoot={root}
-        verbose={parsed.verbose}
-      />
-    );
+    return <CleanEntriesView entries={entries} projectRoot={root} verbose={parsed.verbose} />;
   }
 
   // § Команда cache clean
@@ -1824,12 +1773,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
   // § Команда cache (без subcommand) → трактовать как неизвестную
   if (parsed.command === "cache") {
     process.exitCode = 1;
-    return (
-      <Text>
-        Unknown command: cache. Run &apos;agloom --help&apos; to see available
-        commands.
-      </Text>
-    );
+    return <Text>Unknown command: cache. Run &apos;agloom --help&apos; to see available commands.</Text>;
   }
 
   // § Команда transpile
@@ -1893,10 +1837,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     let localResolvedValues: Record<string, string> = {};
     const configVariables = configResult?.configVariables ?? null;
     try {
-      localResolvedValues = resolveLocalValues(
-        configVariables,
-        process.env as Record<string, string | undefined>,
-      );
+      localResolvedValues = resolveLocalValues(configVariables, process.env as Record<string, string | undefined>);
     } catch (err) {
       process.exitCode = 1;
       const message = err instanceof Error ? err.message : String(err);

@@ -6,6 +6,7 @@
 import type { Adapter } from "../instructions-transpiler/index.js";
 import type { SkillAdapter } from "../skills-transpiler/index.js";
 import type { AgentAdapter } from "../agents-transpiler/index.js";
+import type { CommandAdapter } from "../commands-transpiler/index.js";
 import type { McpAdapter } from "../mcp-transpiler/index.js";
 import type { PermissionsAdapter } from "../permissions-transpiler/index.js";
 
@@ -21,6 +22,8 @@ export interface AdapterRegistryEntry {
   skills: SkillAdapter | null;
   /** Экземпляр адаптера для agents-transpiler (null если адаптер не поддерживает agents). */
   agents: AgentAdapter | null;
+  /** Экземпляр адаптера для commands-transpiler (null если адаптер не поддерживает commands). */
+  commands: CommandAdapter | null;
   /** Экземпляр MCP-адаптера (null если адаптер не поддерживает MCP-транспиляцию). */
   mcp: McpAdapter | null;
   /** Экземпляр Permissions-адаптера (null если адаптер не поддерживает Permissions-транспиляцию). */
@@ -41,6 +44,7 @@ export interface AdapterRegistryEntry {
   paths: {
     skills?: string;
     agents?: string;
+    commands?: string;
     docs?: string;
     schemas?: string;
   };
@@ -65,15 +69,7 @@ export interface InitOutcome {
 /** Результат одного шага транспиляции. */
 export interface TranspilerStepOutcome {
   /** Отображаемое имя шага. */
-  name:
-    | "Instructions"
-    | "Skills"
-    | "Agents"
-    | "Docs"
-    | "Schemas"
-    | "MCP"
-    | "Permissions"
-    | "Overlay";
+  name: "Instructions" | "Commands" | "Skills" | "Agents" | "Docs" | "Schemas" | "MCP" | "Permissions" | "Overlay";
   /** Количество успешно записанных файлов. */
   writtenCount: number;
   /** Сообщения об ошибках (пустой массив при отсутствии). */
