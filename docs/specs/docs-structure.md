@@ -22,6 +22,7 @@ relates:
   - docs/specs/agents-transpiler.md
   - docs/specs/permissions-transpiler.md
   - docs/specs/mcp-transpiler.md
+  - docs/specs/docusaurus-setup.md
 maps_to:
   - docs/guide/
   - docs/reference/
@@ -73,24 +74,16 @@ docs/
 
 ## Frontmatter-формат
 
-Каждый файл документации ТРЕБУЕТСЯ начинать с YAML frontmatter:
+Формат frontmatter doc-файлов определён
+в `docs/specs/help-command.md` § Frontmatter doc-файла.
 
-```yaml
----
-title: <заголовок документа>
-description: <однострочное описание, используется в agloom help>
-order: <целое число, определяет порядок в списке topics>
----
-```
+Дополнительное требование к содержанию: длина поля `description`
+ТРЕБУЕТСЯ ограничивать 120 символами.
 
-- `title` (string, обязательно) — заголовок документа. Используется
-  для отображения в `agloom help` если нужен human-readable title.
-- `description` (string, обязательно) — описание документа в одну строку.
-  Отображается в выводе `agloom help` рядом с именем topic.
-  Длина СЛЕДУЕТ ограничивать 80 символами.
-- `order` (integer, обязательно) — порядок отображения в списке topics.
-  Нумерация начинается с 1. Значения НЕ ДОЛЖНЫ повторяться внутри
-  одной категории.
+Ссылки `prev`/`next` ТРЕБУЕТСЯ указывать консистентно: если документ . 
+имеет `next: B`, то документ B ДОЛЖЕН иметь `prev: A`.
+Валидация консистентности описана
+в `docs/specs/help-command.md` § Валидация linked list.
 
 ## Удаление docs/usage/
 
@@ -106,7 +99,7 @@ order: <целое число, определяет порядок в списк
 
 ## Категория Guide
 
-### guide/introduction.md (order: 1)
+### guide/introduction.md (head, next: getting-started)
 
 **Цель:** объяснить проблему, которую решает Agloom, его философию
 и позиционирование. Читатель после прочтения понимает «зачем мне это».
@@ -134,7 +127,7 @@ order: <целое число, определяет порядок в списк
 **Содержание ЗАПРЕЩАЕТСЯ включать:** установку, конкретные команды CLI,
 примеры конфигурации (это scope getting-started и reference).
 
-### guide/getting-started.md (order: 2)
+### guide/getting-started.md (prev: introduction, next: project-structure)
 
 **Цель:** от нуля до первого `agloom transpile` за 5 минут.
 Пошаговый tutorial.
@@ -157,7 +150,7 @@ order: <целое число, определяет порядок в списк
 и объяснение результата. Читатель ДОЛЖЕН иметь возможность следовать
 шагам дословно и получить рабочий результат.
 
-### guide/project-structure.md (order: 3)
+### guide/project-structure.md (prev: getting-started, next: instructions)
 
 **Цель:** объяснить анатомию директории `.agloom/` и связь между
 каноническими и сгенерированными файлами.
@@ -186,7 +179,7 @@ order: <целое число, определяет порядок в списк
 4. **.gitignore** — рекомендация: сгенерированные файлы следует добавить
    в `.gitignore`, canonical `.agloom/` — коммитить.
 
-### guide/instructions.md (order: 4)
+### guide/instructions.md (prev: project-structure, next: skills-and-agents)
 
 **Цель:** научить писать инструкции для AI-агентов с agent-specific блоками.
 
@@ -205,7 +198,7 @@ order: <целое число, определяет порядок в списк
    если нет — указать явно.
 6. **Example** — полный пример AGLOOM.md с общими и agent-specific секциями.
 
-### guide/skills-and-agents.md (order: 5)
+### guide/skills-and-agents.md (prev: instructions, next: plugins)
 
 **Цель:** научить создавать skills и agents.
 
@@ -222,7 +215,7 @@ order: <целое число, определяет порядок в списк
    (claude и opencode — да, agentsmd — нет).
 6. **Example** — реалистичный пример skill + agent.
 
-### guide/plugins.md (order: 6)
+### guide/plugins.md (prev: skills-and-agents, next: overlays)
 
 **Цель:** научить использовать и создавать плагины.
 
@@ -244,7 +237,7 @@ order: <целое число, определяет порядок в списк
 6. **How plugins merge** — плагины проходят тот же pipeline что и локальный
    контент, результаты мержатся в output.
 
-### guide/overlays.md (order: 7)
+### guide/overlays.md (prev: plugins, next: variables)
 
 **Цель:** научить использовать overlays для adapter-specific кастомизации.
 
@@ -264,7 +257,7 @@ order: <целое число, определяет порядок в списк
 5. **Example** — конкретный пример overlay для Claude adapter.
 6. **Ссылка** на reference/patch-operations для полного описания операций.
 
-### guide/variables.md (order: 8)
+### guide/variables.md (tail, prev: overlays)
 
 **Цель:** научить использовать переменные и интерполяцию.
 
@@ -287,7 +280,7 @@ order: <целое число, определяет порядок в списк
 
 ## Категория Reference
 
-### reference/cli.md (order: 1)
+### reference/cli.md (head, next: config)
 
 **Цель:** полная справка по всем CLI-командам.
 
@@ -311,7 +304,7 @@ order: <целое число, определяет порядок в списк
 7. `agloom cache clean`.
 8. Global options: `--help`, `--version`.
 
-### reference/config.md (order: 2)
+### reference/config.md (prev: cli, next: plugin-manifest)
 
 **Цель:** полное описание формата `.agloom/config.yml`.
 
@@ -328,7 +321,7 @@ order: <целое число, определяет порядок в списк
    hidden adapters, empty array, etc.).
 4. **Complete example** — пример со всеми секциями.
 
-### reference/plugin-manifest.md (order: 3)
+### reference/plugin-manifest.md (prev: config, next: adapters)
 
 **Цель:** полное описание формата `plugin.yml`.
 
@@ -347,7 +340,7 @@ order: <целое число, определяет порядок в списк
 3. **Validation rules**.
 4. **Example** — полный plugin.yml.
 
-### reference/adapters.md (order: 4)
+### reference/adapters.md (prev: plugin-manifest, next: interpolation)
 
 **Цель:** справка по доступным адаптерам.
 
@@ -363,7 +356,7 @@ order: <целое число, определяет порядок в списк
 4. **Dependencies** — opencode → agentsmd.
 5. **Hidden adapters** — agentsmd hidden, не указывается в config напрямую.
 
-### reference/interpolation.md (order: 5)
+### reference/interpolation.md (prev: adapters, next: patch-operations)
 
 **Цель:** полная справка по интерполяции переменных.
 
@@ -379,7 +372,7 @@ order: <целое число, определяет порядок в списк
 5. **Supported file extensions** — полный список.
 6. **Error handling** — что происходит при unresolved variable.
 
-### reference/patch-operations.md (order: 6)
+### reference/patch-operations.md (prev: interpolation, next: transpilers)
 
 **Цель:** справка по patch-операциям в overlays.
 
@@ -398,7 +391,7 @@ order: <целое число, определяет порядок в списк
 
 Для каждой операции: input → patch → result.
 
-### reference/transpilers.md (order: 7)
+### reference/transpilers.md (tail, prev: patch-operations)
 
 **Цель:** справка по модулям транспиляции.
 

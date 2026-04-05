@@ -8,7 +8,9 @@ type: spec
 status: implemented
 relates:
   - docs/specs/cli.md
+  - docs/specs/ci-deploy.md
   - docs/researches/cli-documentation-delivery/RESEARCH.md
+  - docs/specs/docusaurus-setup.md
 maps_to:
   - src/cli/
 ---
