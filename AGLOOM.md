@@ -20,9 +20,19 @@ Vitest for tests. gray-matter for YAML frontmatter parsing.
   interaction in `unmount()` that wrote `'\n'` over the final frame and
   broke every `lastFrame()` assertion in ink-testing-library under `CI=1`.
   The patch only affects the `debug: true` code path (used exclusively by
-  ink-testing-library), production CLI behavior is unchanged. When bumping
-  ink, re-validate the patch against the new build output; remove once
-  upstream ships a fix.
+  ink-testing-library), production CLI behavior is unchanged.
+
+  Upstream status: fixed in master by PR [vadimdemedes/ink#888][ink-888]
+  (commit `02490f6`, 3 Mar 2026), which replaced the `isInCi` branching
+  with a new `interactive` option. As a side effect, `onRender`'s debug
+  branch now updates `this.lastOutput` and `unmount` writes just `'\n'`
+  in debug mode instead of `this.lastOutput + '\n'`. Not yet released —
+  6.8.0 is still the latest on npm as of this writing. When a version
+  newer than 6.8.0 is published, bump ink and remove this patch entirely
+  (update `pnpm-workspace.yaml`, delete `patches/ink@6.8.0.patch`, run
+  the full integration suite under `CI=1` to confirm).
+
+  [ink-888]: https://github.com/vadimdemedes/ink/pull/888
 
 ## Architecture
 
