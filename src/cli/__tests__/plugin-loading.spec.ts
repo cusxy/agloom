@@ -849,8 +849,26 @@ describe("CLI", () => {
       };
 
       const plugins = [
-        { name: "plugin-a", path: pluginA, manifest: { name: "plugin-a" }, resolvedSha: null, gitUrl: null, gitRef: null, values: null, resolvedValues: {} },
-        { name: "plugin-b", path: pluginB, manifest: { name: "plugin-b" }, resolvedSha: null, gitUrl: null, gitRef: null, values: null, resolvedValues: {} },
+        {
+          name: "plugin-a",
+          path: pluginA,
+          manifest: { name: "plugin-a" },
+          resolvedSha: null,
+          gitUrl: null,
+          gitRef: null,
+          values: null,
+          resolvedValues: {},
+        },
+        {
+          name: "plugin-b",
+          path: pluginB,
+          manifest: { name: "plugin-b" },
+          resolvedSha: null,
+          gitUrl: null,
+          gitRef: null,
+          values: null,
+          resolvedValues: {},
+        },
       ];
 
       const { lastFrame, unmount } = render(
@@ -924,7 +942,16 @@ describe("CLI", () => {
       };
 
       const plugins = [
-        { name: "broken-overlay-plugin", path: pluginDir, manifest: { name: "broken-overlay-plugin" }, resolvedSha: null, gitUrl: null, gitRef: null, values: null, resolvedValues: {} },
+        {
+          name: "broken-overlay-plugin",
+          path: pluginDir,
+          manifest: { name: "broken-overlay-plugin" },
+          resolvedSha: null,
+          gitUrl: null,
+          gitRef: null,
+          values: null,
+          resolvedValues: {},
+        },
       ];
 
       const { lastFrame, unmount } = render(
