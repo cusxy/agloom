@@ -13,6 +13,17 @@
 TypeScript (strict), Node.js, ES modules. Ink (React-based CLI framework).
 Vitest for tests. gray-matter for YAML frontmatter parsing.
 
+## Patched dependencies
+
+- `ink@6.8.0` — tracked patch in `patches/ink@6.8.0.patch`, registered via
+  `patchedDependencies` in `pnpm-workspace.yaml`. Fixes a `debug`+`is-in-ci`
+  interaction in `unmount()` that wrote `'\n'` over the final frame and
+  broke every `lastFrame()` assertion in ink-testing-library under `CI=1`.
+  The patch only affects the `debug: true` code path (used exclusively by
+  ink-testing-library), production CLI behavior is unchanged. When bumping
+  ink, re-validate the patch against the new build output; remove once
+  upstream ships a fix.
+
 ## Architecture
 
 CLI tool that transpiles canonical AGLOOM.md files into agent-specific formats (CLAUDE.md, AGENTS.md, etc.).
