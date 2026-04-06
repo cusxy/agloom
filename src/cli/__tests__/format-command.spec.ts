@@ -53,19 +53,16 @@ describe("CLI", () => {
     // Spec: format.md § Расширения, 1a:
     // "Указаны одновременно --all и <file|glob>... -> отобразить
     // "Cannot use --all with file arguments."; exit code 1."
-    it("при указании --all и файловых аргументов одновременно отображает ошибку и exit code 1", async () => {
+    it("при указании --all и файловых аргументов одновременно отображает ошибку и exit code 1", () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["format", "--all", "src/**/*.md"],
         }),
       );
 
-      // Ink commits the first frame asynchronously; on slow CI runners
-      // reading lastFrame() synchronously races with exit() unmount and
-      // returns an empty frame. Wait until the error frame is committed.
-      await vi.waitFor(() => {
-        expect(lastFrame()).toContain("Cannot use --all with file arguments.");
-      });
+      const output = lastFrame()!;
+
+      expect(output).toContain("Cannot use --all with file arguments.");
       expect(process.exitCode).toBe(1);
 
       unmount();
@@ -273,18 +270,16 @@ describe("CLI", () => {
 
     // --- § Расширение 1a: --all и несколько файловых аргументов ---
     // Граничное условие: --all с несколькими позиционными аргументами
-    it("при указании --all и нескольких файловых аргументов отображает ошибку", async () => {
+    it("при указании --all и нескольких файловых аргументов отображает ошибку", () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["format", "--all", "file1.md", "file2.yaml"],
         }),
       );
 
-      // See note on the single-glob variant above: wait for the frame
-      // to be committed to avoid racing with exit() on slow CI runners.
-      await vi.waitFor(() => {
-        expect(lastFrame()).toContain("Cannot use --all with file arguments.");
-      });
+      const output = lastFrame()!;
+
+      expect(output).toContain("Cannot use --all with file arguments.");
       expect(process.exitCode).toBe(1);
 
       unmount();
