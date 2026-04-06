@@ -55,13 +55,17 @@ interface AppProps {
 
 /**
  * Парсит аргументы командной строки.
+ *
+ * Spec: docs/specs/cli.md § Команда transpile § Аргументы — `--adapter`
+ *   повторяемый, значения накапливаются в массив `adapterIds` в порядке
+ *   появления.
  */
-function parseArgs(args: string[]): {
+export function parseArgs(args: string[]): {
   command: string | null;
   helpTopic: string | null;
   unknownCommand: string | null;
   unknownFlag: string | null;
-  agent: string | null;
+  adapterIds: string[];
   globs: string[];
   all: boolean;
   help: boolean;
@@ -76,7 +80,7 @@ function parseArgs(args: string[]): {
   let helpTopic: string | null = null;
   let unknownCommand: string | null = null;
   let unknownFlag: string | null = null;
-  let agent: string | null = null;
+  const adapterIds: string[] = [];
   const globs: string[] = [];
   let all = false;
   let help = false;
@@ -94,7 +98,7 @@ function parseArgs(args: string[]): {
     } else if (arg === "--version" || arg === "version") {
       version = true;
     } else if ((arg === "--agent" || arg === "--adapter") && i + 1 < args.length) {
-      agent = args[i + 1];
+      adapterIds.push(args[i + 1]);
       i++;
     } else if (arg === "--all") {
       all = true;
@@ -139,7 +143,7 @@ function parseArgs(args: string[]): {
     helpTopic,
     unknownCommand,
     unknownFlag,
-    agent,
+    adapterIds,
     globs,
     all,
     help,
@@ -197,7 +201,7 @@ function HelpView(): React.ReactElement {
 function TranspileHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agloom transpile [--adapter &lt;adapterId&gt; | --all] [--clean] [--verbose]</Text>
+      <Text>Usage: agloom transpile [--adapter &lt;adapterId&gt;]... [--all] [--clean] [--verbose]</Text>
       <Text> </Text>
       <Text>Transpile canonical configs for all transpilers using the specified adapter.</Text>
       <Text> </Text>
@@ -573,12 +577,12 @@ function AdaptersView({ projectRoot, all }: { projectRoot: string; all: boolean 
       // Без --all: Load Config
       try {
         const configResult = loadConfig(projectRoot);
-        if (configResult !== null) {
-          // Конфиг найден — показать активные
+        if (configResult !== null && configResult.adapterIds !== null) {
+          // Конфиг найден и содержит поле adapters — показать активные
           heading = "Active adapters:";
           entries = configResult.adapterIds.map((id) => adapterRegistry.find((e) => e.id === id)!).filter(Boolean);
         } else {
-          // Конфиг отсутствует — показать все нескрытые
+          // Конфиг отсутствует или поле adapters отсутствует — показать все нескрытые
           entries = adapterRegistry.filter((e) => !e.hidden);
         }
       } catch (err) {
@@ -618,13 +622,13 @@ function AdaptersView({ projectRoot, all }: { projectRoot: string; all: boolean 
 function CleanHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agloom clean [--adapter &lt;adapterId&gt; | --all] [--verbose]</Text>
+      <Text>Usage: agloom clean [--adapter &lt;adapterId&gt;]... [--all] [--verbose]</Text>
       <Text> </Text>
-      <Text>Remove generated agent-specific files for the specified adapter.</Text>
+      <Text>Remove generated agent-specific files for the specified adapter(s).</Text>
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
-        {"  "}--adapter &lt;adapterId&gt;{"  "}Adapter ID from the registry
+        {"  "}--adapter &lt;adapterId&gt;{"  "}Adapter ID from the registry (may be repeated)
       </Text>
       <Text>
         {"  "}--all {"                 "}Clean for all supported adapters
@@ -862,7 +866,10 @@ function FormatView({
           setStatus({ phase: "done", result, isCheck: true });
         } else {
           const result = await tools.format(filePaths);
-          if (result.errors.length > 0) process.exitCode = 1;
+          // § Exit codes (C4): exit 1 если failures или errors непусты.
+          if (result.failures.length > 0 || result.errors.length > 0) {
+            process.exitCode = 1;
+          }
           setStatus({ phase: "done", result, isCheck: false });
         }
       } catch (err) {
@@ -942,11 +949,13 @@ function FormatView({
     );
   }
 
-  // Format mode
+  // Format mode — § TUI-отображение § Режим format (C5)
   const r = result as FormatResult;
+  const hasFailures = r.failures.length > 0;
   const hasErrors = r.errors.length > 0;
 
-  if (!hasErrors) {
+  // Case 1: полный успех
+  if (!hasFailures && !hasErrors) {
     return (
       <Text>
         <Text color="green">✓</Text> Formatted {r.formattedCount} files.
@@ -954,17 +963,48 @@ function FormatView({
     );
   }
 
+  // Case 3: только errors (failures пуст)
+  if (!hasFailures && hasErrors) {
+    return (
+      <Box flexDirection="column">
+        <Text>
+          <Text color="red">✗</Text> Formatted {r.formattedCount} files with {r.errors.length} errors.
+        </Text>
+        {r.errors.map((e, i) => (
+          <Text key={i}>
+            {"  "}
+            {e}
+          </Text>
+        ))}
+      </Box>
+    );
+  }
+
+  // Case 2 (failures only) и Case 4 (failures + errors)
   return (
     <Box flexDirection="column">
       <Text>
-        <Text color="red">✗</Text> Formatted {r.formattedCount} files with {r.errors.length} errors.
+        <Text color="red">✗</Text> Formatted {r.formattedCount} files, but {r.failures.length} files still need
+        attention:
       </Text>
-      {r.errors.map((e, i) => (
+      {r.failures.map((f, i) => (
         <Text key={i}>
           {"  "}
-          {e}
+          {f}
         </Text>
       ))}
+      {hasErrors && (
+        <>
+          <Text> </Text>
+          <Text>Errors:</Text>
+          {r.errors.map((e, i) => (
+            <Text key={i}>
+              {"  "}
+              {e}
+            </Text>
+          ))}
+        </>
+      )}
     </Box>
   );
 }
@@ -972,13 +1012,13 @@ function FormatView({
 function InitHelpView(): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text>Usage: agloom init [--adapter &lt;adapterId&gt; | --all] [--force] [--verbose]</Text>
+      <Text>Usage: agloom init [--adapter &lt;adapterId&gt;]... [--all] [--force] [--verbose]</Text>
       <Text> </Text>
       <Text>Import existing agent configs into .agloom/</Text>
       <Text> </Text>
       <Text>Options:</Text>
       <Text>
-        {"  "}--adapter &lt;adapterId&gt;{"  "}Adapter identifier
+        {"  "}--adapter &lt;adapterId&gt;{"  "}Adapter identifier (may be repeated)
       </Text>
       <Text>
         {"  "}--all {"                 "}Initialize all supported agents
@@ -1706,7 +1746,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     let entries: AdapterRegistryEntry[];
     try {
       entries = resolveAdaptersFromCLIArgs({
-        adapter: parsed.agent,
+        adapterIds: parsed.adapterIds,
         all: parsed.all,
         projectRoot: root,
         command: "init",
@@ -1718,10 +1758,18 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     }
 
     // Determine config adapter ids for config creation
-    const createConfig = parsed.agent !== null || parsed.all;
+    const createConfig = parsed.adapterIds.length > 0 || parsed.all;
     let configAdapterIds: string[] = [];
-    if (parsed.agent) {
-      configAdapterIds = [parsed.agent];
+    if (parsed.adapterIds.length > 0) {
+      // Дедуплицировать с сохранением порядка первого появления
+      // Spec: docs/specs/init-command.md § Создание конфигурационного файла
+      const seen = new Set<string>();
+      for (const id of parsed.adapterIds) {
+        if (!seen.has(id)) {
+          seen.add(id);
+          configAdapterIds.push(id);
+        }
+      }
     } else if (parsed.all) {
       // All non-hidden adapters
       configAdapterIds = adapterRegistry.filter((e) => !e.hidden).map((e) => e.id);
@@ -1750,7 +1798,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     let entries: AdapterRegistryEntry[];
     try {
       entries = resolveAdaptersFromCLIArgs({
-        adapter: parsed.agent,
+        adapterIds: parsed.adapterIds,
         all: parsed.all,
         projectRoot: root,
         command: "clean",
@@ -1782,7 +1830,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     let entries: AdapterRegistryEntry[];
     try {
       entries = resolveAdaptersFromCLIArgs({
-        adapter: parsed.agent,
+        adapterIds: parsed.adapterIds,
         all: parsed.all,
         projectRoot: root,
         command: "transpile",
@@ -1869,7 +1917,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
         projectRoot={root}
         clean={parsed.clean}
         verbose={parsed.verbose}
-        singleAdapter={parsed.agent ?? undefined}
+        singleAdapter={parsed.adapterIds.length === 1 ? parsed.adapterIds[0] : undefined}
         plugins={resolvedPlugins}
         localValues={localResolvedValues}
       />

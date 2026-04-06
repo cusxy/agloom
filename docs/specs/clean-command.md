@@ -78,33 +78,39 @@ maps_to:
 
 ## Команда clean
 
-`agloom clean [--adapter <adapterId> | --all] [--verbose]` — удаляет
-сгенерированные файлы для указанного адаптера, всех адаптеров или
-адаптеров из конфигурационного файла (см. `docs/specs/config.md`).
+`agloom clean [--adapter <adapterId>]... [--all] [--verbose]` — удаляет
+сгенерированные файлы для указанного адаптера, нескольких адаптеров,
+всех адаптеров или адаптеров из конфигурационного файла
+(см. `docs/specs/config.md`).
 
 **Аргументы:**
 
-- `--adapter` (string, опционально) — идентификатор адаптера из реестра.
-  Взаимоисключающий с `--all`.
+- `--adapter` (string, опционально, повторяемый) — идентификатор адаптера
+  из реестра. МОЖЕТ быть указан несколько раз для очистки нескольких
+  адаптеров за один запуск (например,
+  `--adapter claude --adapter opencode`). Взаимоисключающий с `--all`.
+  Повторяющиеся идентификаторы дедуплицируются с сохранением порядка
+  первого появления.
 - `--all` (boolean, опционально, default: false) — выполнить очистку
   для всех адаптеров из реестра. Взаимоисключающий с `--adapter`.
 - `--verbose` (boolean, опционально, default: false) — показывать все
   результаты, включая адаптеры с 0 удалённых файлов.
 
-Аргументы `--adapter` и `--all` являются взаимоисключающими.
-При отсутствии обоих используется конфигурационный файл
-(см. `docs/specs/config.md`).
+Аргументы `--adapter` (даже если указан несколько раз) и `--all`
+являются взаимоисключающими. При отсутствии обоих используется
+конфигурационный файл (см. `docs/specs/config.md`).
 
 **Поведение:**
 
-1. Распарсить аргументы `--adapter`, `--all` и `--verbose`
-   из командной строки.
+1. Распарсить аргументы из командной строки: значения всех вхождений
+   `--adapter` накопить в массив `adapterIds` в порядке появления;
+   распарсить булевы флаги `--all` и `--verbose`.
 2. Определить `projectRoot` как текущий рабочий каталог процесса
    (`process.cwd()`).
 3. Выполнить процедуру Resolve Adapters from CLI Args
    (см. `docs/specs/config.md`
    § Процедура Resolve Adapters from CLI Args)
-   с `adapter`, `all`, `projectRoot`, `"clean"`.
+   с `adapterIds`, `all`, `projectRoot`, `"clean"`.
 4. Для каждой записи из полученного списка выполнить процедуру
    Clean Files (см. § Процедура Clean Files) с `entry`
    и `projectRoot`.
@@ -169,9 +175,10 @@ Done. {totalRemoved} files removed.
 **Exit codes:**
 
 - `0` — все очистки завершились без ошибок.
-- `1` — указаны оба `--adapter` и `--all` одновременно; конфиг
-  не найден (при отсутствии `--adapter` и `--all`); ошибка конфига;
-  неизвестный или скрытый адаптер; или ошибка удаления.
+- `1` — указаны `--adapter` и `--all` одновременно; в `.agloom/config.yml`
+  отсутствует поле `adapters` (или сам файл) при отсутствии `--adapter`
+  и `--all`; ошибка конфига; неизвестный или скрытый адаптер;
+  или ошибка удаления.
 
 ## Расширение команды transpile
 
@@ -226,12 +233,12 @@ Done. {totalWritten} files written.
 Вывод `agloom clean --help`:
 
 ```text
-Usage: agloom clean [--adapter <adapterId> | --all] [--verbose]
+Usage: agloom clean [--adapter <adapterId>]... [--all] [--verbose]
 
-Remove generated agent-specific files for the specified adapter.
+Remove generated agent-specific files for the specified adapter(s).
 
 Options:
-  --adapter <adapterId>  Adapter ID from the registry
+  --adapter <adapterId>  Adapter ID from the registry (may be repeated)
   --all                  Clean for all supported adapters
   --verbose              Show details even when 0 files removed
 ```

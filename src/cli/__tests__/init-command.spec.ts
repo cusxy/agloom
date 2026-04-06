@@ -968,7 +968,10 @@ describe("CLI", () => {
     // § init-command.md § Справка
     // =====================================================================
 
-    it("отображает обновлённую справку с --adapter и --all при вызове init --help", async () => {
+    // § init-command.md § Справка (init-command.md:291-296):
+    //   Usage: agloom init [--adapter <adapterId>]... [--all] [--force] [--verbose]
+    //   --adapter <adapterId>  Adapter identifier (may be repeated)
+    it("отображает справку с корректным usage и суффиксом '(may be repeated)' при init --help", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["init", "--help"],
@@ -987,6 +990,14 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
+      // Usage-строка точно по спецификации (init-command.md:291)
+      expect(output).toContain("Usage: agloom init [--adapter <adapterId>]... [--all] [--force] [--verbose]");
+
+      // Опция --adapter ДОЛЖНА содержать суффикс "(may be repeated)"
+      // (init-command.md:296)
+      expect(output).toContain("(may be repeated)");
+
+      // Остальные опции присутствуют
       expect(output).toContain("--adapter");
       expect(output).toContain("--all");
       expect(output).toContain("--force");
@@ -1275,7 +1286,7 @@ describe("CLI", () => {
       unmount();
     });
 
-    it('при отсутствии --adapter, --all и конфига отображает "No config found" без упоминания agloom init', async () => {
+    it('при отсутствии --adapter, --all и конфига отображает "No adapters specified" без упоминания config.yml', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["init"],
@@ -1294,8 +1305,9 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain("No config found");
-      expect(output).not.toContain("run 'agloom init'");
+      expect(output).toContain("No adapters specified");
+      // init-вариант сообщения не упоминает config.yml (отличается от transpile/clean)
+      expect(output).not.toContain(".agloom/config.yml");
       expect(process.exitCode).toBe(1);
 
       unmount();

@@ -602,8 +602,9 @@ describe("CLI Integration", () => {
 
       const output = lastFrame()!;
 
-      // Шаг 3: сообщение об отсутствии конфига
-      expect(output).toContain("No config found");
+      // Шаг 3: сообщение об отсутствии адаптеров
+      // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 5a
+      expect(output).toContain("No adapters specified");
 
       // Шаг 4: exit code 1
       expect(process.exitCode).toBe(1);

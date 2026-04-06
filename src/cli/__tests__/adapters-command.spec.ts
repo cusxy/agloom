@@ -157,6 +157,31 @@ describe("CLI", () => {
         unmount();
       });
 
+      // --- § cli.md § Команда adapters § Поведение шаг 4: adapterIds === null ---
+      // Load Config вернул adapterIds=null потому что файл существует,
+      // но не содержит поля adapters → "Available adapters:".
+      it('при файле без поля adapters показывает "Available adapters:" (поле adapters опционально)', () => {
+        const configDir = path.join(tmpDir, ".agloom");
+        fs.mkdirSync(configDir, { recursive: true });
+        // Файл есть, но без adapters — например, только variables
+        fs.writeFileSync(path.join(configDir, "config.yml"), "variables:\n  FOO: bar\n");
+
+        const { lastFrame, unmount } = render(
+          React.createElement(App, {
+            args: ["adapters"],
+            projectRoot: tmpDir,
+          }),
+        );
+
+        const output = lastFrame()!;
+
+        expect(output).toContain("Available adapters:");
+        expect(output).toContain("claude");
+        expect(output).toContain("opencode");
+
+        unmount();
+      });
+
       // --- § cli.md § Команда adapters § Расширения 3a ---
       // Load Config вернул ошибку → отобразить сообщение ошибки; exit code 1.
       it("при невалидном config.yml отображает ошибку и завершается с exit code 1", () => {

@@ -17,8 +17,13 @@ import type { AdapterRegistryEntry } from "./types.js";
 
 /** Результат загрузки конфигурационного файла. */
 export interface LoadConfigResult {
-  /** Список идентификаторов адаптеров из конфига. */
-  adapterIds: string[];
+  /**
+   * Список идентификаторов адаптеров из конфига, или null если поле
+   * `adapters` отсутствует в файле.
+   *
+   * Spec: docs/specs/config.md § Процедура Load Config § Поведение шаг 5
+   */
+  adapterIds: string[] | null;
   /** Список путей к плагинам из конфига, или null если поле plugins отсутствует. */
   pluginPaths: string[] | null;
   /** Список разобранных записей плагинов из конфига, или null. */
@@ -59,47 +64,53 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
     throw new Error(`Invalid config file: ${message}`);
   }
 
-  // Шаг 3: Проверить наличие и формат поля adapters
-  if (
-    parsed === null ||
-    parsed === undefined ||
-    typeof parsed !== "object" ||
-    !("adapters" in (parsed as Record<string, unknown>))
-  ) {
-    // Расширение 3a: Поле adapters отсутствует
-    throw new Error("Invalid config: 'adapters' field is required.");
+  // Нормализовать парсинг: пустой файл/null → пустой объект
+  if (parsed === null || parsed === undefined) {
+    parsed = {};
+  }
+  if (typeof parsed !== "object") {
+    throw new Error("Invalid config: 'adapters' must be an array of strings.");
   }
 
   const config = parsed as Record<string, unknown>;
-  const adapters = config.adapters;
 
-  // Расширение 3b: adapters не является массивом или содержит нестроковые элементы
-  if (!Array.isArray(adapters)) {
-    throw new Error("Invalid config: 'adapters' must be an array of strings.");
-  }
+  // Шаг 3: Проверить наличие и формат поля adapters (опционально)
+  // Spec: docs/specs/config.md § Формат файла — поле adapters МОЖЕТ отсутствовать.
+  let adapterIdsResult: string[] | null = null;
 
-  if (!adapters.every((item) => typeof item === "string")) {
-    throw new Error("Invalid config: 'adapters' must be an array of strings.");
-  }
+  if ("adapters" in config) {
+    const adapters = config.adapters;
 
-  // Расширение 3c: Массив adapters пуст
-  if (adapters.length === 0) {
-    throw new Error("Invalid config: 'adapters' must not be empty.");
-  }
-
-  // Шаг 4: Для каждого элемента проверить наличие в реестре и скрытость
-  for (const id of adapters) {
-    const entry = adapterRegistry.find((e) => e.id === id);
-
-    // Расширение 4a: Неизвестный адаптер
-    if (!entry) {
-      throw new Error(`Invalid config: unknown adapter '${id}'.`);
+    // Расширение 3a: adapters не является массивом или содержит нестроковые элементы
+    if (!Array.isArray(adapters)) {
+      throw new Error("Invalid config: 'adapters' must be an array of strings.");
     }
 
-    // Расширение 4b: Скрытый адаптер
-    if (entry.hidden) {
-      throw new Error(`Invalid config: adapter '${id}' cannot be specified in config.`);
+    if (!adapters.every((item) => typeof item === "string")) {
+      throw new Error("Invalid config: 'adapters' must be an array of strings.");
     }
+
+    // Расширение 3b: Массив adapters пуст
+    if (adapters.length === 0) {
+      throw new Error("Invalid config: 'adapters' must not be empty.");
+    }
+
+    // Шаг 4: Для каждого элемента проверить наличие в реестре и скрытость
+    for (const id of adapters) {
+      const entry = adapterRegistry.find((e) => e.id === id);
+
+      // Расширение 4a: Неизвестный адаптер
+      if (!entry) {
+        throw new Error(`Invalid config: unknown adapter '${id}'.`);
+      }
+
+      // Расширение 4b: Скрытый адаптер
+      if (entry.hidden) {
+        throw new Error(`Invalid config: adapter '${id}' cannot be specified in config.`);
+      }
+    }
+
+    adapterIdsResult = adapters as string[];
   }
 
   // Шаг 5: проверить наличие поля plugins
@@ -268,7 +279,7 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
   }
 
   return {
-    adapterIds: adapters as string[],
+    adapterIds: adapterIdsResult,
     pluginPaths,
     pluginEntries,
     configVariables,
@@ -309,25 +320,39 @@ export function resolveAdaptersFromConfig(adapterIds: string[]): AdapterRegistry
  *   отсутствии конфига или невалидном конфиге.
  */
 export function resolveAdaptersFromCLIArgs(options: {
-  adapter: string | null;
+  adapterIds: string[];
   all: boolean;
   projectRoot: string;
   command: string;
 }): AdapterRegistryEntry[] {
-  const { adapter, all, projectRoot, command } = options;
+  const { adapterIds, all, projectRoot, command } = options;
 
-  // Расширение 1a: adapter и all указаны одновременно
-  if (adapter !== null && all) {
+  // Расширение 1a: adapterIds и all указаны одновременно
+  if (adapterIds.length > 0 && all) {
     throw new Error("--adapter and --all are mutually exclusive.");
   }
 
-  // Шаг 2: adapter указан → Resolve Adapter + Разрешение зависимостей
-  if (adapter !== null) {
-    resolveAdapter(adapter);
-    return resolveDeps(adapter, adapterRegistry);
+  // Шаг 2: adapterIds непустой → дедуплицировать с сохранением порядка,
+  // валидировать каждый id через Resolve Adapter, затем разрешить зависимости.
+  if (adapterIds.length > 0) {
+    const seen = new Set<string>();
+    const deduped: string[] = [];
+    for (const id of adapterIds) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        deduped.push(id);
+      }
+    }
+
+    // Расширение 2a: Resolve Adapter вернул ошибку (пробрасывается)
+    for (const id of deduped) {
+      resolveAdapter(id);
+    }
+
+    return resolveAdaptersFromConfig(deduped);
   }
 
-  // Шаг 3: all === true → все записи реестра
+  // Шаг 3: all === true → все записи реестра в порядке определения
   if (all) {
     return [...adapterRegistry];
   }
@@ -335,13 +360,12 @@ export function resolveAdaptersFromCLIArgs(options: {
   // Шаг 4: Load Config
   const configResult = loadConfig(projectRoot);
 
-  // Расширение 4a: Load Config вернул null
-  if (configResult === null) {
-    if (command !== "init") {
-      throw new Error("No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.");
-    } else {
-      throw new Error("No config found. Use --adapter <id> or --all to specify adapters.");
+  // Расширение 5a: Load Config вернул null или результат с adapterIds === null
+  if (configResult === null || configResult.adapterIds === null) {
+    if (command === "init") {
+      throw new Error("No adapters specified. Use --adapter <id> or --all to specify adapters.");
     }
+    throw new Error("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.");
   }
 
   // Шаг 5: Resolve Adapters from Config

@@ -109,15 +109,19 @@ maps_to:
 
 ## Команда init
 
-`agloom init [--adapter <adapterId> | --all] [--force] [--verbose]` — копирует
-существующие agent-специфичные файлы в `.agloom/overlays/<agentId>/` и создаёт
-конфигурационный файл `.agloom/config.yml`
-(см. `docs/specs/config.md`).
+`agloom init [--adapter <adapterId>]... [--all] [--force] [--verbose]` —
+копирует существующие agent-специфичные файлы в
+`.agloom/overlays/<agentId>/` и создаёт конфигурационный файл
+`.agloom/config.yml` (см. `docs/specs/config.md`).
 
 **Аргументы:**
 
-- `--adapter` (string, опционально) — идентификатор агента из реестра.
-  Взаимоисключающий с `--all`.
+- `--adapter` (string, опционально, повторяемый) — идентификатор агента
+  из реестра. МОЖЕТ быть указан несколько раз для инициализации
+  нескольких агентов за один запуск (например,
+  `--adapter claude --adapter opencode`). Взаимоисключающий с `--all`.
+  Повторяющиеся идентификаторы дедуплицируются с сохранением порядка
+  первого появления.
 - `--all` (boolean, опционально, default: false) — инициализировать
   все поддерживаемые агенты из реестра.
 - `--force` (boolean, опционально, default: false) — перезаписать
@@ -125,22 +129,23 @@ maps_to:
 - `--verbose` (boolean, опционально, default: false) — показывать все
   результаты, включая шаги с 0 скопированных файлов.
 
-Аргументы `--adapter` и `--all` являются взаимоисключающими.
-При отсутствии обоих используется конфигурационный файл
-(см. `docs/specs/config.md`).
+Аргументы `--adapter` (даже если указан несколько раз) и `--all`
+являются взаимоисключающими. При отсутствии обоих используется
+конфигурационный файл (см. `docs/specs/config.md`).
 
 <!-- prettier-ignore-start -->
 
 **Поведение:**
 
-1. Распарсить аргументы `--adapter`, `--all`, `--force` и `--verbose`
-   из командной строки.
+1. Распарсить аргументы из командной строки: значения всех вхождений
+   `--adapter` накопить в массив `adapterIds` в порядке появления;
+   распарсить булевы флаги `--all`, `--force` и `--verbose`.
 2. Определить `projectRoot` как текущий рабочий каталог процесса
    (`process.cwd()`).
 3. Выполнить процедуру Resolve Adapters from CLI Args
    (см. `docs/specs/config.md`
    § Процедура Resolve Adapters from CLI Args)
-   с `adapter`, `all`, `projectRoot`, `"init"`.
+   с `adapterIds`, `all`, `projectRoot`, `"init"`.
 4. Проверить наличие директории `.agloom/` в `projectRoot`.
 5. Если указан `--adapter` или `--all`: создать файл
    `.agloom/config.yml` (см. § Создание конфигурационного файла).
@@ -179,7 +184,11 @@ exit code 1. Последующие шаги не выполняются.
 
 Содержимое поля `adapters`:
 
-- При `--adapter <id>`: `[<id>]`.
+- При одном или нескольких `--adapter`: список идентификаторов из массива
+  `adapterIds`, дедуплицированный с сохранением порядка первого появления
+  каждого `id`. Например, `--adapter claude --adapter opencode` →
+  `adapters: [claude, opencode]`; `--adapter claude --adapter claude` →
+  `adapters: [claude]`.
 - При `--all`: список `id` всех нескрытых адаптеров
   (с `hidden !== true`) из реестра в порядке их определения
   в реестре.
@@ -260,11 +269,12 @@ overlay-результатов.
 **Exit codes:**
 
 - `0` — все шаги завершились без ошибок (включая 0 файлов).
-- `1` — `--adapter` и `--all` указаны одновременно; конфиг не найден
-  (при отсутствии `--adapter` и `--all`); ошибка конфига; неизвестный
-  или скрытый агент; `.agloom/` уже существует без `--force`;
-  директория `.agloom/overlays/` уже существует без `--force`;
-  ошибка создания директории; или ошибка копирования.
+- `1` — `--adapter` и `--all` указаны одновременно; в `.agloom/config.yml`
+  отсутствует поле `adapters` (или сам файл) при отсутствии `--adapter`
+  и `--all`; ошибка конфига; неизвестный или скрытый агент;
+  `.agloom/` уже существует без `--force`; директория
+  `.agloom/overlays/` уже существует без `--force`; ошибка создания
+  директории; или ошибка копирования.
 
 ## Справка
 
@@ -278,12 +288,12 @@ overlay-результатов.
 Вывод `agloom init --help`:
 
 ```text
-Usage: agloom init [--adapter <adapterId> | --all] [--force] [--verbose]
+Usage: agloom init [--adapter <adapterId>]... [--all] [--force] [--verbose]
 
 Import existing agent configs into .agloom/
 
 Options:
-  --adapter <adapterId>  Adapter identifier
+  --adapter <adapterId>  Adapter identifier (may be repeated)
   --all                  Initialize all supported agents
   --force                Overwrite existing files
   --verbose              Show all steps including 0-file ones

@@ -905,11 +905,11 @@ describe("CLI", () => {
     });
 
     // --- § config.md: transpile без аргументов + нет конфига → ошибка ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 4a:
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 5a:
     // command !== "init" →
-    // Error("No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.")
+    // Error("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.")
     // § cli.md § Команда transpile § Расширения 3a.
-    it('при отсутствии --adapter, --all и конфига отображает "No config found" и exit code 1', async () => {
+    it('при отсутствии --adapter, --all и конфига отображает "No adapters specified" и exit code 1', async () => {
       // Удаляем .agloom/config.yml если существует (в beforeEach .agloom создаётся для skills/agents)
       const configPath = path.join(tmpDir, ".agloom", "config.yml");
       if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
@@ -932,18 +932,19 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain("No config found");
+      expect(output).toContain("No adapters specified");
+      expect(output).toContain(".agloom/config.yml");
       expect(process.exitCode).toBe(1);
 
       unmount();
     });
 
-    // --- § cli.md § --help: usage line с квадратными скобками ---
-    // § cli.md § Глобальные опции § --help:
+    // --- § cli.md § --help: usage line с повторяемым --adapter ---
+    // § cli.md § Глобальные опции § --help (cli.md:347):
     // Вывод agloom transpile --help ДОЛЖЕН содержать строку usage:
-    // "Usage: agloom transpile [--adapter <adapterId> | --all] [--clean] [--verbose]"
-    // Квадратные скобки, не круглые — аргументы опциональны (fallback на конфиг).
-    it("справка transpile --help содержит usage с квадратными скобками для --adapter/--all", async () => {
+    // "Usage: agloom transpile [--adapter <adapterId>]... [--all] [--clean] [--verbose]"
+    // --adapter может повторяться (суффикс `]...`), --all — отдельный необязательный флаг.
+    it("справка transpile --help содержит usage с повторяемым [--adapter <adapterId>]... и отдельным [--all]", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["transpile", "--help"],
@@ -962,9 +963,10 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Usage line ДОЛЖНА содержать квадратные скобки (не круглые)
-      expect(output).toContain("[--adapter");
-      expect(output).toContain("| --all]");
+      // Usage line ДОЛЖНА точно соответствовать спецификации cli.md:347
+      expect(output).toContain("Usage: agloom transpile [--adapter <adapterId>]... [--all] [--clean] [--verbose]");
+      // Старая форма "[--adapter <adapterId>... | --all]" ЗАПРЕЩЕНА
+      expect(output).not.toContain("| --all]");
 
       unmount();
     });

@@ -26,10 +26,8 @@ describe("CLI", () => {
     });
 
     // --- Happy path: шаги 1-4 ---
-    // § config.md § Процедура Load Config § Поведение шаги 1-4:
-    // Прочитать файл, распарсить YAML, валидировать adapters, проверить
-    // что каждый adapter существует в реестре и не скрыт.
-    it("при валидном config.yml с adapters: [claude] возвращает ['claude']", () => {
+    // § config.md § Процедура Load Config § Поведение шаги 1-4
+    it("при валидном config.yml с adapters: [claude] возвращает adapterIds = ['claude']", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
@@ -37,11 +35,9 @@ describe("CLI", () => {
       const result = loadConfig(tmpDir);
       expect(result).not.toBeNull();
       expect(result!.adapterIds).toEqual(["claude"]);
-      expect(result!.pluginPaths).toBeNull();
     });
 
     // --- Happy path: несколько адаптеров ---
-    // § config.md § Процедура Load Config § Поведение шаги 1-4
     it("при валидном config.yml с adapters: [claude, opencode] возвращает ['claude', 'opencode']", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
@@ -50,7 +46,6 @@ describe("CLI", () => {
       const result = loadConfig(tmpDir);
       expect(result).not.toBeNull();
       expect(result!.adapterIds).toEqual(["claude", "opencode"]);
-      expect(result!.pluginPaths).toBeNull();
     });
 
     // --- Расширение 1a: файл не существует → null ---
@@ -60,9 +55,35 @@ describe("CLI", () => {
       expect(result).toBeNull();
     });
 
+    // --- Шаг 5 / новое: файл существует, поле adapters отсутствует → adapterIds = null ---
+    // § config.md § Процедура Load Config § Поведение шаг 5:
+    // "adapterIds равен ... null, если поле отсутствует".
+    // § config.md § Формат файла: поле МОЖЕТ отсутствовать.
+    it("при наличии файла без поля adapters возвращает результат с adapterIds = null", () => {
+      const configDir = path.join(tmpDir, ".agloom");
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(path.join(configDir, "config.yml"), "plugins: []\n");
+
+      const result = loadConfig(tmpDir);
+      expect(result).not.toBeNull();
+      expect(result!.adapterIds).toBeNull();
+    });
+
+    // --- Другое поле (variables) без adapters тоже валидно ---
+    // § config.md § Формат файла: поле adapters МОЖЕТ отсутствовать,
+    // если конфиг используется только для других назначений (variables).
+    it("при наличии файла только с variables возвращает adapterIds = null без ошибки", () => {
+      const configDir = path.join(tmpDir, ".agloom");
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(path.join(configDir, "config.yml"), "variables:\n  FOO: bar\n");
+
+      const result = loadConfig(tmpDir);
+      expect(result).not.toBeNull();
+      expect(result!.adapterIds).toBeNull();
+    });
+
     // --- Расширение 2a: невалидный YAML ---
-    // § config.md § Процедура Load Config § Расширения 2a:
-    // Error("Invalid config file: {parseErrorMessage}")
+    // § config.md § Процедура Load Config § Расширения 2a
     it('при невалидном YAML выбрасывает ошибку "Invalid config file: ..."', () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
@@ -71,20 +92,8 @@ describe("CLI", () => {
       expect(() => loadConfig(tmpDir)).toThrow(/Invalid config file:/);
     });
 
-    // --- Расширение 3a: поле adapters отсутствует ---
-    // § config.md § Процедура Load Config § Расширения 3a:
-    // Error("Invalid config: 'adapters' field is required.")
-    it("при отсутствии поля adapters выбрасывает ошибку с требованием поля adapters", () => {
-      const configDir = path.join(tmpDir, ".agloom");
-      fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(path.join(configDir, "config.yml"), "foo: bar\n");
-
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'adapters' field is required.");
-    });
-
-    // --- Расширение 3b: adapters не является массивом ---
-    // § config.md § Процедура Load Config § Расширения 3b:
-    // Error("Invalid config: 'adapters' must be an array of strings.")
+    // --- Расширение 3a: adapters не является массивом ---
+    // § config.md § Процедура Load Config § Расширения 3a
     it("при adapters как строке выбрасывает ошибку о формате массива", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
@@ -93,8 +102,7 @@ describe("CLI", () => {
       expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'adapters' must be an array of strings.");
     });
 
-    // --- Расширение 3b: массив содержит нестроковые элементы ---
-    // § config.md § Процедура Load Config § Расширения 3b
+    // --- Расширение 3a: массив содержит нестроковые элементы ---
     it("при нестроковых элементах в adapters выбрасывает ошибку о формате массива", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
@@ -103,9 +111,9 @@ describe("CLI", () => {
       expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'adapters' must be an array of strings.");
     });
 
-    // --- Расширение 3c: массив adapters пуст ---
-    // § config.md § Процедура Load Config § Расширения 3c:
-    // Error("Invalid config: 'adapters' must not be empty.")
+    // --- Расширение 3b: массив adapters пуст ---
+    // § config.md § Процедура Load Config § Расширения 3b.
+    // Сохранённое поведение: явно пустой массив — ошибка.
     it("при пустом массиве adapters выбрасывает ошибку о непустом массиве", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
@@ -115,8 +123,7 @@ describe("CLI", () => {
     });
 
     // --- Расширение 4a: неизвестный адаптер ---
-    // § config.md § Процедура Load Config § Расширения 4a:
-    // Error("Invalid config: unknown adapter '{id}'.")
+    // § config.md § Процедура Load Config § Расширения 4a
     it("при неизвестном адаптере выбрасывает ошибку с id адаптера", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
@@ -126,8 +133,7 @@ describe("CLI", () => {
     });
 
     // --- Расширение 4b: скрытый адаптер ---
-    // § config.md § Процедура Load Config § Расширения 4b:
-    // Error("Invalid config: adapter '{id}' cannot be specified in config.")
+    // § config.md § Процедура Load Config § Расширения 4b
     it("при скрытом адаптере agentsmd в конфиге выбрасывает ошибку", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
@@ -139,41 +145,34 @@ describe("CLI", () => {
 
   // =====================================================================
   // § config.md § Процедура Resolve Adapters from Config
-  // Разрешение списка адаптеров из конфига с учётом зависимостей.
   // =====================================================================
   describe("Процедура Resolve Adapters from Config", () => {
-    // --- Happy path: [claude] → [claude] ---
-    // § config.md § Процедура Resolve Adapters from Config § Пример:
-    // adapterIds = ["claude"] → результат = [claude]
+    // § config.md § Процедура Resolve Adapters from Config § Пример
     it('при adapterIds ["claude"] возвращает список с записью claude', () => {
       const result = resolveAdaptersFromConfig(["claude"]);
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe("claude");
     });
 
-    // --- Happy path: [claude, opencode] → [claude, agentsmd, opencode] ---
-    // § config.md § Процедура Resolve Adapters from Config § Пример:
-    // adapterIds = ["claude", "opencode"] → [claude, agentsmd, opencode]
+    // § config.md § Процедура Resolve Adapters from Config § Пример
     it('при adapterIds ["claude", "opencode"] возвращает [claude, agentsmd, opencode] в топологическом порядке', () => {
       const result = resolveAdaptersFromConfig(["claude", "opencode"]);
       const ids = result.map((e) => e.id);
       expect(ids).toEqual(["claude", "agentsmd", "opencode"]);
     });
 
-    // --- Трансформация: дедупликация ---
     // § config.md § Процедура Resolve Adapters from Config § Поведение шаг 2:
-    // Каждая запись ДОЛЖНА присутствовать в результате не более одного раза.
+    // дедупликация.
     it("дедуплицирует записи при разрешении зависимостей", () => {
       const result = resolveAdaptersFromConfig(["claude", "opencode"]);
       const ids = result.map((e) => e.id);
-      // agentsmd включён через зависимость opencode, не дублируется
       expect(ids.filter((id) => id === "agentsmd")).toHaveLength(1);
     });
   });
 
   // =====================================================================
   // § config.md § Процедура Resolve Adapters from CLI Args
-  // Общая процедура разрешения списка адаптеров из аргументов CLI.
+  // Новый интерфейс: adapterIds: string[] вместо adapter: string | null.
   // =====================================================================
   describe("Процедура Resolve Adapters from CLI Args", () => {
     let tmpDir: string;
@@ -186,12 +185,11 @@ describe("CLI", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
-    // --- Happy path: --adapter ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Поведение шаг 2:
-    // adapter указан → Resolve Adapter + Разрешение зависимостей.
-    it('при adapter="claude" возвращает список записей с claude', () => {
+    // --- Happy path: один --adapter ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Поведение шаг 2
+    it('при adapterIds=["claude"] возвращает список с записью claude', () => {
       const result = resolveAdaptersFromCLIArgs({
-        adapter: "claude",
+        adapterIds: ["claude"],
         all: false,
         projectRoot: tmpDir,
         command: "transpile",
@@ -200,12 +198,56 @@ describe("CLI", () => {
       expect(result[0].id).toBe("claude");
     });
 
-    // --- Happy path: --all ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Поведение шаг 3:
-    // all === true → вернуть все записи реестра.
-    it("при all=true возвращает все записи реестра", () => {
+    // --- Happy path: несколько --adapter, multi-adapter ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Поведение шаг 2:
+    // дедуплицированный список + Resolve Adapter для каждого + Resolve Adapters from Config.
+    // § cli.md § Команда transpile § Аргументы: --adapter МОЖЕТ повторяться.
+    it('при adapterIds=["claude", "opencode"] возвращает записи в топологическом порядке с зависимостями', () => {
       const result = resolveAdaptersFromCLIArgs({
-        adapter: null,
+        adapterIds: ["claude", "opencode"],
+        all: false,
+        projectRoot: tmpDir,
+        command: "transpile",
+      });
+      const ids = result.map((e) => e.id);
+      // opencode зависит от agentsmd → в топологическом порядке
+      expect(ids).toEqual(["claude", "agentsmd", "opencode"]);
+    });
+
+    // --- Трансформация: дедупликация повторяющихся --adapter ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 2b:
+    // повторы молча дедуплицируются, не являются ошибкой.
+    it('при adapterIds=["claude", "claude"] возвращает одну запись claude (дедупликация)', () => {
+      const result = resolveAdaptersFromCLIArgs({
+        adapterIds: ["claude", "claude"],
+        all: false,
+        projectRoot: tmpDir,
+        command: "transpile",
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("claude");
+    });
+
+    // --- Трансформация: дедупликация с сохранением порядка первого появления ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Поведение шаг 2:
+    // "дедуплицировать ... с сохранением порядка первого появления каждого id".
+    it('при adapterIds=["claude", "opencode", "claude"] сохраняет порядок первого появления', () => {
+      const result = resolveAdaptersFromCLIArgs({
+        adapterIds: ["claude", "opencode", "claude"],
+        all: false,
+        projectRoot: tmpDir,
+        command: "transpile",
+      });
+      const ids = result.map((e) => e.id);
+      // Результат идентичен ["claude", "opencode"]: claude → agentsmd → opencode
+      expect(ids).toEqual(["claude", "agentsmd", "opencode"]);
+    });
+
+    // --- Happy path: --all ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Поведение шаг 3
+    it("при all=true и пустом adapterIds возвращает все записи реестра", () => {
+      const result = resolveAdaptersFromCLIArgs({
+        adapterIds: [],
         all: true,
         projectRoot: tmpDir,
         command: "transpile",
@@ -213,13 +255,26 @@ describe("CLI", () => {
       expect(result.length).toBeGreaterThanOrEqual(2);
     });
 
-    // --- Расширение 1a: --adapter и --all одновременно ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 1a:
-    // Error("--adapter and --all are mutually exclusive.")
-    it("при adapter и all одновременно выбрасывает ошибку о взаимоисключающих аргументах", () => {
+    // --- Расширение 1a: одиночный --adapter + --all ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 1a.
+    // § cli.md § Команда transpile: "--adapter (даже если указан несколько раз)
+    // и --all являются взаимоисключающими".
+    it("при одиночном adapterIds и all=true выбрасывает ошибку о взаимоисключающих аргументах", () => {
       expect(() =>
         resolveAdaptersFromCLIArgs({
-          adapter: "claude",
+          adapterIds: ["claude"],
+          all: true,
+          projectRoot: tmpDir,
+          command: "transpile",
+        }),
+      ).toThrow("--adapter and --all are mutually exclusive.");
+    });
+
+    // --- Расширение 1a: несколько --adapter + --all ---
+    it("при нескольких adapterIds и all=true выбрасывает ошибку о взаимоисключающих аргументах", () => {
+      expect(() =>
+        resolveAdaptersFromCLIArgs({
+          adapterIds: ["claude", "opencode"],
           all: true,
           projectRoot: tmpDir,
           command: "transpile",
@@ -228,15 +283,14 @@ describe("CLI", () => {
     });
 
     // --- Happy path: fallback на конфиг ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Поведение шаги 4-5:
-    // Ни adapter ни all → Load Config → Resolve Adapters from Config.
-    it("при отсутствии adapter и all с существующим конфигом возвращает записи из конфига", () => {
+    // § config.md § Процедура Resolve Adapters from CLI Args § Поведение шаги 4-5
+    it("при пустом adapterIds, all=false и существующем конфиге возвращает записи из конфига", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
       const result = resolveAdaptersFromCLIArgs({
-        adapter: null,
+        adapterIds: [],
         all: false,
         projectRoot: tmpDir,
         command: "transpile",
@@ -245,43 +299,85 @@ describe("CLI", () => {
       expect(result[0].id).toBe("claude");
     });
 
-    // --- Расширение 4a: конфиг не найден, command !== "init" ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 4a:
-    // command !== "init" →
-    // Error("No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.")
-    it("при отсутствии конфига и command=transpile выбрасывает ошибку с предложением agloom init", () => {
+    // --- Расширение 5a: Load Config вернул adapterIds=null (файл без adapters), command=transpile ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 5a
+    it("при файле без поля adapters и command=transpile выбрасывает ошибку про 'adapters' в config.yml", () => {
+      const configDir = path.join(tmpDir, ".agloom");
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(path.join(configDir, "config.yml"), "plugins: []\n");
+
       expect(() =>
         resolveAdaptersFromCLIArgs({
-          adapter: null,
+          adapterIds: [],
           all: false,
           projectRoot: tmpDir,
           command: "transpile",
         }),
-      ).toThrow("No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.");
+      ).toThrow("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.");
     });
 
-    // --- Расширение 4a: конфиг не найден, command === "init" ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 4a:
-    // command === "init" →
-    // Error("No config found. Use --adapter <id> or --all to specify adapters.")
-    it("при отсутствии конфига и command=init выбрасывает ошибку без упоминания agloom init", () => {
+    // --- Расширение 5a: файла нет, command=transpile → то же сообщение (C2) ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 5a:
+    // сообщение одинаково для "нет файла" и "нет поля adapters".
+    it("при отсутствии конфига и command=transpile выбрасывает то же сообщение", () => {
       expect(() =>
         resolveAdaptersFromCLIArgs({
-          adapter: null,
+          adapterIds: [],
+          all: false,
+          projectRoot: tmpDir,
+          command: "transpile",
+        }),
+      ).toThrow("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.");
+    });
+
+    // --- Расширение 5a: command=clean ---
+    it("при отсутствии конфига и command=clean выбрасывает то же сообщение с упоминанием config.yml", () => {
+      expect(() =>
+        resolveAdaptersFromCLIArgs({
+          adapterIds: [],
+          all: false,
+          projectRoot: tmpDir,
+          command: "clean",
+        }),
+      ).toThrow("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.");
+    });
+
+    // --- Расширение 5a: command=init (нет конфига) ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 5a:
+    // command === "init" → другое сообщение без упоминания config.yml.
+    it("при отсутствии конфига и command=init выбрасывает ошибку без упоминания config.yml", () => {
+      expect(() =>
+        resolveAdaptersFromCLIArgs({
+          adapterIds: [],
           all: false,
           projectRoot: tmpDir,
           command: "init",
         }),
-      ).toThrow("No config found. Use --adapter <id> or --all to specify adapters.");
+      ).toThrow("No adapters specified. Use --adapter <id> or --all to specify adapters.");
     });
 
-    // --- Расширение 2a: Resolve Adapter вернул ошибку (адаптер не найден) ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 2a:
-    // пробросить ошибку вызывающей команде.
-    it("при неизвестном adapter пробрасывает ошибку Resolve Adapter", () => {
+    // --- Расширение 5a: command=init + файл без adapters → то же init-сообщение ---
+    it("при файле без поля adapters и command=init выбрасывает init-сообщение", () => {
+      const configDir = path.join(tmpDir, ".agloom");
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(path.join(configDir, "config.yml"), "variables:\n  FOO: bar\n");
+
       expect(() =>
         resolveAdaptersFromCLIArgs({
-          adapter: "nonexistent",
+          adapterIds: [],
+          all: false,
+          projectRoot: tmpDir,
+          command: "init",
+        }),
+      ).toThrow("No adapters specified. Use --adapter <id> or --all to specify adapters.");
+    });
+
+    // --- Расширение 2a: Resolve Adapter вернул ошибку (неизвестный) ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 2a
+    it("при неизвестном id в adapterIds пробрасывает ошибку Resolve Adapter", () => {
+      expect(() =>
+        resolveAdaptersFromCLIArgs({
+          adapterIds: ["nonexistent"],
           all: false,
           projectRoot: tmpDir,
           command: "transpile",
@@ -289,13 +385,11 @@ describe("CLI", () => {
       ).toThrow(/Unknown agent/);
     });
 
-    // --- Расширение 2a: Resolve Adapter вернул ошибку (скрытый адаптер) ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 2a
-    // § adapter-registry-ext.md § hidden: ЗАПРЕЩАЕТСЯ указывать через --adapter
-    it("при скрытом adapter (agentsmd) пробрасывает ошибку Resolve Adapter", () => {
+    // --- Расширение 2a: Resolve Adapter вернул ошибку (скрытый) ---
+    it("при скрытом id (agentsmd) в adapterIds пробрасывает ошибку Resolve Adapter", () => {
       expect(() =>
         resolveAdaptersFromCLIArgs({
-          adapter: "agentsmd",
+          adapterIds: ["agentsmd"],
           all: false,
           projectRoot: tmpDir,
           command: "transpile",
@@ -303,9 +397,8 @@ describe("CLI", () => {
       ).toThrow(/cannot be used directly/);
     });
 
-    // --- Расширение 4b: Load Config вернул ошибку ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 4b:
-    // пробросить ошибку вызывающей команде.
+    // --- Расширение 5b: Load Config вернул ошибку ---
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 5b
     it("при невалидном config.yml пробрасывает ошибку Load Config", () => {
       const configDir = path.join(tmpDir, ".agloom");
       fs.mkdirSync(configDir, { recursive: true });
@@ -313,7 +406,7 @@ describe("CLI", () => {
 
       expect(() =>
         resolveAdaptersFromCLIArgs({
-          adapter: null,
+          adapterIds: [],
           all: false,
           projectRoot: tmpDir,
           command: "transpile",

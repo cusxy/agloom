@@ -201,9 +201,12 @@ describe("CLI", () => {
     });
 
     // --- § Справка: clean --help ---
-    // § clean-command.md § Справка: Вывод agloom clean --help
-    // Содержит --adapter, --all, --verbose
-    it("отображает справку с --adapter, --all и --verbose при вызове clean --help", async () => {
+    // § clean-command.md § Справка (clean-command.md:236-241):
+    // Вывод agloom clean --help ДОЛЖЕН содержать:
+    //   Usage: agloom clean [--adapter <adapterId>]... [--all] [--verbose]
+    //   Remove generated agent-specific files for the specified adapter(s).
+    //   --adapter <adapterId>  Adapter ID from the registry (may be repeated)
+    it("отображает справку с корректным usage, описанием и суффиксом '(may be repeated)' при clean --help", async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["clean", "--help"],
@@ -222,8 +225,18 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Справка содержит описание команды clean и все её аргументы
-      expect(output).toMatch(/clean/i);
+      // Usage-строка точно по спецификации (clean-command.md:236)
+      expect(output).toContain("Usage: agloom clean [--adapter <adapterId>]... [--all] [--verbose]");
+
+      // Описание команды с суффиксом множественного числа "adapter(s)"
+      // (clean-command.md:238)
+      expect(output).toContain("Remove generated agent-specific files for the specified adapter(s).");
+
+      // Опция --adapter ДОЛЖНА содержать суффикс "(may be repeated)"
+      // (clean-command.md:241)
+      expect(output).toContain("(may be repeated)");
+
+      // Остальные опции присутствуют
       expect(output).toContain("--adapter");
       expect(output).toContain("--all");
       expect(output).toContain("--verbose");
@@ -372,11 +385,11 @@ describe("CLI", () => {
     });
 
     // --- § config.md: clean без аргументов + нет конфига → ошибка ---
-    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 4a:
+    // § config.md § Процедура Resolve Adapters from CLI Args § Расширения 5a:
     // command !== "init" →
-    // Error("No config found. Use --adapter <id> or --all, or run 'agloom init' to create a config.")
+    // Error("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.")
     // § clean-command.md § Команда clean § Расширения 3a.
-    it('при отсутствии --adapter, --all и конфига отображает "No config found" и exit code 1', async () => {
+    it('при отсутствии --adapter, --all и конфига отображает "No adapters specified" и exit code 1', async () => {
       const { lastFrame, unmount } = render(
         React.createElement(App, {
           args: ["clean"],
@@ -395,7 +408,8 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain("No config found");
+      expect(output).toContain("No adapters specified");
+      expect(output).toContain(".agloom/config.yml");
       expect(process.exitCode).toBe(1);
 
       unmount();
