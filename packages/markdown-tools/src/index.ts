@@ -29,6 +29,7 @@ const DEFAULT_MARKDOWNLINT_CONFIG: Record<string, unknown> = {
 // § format.md § Метод format § Результат
 export interface FormatResult {
   formattedCount: number;
+  failures: string[];
   errors: string[];
 }
 
@@ -113,6 +114,7 @@ export function createMarkdownTools(config: MarkdownToolsConfig): MarkdownTools 
     // § format.md § Метод format
     async format(filePaths: string[]): Promise<FormatResult> {
       let formattedCount = 0;
+      const failures: string[] = [];
       const errors: string[] = [];
 
       for (const filePath of filePaths) {
@@ -158,6 +160,16 @@ export function createMarkdownTools(config: MarkdownToolsConfig): MarkdownTools 
             });
             const fileResults = results[filePath] || [];
             if (fileResults.length > 0) {
+              // § Шаг 5 / Расширение 5a: собрать non-fixable violations в failures
+              // на основе результата того же вызова markdownlint (без повторного запуска).
+              // Non-fixable = violation без поля fixInfo.
+              for (const violation of fileResults) {
+                if (violation.fixInfo) continue;
+                const ruleName = violation.ruleNames[0] || "unknown";
+                const desc = violation.ruleDescription || "";
+                const detail = violation.errorDetail ? `: ${violation.errorDetail}` : "";
+                failures.push(`${filePath}:${violation.lineNumber}: ${ruleName} ${desc}${detail}`);
+              }
               const fixed = applyFixes(content, fileResults);
               fs.writeFileSync(filePath, fixed);
             }
@@ -175,7 +187,7 @@ export function createMarkdownTools(config: MarkdownToolsConfig): MarkdownTools 
         }
       }
 
-      return { formattedCount, errors };
+      return { formattedCount, failures, errors };
     },
 
     // § format.md § Метод check

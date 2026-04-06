@@ -4,6 +4,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import React from "react";
 import { render } from "ink-testing-library";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 import { App } from "../app.js";
 
 describe("CLI", () => {
@@ -117,6 +120,155 @@ describe("CLI", () => {
       expect(output).toContain("No files found.");
 
       unmount();
+    });
+
+    // =====================================================================
+    // § format.md § TUI-отображение § Режим format — non-fixable failures
+    // § format.md § Exit codes (C4, C5)
+    // =====================================================================
+    describe("режим format — отображение non-fixable failures", () => {
+      let tmpDir: string;
+
+      beforeEach(() => {
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-format-cli-"));
+        process.exitCode = undefined;
+      });
+
+      afterEach(() => {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      });
+
+      // § TUI-отображение § Режим format:
+      // При наличии non-fixable failures:
+      // "✗ Formatted {N} files, but {M} files still need attention:"
+      // § Exit codes: exit code 1 при непустом failures.
+      it("при файле с non-fixable violations показывает 'files still need attention' и exit code 1", async () => {
+        // Создаём .agloom/ структуру и файл с двумя H1 (MD025 — non-fixable).
+        const agloomDir = path.join(tmpDir, ".agloom");
+        fs.mkdirSync(agloomDir, { recursive: true });
+        const mdFile = path.join(agloomDir, "doc.md");
+        fs.writeFileSync(mdFile, "# First Title\n\nContent here.\n\n# Second Title\n\nMore content here.\n");
+
+        const { lastFrame, unmount } = render(
+          React.createElement(App, {
+            args: ["format"],
+            projectRoot: tmpDir,
+          }),
+        );
+
+        // Ждём завершения асинхронного FormatView
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const output = lastFrame()!;
+        // TUI должен сообщить о необходимости внимания
+        expect(output).toContain("files still need attention");
+        // В списке должно присутствовать описание нарушения MD025
+        expect(output).toContain("MD025");
+        // exit code 1 — есть failures
+        expect(process.exitCode).toBe(1);
+
+        unmount();
+      });
+
+      // § TUI-отображение § Режим format:
+      // Полный успех (failures и errors пусты): "✓ Formatted N files."
+      // § Exit codes: exit code 0.
+      it("при чистых файлах показывает 'Formatted N files' без блока failures и exit code 0", async () => {
+        const agloomDir = path.join(tmpDir, ".agloom");
+        fs.mkdirSync(agloomDir, { recursive: true });
+        const mdFile = path.join(agloomDir, "clean.md");
+        fs.writeFileSync(mdFile, "# Only Title\n\nJust text.\n");
+
+        const { lastFrame, unmount } = render(
+          React.createElement(App, {
+            args: ["format"],
+            projectRoot: tmpDir,
+          }),
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const output = lastFrame()!;
+        expect(output).toContain("Formatted");
+        // Не должно быть блока про failures
+        expect(output).not.toContain("files still need attention");
+        expect(output).not.toContain("Errors:");
+        // exit code должен быть 0 (undefined в ink-testing-library)
+        expect(process.exitCode).toBeUndefined();
+
+        unmount();
+      });
+
+      // § TUI-отображение § Режим format:
+      // При наличии failures + errors:
+      // "✗ Formatted N files, but M files still need attention:"
+      // <failures>
+      // (пустая строка)
+      // "Errors:"
+      // <errors>
+      // § Exit codes: exit code 1.
+      it("при наличии failures и errors показывает оба блока и exit code 1", async () => {
+        const agloomDir = path.join(tmpDir, ".agloom");
+        fs.mkdirSync(agloomDir, { recursive: true });
+        // Файл с non-fixable MD025 → failures
+        const mdFile = path.join(agloomDir, "doc.md");
+        fs.writeFileSync(mdFile, "# First Title\n\nContent.\n\n# Second Title\n\nMore.\n");
+        // Невалидный JSON → errors (runtime prettier error)
+        const badJson = path.join(agloomDir, "bad.json");
+        fs.writeFileSync(badJson, "{{{invalid json!!!}}}");
+
+        const { lastFrame, unmount } = render(
+          React.createElement(App, {
+            args: ["format"],
+            projectRoot: tmpDir,
+          }),
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const output = lastFrame()!;
+        // Блок failures
+        expect(output).toContain("files still need attention");
+        expect(output).toContain("MD025");
+        // Секция Errors
+        expect(output).toContain("Errors:");
+        // exit code 1
+        expect(process.exitCode).toBe(1);
+
+        unmount();
+      });
+
+      // § TUI-отображение § Режим format:
+      // При наличии только errors (failures пуст):
+      // "✗ Formatted N files with K errors." + список.
+      // Блока "files still need attention" быть НЕ должно.
+      // § Exit codes: exit code 1.
+      it("при наличии только errors показывает блок errors без блока failures и exit code 1", async () => {
+        const agloomDir = path.join(tmpDir, ".agloom");
+        fs.mkdirSync(agloomDir, { recursive: true });
+        // Только невалидный JSON — runtime error, без markdown файлов.
+        const badJson = path.join(agloomDir, "bad.json");
+        fs.writeFileSync(badJson, "{{{invalid json!!!}}}");
+
+        const { lastFrame, unmount } = render(
+          React.createElement(App, {
+            args: ["format"],
+            projectRoot: tmpDir,
+          }),
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const output = lastFrame()!;
+        // Блок failures не отображается
+        expect(output).not.toContain("files still need attention");
+        // Блок с ошибками должен присутствовать ("with K errors" или "Errors:")
+        expect(output).toMatch(/errors/i);
+        // exit code 1
+        expect(process.exitCode).toBe(1);
+
+        unmount();
+      });
     });
 
     // --- § Расширение 1a: --all и несколько файловых аргументов ---

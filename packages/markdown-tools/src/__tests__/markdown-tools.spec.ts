@@ -528,6 +528,175 @@ describe("MarkdownTools", () => {
   });
 
   // =====================================================================
+  // § format.md § Метод format § Поведение шаг 5, Расширение 5a
+  // Поле failures в FormatResult — non-fixable violations markdownlint
+  // =====================================================================
+  describe("Метод format — failures (non-fixable violations)", () => {
+    // § format.md § Метод format § Поведение шаг 5:
+    // Собрать non-fixable нарушения markdownlint в failures на основе
+    // того же результата шага 3, без повторного запуска markdownlint.
+    // § format.md § Метод format § Результат § failures:
+    // Формат записи совпадает с § Метод check.
+    it("при файле с только non-fixable нарушениями (MD025) заполняет failures и засчитывает файл в formattedCount", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const mdFile = path.join(tmpDir, "two-h1.md");
+      // MD025 (Multiple top-level headings) — non-fixable.
+      // Файл с двумя заголовками первого уровня.
+      fs.writeFileSync(mdFile, "# First Title\n\nSome content here.\n\n# Second Title\n\nMore content here.\n");
+
+      const result = await tools.format([mdFile]);
+
+      // Non-fixable violation должен попасть в failures
+      expect(result.failures.length).toBeGreaterThan(0);
+      expect(result.failures.some((f: string) => f.includes("MD025"))).toBe(true);
+      // § C6: файл засчитывается в formattedCount, даже при non-fixable violations,
+      // потому что prettier и markdownlint отработали без runtime-ошибок.
+      expect(result.formattedCount).toBe(1);
+      // § C2: errors — только runtime, non-fixable туда попадать не должны
+      expect(result.errors).toEqual([]);
+    });
+
+    // § format.md § Метод format § Расширение 5a:
+    // Формат записи failures: ${filePath}:${lineNumber}: ${ruleName} ${desc}
+    // (совпадает с § Метод check).
+    it("запись в failures имеет формат '${filePath}:${lineNumber}: ${ruleName} ${desc}'", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const mdFile = path.join(tmpDir, "two-h1.md");
+      fs.writeFileSync(mdFile, "# First Title\n\nSome content here.\n\n# Second Title\n\nMore content here.\n");
+
+      const result = await tools.format([mdFile]);
+
+      const md025Failure = result.failures.find((f: string) => f.includes("MD025"));
+      expect(md025Failure).toBeDefined();
+      // Формат: <filePath>:<lineNumber>: MD025 <description>
+      // lineNumber для MD025 при этом содержимом — строка 5 (второй H1).
+      expect(md025Failure).toMatch(new RegExp(`^${mdFile.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\d+: MD025 `));
+    });
+
+    // § format.md § Метод format § Поведение шаг 4-5:
+    // Fixable нарушения применяются, non-fixable остаются в failures.
+    it("при файле с только fixable нарушениями (MD049) failures пуст, файл изменён", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const mdFile = path.join(tmpDir, "fixable.md");
+      // Inline *emphasis* внутри параграфа — только MD049 (fixable: asterisk -> underscore).
+      // MD036 (emphasis as heading) не срабатывает, так как emphasis inline.
+      fs.writeFileSync(mdFile, "# Title\n\nSome text with *emphasis* inline.\n");
+      const before = fs.readFileSync(mdFile, "utf-8");
+
+      const result = await tools.format([mdFile]);
+
+      expect(result.failures).toEqual([]);
+      expect(result.errors).toEqual([]);
+      expect(result.formattedCount).toBe(1);
+      // Файл должен быть изменён — asterisk заменён на underscore.
+      const after = fs.readFileSync(mdFile, "utf-8");
+      expect(after).not.toBe(before);
+      expect(after).toContain("_emphasis_");
+    });
+
+    // § format.md § Метод format § Поведение шаг 4-5:
+    // Mixed: fixable применяются (файл изменён), non-fixable попадают в failures.
+    it("при mixed нарушениях (MD025 non-fixable + MD049 fixable) применяет фиксы и заполняет failures", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const mdFile = path.join(tmpDir, "mixed.md");
+      fs.writeFileSync(mdFile, "# First Title\n\nSome *emphasis* inline.\n\n# Second Title\n\nMore text.\n");
+
+      const result = await tools.format([mdFile]);
+
+      // MD025 (non-fixable) → в failures
+      expect(result.failures.some((f: string) => f.includes("MD025"))).toBe(true);
+      // MD049 (fixable) → НЕ в failures (применён автофикс)
+      expect(result.failures.some((f: string) => f.includes("MD049"))).toBe(false);
+      // Файл изменён — asterisk заменён на underscore
+      const after = fs.readFileSync(mdFile, "utf-8");
+      expect(after).toContain("_emphasis_");
+      // formattedCount = 1 (файл обработан)
+      expect(result.formattedCount).toBe(1);
+      expect(result.errors).toEqual([]);
+    });
+
+    // § format.md § Метод format § Результат § failures:
+    // При чистом файле failures — пустой массив.
+    it("при чистом .md файле failures и errors пусты", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const mdFile = path.join(tmpDir, "clean.md");
+      fs.writeFileSync(mdFile, "# Only Title\n\nJust regular text.\n");
+
+      const result = await tools.format([mdFile]);
+
+      expect(result.failures).toEqual([]);
+      expect(result.errors).toEqual([]);
+      expect(result.formattedCount).toBe(1);
+    });
+
+    // § format.md § Метод format § Результат § failures, errors (C2):
+    // runtime-ошибка prettier → errors непуст, failures ПУСТ.
+    // ЗАПРЕЩЕНО класть runtime-ошибки в failures.
+    it("при runtime-ошибке prettier errors непуст, а failures пуст (C2)", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const badFile = path.join(tmpDir, "bad.json");
+      fs.writeFileSync(badFile, "{{{invalid json!!!}}}");
+
+      const result = await tools.format([badFile]);
+
+      expect(result.errors.length).toBeGreaterThan(0);
+      // C2: runtime ≠ failures — non-markdown файл runtime-ошибка НЕ должна
+      // утечь в failures.
+      expect(result.failures).toEqual([]);
+    });
+
+    // § format.md § Поддерживаемые форматы:
+    // .json/.yaml/.toml не обрабатываются markdownlint → failures пуст.
+    it("для валидных .json файлов failures пуст (markdownlint не применяется)", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const jsonFile = path.join(tmpDir, "data.json");
+      fs.writeFileSync(jsonFile, '{"a":1}');
+
+      const result = await tools.format([jsonFile]);
+
+      expect(result.failures).toEqual([]);
+      expect(result.errors).toEqual([]);
+      expect(result.formattedCount).toBe(1);
+    });
+
+    it("для валидных .yaml файлов failures пуст", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const yamlFile = path.join(tmpDir, "data.yaml");
+      fs.writeFileSync(yamlFile, "a: 1\n");
+
+      const result = await tools.format([yamlFile]);
+
+      expect(result.failures).toEqual([]);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("для валидных .toml файлов failures пуст", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const tomlFile = path.join(tmpDir, "data.toml");
+      fs.writeFileSync(tomlFile, 'key = "value"\n');
+
+      const result = await tools.format([tomlFile]);
+
+      expect(result.failures).toEqual([]);
+      expect(result.errors).toEqual([]);
+    });
+
+    // § format.md § Метод format § Результат (C2):
+    // FormatResult ДОЛЖЕН содержать ровно три поля: formattedCount, failures, errors.
+    it("FormatResult содержит поля formattedCount, failures, errors", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const mdFile = path.join(tmpDir, "test.md");
+      fs.writeFileSync(mdFile, "# Title\n\nText\n");
+
+      const result = await tools.format([mdFile]);
+
+      expect(typeof result.formattedCount).toBe("number");
+      expect(Array.isArray(result.failures)).toBe(true);
+      expect(Array.isArray(result.errors)).toBe(true);
+    });
+  });
+
+  // =====================================================================
   // § format.md § Поддерживаемые форматы — граничные условия
   // =====================================================================
   describe("Поддерживаемые форматы", () => {
