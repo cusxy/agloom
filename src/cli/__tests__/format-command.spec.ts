@@ -143,6 +143,10 @@ describe("CLI", () => {
         // Создаём .agloom/ структуру и файл с двумя H1 (MD025 — non-fixable).
         const agloomDir = path.join(tmpDir, ".agloom");
         fs.mkdirSync(agloomDir, { recursive: true });
+        // MD025 во встроенном дефолте отключён — включаем явно через config.yml,
+        // чтобы CLI пробросил markdownlintOverrides: { MD025: true } в createMarkdownTools
+        // (см. § Команда format § Поведение шаг 5).
+        fs.writeFileSync(path.join(agloomDir, "config.yml"), "adapters:\n  - claude\nmarkdownlint:\n  MD025: true\n");
         const mdFile = path.join(agloomDir, "doc.md");
         fs.writeFileSync(mdFile, "# First Title\n\nContent here.\n\n# Second Title\n\nMore content here.\n");
 
@@ -207,6 +211,8 @@ describe("CLI", () => {
       it("при наличии failures и errors показывает оба блока и exit code 1", async () => {
         const agloomDir = path.join(tmpDir, ".agloom");
         fs.mkdirSync(agloomDir, { recursive: true });
+        // MD025 отключён в дефолте — включаем явно через config.yml.
+        fs.writeFileSync(path.join(agloomDir, "config.yml"), "adapters:\n  - claude\nmarkdownlint:\n  MD025: true\n");
         // Файл с non-fixable MD025 → failures
         const mdFile = path.join(agloomDir, "doc.md");
         fs.writeFileSync(mdFile, "# First Title\n\nContent.\n\n# Second Title\n\nMore.\n");

@@ -11,7 +11,7 @@
 spinner продолжала крутиться бесконечно. Пользователю приходилось
 завершать процесс вручную через Ctrl+C.
 
-```
+```text
 ⠏ Transpiling for claude...
   ✓ Instructions        0 files
   ✓ Skills        0 files
@@ -63,7 +63,7 @@ Done. 53 files written.
 файлов стоял фиксированный отступ `{"        "}` (8 пробелов), из-за чего
 числа не были выровнены (имена шагов имеют разную длину):
 
-```
+```text
 # До:
   ✓ Instructions        0 files
   ✓ Skills        0 files

@@ -109,14 +109,14 @@ Agloom — CLI-инструмент (Node.js/TypeScript/Ink), предостав
 
 ### Матрица MVP-критериев
 
-| Критерий MVP               | Claude Code  | Codex CLI |  Gemini CLI  | OpenCode/KiloCode |
-| -------------------------- | :----------: | :-------: | :----------: | :---------------: |
-| Commands (или эквивалент)  |      да      | Skills    |      да      |        да         |
-| MCP project-level          |      да      |    да     |      да      |        да         |
-| Agents (суб-агенты)        |      да      |    да     |   preview    |        да         |
-| Skills (SKILL.md)          |      да      |    да     |      да      |        да         |
-| AGENTS.md (или эквивалент) |  CLAUDE.md   |    да     |  GEMINI.md   |        да         |
-| **Проходит MVP?**          |    **да**    |  **да**   |    **да**    |      **да**       |
+| Критерий MVP               | Claude Code | Codex CLI | Gemini CLI | OpenCode/KiloCode |
+| -------------------------- | :---------: | :-------: | :--------: | :---------------: |
+| Commands (или эквивалент)  |     да      |  Skills   |     да     |        да         |
+| MCP project-level          |     да      |    да     |     да     |        да         |
+| Agents (суб-агенты)        |     да      |    да     |  preview   |        да         |
+| Skills (SKILL.md)          |     да      |    да     |     да     |        да         |
+| AGENTS.md (или эквивалент) |  CLAUDE.md  |    да     | GEMINI.md  |        да         |
+| **Проходит MVP?**          |   **да**    |  **да**   |   **да**   |      **да**       |
 
 ## Ключевые паттерны
 

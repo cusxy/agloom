@@ -22,7 +22,7 @@ relates:
   `dist/docs/01-app/01-getting-started/`, `02-guides/`, `03-api-reference/`.
 - Пакет: 154 MB total (docs составляют ~1.6% от размера).
 
-```
+```text
 node_modules/next/dist/docs/
   01-app/
     01-getting-started/

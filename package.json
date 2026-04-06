@@ -35,8 +35,12 @@
     "build": "turbo run build && tsc --noEmit && tsup",
     "test": "turbo run test && vitest run",
     "test:watch": "vitest",
-    "fmt": "turbo run fmt && prettier --write \"src/**/*.{ts,tsx}\"",
-    "fmt:check": "turbo run fmt:check && prettier --check \"src/**/*.{ts,tsx}\"",
+    "fmt": "pnpm run fmt:ts && pnpm run fmt:md",
+    "fmt:check": "pnpm run fmt:ts:check && pnpm run fmt:md:check",
+    "fmt:ts": "turbo run fmt && prettier --write \"src/**/*.{ts,tsx}\"",
+    "fmt:ts:check": "turbo run fmt:check && prettier --check \"src/**/*.{ts,tsx}\"",
+    "fmt:md": "agloom format .agloom \"**/AGLOOM.md\" \"docs/**/*.{md,mdx,json,yaml,yml,toml}\"",
+    "fmt:md:check": "agloom format --check .agloom \"**/AGLOOM.md\" \"docs/**/*.{md,mdx,json,yaml,yml,toml}\"",
     "lint": "turbo run lint && eslint \"src/**/*.{ts,tsx}\""
   },
   "devDependencies": {

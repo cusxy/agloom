@@ -4,13 +4,14 @@
 adapters:
   - claude
   - opencode
-plugins:
-  - git@github.com:cusxy/skill-cycling
-  - path: ../agloom-plugins-private/alfa-mobile
-    values:
-      bitbucket_mcp_home: "~/bitbucket-mcp"
-      bitbucket_api_token: "${env:BITBUCKET_API_TOKEN}"
-      jira_api_token: "${env:JIRA_API_TOKEN}"
-      confluence_api_token: "${env:CONFLUENCE_API_TOKEN}"
-      jenkins_username: "${env:JENKINS_USERNAME}"
-      jenkins_password: "${env:JENKINS_PASSWORD}"
+
+# Markdownlint overrides — see docs/guide/formatting.md
+markdownlint:
+  # MD033 (inline HTML) allows Docusaurus JSX components. Strictly
+  # speaking these are not HTML — markdownlint cannot tell the
+  # difference between <div> and <Tabs>, so we explicitly allow the
+  # Docusaurus components used across docs/.
+  MD033:
+    allowed_elements:
+      - Tabs
+      - TabItem

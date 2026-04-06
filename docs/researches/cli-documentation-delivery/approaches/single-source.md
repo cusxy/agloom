@@ -70,7 +70,7 @@ AI-native файлы. Build step при `prepublish` создаёт артефа
 
 ## Проектируемый pipeline для agloom
 
-```
+```text
 docs/usage/*.md (Markdown source)
   ├── marked-terminal ──→ `agloom help <topic>` (TUI rendering)
   ├── marked-man ───────→ man/agloom-*.1 (optional, future)

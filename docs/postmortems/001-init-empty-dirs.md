@@ -7,6 +7,7 @@
 ## Описание бага
 
 При выполнении `agloom init --all` создавались пустые директории:
+
 - `.agloom/overlays/agentsmd/`
 - `.agloom/overlays/opencode/`
 - `.agloom/instructions/`
@@ -21,7 +22,7 @@
 
 ### `initFiles` (overlay-директории)
 
-```
+```text
 Шаг 3: mkdirSync → создать .agloom/overlays/{id}/     ← создаётся всегда
 Шаг 4: проверить targetRoot                            ← если не существует → return {copiedCount: 0}
 ```
@@ -31,7 +32,7 @@
 
 ### `backupProjectFiles` (project-директория)
 
-```
+```text
 Шаг 8: mkdirSync → создать .agloom/instructions/            ← создаётся всегда
 Шаги 9-10: цикл копирования                            ← если foundFiles пуст → пустая директория
 ```

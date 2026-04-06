@@ -9,7 +9,7 @@
 При выполнении `agloom init --all` на проекте, где `.agloom/overlays/claude/`
 уже существовала (после предыдущего init), вывод содержал:
 
-```
+```text
 Initializing...
   ✓ 0 project files backed up to .agloom/instructions/
   ✗ .agloom/overlays/claude/ already exists. Use --force to overwrite.
@@ -18,6 +18,7 @@ Done. 0 files copied.
 ```
 
 Проблемы:
+
 1. Зелёная галочка "✓ 0 project files backed up" — ложный сигнал успеха
    при общем провале операции.
 2. Backup Project Files выполнялся до проверки overlay, допуская
@@ -40,7 +41,8 @@ Done. 0 files copied.
 до вызова `backupProjectFiles` и `initFiles`.
 
 Сообщение об ошибке:
-```
+
+```text
 .agloom/ already exists. Use --force to reinitialize.
 ```
 

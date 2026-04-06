@@ -20,8 +20,9 @@ const DEFAULT_PRETTIER_CONFIG: Record<string, unknown> = {
 // § format.md § Встроенные дефолтные конфиги § Markdownlint
 const DEFAULT_MARKDOWNLINT_CONFIG: Record<string, unknown> = {
   MD007: { indent: 2 },
-  MD013: { line_length: 120, tables: false },
+  MD013: false,
   MD024: { siblings_only: true },
+  MD025: false,
   MD049: { style: "underscore" },
   MD050: { style: "asterisk" },
 };

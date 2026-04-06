@@ -120,11 +120,11 @@ workspace или загружается npx.
 
 Для работы deploy ТРЕБУЕТСЯ настроить следующие GitHub repository secrets:
 
-| Secret                   | Описание                                                       | Существует |
-| ------------------------ | -------------------------------------------------------------- | ---------- |
-| `CLOUDFLARE_API_TOKEN`   | API token Cloudflare с правами `Cloudflare Pages: Edit`        | нет        |
-| `CLOUDFLARE_ACCOUNT_ID`  | ID аккаунта Cloudflare                                         | нет        |
-| `NODE_AUTH_TOKEN`         | Token для npm publish (используется в job `publish`)           | да         |
+| Secret                  | Описание                                                | Существует |
+| ----------------------- | ------------------------------------------------------- | ---------- |
+| `CLOUDFLARE_API_TOKEN`  | API token Cloudflare с правами `Cloudflare Pages: Edit` | нет        |
+| `CLOUDFLARE_ACCOUNT_ID` | ID аккаунта Cloudflare                                  | нет        |
+| `NODE_AUTH_TOKEN`       | Token для npm publish (используется в job `publish`)    | да         |
 
 `CLOUDFLARE_API_TOKEN` ДОЛЖЕН иметь минимальные необходимые права:
 `Account > Cloudflare Pages > Edit`.

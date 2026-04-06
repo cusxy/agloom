@@ -6,7 +6,7 @@
 - Test all: `pnpm run test` (vitest run, 310+ tests)
 - Test single: `npx vitest run src/path/to/file.spec.ts`
 - Lint: `pnpm run lint`
-- Format: `pnpm run fmt:js`
+- Format: `pnpm run fmt` (TypeScript via prettier, Markdown/JSON/YAML/TOML via `agloom format`)
 
 ## Stack
 

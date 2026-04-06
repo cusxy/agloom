@@ -10,16 +10,8 @@ The following Claude Code permission config is used as a baseline for comparison
 ```json
 {
   "permissions": {
-    "allow": [
-      "Bash(npm run *)",
-      "Bash(git commit *)",
-      "Bash(git * main)",
-      "Bash(* --version)",
-      "Bash(* --help *)"
-    ],
-    "deny": [
-      "Bash(git push *)"
-    ]
+    "allow": ["Bash(npm run *)", "Bash(git commit *)", "Bash(git * main)", "Bash(* --version)", "Bash(* --help *)"],
+    "deny": ["Bash(git push *)"]
   }
 }
 ```
@@ -33,16 +25,8 @@ File: `.claude/settings.json`
 ```json
 {
   "permissions": {
-    "allow": [
-      "Bash(npm run *)",
-      "Bash(git commit *)",
-      "Bash(git * main)",
-      "Bash(* --version)",
-      "Bash(* --help *)"
-    ],
-    "deny": [
-      "Bash(git push *)"
-    ]
+    "allow": ["Bash(npm run *)", "Bash(git commit *)", "Bash(git * main)", "Bash(* --version)", "Bash(* --help *)"],
+    "deny": ["Bash(git push *)"]
   }
 }
 ```
@@ -161,9 +145,9 @@ File: `kilo.jsonc`
       "git * main": "allow",
       "* --version": "allow",
       "* --help *": "allow",
-      "git push *": "deny"
-    }
-  }
+      "git push *": "deny",
+    },
+  },
 }
 ```
 
@@ -176,14 +160,8 @@ File: `~/.cursor/cli-config.json` (global) or `<project>/.cursor/cli.json` (proj
 ```json
 {
   "permissions": {
-    "allow": [
-      "Shell(npm:run *)",
-      "Shell(git:commit *)",
-      "Shell(git:* main)"
-    ],
-    "deny": [
-      "Shell(git:push *)"
-    ]
+    "allow": ["Shell(npm:run *)", "Shell(git:commit *)", "Shell(git:* main)"],
+    "deny": ["Shell(git:push *)"]
   }
 }
 ```
@@ -211,7 +189,7 @@ be expressed.
 Which rules from the reference example can each tool reproduce?
 
 | Rule              | Claude Code | Codex CLI  | Gemini CLI | OpenCode | Kilo Code | Cursor CLI     | Copilot CLI |
-|-------------------|-------------|------------|------------|----------|-----------|----------------|-------------|
+| ----------------- | ----------- | ---------- | ---------- | -------- | --------- | -------------- | ----------- |
 | `npm run *`       | glob        | prefix     | prefix     | glob     | glob      | `npm:run *`    | prefix      |
 | `git commit *`    | glob        | prefix     | prefix     | glob     | glob      | `git:commit *` | prefix      |
 | `git * main`      | glob        | enumerate  | regex      | glob     | glob      | `git:* main`   | impossible  |
@@ -223,7 +201,7 @@ Which rules from the reference example can each tool reproduce?
 ## Comparison: feature matrix
 
 | Feature           | Claude Code             | Codex CLI                  | Gemini CLI                  | OpenCode         | Kilo Code        | Cursor CLI                  | Copilot CLI              |
-|-------------------|-------------------------|----------------------------|-----------------------------|------------------|------------------|-----------------------------|--------------------------|
+| ----------------- | ----------------------- | -------------------------- | --------------------------- | ---------------- | ---------------- | --------------------------- | ------------------------ |
 | Config format     | JSON                    | Starlark                   | TOML                        | JSON             | JSONC            | JSON                        | CLI flags                |
 | Config file       | `.claude/settings.json` | `.codex/rules/*.rules`     | `~/.gemini/policies/*.toml` | `opencode.json`  | `kilo.jsonc`     | `~/.cursor/cli-config.json` | `~/.copilot/config.json` |
 | Pattern type      | Glob                    | Prefix only                | Prefix + Regex              | Glob             | Glob             | Glob (cmd:args)             | Prefix only              |
@@ -348,7 +326,7 @@ Equivalent JSON:
 Controls which shell commands the agent can execute.
 
 | Decision | Meaning                      |
-|----------|------------------------------|
+| -------- | ---------------------------- |
 | `allow`  | Execute without confirmation |
 | `deny`   | Block execution              |
 
@@ -359,7 +337,7 @@ Pattern: glob against the full command string. Supports `*` (any characters), `?
 Controls which MCP server tools the agent can use.
 
 | Decision | Meaning                      |
-|----------|------------------------------|
+| -------- | ---------------------------- |
 | `allow`  | Execute without confirmation |
 | `deny`   | Block execution              |
 
@@ -370,7 +348,7 @@ Pattern: `server:tool` with glob support. Examples: `"datadog:*"`, `"*:search"`,
 Controls file access by path.
 
 | Decision | Meaning                           |
-|----------|-----------------------------------|
+| -------- | --------------------------------- |
 | `deny`   | No access (read or write blocked) |
 | `read`   | Read-only access                  |
 | `write`  | Full access (read + write)        |
@@ -391,7 +369,7 @@ An explicit catch-all (`"*": allow` or `"*": deny`) at the end of a section over
 #### shell
 
 | Target      | Strategy                                                                                                   |
-|-------------|------------------------------------------------------------------------------------------------------------|
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
 | Claude Code | Split into `allow[]` / `deny[]` lists, wrap as `Bash(pattern)`. Order lost (deny > allow).                 |
 | Codex CLI   | Extract prefix from pattern → `prefix_rule`. Glob-in-middle/start rules emit warning or enumerate.         |
 | Gemini CLI  | Map to `[[rule]]` entries. Position → descending `priority` (first rule = highest). Glob → `commandRegex`. |
@@ -403,7 +381,7 @@ An explicit catch-all (`"*": allow` or `"*": deny`) at the end of a section over
 #### mcp
 
 | Target      | Strategy                                                  |
-|-------------|-----------------------------------------------------------|
+| ----------- | --------------------------------------------------------- |
 | Claude Code | Wrap as `mcp__server__tool` in `allow[]` / `deny[]`.      |
 | Codex CLI   | Not supported — emit warning.                             |
 | Gemini CLI  | Map to `[[rule]]` with `mcpName` + `toolName`.            |
@@ -415,7 +393,7 @@ An explicit catch-all (`"*": allow` or `"*": deny`) at the end of a section over
 #### file
 
 | Target      | Strategy                                                                                                                               |
-|-------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Claude Code | Not supported — emit warning.                                                                                                          |
 | Codex CLI   | Not supported — emit warning.                                                                                                          |
 | Gemini CLI  | Not supported — emit warning.                                                                                                          |
@@ -429,7 +407,7 @@ An explicit catch-all (`"*": allow` or `"*": deny`) at the end of a section over
 How much of the canonical format each target can faithfully represent:
 
 | Target      | shell         | mcp | file    | Coverage |
-|-------------|---------------|-----|---------|----------|
+| ----------- | ------------- | --- | ------- | -------- |
 | Claude Code | full globs    | yes | no      | 67%      |
 | Codex CLI   | prefix only   | no  | no      | 33%      |
 | Gemini CLI  | via regex     | yes | no      | 67%      |
@@ -440,14 +418,14 @@ How much of the canonical format each target can faithfully represent:
 
 ## Sources
 
-- Claude Code: https://docs.anthropic.com/en/docs/claude-code/settings
-- Codex CLI: https://developers.openai.com/codex/config-advanced, https://developers.openai.com/codex/rules
-- Gemini CLI: https://geminicli.com/docs/reference/policy-engine/
-- OpenCode: https://opencode.ai/docs/permissions/
-- Kilo Code: https://kilo.ai/docs/getting-started/settings/auto-approving-actions
-- Cursor CLI: https://cursor.com/docs/cli/reference/permissions
-- GitHub Copilot CLI: https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/configure-copilot-cli
+- Claude Code: <https://docs.anthropic.com/en/docs/claude-code/settings>
+- Codex CLI: <https://developers.openai.com/codex/config-advanced>, <https://developers.openai.com/codex/rules>
+- Gemini CLI: <https://geminicli.com/docs/reference/policy-engine/>
+- OpenCode: <https://opencode.ai/docs/permissions/>
+- Kilo Code: <https://kilo.ai/docs/getting-started/settings/auto-approving-actions>
+- Cursor CLI: <https://cursor.com/docs/cli/reference/permissions>
+- GitHub Copilot CLI: <https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/configure-copilot-cli>
 
 ---
 
-*Research date: 2026-04-04*
+> Research date: 2026-04-04

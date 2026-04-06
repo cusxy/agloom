@@ -143,11 +143,7 @@ file:
     { "jenkins:*": "ask" },
     { "*:*": "deny" }
   ],
-  "file": [
-    { "**/.env": "deny" },
-    { "src/**/*.ts": "write" },
-    { "src/**": "read" }
-  ]
+  "file": [{ "**/.env": "deny" }, { "src/**/*.ts": "write" }, { "src/**": "read" }]
 }
 ```
 
@@ -549,12 +545,7 @@ Claude Code -- правила с действием `ask` пропускаютс
       "mcp__bitbucket__get_pull_request",
       "mcp__jenkins__get_build"
     ],
-    "deny": [
-      "Bash(git push *)",
-      "Bash(*)",
-      "mcp__untrusted-server__*",
-      "mcp__*__*"
-    ]
+    "deny": ["Bash(git push *)", "Bash(*)", "mcp__untrusted-server__*", "mcp__*__*"]
   }
 }
 ```

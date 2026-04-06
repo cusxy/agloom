@@ -28,6 +28,7 @@ blueprint: schemas/draft/skill.schema.yml
    в npm через OIDC trusted publisher (секреты не нужны).
 
 6. **GitHub Release** — создай release с ручными release notes:
+
    ```
    gh release create vX.Y.Z --title "vX.Y.Z" --latest --notes "…"
    ```

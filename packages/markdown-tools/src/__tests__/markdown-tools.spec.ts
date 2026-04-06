@@ -538,7 +538,13 @@ describe("MarkdownTools", () => {
     // § format.md § Метод format § Результат § failures:
     // Формат записи совпадает с § Метод check.
     it("при файле с только non-fixable нарушениями (MD025) заполняет failures и засчитывает файл в formattedCount", async () => {
-      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      // MD025 во встроенном дефолте отключён (см. § Встроенные дефолтные конфиги
+      // § Markdownlint), поэтому для проверки механики non-fixable явно
+      // включаем правило через markdownlintOverrides.
+      const tools = createMarkdownTools({
+        projectRoot: tmpDir,
+        markdownlintOverrides: { MD025: true },
+      });
       const mdFile = path.join(tmpDir, "two-h1.md");
       // MD025 (Multiple top-level headings) — non-fixable.
       // Файл с двумя заголовками первого уровня.
@@ -560,7 +566,11 @@ describe("MarkdownTools", () => {
     // Формат записи failures: ${filePath}:${lineNumber}: ${ruleName} ${desc}
     // (совпадает с § Метод check).
     it("запись в failures имеет формат '${filePath}:${lineNumber}: ${ruleName} ${desc}'", async () => {
-      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      // MD025 отключён в дефолте — включаем явно для проверки формата записи.
+      const tools = createMarkdownTools({
+        projectRoot: tmpDir,
+        markdownlintOverrides: { MD025: true },
+      });
       const mdFile = path.join(tmpDir, "two-h1.md");
       fs.writeFileSync(mdFile, "# First Title\n\nSome content here.\n\n# Second Title\n\nMore content here.\n");
 
@@ -597,7 +607,11 @@ describe("MarkdownTools", () => {
     // § format.md § Метод format § Поведение шаг 4-5:
     // Mixed: fixable применяются (файл изменён), non-fixable попадают в failures.
     it("при mixed нарушениях (MD025 non-fixable + MD049 fixable) применяет фиксы и заполняет failures", async () => {
-      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      // MD025 отключён в дефолте — включаем явно для смешанного сценария.
+      const tools = createMarkdownTools({
+        projectRoot: tmpDir,
+        markdownlintOverrides: { MD025: true },
+      });
       const mdFile = path.join(tmpDir, "mixed.md");
       fs.writeFileSync(mdFile, "# First Title\n\nSome *emphasis* inline.\n\n# Second Title\n\nMore text.\n");
 
@@ -800,21 +814,34 @@ describe("MarkdownTools", () => {
     });
 
     // § format.md § Встроенные дефолтные конфиги § Markdownlint:
-    // MD013 line_length: 120, tables: false
-    it("markdownlint check допускает строки до 120 символов (MD013)", async () => {
+    // MD013: false — правило отключено по умолчанию.
+    it("по умолчанию правило MD013 отключено, строки любой длины не вызывают нарушений", async () => {
       const tools = createMarkdownTools({ projectRoot: tmpDir });
-      const mdFile = path.join(tmpDir, "test.md");
-      // Строка ровно 120 символов — допустима
-      const line = "a".repeat(120);
-      fs.writeFileSync(mdFile, `# Title\n\n${line}\n`);
+      const mdFile = path.join(tmpDir, "long-line.md");
+      // Строка из ~50 коротких слов (~300 символов) с пробелами — markdownlint
+      // MD013 при прежнем дефолте (line_length: 120, stern: false) считает
+      // такую строку нарушением, потому что её можно разбить по пробелам.
+      // С новым дефолтом MD013: false нарушение отсутствует.
+      const longLine = Array.from({ length: 60 }, (_, i) => `word${i}`).join(" ");
+      fs.writeFileSync(mdFile, `# Heading\n\n${longLine}\n`);
 
-      // Сначала форматируем prettier, чтобы изолировать markdownlint
-      await tools.format([mdFile]);
       const result = await tools.check([mdFile]);
 
-      // Строка 120 символов не должна вызывать failure от MD013
       const md013Failures = result.failures.filter((f: string) => f.includes("MD013"));
       expect(md013Failures).toEqual([]);
+    });
+
+    // § format.md § Встроенные дефолтные конфиги § Markdownlint:
+    // MD025: false — правило отключено по умолчанию.
+    it("по умолчанию правило MD025 отключено, несколько h1 не вызывают нарушений", async () => {
+      const tools = createMarkdownTools({ projectRoot: tmpDir });
+      const mdFile = path.join(tmpDir, "two-h1-default.md");
+      fs.writeFileSync(mdFile, "# First\n\nBody.\n\n# Second\n\nMore body.\n");
+
+      const result = await tools.check([mdFile]);
+
+      const md025Failures = result.failures.filter((f: string) => f.includes("MD025"));
+      expect(md025Failures).toEqual([]);
     });
 
     // § format.md § Встроенные дефолтные конфиги § Markdownlint:

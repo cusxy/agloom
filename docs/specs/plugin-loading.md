@@ -207,10 +207,10 @@ plugins:
 
 Шаг 3 изменяется:
 
-3. Вызвать `transpiler.writeResults(transpileResults, { targetRoot: projectRoot })`,
-   получив `writeResult`. Если `sourceRoot` не передан,
-   `targetRoot` совпадает с `projectRoot` транспилера
-   и поведение идентично текущему.
+> **Шаг 3.** Вызвать `transpiler.writeResults(transpileResults, { targetRoot: projectRoot })`,
+> получив `writeResult`. Если `sourceRoot` не передан,
+> `targetRoot` совпадает с `projectRoot` транспилера
+> и поведение идентично текущему.
 
 ## Расширение команды transpile (cli:command-ext)
 
