@@ -21,7 +21,7 @@ Maintaining separate config files for each assistant is tedious and error-prone.
 
 ## The Solution
 
-Agloom introduces a **canonical format** -- a single `.agloom/` directory that holds all your instructions, skills, agent definitions, docs, and schemas. When you run `agloom transpile`, it generates the correct config files for each target assistant.
+Agloom introduces a **canonical format** — a single `.agloom/` directory that holds all your instructions, skills, agent definitions, docs, and schemas. When you run `agloom transpile`, it generates the correct config files for each target assistant.
 
 Think of it like Sass compiling to CSS, or TypeScript compiling to JavaScript. You write once, and Agloom produces the right output for each tool.
 
@@ -47,15 +47,17 @@ AGLOOM.md                   -->   CLAUDE.md, AGENTS.md, GEMINI.md
 
 **Non-intrusive.** Agloom generates files but does not interfere with how target tools work. The generated files are standard config files that each tool reads natively.
 
+**Project-scoped.** Agloom only reads from and writes to your project directory. It never touches global or home-directory configuration like `~/.claude/`, `~/.codex/`, or `~/.config/gemini/`. Your personal preferences and machine-wide tool settings stay completely out of scope — switching to Agloom in one project does not affect any other project or your global setup.
+
 ## Key Features
 
 **Agent-specific blocks.** Use `<!-- agent:claude -->` and `<!-- agent:agentsmd -->` HTML comments to include content that only applies to a specific agent. Shared content lives outside these blocks and reaches all agents.
 
-**Frontmatter overrides.** YAML frontmatter in markdown files supports an `override` block where you can set agent-specific metadata such as a model choice.
+**Frontmatter overrides.** YAML frontmatter in markdown files supports an `override` block where you can set agent-specific metadata, such as a model selection.
 
-**Variable interpolation.** Reference environment variables (`${env:API_KEY}`), agent paths (`${agloom:SKILLS_DIR}`), and plugin values (`${values:name}`) anywhere in your canonical files. Values are resolved at transpile time.
+**Variable interpolation.** Reference environment variables (`${env:API_KEY}`), dir paths (`${agloom:SKILLS_DIR}`), and plugin values (`${values:name}`) anywhere in your canonical files. Values are resolved at transpile time.
 
-**Overlays.** Place raw files in `.agloom/overlays/<agent>/` for content that does not fit the canonical format -- agent-specific JSON settings, TOML configs, or any file the target tool expects. Overlays support deep merge, full replacement, and patch operations.
+**Overlays.** Place raw files in `.agloom/overlays/<agent>/` for content that does not fit the canonical format — agent-specific JSON settings, TOML configs, or any file the target tool expects. Overlays support deep merge, full replacement, and patch operations.
 
 ## When to Use Agloom
 
@@ -74,3 +76,16 @@ Agloom may not be worth the overhead when:
 - You have no need for plugins or shared configurations.
 
 In that case, editing the tool's native config files directly is simpler.
+
+## What's Next
+
+- **[Getting Started](./getting-started.md)** — Install Agloom and run your first transpile in five minutes.
+- **[Project Structure](./project-structure.md)** — Tour the anatomy of the `.agloom/` directory and the files it produces.
+- **[Instructions](./instructions.md)** — Write canonical `AGLOOM.md` files with agent-specific blocks.
+- **[Skills and Agents](./skills-and-agents.md)** — Define reusable skills and sub-agent definitions once, ship them everywhere.
+- **[Variables and Interpolation](./variables.md)** — Reference environment variables, project paths, and plugin values from canonical files.
+- **[Plugins](./plugins.md)** — Package and share configurations across projects.
+
+<!-- TODO: Не хватает отдельной документации по форматированию и способам её настройки -->
+
+<!-- TODO: Необходимо настроить `agloom format` для корректного форматирования файлов в docs -->
