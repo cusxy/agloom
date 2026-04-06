@@ -9,7 +9,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { createSkillsTranspiler } from "../index.js";
-import { SkillWriteError } from "../errors.js";
+import { SkillWriteError, SkillTransformError } from "../errors.js";
 
 /**
  * Стаб-адаптер с targetDir (новый интерфейс без transpile).
@@ -196,8 +196,9 @@ describe("SkillsTranspiler", () => {
     });
 
     // --- Спецификация: § Запись результатов, расширение 3d ---
-    // "interpolate выбрасывает InterpolationError"
-    it("возвращает SkillWriteError при InterpolationError в .md файле через options.variablesByAgentId", () => {
+    // AgentTransformError (включая InterpolationError) → SkillTransformError
+    // ("Failed to transform {sourcePath}: ...") → SkillWriteError с cause-chain
+    it("возвращает SkillWriteError при ошибке трансформации .md файла через options.variablesByAgentId", () => {
       const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
       fs.writeFileSync(path.join(sourceDir, "SKILL.md"), "Path: ${agloom:NONEXISTENT}");
@@ -225,9 +226,16 @@ describe("SkillsTranspiler", () => {
         },
       );
 
+      // Непустой errors, отсутствие записанного файла, корректная cause-chain
       expect(writeResult.errors.length).toBeGreaterThan(0);
-      expect(writeResult.errors[0]).toBeInstanceOf(SkillWriteError);
-      expect(writeResult.errors[0].message).toMatch(/Interpolation failed for \.agloom\/skills\/my-skill\/SKILL\.md/);
+      expect(writeResult.written).not.toContain(".claude/skills/my-skill/SKILL.md");
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"))).toBe(false);
+
+      const writeErr = writeResult.errors[0];
+      expect(writeErr).toBeInstanceOf(SkillWriteError);
+      expect(writeErr.message).toMatch(/Failed to transform \.agloom\/skills\/my-skill\/SKILL\.md/);
+      const cause = (writeErr as unknown as { cause?: unknown }).cause;
+      expect(cause).toBeInstanceOf(SkillTransformError);
     });
 
     // --- Спецификация: § Запись результатов, расширение 1a ---

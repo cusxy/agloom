@@ -6,8 +6,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { discover } from "./discover.js";
-import { SkillWriteError } from "./errors.js";
-import { interpolate, InterpolationError } from "../interpolation/index.js";
+import { SkillTransformError, SkillWriteError } from "./errors.js";
+import { transformContent } from "../agents-transpiler/transform-content.js";
+import { AgentTransformError } from "../agents-transpiler/errors.js";
 import type { SkillAdapter, SkillPackage, SkillTranspileResult, SkillWriteResult } from "./types.js";
 
 export class SkillsTranspiler {
@@ -110,18 +111,24 @@ export class SkillsTranspiler {
         const sourceAbsolute = path.join(this.projectRoot, file.sourcePath);
         const destAbsolute = path.join(writeRoot, file.relativePath);
 
-        // Определить, нужна ли интерполяция для данного файла
+        // Определить, нужна ли трансформация для данного файла.
+        // .md файлы трансформируются через transformContent, если переданы
+        // variablesByAgentId или valuesByAgentId. Без них применяется
+        // побайтовое копирование (обратная совместимость).
         const isMd = path.extname(file.sourcePath).toLowerCase() === ".md";
-        const shouldInterpolate = (variablesByAgentId !== undefined || valuesByAgentId !== undefined) && isMd;
+        const shouldTransform = (variablesByAgentId !== undefined || valuesByAgentId !== undefined) && isMd;
 
-        if (shouldInterpolate) {
-          // Интерполяция .md файлов
+        if (shouldTransform) {
+          // Трансформация .md файлов через transformContent (agents-transpiler):
+          // парсит frontmatter, применяет override, фильтрует agent-блоки,
+          // выполняет интерполяцию.
+          // Spec: docs/specs/skills-transpiler.md § Трансформация контента
           try {
             const content = fs.readFileSync(sourceAbsolute, "utf-8");
-            const interpolated = interpolate(
+            const transformed = transformContent(
               content,
+              result.agentId,
               variablesByAgentId?.[result.agentId] ?? {},
-              undefined,
               valuesByAgentId?.[result.agentId],
             );
 
@@ -129,12 +136,19 @@ export class SkillsTranspiler {
             const dir = path.dirname(destAbsolute);
             fs.mkdirSync(dir, { recursive: true });
 
-            fs.writeFileSync(destAbsolute, interpolated, "utf-8");
+            fs.writeFileSync(destAbsolute, transformed, "utf-8");
             written.push(file.relativePath);
           } catch (err) {
-            // Расширение 3d: InterpolationError → SkillWriteError
-            if (err instanceof InterpolationError) {
-              errors.push(new SkillWriteError(`Interpolation failed for ${file.sourcePath}: ${err.message}`));
+            // Расширение 3d: AgentTransformError → SkillTransformError → SkillWriteError
+            if (err instanceof AgentTransformError) {
+              const transformErr = new SkillTransformError(`Failed to transform ${file.sourcePath}: ${err.message}`, {
+                cause: err,
+              });
+              errors.push(
+                new SkillWriteError(`Failed to transform ${file.sourcePath}: ${err.message}`, {
+                  cause: transformErr,
+                }),
+              );
               continue;
             }
             // Расширение 3a/3b: ошибка чтения или записи

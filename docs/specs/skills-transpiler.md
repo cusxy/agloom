@@ -40,12 +40,47 @@ Skill — директория (пакет) в `.agloom/skills/<name>/`, сод�
 YAML frontmatter + Markdown body.
 
 Библиотека ЗАПРЕЩАЕТ валидацию содержимого и frontmatter файлов skill-пакета,
-потому что транспилер отвечает только за копирование файлов, а валидация
-является ответственностью отдельного модуля.
+потому что валидация формата `SKILL.md` является ответственностью отдельного
+модуля. Трансформация `.md` файлов (`transformContent`) выполняет парсинг
+frontmatter и фильтрацию body, но НЕ выполняет валидацию схемы frontmatter.
 
-Библиотека ЗАПРЕЩАЕТ трансформацию содержимого файлов skill-пакета, потому что
-формат SKILL.md стандартизирован между всеми целевыми агентами и не требует
-преобразования.
+Библиотека ВЫПОЛНЯЕТ трансформацию содержимого `.md` файлов skill-пакета
+(включая `SKILL.md` и любые другие `.md` файлы внутри пакета), переиспользуя
+функцию `transformContent` из `agents-transpiler`. Трансформация обеспечивает
+паритет с agents- и commands-транспилерами: применение `override` блока
+из frontmatter для текущего адаптера, фильтрация agent-specific секций
+в body и интерполяция переменных. Не-`.md` файлы копируются побайтово
+без изменений.
+
+### Frontmatter override
+
+Канонический `SKILL.md` МОЖЕТ содержать в frontmatter блок `override`
+с per-adapter подполями (аналогично `agents-transpiler`,
+см. `docs/specs/agents-transpiler.md` § Frontmatter и override):
+
+```yaml
+---
+name: my-skill
+description: Generic skill description
+override:
+  claude:
+    description: Claude-specific description
+  opencode:
+    description: OpenCode-specific description
+---
+```
+
+Применение override и удаление блока `override` из frontmatter
+выполняется функцией `transformContent` (см. § Трансформация контента).
+Skills-transpiler не содержит дополнительной логики обработки override.
+
+### Agent-specific секции в body
+
+Body файла `.md` МОЖЕТ содержать agent-specific секции, ограниченные
+HTML-комментариями (`<!-- agent:<id> -->` … `<!-- /agent:<id> -->`).
+Синтаксис, правила и поведение фильтрации идентичны
+`agents-transpiler` (см. `docs/specs/agents-transpiler.md`
+§ Синтаксис agent-specific секций, § Фильтрация body).
 
 ## Типы данных
 
@@ -95,6 +130,9 @@ YAML frontmatter + Markdown body.
 
 - `SkillConfigError` (extends Error) — ошибка конфигурации транспилера.
 - `SkillDiscoverError` (extends Error) — ошибка обнаружения skill-пакетов.
+- `SkillTransformError` (extends Error) — ошибка трансформации контента
+  `.md` файла skill-пакета (парсинг frontmatter, применение override,
+  фильтрация body, интерполяция).
 - `SkillWriteError` (extends Error) — ошибка записи файла.
 
 ## Инициализация
@@ -267,11 +305,35 @@ Codex использует каталог `.agents/skills/` (НЕ `.codex/skills
 - `agentId`: `"gemini"`.
 - `targetDir`: `".gemini/skills"`.
 
+## Трансформация контента
+
+Skills-transpiler переиспользует функции `transformContent` и `filterBody`
+из модуля `agents-transpiler` (см. `docs/specs/agents-transpiler.md`
+§ Трансформация контента, § Фильтрация body). Переиспользование
+обеспечивается импортом из `agents-transpiler`.
+
+Поведение, правила, расширения и примеры идентичны `agents-transpiler`.
+Ошибки трансформации, выброшенные импортированными функциями
+(`AgentTransformError`), ДОЛЖНЫ перехватываться и оборачиваться
+в `SkillTransformError` с сохранением исходного исключения в `cause`.
+
+Трансформация применяется только к файлам с расширением `.md`
+(case-insensitive). Не-`.md` файлы skill-пакета (вспомогательные
+скрипты, изображения, бинарные ресурсы) копируются побайтово без
+парсинга и без интерполяции.
+
+Вызов `transformContent` принимает три параметра:
+`transformContent(rawContent, agentId, variables)`, где `variables` —
+карта agloom-переменных, переданная в `options.variablesByAgentId[agentId]`.
+Если `variables` не передан, шаг интерполяции внутри `transformContent`
+пропускается (см. `docs/specs/interpolation.md`
+§ Расширение transformContent Agents Transpiler).
+
 ## Запись результатов
 
 `transpiler.writeResults(results, options?)` — записывает результаты
 транспиляции в файловую систему, копируя файлы из исходных путей в целевые
-с интерполяцией для `.md` файлов.
+с трансформацией для `.md` файлов.
 
 **Вход:**
 
@@ -285,9 +347,12 @@ Codex использует каталог `.agents/skills/` (НЕ `.codex/skills
   - `variablesByAgentId` (Record\<string, Record\<string, string>>,
     опционально) — карта agloom-переменных, индексированная по `agentId`.
     Если параметр передан, интерполяция выполняется для `.md` файлов
-    (см. `docs/specs/interpolation.md` § Расширение writeResults
-    Skills Transpiler). Если не передан, все файлы копируются побайтово
-    (обратная совместимость).
+    как часть `transformContent`
+    (см. § Трансформация контента,
+    `docs/specs/interpolation.md` § Расширение transformContent
+    Agents Transpiler). Если не передан, трансформация `.md` файлов
+    выполняется без шага интерполяции (обратная совместимость
+    для агентов, не нуждающихся в подстановке переменных).
 
 **Поведение:**
 
@@ -295,11 +360,12 @@ Codex использует каталог `.agents/skills/` (НЕ `.codex/skills
 2. Определить `effectiveRoot` как `options.targetRoot` (если передан)
    или `projectRoot` из конфигурации транспилера.
 3. Для каждого `SkillOutputFile` из `files`:
-   - Если `variablesByAgentId` передан И расширение файла `sourcePath`
-     равно `.md` (case-insensitive) — прочитать содержимое
-     `projectRoot / sourcePath` с кодировкой UTF-8,
-     вызвать `interpolate(content, variablesByAgentId[agentId])`
-     (см. `docs/specs/interpolation.md` § Интерполяция контента),
+   - Если расширение файла `sourcePath` равно `.md` (case-insensitive) —
+     прочитать содержимое `projectRoot / sourcePath` с кодировкой UTF-8,
+     определить `variables` как `options.variablesByAgentId[agentId]`
+     (если `options.variablesByAgentId` передан) или `undefined`,
+     вызвать `transformContent(content, agentId, variables)`
+     (см. § Трансформация контента),
      записать результат в `effectiveRoot / relativePath`
      с кодировкой UTF-8, создавая промежуточные каталоги
      при необходимости.
@@ -322,12 +388,16 @@ Codex использует каталог `.agents/skills/` (НЕ `.codex/skills
 диск полон) →
 `SkillWriteError("Failed to write {relativePath}: {причина}")`.
 
-3c. `variablesByAgentId` передан, но ключ `agentId` текущего
-`SkillTranspileResult` отсутствует в `variablesByAgentId` →
+3c. `options.variablesByAgentId` передан, но ключ `agentId` текущего
+`SkillTranspileResult` отсутствует в `options.variablesByAgentId` →
 `SkillWriteError("No interpolation variables for adapter: {agentId}")`.
 
-3d. `interpolate` выбрасывает `InterpolationError` →
-`SkillWriteError("Interpolation failed for {sourcePath}: {причина}")`.
+3d. `transformContent` выбрасывает `AgentTransformError` (включая ошибки
+парсинга frontmatter, фильтрации body, интерполяции) → обернуть
+в `SkillTransformError("Failed to transform {sourcePath}: {причина}")`
+с сохранением исходного исключения в `cause`; добавить
+в `SkillWriteResult.errors` как `SkillWriteError` с этим
+`SkillTransformError` в качестве `cause`.
 
 **Результат:**
 
@@ -339,7 +409,6 @@ Codex использует каталог `.agents/skills/` (НЕ `.codex/skills
 
 - Создание и scaffolding новых skills.
 - Валидация формата и frontmatter файла SKILL.md.
-- Трансляция frontmatter между агентами.
 - Watch mode (отслеживание изменений skill-пакетов).
 - CLI-интерфейс (отдельная спецификация).
 - Очистка устаревших agent-specific файлов при удалении skill-пакетов.

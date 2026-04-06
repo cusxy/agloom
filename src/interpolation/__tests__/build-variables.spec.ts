@@ -13,6 +13,7 @@ interface TestAdapter {
   paths: {
     skills?: string;
     agents?: string;
+    commands?: string;
     docs?: string;
     schemas?: string;
   };
@@ -276,6 +277,112 @@ describe("Interpolation", () => {
 
       // projectRoot передаётся as-is
       expect(result["PROJECT_DIR"]).toBe("/home/user/myapp/");
+    });
+
+    // =====================================================================
+    // § interpolation.md § Динамические/Статические — поле COMMANDS_DIR
+    // (см. spec adapter-registry-ext.md § Расширение AdapterRegistryEntry)
+    // =====================================================================
+
+    // --- Динамическая COMMANDS_DIR: присутствует, если currentAdapter.paths.commands определено ---
+    // § interpolation.md § Динамические (per-current-adapter): COMMANDS_DIR → currentAdapter.paths.commands
+    it("добавляет динамическую переменную COMMANDS_DIR, если currentAdapter.paths.commands определено", () => {
+      const claude = makeAdapter("claude", {
+        skills: ".claude/skills",
+        agents: ".claude/agents",
+        commands: ".claude/commands",
+        docs: ".claude/docs",
+        schemas: ".claude/schemas",
+      });
+
+      const result = buildVariables(claude, [claude], PROJECT_ROOT);
+
+      expect(result["COMMANDS_DIR"]).toBe(".claude/commands");
+    });
+
+    // --- Динамическая COMMANDS_DIR: ОТСУТСТВУЕТ, если у текущего адаптера нет paths.commands ---
+    // § interpolation.md § Динамические: «Если поле не определено, переменная НЕ ДОЛЖНА присутствовать в карте»
+    // § Запись codex: paths.commands ОТСУТСТВУЕТ
+    it("не добавляет динамическую COMMANDS_DIR, если currentAdapter.paths.commands не определено (codex)", () => {
+      const codex = makeAdapter("codex", {
+        skills: ".agents/skills",
+        agents: ".codex/agents",
+        docs: ".codex/docs",
+        schemas: ".codex/schemas",
+      });
+
+      const result = buildVariables(codex, [codex], PROJECT_ROOT);
+
+      expect(result).not.toHaveProperty("COMMANDS_DIR");
+    });
+
+    // --- Per-adapter {PREFIX}_COMMANDS_DIR: генерируется для адаптеров с paths.commands ---
+    // § interpolation.md § Статические (per-adapter): {PREFIX}_COMMANDS_DIR → adapter.paths.commands
+    it("генерирует {PREFIX}_COMMANDS_DIR для всех адаптеров с определённым paths.commands", () => {
+      const claude = makeAdapter("claude", {
+        skills: ".claude/skills",
+        commands: ".claude/commands",
+      });
+      const opencode = makeAdapter("opencode", {
+        skills: ".opencode/skills",
+        commands: ".opencode/commands",
+      });
+      const kilocode = makeAdapter("kilocode", {
+        skills: ".kilo/skills",
+        commands: ".kilo/commands",
+      });
+      const gemini = makeAdapter("gemini", {
+        skills: ".gemini/skills",
+        commands: ".gemini/commands",
+      });
+
+      const result = buildVariables(claude, [claude, opencode, kilocode, gemini], PROJECT_ROOT);
+
+      expect(result["CLAUDE_COMMANDS_DIR"]).toBe(".claude/commands");
+      expect(result["OPENCODE_COMMANDS_DIR"]).toBe(".opencode/commands");
+      expect(result["KILOCODE_COMMANDS_DIR"]).toBe(".kilo/commands");
+      expect(result["GEMINI_COMMANDS_DIR"]).toBe(".gemini/commands");
+    });
+
+    // --- Per-adapter CODEX_COMMANDS_DIR: НЕ генерируется ---
+    // § interpolation.md § Пример: «Для codex переменная CODEX_COMMANDS_DIR НЕ генерируется»
+    it("НЕ генерирует CODEX_COMMANDS_DIR (paths.commands отсутствует у codex)", () => {
+      const claude = makeAdapter("claude", {
+        skills: ".claude/skills",
+        commands: ".claude/commands",
+      });
+      const codex = makeAdapter("codex", {
+        skills: ".agents/skills",
+        agents: ".codex/agents",
+        docs: ".codex/docs",
+        schemas: ".codex/schemas",
+      });
+
+      const result = buildVariables(claude, [claude, codex], PROJECT_ROOT);
+
+      expect(result).not.toHaveProperty("CODEX_COMMANDS_DIR");
+      // Но CODEX_DOCS_DIR и CODEX_SCHEMAS_DIR должны присутствовать
+      expect(result["CODEX_DOCS_DIR"]).toBe(".codex/docs");
+      expect(result["CODEX_SCHEMAS_DIR"]).toBe(".codex/schemas");
+    });
+
+    // --- Per-adapter codex docs и schemas ---
+    // § interpolation.md § Пример: CODEX_DOCS_DIR = ".codex/docs", CODEX_SCHEMAS_DIR = ".codex/schemas"
+    it("генерирует CODEX_DOCS_DIR=.codex/docs и CODEX_SCHEMAS_DIR=.codex/schemas", () => {
+      const claude = makeAdapter("claude", {
+        skills: ".claude/skills",
+      });
+      const codex = makeAdapter("codex", {
+        skills: ".agents/skills",
+        agents: ".codex/agents",
+        docs: ".codex/docs",
+        schemas: ".codex/schemas",
+      });
+
+      const result = buildVariables(claude, [claude, codex], PROJECT_ROOT);
+
+      expect(result["CODEX_DOCS_DIR"]).toBe(".codex/docs");
+      expect(result["CODEX_SCHEMAS_DIR"]).toBe(".codex/schemas");
     });
 
     // --- Пример из спецификации: полная конфигурация реестра (claude, opencode, agentsmd) ---

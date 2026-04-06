@@ -153,6 +153,8 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     paths: {
       skills: ".agents/skills",
       agents: ".codex/agents",
+      docs: ".codex/docs",
+      schemas: ".codex/schemas",
     },
   },
   {

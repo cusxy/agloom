@@ -725,10 +725,10 @@ Create a commit with a descriptive message.
 - `commands` (CommandAdapter | null) — экземпляр адаптера для
   commands-transpiler (`null` если адаптер не поддерживает commands).
 
-Объект `paths` ТРЕБУЕТСЯ расширить:
-
-- `commands` (string, optional) — путь к каталогу commands
-  относительно `projectRoot`.
+Поле `paths.commands` определено в
+`docs/specs/adapter-registry-ext.md` § Расширение AdapterRegistryEntry
+и § Обновление реестра адаптеров. Данная спецификация НЕ переопределяет
+это поле.
 
 ### Расширение TranspilerStepOutcome
 
@@ -737,17 +737,23 @@ Union тип `TranspilerStepOutcome.name` ТРЕБУЕТСЯ расширить
 
 ### Обновление реестра адаптеров
 
-Реестр адаптеров (`src/cli/adapter-registry.ts`) ТРЕБУЕТСЯ обновить:
+Реестр адаптеров (`src/cli/adapter-registry.ts`) ТРЕБУЕТСЯ обновить
+полем `commands` для каждой записи:
 
-| Adapter   | commands                   | paths.commands       |
-| --------- | -------------------------- | -------------------- |
-| claude    | `ClaudeCommandAdapter`     | `".claude/commands"` |
-| opencode  | `OpenCodeCommandAdapter`   | `".opencode/commands"` |
-| agentsmd  | `null`                     | —                    | AGENTS.md не имеет эквивалента commands |
-| kilocode  | `KiloCodeCommandAdapter`   | `".kilo/commands"`   |
-| codex     | `CodexCommandAdapter`      | —                    |
-| gemini    | `GeminiCommandAdapter`     | `".gemini/commands"` |
+| Adapter  | commands                 |
+| -------- | ------------------------ |
+| claude   | `ClaudeCommandAdapter`   |
+| opencode | `OpenCodeCommandAdapter` |
+| agentsmd | `null`                   |
+| kilocode | `KiloCodeCommandAdapter` |
+| codex    | `CodexCommandAdapter`    |
+| gemini   | `GeminiCommandAdapter`   |
 
+Запись `agentsmd` имеет `commands: null`, потому что AGENTS.md не имеет
+эквивалента commands.
+
+Значения `paths.commands` для каждого адаптера определены в
+`docs/specs/adapter-registry-ext.md` § Обновление реестра адаптеров.
 Codex адаптер НЕ ИМЕЕТ `paths.commands`, потому что его output
 направляется в `.agents/skills/` (через `targetDir`), а не в
 отдельный каталог commands.

@@ -9,6 +9,7 @@ interface AdapterEntry {
   paths: {
     skills?: string;
     agents?: string;
+    commands?: string;
     docs?: string;
     schemas?: string;
   };
@@ -53,6 +54,9 @@ export function buildVariables(
   if (currentAdapter.paths.agents !== undefined) {
     variables["AGENTS_DIR"] = currentAdapter.paths.agents;
   }
+  if (currentAdapter.paths.commands !== undefined) {
+    variables["COMMANDS_DIR"] = currentAdapter.paths.commands;
+  }
   if (currentAdapter.paths.docs !== undefined) {
     variables["DOCS_DIR"] = currentAdapter.paths.docs;
   }
@@ -79,6 +83,9 @@ export function buildVariables(
     }
     if (adapter.paths.agents !== undefined) {
       variables[`${prefix}_AGENTS_DIR`] = adapter.paths.agents;
+    }
+    if (adapter.paths.commands !== undefined) {
+      variables[`${prefix}_COMMANDS_DIR`] = adapter.paths.commands;
     }
     if (adapter.paths.docs !== undefined) {
       variables[`${prefix}_DOCS_DIR`] = adapter.paths.docs;

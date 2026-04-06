@@ -83,10 +83,16 @@ maps_to:
   опциональные ключи:
   - `skills` (string, опционально) — путь к каталогу skills.
   - `agents` (string, опционально) — путь к каталогу agents.
+  - `commands` (string, опционально) — путь к каталогу commands.
   - `docs` (string, опционально) — путь к каталогу docs.
   - `schemas` (string, опционально) — путь к каталогу schemas.
     Объект МОЖЕТ быть пустым (`{}`), если адаптер не имеет
     собственных каталогов (например, `"agentsmd"`).
+
+  Поле `paths` является каноническим определением путей агент-специфичных
+  каталогов. Другие спецификации (`docs/specs/commands-transpiler.md`,
+  `docs/specs/interpolation.md`) ссылаются на это определение и
+  НЕ ДОЛЖНЫ переопределять его.
 
 ## Обновление реестра адаптеров
 
@@ -94,14 +100,14 @@ maps_to:
 `projectFiles`, `instructionsFile`, `dependsOn`, `overlayImportPaths`,
 `hidden` и `paths` для каждой записи:
 
-| `id`         | `targetFiles`                         | `projectFiles`                        | `instructionsFile` | `dependsOn`    | `overlayImportPaths`                                   | `hidden` | `paths`                                                                                                            |
-| ------------ | ------------------------------------- | ------------------------------------- | ------------------ | -------------- | ------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------ |
-| `"claude"`   | `["CLAUDE.md", ".mcp.json"]`          | `["CLAUDE.md"]`                       | `"CLAUDE.md"`      | `[]`           | `[".claude", "**/CLAUDE.md", ".mcp.json"]`             | `false`  | `{ skills: ".claude/skills", agents: ".claude/agents", docs: ".claude/docs", schemas: ".claude/schemas" }`         |
-| `"opencode"` | `["opencode.json"]`                   | `[]`                                  | `null`             | `["agentsmd"]` | `[".opencode", "opencode.json"]`                       | `false`  | `{ skills: ".opencode/skills", agents: ".opencode/agents", docs: ".opencode/docs", schemas: ".opencode/schemas" }` |
-| `"agentsmd"` | `["AGENTS.md", "AGENTS.override.md"]` | `["AGENTS.md", "AGENTS.override.md"]` | `"AGENTS.md"`      | `[]`           | `[".agents", "**/AGENTS.md", "**/AGENTS.override.md"]` | `true`   | `{}`                                                                                                               |
-| `"kilocode"` | `[]`                                  | `[]`                                  | `null`             | `["agentsmd"]` | `[".kilo"]`                                            | `false`  | `{ skills: ".kilo/skills", agents: ".kilo/agents", docs: ".kilo/docs", schemas: ".kilo/schemas" }`                 |
-| `"codex"`    | `[]`                                  | `[]`                                  | `null`             | `["agentsmd"]` | `[".codex", ".agents"]`                                | `false`  | `{ skills: ".agents/skills", agents: ".codex/agents" }`                                                            |
-| `"gemini"`   | `["GEMINI.md"]`                       | `["GEMINI.md"]`                       | `"GEMINI.md"`      | `[]`           | `[".gemini", "**/GEMINI.md"]`                          | `false`  | `{ skills: ".gemini/skills", agents: ".gemini/agents", docs: ".gemini/docs", schemas: ".gemini/schemas" }`         |
+| `id`         | `targetFiles`                         | `projectFiles`                        | `instructionsFile` | `dependsOn`    | `overlayImportPaths`                                   | `hidden` | `paths`                                                                                                                                            |
+| ------------ | ------------------------------------- | ------------------------------------- | ------------------ | -------------- | ------------------------------------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `"claude"`   | `["CLAUDE.md", ".mcp.json"]`          | `["CLAUDE.md"]`                       | `"CLAUDE.md"`      | `[]`           | `[".claude", "**/CLAUDE.md", ".mcp.json"]`             | `false`  | `{ skills: ".claude/skills", agents: ".claude/agents", commands: ".claude/commands", docs: ".claude/docs", schemas: ".claude/schemas" }`           |
+| `"opencode"` | `["opencode.json"]`                   | `[]`                                  | `null`             | `["agentsmd"]` | `[".opencode", "opencode.json"]`                       | `false`  | `{ skills: ".opencode/skills", agents: ".opencode/agents", commands: ".opencode/commands", docs: ".opencode/docs", schemas: ".opencode/schemas" }` |
+| `"agentsmd"` | `["AGENTS.md", "AGENTS.override.md"]` | `["AGENTS.md", "AGENTS.override.md"]` | `"AGENTS.md"`      | `[]`           | `[".agents", "**/AGENTS.md", "**/AGENTS.override.md"]` | `true`   | `{}`                                                                                                                                               |
+| `"kilocode"` | `[]`                                  | `[]`                                  | `null`             | `["agentsmd"]` | `[".kilo"]`                                            | `false`  | `{ skills: ".kilo/skills", agents: ".kilo/agents", commands: ".kilo/commands", docs: ".kilo/docs", schemas: ".kilo/schemas" }`                     |
+| `"codex"`    | `[]`                                  | `[]`                                  | `null`             | `["agentsmd"]` | `[".codex", ".agents"]`                                | `false`  | `{ skills: ".agents/skills", agents: ".codex/agents", docs: ".codex/docs", schemas: ".codex/schemas" }`                                            |
+| `"gemini"`   | `["GEMINI.md"]`                       | `["GEMINI.md"]`                       | `"GEMINI.md"`      | `[]`           | `[".gemini", "**/GEMINI.md"]`                          | `false`  | `{ skills: ".gemini/skills", agents: ".gemini/agents", commands: ".gemini/commands", docs: ".gemini/docs", schemas: ".gemini/schemas" }`           |
 
 ### Запись agentsmd
 
@@ -146,8 +152,22 @@ MCP-транспилером (см. `docs/specs/mcp-transpiler.md`) и permissio
 ДОЛЖНО быть пустым массивом. Поле `overlayImportPaths` ДОЛЖНО содержать
 `[".codex", ".agents"]`, поскольку Codex использует два каталога:
 `.codex/` для agents и `.agents/` для skills. Поле `paths` ДОЛЖНО
-содержать `{ skills: ".agents/skills", agents: ".codex/agents" }` —
-skills размещаются в `.agents/skills/` (НЕ в `.codex/skills/`).
+содержать
+`{ skills: ".agents/skills", agents: ".codex/agents", docs: ".codex/docs", schemas: ".codex/schemas" }`.
+
+Особенности codex:
+
+- `paths.skills` равно `".agents/skills"` (НЕ `".codex/skills/"`),
+  потому что Codex нативно загружает skill-пакеты из `.agents/skills/`.
+- `paths.docs` равно `".codex/docs"` и `paths.schemas` равно
+  `".codex/schemas"` — эти каталоги размещаются в `.codex/`
+  по конвенции agloom; Codex нативно не использует эти каталоги.
+  Каталог `.codex/` уже включён в `overlayImportPaths`, поэтому
+  дополнительных изменений в `overlayImportPaths` не требуется.
+- Подполе `paths.commands` ОТСУТСТВУЕТ. Codex не поддерживает
+  project-level commands; вместо этого commands-transpiler конвертирует
+  команды в skill-пакеты и записывает их в `.agents/skills/`
+  (см. `docs/specs/commands-transpiler.md` § Codex адаптер).
 
 ### Запись gemini
 

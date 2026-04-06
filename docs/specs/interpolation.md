@@ -134,12 +134,13 @@ Canonical файлы используют абстрактные ссылки в
 транспиляция. Источник значений — поле `paths`
 текущего адаптера (`currentAdapter`).
 
-| Переменная    | Источник                       |
-| ------------- | ------------------------------ |
-| `SKILLS_DIR`  | `currentAdapter.paths.skills`  |
-| `AGENTS_DIR`  | `currentAdapter.paths.agents`  |
-| `DOCS_DIR`    | `currentAdapter.paths.docs`    |
-| `SCHEMAS_DIR` | `currentAdapter.paths.schemas` |
+| Переменная     | Источник                        |
+| -------------- | ------------------------------- |
+| `SKILLS_DIR`   | `currentAdapter.paths.skills`   |
+| `AGENTS_DIR`   | `currentAdapter.paths.agents`   |
+| `COMMANDS_DIR` | `currentAdapter.paths.commands` |
+| `DOCS_DIR`     | `currentAdapter.paths.docs`     |
+| `SCHEMAS_DIR`  | `currentAdapter.paths.schemas`  |
 
 Динамическая переменная ДОЛЖНА присутствовать в карте только если
 соответствующее поле `paths` определено у текущего адаптера.
@@ -151,18 +152,19 @@ Canonical файлы используют абстрактные ссылки в
 содержит хотя бы одно определённое поле, генерируются переменные
 с префиксом, равным `adapter.id.toUpperCase()`.
 
-| Шаблон переменной      | Источник                |
-| ---------------------- | ----------------------- |
-| `{PREFIX}_SKILLS_DIR`  | `adapter.paths.skills`  |
-| `{PREFIX}_AGENTS_DIR`  | `adapter.paths.agents`  |
-| `{PREFIX}_DOCS_DIR`    | `adapter.paths.docs`    |
-| `{PREFIX}_SCHEMAS_DIR` | `adapter.paths.schemas` |
+| Шаблон переменной       | Источник                 |
+| ----------------------- | ------------------------ |
+| `{PREFIX}_SKILLS_DIR`   | `adapter.paths.skills`   |
+| `{PREFIX}_AGENTS_DIR`   | `adapter.paths.agents`   |
+| `{PREFIX}_COMMANDS_DIR` | `adapter.paths.commands` |
+| `{PREFIX}_DOCS_DIR`     | `adapter.paths.docs`     |
+| `{PREFIX}_SCHEMAS_DIR`  | `adapter.paths.schemas`  |
 
 Где `{PREFIX}` = `adapter.id.toUpperCase()`.
 
 Переменная `{PREFIX}_SKILLS_DIR` ДОЛЖНА генерироваться только если
-`adapter.paths.skills` определено. Аналогично для `agents`, `docs`,
-`schemas`.
+`adapter.paths.skills` определено. Аналогично для `agents`, `commands`,
+`docs`, `schemas`.
 
 Для адаптера с пустым объектом `paths`
 (`Object.keys(adapter.paths).length === 0`) per-adapter переменные
@@ -170,19 +172,42 @@ Canonical файлы используют абстрактные ссылки в
 
 #### Пример
 
-При текущей конфигурации реестра (claude, opencode, agentsmd)
-per-adapter переменные генерируются для `claude` и `opencode`:
+При текущей конфигурации реестра (claude, opencode, agentsmd, kilocode,
+codex, gemini) per-adapter переменные генерируются для всех адаптеров,
+кроме `agentsmd` (пустой `paths`):
 
 - `CLAUDE_SKILLS_DIR` → `.claude/skills`
 - `CLAUDE_AGENTS_DIR` → `.claude/agents`
+- `CLAUDE_COMMANDS_DIR` → `.claude/commands`
 - `CLAUDE_DOCS_DIR` → `.claude/docs`
 - `CLAUDE_SCHEMAS_DIR` → `.claude/schemas`
 - `OPENCODE_SKILLS_DIR` → `.opencode/skills`
 - `OPENCODE_AGENTS_DIR` → `.opencode/agents`
+- `OPENCODE_COMMANDS_DIR` → `.opencode/commands`
 - `OPENCODE_DOCS_DIR` → `.opencode/docs`
 - `OPENCODE_SCHEMAS_DIR` → `.opencode/schemas`
+- `KILOCODE_SKILLS_DIR` → `.kilo/skills`
+- `KILOCODE_AGENTS_DIR` → `.kilo/agents`
+- `KILOCODE_COMMANDS_DIR` → `.kilo/commands`
+- `KILOCODE_DOCS_DIR` → `.kilo/docs`
+- `KILOCODE_SCHEMAS_DIR` → `.kilo/schemas`
+- `CODEX_SKILLS_DIR` → `.agents/skills`
+- `CODEX_AGENTS_DIR` → `.codex/agents`
+- `CODEX_DOCS_DIR` → `.codex/docs`
+- `CODEX_SCHEMAS_DIR` → `.codex/schemas`
+- `GEMINI_SKILLS_DIR` → `.gemini/skills`
+- `GEMINI_AGENTS_DIR` → `.gemini/agents`
+- `GEMINI_COMMANDS_DIR` → `.gemini/commands`
+- `GEMINI_DOCS_DIR` → `.gemini/docs`
+- `GEMINI_SCHEMAS_DIR` → `.gemini/schemas`
 
 Для `agentsmd` (пустой `paths`) переменные не генерируются.
+
+Для `codex` переменная `CODEX_COMMANDS_DIR` НЕ генерируется,
+потому что `paths.commands` для codex не определено
+(см. `docs/specs/adapter-registry-ext.md` § Запись codex).
+Аналогично, при выполнении транспиляции для адаптера `codex`
+динамическая переменная `COMMANDS_DIR` отсутствует в карте.
 
 ## Классы ошибок
 
@@ -330,35 +355,17 @@ agloom-переменных для указанного текущего ада�
 
 Операция `writeResults`
 (см. `docs/specs/skills-transpiler.md` § Запись результатов)
-расширяется интерполяцией для `.md` файлов. Параметр
-`variablesByAgentId` передаётся как часть объекта `options`
-(см. `docs/specs/skills-transpiler.md` § Запись результатов).
+вызывает функцию `transformContent` из `agents-transpiler`
+(см. `docs/specs/agents-transpiler.md` § Трансформация контента),
+которая в качестве последнего шага выполняет интерполяцию через
+переданный параметр `variables`. Полное описание шагов записи
+для `.md` файлов и их расширения определены в
+`docs/specs/skills-transpiler.md` § Запись результатов
+и § Трансформация контента.
 
-**Изменения в поведении:**
-
-Шаг 3 (копирование файлов) учитывает `options.variablesByAgentId`:
-
-3\. Для каждого `SkillOutputFile` из `files`:
-
-- Если `options.variablesByAgentId` передан И расширение файла
-  `sourcePath` равно `.md` (case-insensitive) — прочитать содержимое
-  `projectRoot / sourcePath` с кодировкой UTF-8,
-  вызвать `interpolate(content, options.variablesByAgentId[agentId])`,
-  записать результат в `effectiveRoot / relativePath`
-  с кодировкой UTF-8, создавая промежуточные каталоги
-  при необходимости.
-- Иначе — побайтово скопировать файл из `projectRoot / sourcePath`
-  в `effectiveRoot / relativePath`, создавая промежуточные каталоги
-  при необходимости.
-
-**Новые расширения:**
-
-3c. `options.variablesByAgentId` передан, но ключ `agentId` текущего
-`SkillTranspileResult` отсутствует в `options.variablesByAgentId` →
-`SkillWriteError("No interpolation variables for adapter: {agentId}")`.
-
-3d. `interpolate` выбрасывает `InterpolationError` →
-`SkillWriteError("Interpolation failed for {sourcePath}: {причина}")`.
+Интерполяция в skills-transpiler выполняется не как отдельный
+этап, а как часть `transformContent`, что обеспечивает паритет
+поведения между skills, agents и commands транспилерами.
 
 ### Расширение команды transpile
 

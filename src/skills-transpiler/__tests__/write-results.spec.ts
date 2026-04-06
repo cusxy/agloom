@@ -6,7 +6,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { createSkillsTranspiler } from "../index.js";
-import { SkillWriteError } from "../errors.js";
+import { SkillWriteError, SkillTransformError } from "../errors.js";
 
 function createStubAdapter(agentId: string) {
   return {
@@ -491,8 +491,11 @@ describe("SkillsTranspiler", () => {
       expect(writeResult.errors[0].message).toBe("No interpolation variables for adapter: claude");
     });
 
-    // --- Расширение 3d: SkillWriteError при InterpolationError в .md файле ---
-    it('возвращает SkillWriteError "Interpolation failed for {sourcePath}: ..." при ошибке интерполяции .md файла', () => {
+    // --- Расширение 3d: SkillWriteError при ошибке трансформации .md файла ---
+    // § skills-transpiler.md § Запись результатов, расширение 3d:
+    // AgentTransformError → SkillTransformError("Failed to transform {sourcePath}: ...")
+    // → SkillWriteError с SkillTransformError в качестве cause
+    it('возвращает SkillWriteError "Failed to transform {sourcePath}: ..." при ошибке трансформации .md файла', () => {
       // Arrange: создаём .md файл с несуществующей agloom-переменной
       const sourceDir = path.join(tmpDir, ".agloom", "skills", "my-skill");
       fs.mkdirSync(sourceDir, { recursive: true });
@@ -524,10 +527,17 @@ describe("SkillsTranspiler", () => {
         },
       );
 
-      // Assert
+      // Assert: непустой errors, отсутствие записанного файла,
+      // корректное оборачивание с cause-chain SkillWriteError → SkillTransformError
       expect(writeResult.errors.length).toBeGreaterThan(0);
-      expect(writeResult.errors[0]).toBeInstanceOf(SkillWriteError);
-      expect(writeResult.errors[0].message).toMatch(/Interpolation failed for \.agloom\/skills\/my-skill\/SKILL\.md/);
+      expect(writeResult.written).not.toContain(".claude/skills/my-skill/SKILL.md");
+      expect(fs.existsSync(path.join(tmpDir, ".claude", "skills", "my-skill", "SKILL.md"))).toBe(false);
+
+      const writeErr = writeResult.errors[0];
+      expect(writeErr).toBeInstanceOf(SkillWriteError);
+      expect(writeErr.message).toMatch(/Failed to transform \.agloom\/skills\/my-skill\/SKILL\.md/);
+      const cause = (writeErr as unknown as { cause?: unknown }).cause;
+      expect(cause).toBeInstanceOf(SkillTransformError);
     });
 
     // --- Изменения в поведении: шаг 3 — case-insensitive проверка расширения .md ---

@@ -16,7 +16,7 @@ export { CodexSkillAdapter } from "./adapters/codex-adapter.js";
 export { GeminiSkillAdapter } from "./adapters/gemini-adapter.js";
 
 export { SkillsTranspiler } from "./transpiler.js";
-export { SkillConfigError, SkillDiscoverError, SkillWriteError } from "./errors.js";
+export { SkillConfigError, SkillDiscoverError, SkillTransformError, SkillWriteError } from "./errors.js";
 export type {
   SkillAdapter,
   SkillOutputFile,

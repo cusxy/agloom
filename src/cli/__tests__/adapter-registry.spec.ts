@@ -299,15 +299,83 @@ describe("CLI", () => {
     // --- Happy path: запись codex содержит поле paths ---
     // § Обновление реестра адаптеров, строка codex: paths.skills=".agents/skills", paths.agents=".codex/agents"
     // § Запись codex: skills размещаются в .agents/skills/ (НЕ .codex/skills/)
-    it('запись "codex" содержит paths с skills=".agents/skills" и agents=".codex/agents"', () => {
+    it('запись "codex" содержит paths с skills=".agents/skills", agents=".codex/agents", docs=".codex/docs", schemas=".codex/schemas"', () => {
       const codex = adapterRegistry.find((e) => e.id === "codex");
       expect(codex).toBeDefined();
       expect(codex!.paths).toBeDefined();
       expect(codex!.paths.skills).toBe(".agents/skills");
       expect(codex!.paths.agents).toBe(".codex/agents");
-      // codex НЕ содержит docs и schemas
-      expect(codex!.paths.docs).toBeUndefined();
-      expect(codex!.paths.schemas).toBeUndefined();
+      // § Запись codex (обновлено): paths.docs=".codex/docs", paths.schemas=".codex/schemas"
+      expect(codex!.paths.docs).toBe(".codex/docs");
+      expect(codex!.paths.schemas).toBe(".codex/schemas");
+    });
+
+    // =====================================================================
+    // § adapter-registry-ext.md § Расширение AdapterRegistryEntry — paths.commands
+    // =====================================================================
+
+    // --- claude.paths.commands ---
+    // § Обновление реестра адаптеров: claude.paths.commands = ".claude/commands"
+    it('запись "claude" содержит paths.commands ".claude/commands"', () => {
+      const claude = adapterRegistry.find((e) => e.id === "claude");
+      expect(claude).toBeDefined();
+      expect(claude!.paths.commands).toBe(".claude/commands");
+    });
+
+    // --- opencode.paths.commands ---
+    // § Обновление реестра адаптеров: opencode.paths.commands = ".opencode/commands"
+    it('запись "opencode" содержит paths.commands ".opencode/commands"', () => {
+      const opencode = adapterRegistry.find((e) => e.id === "opencode");
+      expect(opencode).toBeDefined();
+      expect(opencode!.paths.commands).toBe(".opencode/commands");
+    });
+
+    // --- kilocode.paths.commands ---
+    // § Обновление реестра адаптеров: kilocode.paths.commands = ".kilo/commands"
+    it('запись "kilocode" содержит paths.commands ".kilo/commands"', () => {
+      const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
+      expect(kilocode).toBeDefined();
+      expect(kilocode!.paths.commands).toBe(".kilo/commands");
+    });
+
+    // --- gemini.paths.commands ---
+    // § Обновление реестра адаптеров: gemini.paths.commands = ".gemini/commands"
+    it('запись "gemini" содержит paths.commands ".gemini/commands"', () => {
+      const gemini = adapterRegistry.find((e) => e.id === "gemini");
+      expect(gemini).toBeDefined();
+      expect(gemini!.paths.commands).toBe(".gemini/commands");
+    });
+
+    // --- codex.paths.commands ОТСУТСТВУЕТ ---
+    // § Запись codex: «Подполе paths.commands ОТСУТСТВУЕТ»
+    it('запись "codex" НЕ содержит paths.commands', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.paths.commands).toBeUndefined();
+    });
+
+    // --- codex.paths.docs = ".codex/docs" ---
+    // § Запись codex: paths.docs = ".codex/docs"
+    it('запись "codex" содержит paths.docs ".codex/docs"', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.paths.docs).toBe(".codex/docs");
+    });
+
+    // --- codex.paths.schemas = ".codex/schemas" ---
+    // § Запись codex: paths.schemas = ".codex/schemas"
+    it('запись "codex" содержит paths.schemas ".codex/schemas"', () => {
+      const codex = adapterRegistry.find((e) => e.id === "codex");
+      expect(codex).toBeDefined();
+      expect(codex!.paths.schemas).toBe(".codex/schemas");
+    });
+
+    // --- agentsmd.paths без commands ---
+    // § Обновление реестра адаптеров: agentsmd.paths = {} (пустой)
+    it('запись "agentsmd" не содержит paths.commands (пустой объект paths)', () => {
+      const agentsmd = adapterRegistry.find((e) => e.id === "agentsmd");
+      expect(agentsmd).toBeDefined();
+      expect(agentsmd!.paths.commands).toBeUndefined();
     });
 
     // --- Happy path: запись gemini содержит поле paths ---
