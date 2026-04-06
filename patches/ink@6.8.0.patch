@@ -1,0 +1,30 @@
+diff --git a/build/ink.js b/build/ink.js
+index 30019a073d38ed05dca08f6221af187c429a536b..f40d2253309bd7e9f7d2846876cb70302b734182 100644
+--- a/build/ink.js
++++ b/build/ink.js
+@@ -480,12 +480,19 @@ export default class Ink {
+                 }
+             }
+             // CIs don't handle erasing ansi escapes well, so it's better to
+-            // only render last frame of non-static output
+-            if (isInCi) {
+-                this.options.stdout.write(this.lastOutput + '\n');
+-            }
+-            else if (!this.options.debug) {
+-                this.log.done();
++            // only render last frame of non-static output.
++            // Skip entirely in debug mode: the onRender debug branch already
++            // writes fullStaticOutput+output on every render but never updates
++            // this.lastOutput, so the isInCi path here would wipe the test
++            // harness's last frame by writing '' + '\n'. ink-testing-library
++            // relies on the real last onRender write being preserved.
++            if (!this.options.debug) {
++                if (isInCi) {
++                    this.options.stdout.write(this.lastOutput + '\n');
++                }
++                else {
++                    this.log.done();
++                }
+             }
+         }
+         this.kittyProtocolEnabled = false;
