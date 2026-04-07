@@ -350,7 +350,7 @@ directory-level файлы не создаются (OpenCode их не подд�
 - `tmpDir` содержит:
   - `.agloom/agents/reviewer.md` со следующим содержимым:
 
-    ```
+    ```text
     ---
     name: reviewer
     model: sonnet
@@ -484,21 +484,25 @@ directory-level файлы не создаются (OpenCode их не подд�
 
 - `tmpDir` содержит:
   - `.agloom/agents/reviewer.md` со следующим содержимым:
-    ```
+
+    ```text
     ---
     name: reviewer
     model: sonnet
     ---
     Reviewer instructions.
     ```
+
   - `.agloom/agents/coder.md` со следующим содержимым:
-    ```
+
+    ```text
     ---
     name: coder
     model: opus
     ---
     Coder instructions.
     ```
+
 - Адаптеры: `[ClaudeAgentAdapter]`.
 
 **Поведение:**
@@ -559,13 +563,15 @@ directory-level файлы не создаются (OpenCode их не подд�
 
 - `tmpDir` содержит:
   - `.agloom/agents/simple.md` со следующим содержимым:
-    ```
+
+    ```text
     ---
     name: simple
     model: sonnet
     ---
     Plain instructions without any special sections.
     ```
+
 - Адаптеры: `[ClaudeAgentAdapter]`.
 
 **Поведение:**
@@ -912,13 +918,15 @@ directory-level файлы не создаются (OpenCode их не подд�
 
 - `tmpDir` содержит:
   - `agents/reviewer.md` со следующим содержимым:
-    ```
+
+    ```text
     ---
     name: reviewer
     model: sonnet
     ---
     Plugin agent instructions.
     ```
+
 - Конфигурация транспилера:
   - `projectRoot`: `tmpDir`.
   - `agloomDir`: `"."`.
@@ -955,7 +963,8 @@ directory-level файлы не создаются (OpenCode их не подд�
 
 - `sourceDir` (отдельная tmpDir) содержит:
   - `agents/coder.md` со следующим содержимым:
-    ```
+
+    ```text
     ---
     name: coder
     model: opus
@@ -965,6 +974,7 @@ directory-level файлы не создаются (OpenCode их не подд�
     ---
     Source agent instructions.
     ```
+
 - `targetDir` (отдельная tmpDir) — пустая директория.
 - Конфигурация транспилера:
   - `projectRoot`: `sourceDir`.
@@ -1007,13 +1017,15 @@ directory-level файлы не создаются (OpenCode их не подд�
 
 - `tmpDir` содержит:
   - `agents/deep/nested-agent.md` со следующим содержимым:
-    ```
+
+    ```text
     ---
     name: nested-agent
     model: sonnet
     ---
     Nested agent instructions.
     ```
+
 - Конфигурация транспилера:
   - `projectRoot`: `tmpDir`.
   - `agloomDir`: `"."`.

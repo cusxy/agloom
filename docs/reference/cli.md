@@ -13,7 +13,7 @@ Agloom provides a command-line interface built on React + Ink for transpiling ca
 
 ### --help
 
-```
+```text
 agloom --help
 ```
 
@@ -23,7 +23,7 @@ Exit code: `0`.
 
 ### --version
 
-```
+```text
 agloom --version
 ```
 
@@ -37,7 +37,7 @@ Exit code: `0`.
 
 If an unknown command is provided, Agloom displays:
 
-```
+```text
 Unknown command: <cmd>. Run 'agloom --help' to see available commands.
 ```
 
@@ -51,19 +51,19 @@ The `--help` flag does **not** suppress this error. Unknown command detection ta
 
 Runs the transpilation pipeline for all registered transpiler modules.
 
-```
+```text
 agloom transpile [--adapter <adapterId> | --all] [--clean] [--verbose] [--refresh]
 ```
 
 #### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--adapter <adapterId>` | string | - | Adapter ID from the registry. Mutually exclusive with `--all`. |
-| `--all` | boolean | `false` | Transpile for all adapters in the registry. Mutually exclusive with `--adapter`. |
-| `--clean` | boolean | `false` | Run clean before transpiling (see [clean](#clean)). |
-| `--verbose` | boolean | `false` | Show all steps including those with 0 files. |
-| `--refresh` | boolean | `false` | Force re-fetch of cached git plugins. |
+| Option                  | Type    | Default | Description                                                                      |
+| ----------------------- | ------- | ------- | -------------------------------------------------------------------------------- |
+| `--adapter <adapterId>` | string  | -       | Adapter ID from the registry. Mutually exclusive with `--all`.                   |
+| `--all`                 | boolean | `false` | Transpile for all adapters in the registry. Mutually exclusive with `--adapter`. |
+| `--clean`               | boolean | `false` | Run clean before transpiling (see [clean](#clean)).                              |
+| `--verbose`             | boolean | `false` | Show all steps including those with 0 files.                                     |
+| `--refresh`             | boolean | `false` | Force re-fetch of cached git plugins.                                            |
 
 When neither `--adapter` nor `--all` is specified, adapters are read from `.agloom/config.yml`.
 
@@ -90,7 +90,7 @@ For each resolved adapter entry, the command executes transpiler steps in order:
 
 Without `--verbose`, steps with 0 written files and no errors are hidden. If all steps for all adapters are hidden and there are no errors, the output is:
 
-```
+```text
 Nothing to transpile.
 ```
 
@@ -116,10 +116,10 @@ agloom transpile --clean
 
 #### Exit Codes
 
-| Code | Condition |
-|------|-----------|
-| `0` | All steps completed without errors. |
-| `1` | Any step had errors, both `--adapter` and `--all` specified, config not found (without `--adapter`/`--all`), config error, unknown/hidden adapter. |
+| Code | Condition                                                                                                                                          |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | All steps completed without errors.                                                                                                                |
+| `1`  | Any step had errors, both `--adapter` and `--all` specified, config not found (without `--adapter`/`--all`), config error, unknown/hidden adapter. |
 
 ---
 
@@ -127,17 +127,17 @@ agloom transpile --clean
 
 Removes generated agent-specific files.
 
-```
+```text
 agloom clean [--adapter <adapterId> | --all] [--verbose]
 ```
 
 #### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--adapter <adapterId>` | string | - | Adapter ID from the registry. Mutually exclusive with `--all`. |
-| `--all` | boolean | `false` | Clean for all adapters. Mutually exclusive with `--adapter`. |
-| `--verbose` | boolean | `false` | Show details even when 0 files removed. |
+| Option                  | Type    | Default | Description                                                    |
+| ----------------------- | ------- | ------- | -------------------------------------------------------------- |
+| `--adapter <adapterId>` | string  | -       | Adapter ID from the registry. Mutually exclusive with `--all`. |
+| `--all`                 | boolean | `false` | Clean for all adapters. Mutually exclusive with `--adapter`.   |
+| `--verbose`             | boolean | `false` | Show details even when 0 files removed.                        |
 
 #### Behavior
 
@@ -152,7 +152,7 @@ Missing files and directories are silently skipped.
 
 Without `--verbose`, adapters with 0 removed files and no errors are hidden. If all adapters have 0 removed files:
 
-```
+```text
 Nothing to clean.
 ```
 
@@ -166,10 +166,10 @@ agloom clean --verbose
 
 #### Exit Codes
 
-| Code | Condition |
-|------|-----------|
-| `0` | All clean operations completed without errors. |
-| `1` | Both `--adapter` and `--all` specified, config not found, config error, unknown/hidden adapter, or deletion error. |
+| Code | Condition                                                                                                          |
+| ---- | ------------------------------------------------------------------------------------------------------------------ |
+| `0`  | All clean operations completed without errors.                                                                     |
+| `1`  | Both `--adapter` and `--all` specified, config not found, config error, unknown/hidden adapter, or deletion error. |
 
 ---
 
@@ -177,18 +177,18 @@ agloom clean --verbose
 
 Imports existing agent-specific files into `.agloom/overlays/` and creates the configuration file.
 
-```
+```text
 agloom init [--adapter <adapterId> | --all] [--force] [--verbose]
 ```
 
 #### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--adapter <adapterId>` | string | - | Adapter identifier. Mutually exclusive with `--all`. |
-| `--all` | boolean | `false` | Initialize all supported adapters. Mutually exclusive with `--adapter`. |
-| `--force` | boolean | `false` | Overwrite existing files. |
-| `--verbose` | boolean | `false` | Show all steps including 0-file ones. |
+| Option                  | Type    | Default | Description                                                             |
+| ----------------------- | ------- | ------- | ----------------------------------------------------------------------- |
+| `--adapter <adapterId>` | string  | -       | Adapter identifier. Mutually exclusive with `--all`.                    |
+| `--all`                 | boolean | `false` | Initialize all supported adapters. Mutually exclusive with `--adapter`. |
+| `--force`               | boolean | `false` | Overwrite existing files.                                               |
+| `--verbose`             | boolean | `false` | Show all steps including 0-file ones.                                   |
 
 #### Behavior
 
@@ -217,10 +217,10 @@ agloom init --adapter opencode --force
 
 #### Exit Codes
 
-| Code | Condition |
-|------|-----------|
-| `0` | All steps completed without errors (including 0 files). |
-| `1` | Both `--adapter` and `--all` specified, config not found (without flags), `.agloom/` already exists without `--force`, overlay directory exists without `--force`, copy or directory creation error. |
+| Code | Condition                                                                                                                                                                                            |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | All steps completed without errors (including 0 files).                                                                                                                                              |
+| `1`  | Both `--adapter` and `--all` specified, config not found (without flags), `.agloom/` already exists without `--force`, overlay directory exists without `--force`, copy or directory creation error. |
 
 ---
 
@@ -228,14 +228,14 @@ agloom init --adapter opencode --force
 
 Lists available or active adapters.
 
-```
+```text
 agloom adapters [--all]
 ```
 
 #### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
+| Option  | Type    | Default | Description                                                                  |
+| ------- | ------- | ------- | ---------------------------------------------------------------------------- |
 | `--all` | boolean | `false` | Show all available (non-hidden) adapters instead of active ones from config. |
 
 #### Behavior
@@ -247,7 +247,7 @@ Hidden adapters (e.g., `agentsmd`) are never displayed.
 
 #### Output
 
-```
+```text
 Active adapters:
 
   claude       Claude Code
@@ -262,17 +262,17 @@ Exit code: `0`.
 
 Formats and lints project files (Markdown, JSON, YAML, TOML).
 
-```
+```text
 agloom format [--check] [--all] [<file|glob>...]
 ```
 
 #### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--check` | boolean | `false` | Check files without modifying. Exit code 1 if unformatted. |
-| `--all` | boolean | `false` | Format all supported files in the project (`**/*.{md,mdx,json,yaml,yml,toml}`). Mutually exclusive with `<file\|glob>...`. |
-| `<file\|glob>...` | string[] | - | Custom glob patterns or file paths. Mutually exclusive with `--all`. |
+| Option            | Type     | Default | Description                                                                                                                |
+| ----------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `--check`         | boolean  | `false` | Check files without modifying. Exit code 1 if unformatted.                                                                 |
+| `--all`           | boolean  | `false` | Format all supported files in the project (`**/*.{md,mdx,json,yaml,yml,toml}`). Mutually exclusive with `<file\|glob>...`. |
+| `<file\|glob>...` | string[] | -       | Custom glob patterns or file paths. Mutually exclusive with `--all`.                                                       |
 
 #### Default Target Files
 
@@ -283,12 +283,12 @@ When neither `--all` nor file arguments are provided:
 
 #### Supported Formats
 
-| Extension | prettier | markdownlint |
-|-----------|----------|--------------|
-| `.md`, `.mdx` | Yes | Yes |
-| `.json` | Yes | No |
-| `.yaml`, `.yml` | Yes | No |
-| `.toml` | Yes | No |
+| Extension       | prettier | markdownlint |
+| --------------- | -------- | ------------ |
+| `.md`, `.mdx`   | Yes      | Yes          |
+| `.json`         | Yes      | No           |
+| `.yaml`, `.yml` | Yes      | No           |
+| `.toml`         | Yes      | No           |
 
 Unsupported extensions are silently skipped.
 
@@ -320,10 +320,10 @@ agloom format "src/**/*.md" ".agloom/**/*.yaml"
 
 #### Exit Codes
 
-| Code | Condition |
-|------|-----------|
-| `0` | Format completed without errors, or all files pass check. |
-| `1` | Format errors, files need formatting (check mode), config parse error, or `--all` used with file arguments. |
+| Code | Condition                                                                                                   |
+| ---- | ----------------------------------------------------------------------------------------------------------- |
+| `0`  | Format completed without errors, or all files pass check.                                                   |
+| `1`  | Format errors, files need formatting (check mode), config parse error, or `--all` used with file arguments. |
 
 ---
 
@@ -331,14 +331,14 @@ agloom format "src/**/*.md" ".agloom/**/*.yaml"
 
 Shows help topics or displays a specific help topic rendered from Markdown.
 
-```
+```text
 agloom help [<topic>]
 ```
 
 #### Arguments
 
-| Argument | Type | Description |
-|----------|------|-------------|
+| Argument  | Type   | Description                                                                                                    |
+| --------- | ------ | -------------------------------------------------------------------------------------------------------------- |
 | `<topic>` | string | Topic name. Full format: `guide/getting-started`, `reference/cli`. Short format (slug only): `cli`, `plugins`. |
 
 #### Behavior
@@ -351,10 +351,10 @@ Short topic names (without category prefix) are searched across all categories. 
 
 #### Exit Codes
 
-| Code | Condition |
-|------|-----------|
-| `0` | Topic list displayed or topic rendered successfully. |
-| `1` | Topic not found, ambiguous topic, read error, no topics available. |
+| Code | Condition                                                          |
+| ---- | ------------------------------------------------------------------ |
+| `0`  | Topic list displayed or topic rendered successfully.               |
+| `1`  | Topic not found, ambiguous topic, read error, no topics available. |
 
 ---
 
@@ -362,7 +362,7 @@ Short topic names (without category prefix) are searched across all categories. 
 
 Clears the plugin cache directory.
 
-```
+```text
 agloom cache clean
 ```
 

@@ -51,11 +51,15 @@ Sometimes you need instructions that apply only to a particular tool. Use HTML c
 All agents see this content.
 
 <!-- agent:claude -->
+
 Use the `Grep` and `Glob` tools for code search instead of shelling out to `grep`/`find`. Run shell commands only when no dedicated tool exists.
+
 <!-- /agent:claude -->
 
 <!-- agent:agentsmd -->
+
 Use the file search and read tools provided by your environment. Always read a file before editing it.
+
 <!-- /agent:agentsmd -->
 
 This content is also visible to all agents.
@@ -115,6 +119,7 @@ TypeScript, Next.js 14, Prisma, PostgreSQL.
 - Tests live next to source as `*.spec.ts`, not in a separate `__tests__` tree.
 
 <!-- agent:claude -->
+
 ## Claude Code workflow
 
 - For non-trivial features, draft a plan with the `ExitPlanMode` tool before writing code. The plan must list the files you intend to touch.
@@ -124,6 +129,7 @@ TypeScript, Next.js 14, Prisma, PostgreSQL.
 <!-- /agent:claude -->
 
 <!-- agent:agentsmd -->
+
 ## AGENTS.md workflow
 
 - Read the relevant file fully before editing it; do not patch based on a partial view.

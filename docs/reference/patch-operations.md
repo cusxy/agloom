@@ -14,13 +14,13 @@ Patch operations provide fine-grained control over structured files (JSON, JSONC
 
 Patch files use the naming pattern:
 
-```
+```text
 <basename>.patch.<ext>
 ```
 
 The `.patch` suffix is removed when determining the target file. For example, `settings.patch.yaml` applies to `settings.yaml`.
 
-The format of the patch file may differ from the target. For example, `tsconfig.patch.yaml` can patch `tsconfig.json` -- the patch is parsed as YAML, and the result is serialized as JSON.
+The format of the patch file may differ from the target. For example, `tsconfig.patch.yaml` can patch `tsconfig.json` — the patch is parsed as YAML, and the result is serialized as JSON.
 
 Suffixes `.patch` and `.override` are mutually exclusive. A file with both suffixes (e.g., `settings.patch.override.json`) is an error.
 
@@ -89,9 +89,9 @@ Merges an array of objects by a key field (similar to Kustomize strategic merge 
 
 **Value type:** object with fields:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `key` | string | Field name used for matching. |
+| Field   | Type           | Description                                          |
+| ------- | -------------- | ---------------------------------------------------- |
+| `key`   | string         | Field name used for matching.                        |
 | `items` | array\<object> | Objects to merge. Each must contain the `key` field. |
 
 **Target:** must be an array of objects.
@@ -264,10 +264,10 @@ Inserts elements at a specific index in an array.
 
 **Value type:** object with fields:
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field   | Type    | Description                                                                                                            |
+| ------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `index` | integer | 0-based insertion position. Negative values count from the end (`-1` = before last element). Clamped to `[0, length]`. |
-| `items` | array | Elements to insert. |
+| `items` | array   | Elements to insert.                                                                                                    |
 
 **Target:** must be an array.
 
@@ -296,24 +296,24 @@ plugins:
 
 When multiple markers appear in the same node, they are applied in this fixed order:
 
-1. `$unset` -- remove keys first.
-2. `$merge` -- deep merge objects.
-3. `$mergeBy` -- merge array by key.
-4. `$set` -- set value (overwrites previous operations).
-5. `$remove` -- remove array elements.
-6. `$insertAt` -- insert at position.
-7. `$prepend` -- add to beginning.
-8. `$append` -- add to end.
+1. `$unset` — remove keys first.
+2. `$merge` — deep merge objects.
+3. `$mergeBy` — merge array by key.
+4. `$set` — set value (overwrites previous operations).
+5. `$remove` — remove array elements.
+6. `$insertAt` — insert at position.
+7. `$prepend` — add to beginning.
+8. `$append` — add to end.
 
 ### Combination Restrictions
 
-| Combination | Allowed? |
-|-------------|----------|
-| `$set` + `$merge` | **No** -- error. |
-| `$set` + `$mergeBy` | **No** -- error. |
-| `$merge` + `$mergeBy` | Yes |
-| `$insertAt` + `$append` + `$prepend` | Yes |
-| `$append` + `$prepend` + `$remove` | Yes |
+| Combination                          | Allowed?        |
+| ------------------------------------ | --------------- |
+| `$set` + `$merge`                    | **No** — error. |
+| `$set` + `$mergeBy`                  | **No** — error. |
+| `$merge` + `$mergeBy`                | Yes             |
+| `$insertAt` + `$append` + `$prepend` | Yes             |
+| `$append` + `$prepend` + `$remove`   | Yes             |
 
 ## Navigation
 
@@ -332,30 +332,30 @@ editor:
 
 ## Non-Existent Target Fields
 
-| Operation | Behavior when target field does not exist |
-|-----------|------------------------------------------|
-| `$set` | Creates the key with the given value. |
-| `$merge` | Creates an empty object `{}`, then merges. |
-| `$mergeBy` | Creates an empty array `[]`, all items are appended. |
-| `$append` | Warning in errors, operation skipped. |
-| `$prepend` | Warning in errors, operation skipped. |
-| `$insertAt` | Warning in errors, operation skipped. |
-| `$remove` | Silent no-op. |
-| `$unset` | Silent no-op. |
+| Operation   | Behavior when target field does not exist            |
+| ----------- | ---------------------------------------------------- |
+| `$set`      | Creates the key with the given value.                |
+| `$merge`    | Creates an empty object `{}`, then merges.           |
+| `$mergeBy`  | Creates an empty array `[]`, all items are appended. |
+| `$append`   | Warning in errors, operation skipped.                |
+| `$prepend`  | Warning in errors, operation skipped.                |
+| `$insertAt` | Warning in errors, operation skipped.                |
+| `$remove`   | Silent no-op.                                        |
+| `$unset`    | Silent no-op.                                        |
 
 ## Error Handling
 
 Patch operations use a tolerant strategy: errors in individual files are collected in an `errors` array, and processing continues with remaining files.
 
-| Condition | Behavior |
-|-----------|----------|
-| Invalid patch file (parse error) | Error message, skip file. |
+| Condition                                               | Behavior                  |
+| ------------------------------------------------------- | ------------------------- |
+| Invalid patch file (parse error)                        | Error message, skip file. |
 | `$append`/`$prepend`/`$remove`/`$insertAt` on non-array | Error message, skip file. |
-| `$unset`/`$merge` on non-object | Error message, skip file. |
-| `$mergeBy` on non-array | Error message, skip file. |
-| `$mergeBy` item missing key field | Error message, skip file. |
-| `$mergeBy` item not an object | Error message, skip file. |
-| Invalid marker value type | Error message, skip file. |
-| Unknown marker (key starts with `$`) | Error message, skip file. |
-| Both `$set` and `$merge` in same node | Error message, skip file. |
-| Both `.patch` and `.override` suffixes | Error message, skip file. |
+| `$unset`/`$merge` on non-object                         | Error message, skip file. |
+| `$mergeBy` on non-array                                 | Error message, skip file. |
+| `$mergeBy` item missing key field                       | Error message, skip file. |
+| `$mergeBy` item not an object                           | Error message, skip file. |
+| Invalid marker value type                               | Error message, skip file. |
+| Unknown marker (key starts with `$`)                    | Error message, skip file. |
+| Both `$set` and `$merge` in same node                   | Error message, skip file. |
+| Both `.patch` and `.override` suffixes                  | Error message, skip file. |

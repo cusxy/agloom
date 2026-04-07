@@ -13,15 +13,15 @@ Agloom uses a pipeline of transpiler modules to convert canonical files into age
 
 Transpiler modules execute in this fixed order for each adapter:
 
-1. **Instructions** -- transforms `AGLOOM.md` into agent-specific instruction files.
-2. **Commands** -- transforms slash-command definitions from `.agloom/commands/` to agent-specific directories.
-3. **Skills** -- copies skill packages from `.agloom/skills/` to agent-specific directories.
-4. **Agents** -- transforms agent definitions from `.agloom/agents/` to agent-specific directories.
-5. **Docs** -- copies documentation files from `.agloom/docs/` to agent-specific directories.
-6. **Schemas** -- copies schema files from `.agloom/schemas/` to agent-specific directories.
-7. **Overlay step** -- applies overlay files, MCP configuration, and permissions.
+1. **Instructions** — transforms `AGLOOM.md` into agent-specific instruction files.
+2. **Commands** — transforms slash-command definitions from `.agloom/commands/` to agent-specific directories.
+3. **Skills** — copies skill packages from `.agloom/skills/` to agent-specific directories.
+4. **Agents** — transforms agent definitions from `.agloom/agents/` to agent-specific directories.
+5. **Docs** — copies documentation files from `.agloom/docs/` to agent-specific directories.
+6. **Schemas** — copies schema files from `.agloom/schemas/` to agent-specific directories.
+7. **Overlay step** — applies overlay files, MCP configuration, and permissions.
 
-Steps 1--6 run independently for each adapter. Step 7 (overlay) applies after all transpiler modules and handles cross-cutting concerns like file merging and adapter-specific overrides.
+Steps 1-6 run independently for each adapter. Step 7 (overlay) applies after all transpiler modules and handles cross-cutting concerns like file merging and adapter-specific overrides.
 
 Commands runs before Skills to ensure correct priority for the Codex adapter: commands are converted to skill packages first, and skills from the Skills transpiler overwrite them when names conflict.
 
@@ -29,7 +29,7 @@ Commands runs before Skills to ensure correct priority for the Codex adapter: co
 
 **Source:** `AGLOOM.md` in the project root and `**/AGLOOM.md` in subdirectories
 
-**Operation:** Transforms content -- parses YAML frontmatter, applies per-agent override fields, filters agent-specific sections in the Markdown body.
+**Operation:** Transforms content — parses YAML frontmatter, applies per-agent override fields, filters agent-specific sections in the Markdown body.
 
 ### Agent-Specific Sections
 
@@ -95,7 +95,7 @@ The `override` key is removed from the output. Keys from `override[agentId]` rep
 
 **Source:** `.agloom/commands/` directory (recursive, including subdirectories)
 
-**Operation:** Transforms command definitions -- parses YAML frontmatter, applies per-agent override fields, filters agent-specific sections in the Markdown body. Same transformation mechanism as the agents transpiler.
+**Operation:** Transforms command definitions — parses YAML frontmatter, applies per-agent override fields, filters agent-specific sections in the Markdown body. Same transformation mechanism as the agents transpiler.
 
 ### Canonical Format
 
@@ -103,8 +103,8 @@ A command is a single `.md` file in `.agloom/commands/` with YAML frontmatter an
 
 The command name is derived from the file path relative to the commands directory, without the `.md` extension:
 
-- `commands/deploy.md` -- name: `deploy`
-- `commands/git/commit.md` -- name: `git/commit`
+- `commands/deploy.md` — name: `deploy`
+- `commands/git/commit.md` — name: `git/commit`
 
 ### Frontmatter Override
 
@@ -155,7 +155,7 @@ When flattening, if files from different subdirectories have the same filename, 
 
 **Source:** `.agloom/skills/<name>/` directories
 
-**Operation:** Copies skill packages (directory with `SKILL.md` and supporting files) into agent-specific skill directories. No content transformation -- files are copied as-is, except `.md` files undergo interpolation when variables are provided.
+**Operation:** Copies skill packages (directory with `SKILL.md` and supporting files) into agent-specific skill directories. No content transformation — files are copied as-is, except `.md` files undergo interpolation when variables are provided.
 
 ### Canonical Format
 
@@ -165,14 +165,14 @@ A skill is a directory in `.agloom/skills/<name>/` containing a `SKILL.md` file 
 
 Skills are copied to the adapter's `paths.skills` directory:
 
-| Adapter    | Output Directory             |
-| ---------- | ---------------------------- |
-| `claude`   | `.claude/skills/<name>/`     |
-| `opencode` | `.opencode/skills/<name>/`   |
-| `kilocode` | `.kilo/skills/<name>/`       |
-| `codex`    | `.agents/skills/<name>/`     |
-| `gemini`   | `.gemini/skills/<name>/`     |
-| `agentsmd` | _(no output -- empty paths)_ |
+| Adapter    | Output Directory            |
+| ---------- | --------------------------- |
+| `claude`   | `.claude/skills/<name>/`    |
+| `opencode` | `.opencode/skills/<name>/`  |
+| `kilocode` | `.kilo/skills/<name>/`      |
+| `codex`    | `.agents/skills/<name>/`    |
+| `gemini`   | `.gemini/skills/<name>/`    |
+| `agentsmd` | _(no output — empty paths)_ |
 
 ---
 
@@ -180,7 +180,7 @@ Skills are copied to the adapter's `paths.skills` directory:
 
 **Source:** `.agloom/agents/<name>.md` files
 
-**Operation:** Transforms agent definitions -- parses YAML frontmatter, applies per-agent override fields, filters agent-specific sections in the Markdown body. Same transformation mechanism as instructions transpiler (but without `allowedAgentIds` validation on agent-specific sections).
+**Operation:** Transforms agent definitions — parses YAML frontmatter, applies per-agent override fields, filters agent-specific sections in the Markdown body. Same transformation mechanism as instructions transpiler (but without `allowedAgentIds` validation on agent-specific sections).
 
 ### Frontmatter Override
 
@@ -209,7 +209,7 @@ Agents are copied to the adapter's `paths.agents` directory:
 | `kilocode` | `.kilo/agents/<name>.md`     |
 | `codex`    | `.codex/agents/<name>.md`    |
 | `gemini`   | `.gemini/agents/<name>.md`   |
-| `agentsmd` | _(no output -- empty paths)_ |
+| `agentsmd` | _(no output — empty paths)_  |
 
 ---
 
@@ -289,7 +289,7 @@ Each server entry supports:
 | `claude`   | `.mcp.json`     | `{ mcpServers: { ... } }` with tool filtering via `autoApprove`/`disabled` fields.    |
 | `opencode` | `opencode.json` | MCP servers in the `mcp` section. Tool filtering fields are stripped (not supported). |
 
-Only `.agloom/mcp.yml` or `.agloom/mcp.json` may exist -- not both simultaneously.
+Only `.agloom/mcp.yml` or `.agloom/mcp.json` may exist — not both simultaneously.
 
 ---
 
@@ -331,7 +331,7 @@ All sections are optional.
 | `claude`   | `.claude/settings.json` (permissions section) | First-match-wins semantics preserved.                    |
 | `opencode` | `opencode.json` (permission section)          | Rule order **inverted** (OpenCode uses last-match-wins). |
 
-Only `.agloom/permissions.yml` or `.agloom/permissions.json` may exist -- not both simultaneously.
+Only `.agloom/permissions.yml` or `.agloom/permissions.json` may exist — not both simultaneously.
 
 ---
 
@@ -343,12 +343,12 @@ The overlay step runs **after** all transpiler modules. It applies per-adapter o
 
 The strategy for each file is determined by its extension and naming:
 
-| Condition                                                              | Strategy                             |
-| ---------------------------------------------------------------------- | ------------------------------------ |
-| Has `.override` suffix (e.g., `settings.override.json`)                | **Override** -- full replacement.    |
-| Has `.patch` suffix + merge-eligible extension                         | **Patch** -- declarative operations. |
-| Merge-eligible extension (`.json`, `.jsonc`, `.yaml`, `.yml`, `.toml`) | **Overlay** -- deep merge.           |
-| All other extensions                                                   | **Override** -- full replacement.    |
+| Condition                                                              | Strategy                            |
+| ---------------------------------------------------------------------- | ----------------------------------- |
+| Has `.override` suffix (e.g., `settings.override.json`)                | **Override** — full replacement.    |
+| Has `.patch` suffix + merge-eligible extension                         | **Patch** — declarative operations. |
+| Merge-eligible extension (`.json`, `.jsonc`, `.yaml`, `.yml`, `.toml`) | **Overlay** — deep merge.           |
+| All other extensions                                                   | **Override** — full replacement.    |
 
 ### Interpolation in Overlays
 

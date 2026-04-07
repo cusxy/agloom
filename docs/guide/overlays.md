@@ -21,8 +21,8 @@ Overlays run **after** all transpiler steps (instructions, skills, agents, docs,
 Use overlays for adapter-specific configuration files that Agloom does not generate through its canonical format:
 
 - Claude Code settings (`settings.json`)
-- Claude Code slash commands
-- MCP configuration overrides
+- Claude Code only slash commands
+- MCP configuration overlays
 - OpenCode configuration files
 - Any tool-specific config that needs to be in a specific format
 
@@ -30,7 +30,7 @@ Use overlays for adapter-specific configuration files that Agloom does not gener
 
 To add a Claude Code `settings.json`, create the overlay file:
 
-```
+```text
 .agloom/overlays/claude/.claude/settings.json
 ```
 
@@ -45,9 +45,9 @@ To add a Claude Code `settings.json`, create the overlay file:
 
 When you run `agloom transpile`, this file is copied to `.claude/settings.json` in your project root.
 
-Another example -- a Claude Code slash command:
+Another example — a Claude Code slash command:
 
-```
+```text
 .agloom/overlays/claude/.claude/commands/deploy.md
 ```
 
@@ -63,7 +63,7 @@ When an overlay file targets a path that already has content from a previous lay
 - `.yaml`, `.yml`
 - `.toml`
 
-For these formats, Agloom performs a deep merge -- objects are merged recursively, and arrays are replaced.
+For these formats, Agloom performs a deep merge — objects are merged recursively, and arrays are replaced.
 
 **Full replacement** applies to everything else (`.md`, `.txt`, images, etc.). The overlay file completely replaces the existing file.
 
@@ -71,21 +71,21 @@ For these formats, Agloom performs a deep merge -- objects are merged recursivel
 
 Two special suffixes let you control the merge behavior:
 
-### `.override` -- Force Replacement
+### `.override` — Force Replacement
 
 Add `.override` before the file extension to force full replacement, even for merge-eligible formats:
 
-```
+```text
 .agloom/overlays/claude/.claude/settings.override.json
 ```
 
 This replaces the entire `settings.json` instead of deep-merging it.
 
-### `.patch` -- Patch Operations
+### `.patch` — Patch Operations
 
 Add `.patch` before the file extension to apply fine-grained modifications:
 
-```
+```text
 .agloom/overlays/claude/.claude/settings.patch.json
 ```
 

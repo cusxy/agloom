@@ -25,7 +25,7 @@ Agloom introduces a **canonical format** — a single `.agloom/` directory that 
 
 Think of it like Sass compiling to CSS, or TypeScript compiling to JavaScript. You write once, and Agloom produces the right output for each tool.
 
-```
+```text
 AGLOOM.md                   -->   CLAUDE.md, AGENTS.md, GEMINI.md
 
 .agloom/
@@ -85,7 +85,4 @@ In that case, editing the tool's native config files directly is simpler.
 - **[Skills and Agents](./skills-and-agents.md)** — Define reusable skills and sub-agent definitions once, ship them everywhere.
 - **[Variables and Interpolation](./variables.md)** — Reference environment variables, project paths, and plugin values from canonical files.
 - **[Plugins](./plugins.md)** — Package and share configurations across projects.
-
-<!-- TODO: Не хватает отдельной документации по форматированию и способам её настройки -->
-
-<!-- TODO: Необходимо настроить `agloom format` для корректного форматирования файлов в docs -->
+- **[Formatting](./formatting.md)** — Format and lint Markdown, JSON, YAML, and TOML files via `agloom format`.

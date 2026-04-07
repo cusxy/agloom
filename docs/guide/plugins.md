@@ -24,8 +24,7 @@ Add plugins to the `plugins` section of your `.agloom/config.yml`.
 
 Use a git URL (SSH or HTTPS):
 
-```yaml
-# .agloom/config.yml
+```yaml title=".agloom/config.yml"
 adapters:
   - claude
 plugins:
@@ -35,7 +34,7 @@ plugins:
 
 You can pin a specific ref (branch, tag, or commit) and point to a subdirectory within the repo:
 
-```yaml
+```yaml title=".agloom/config.yml"
 plugins:
   - git@github.com:user/my-plugin#v1.0.0
   - git@github.com:user/monorepo#main//packages/agloom-plugin
@@ -47,7 +46,7 @@ The `#ref` suffix specifies the git ref. The `//path` suffix specifies a subdire
 
 Use a relative path:
 
-```yaml
+```yaml title=".agloom/config.yml"
 plugins:
   - ../shared-plugin
 ```
@@ -56,7 +55,7 @@ plugins:
 
 For more control, use the object form:
 
-```yaml
+```yaml title=".agloom/config.yml"
 plugins:
   - git: git@github.com:user/my-plugin
     ref: v1.0.0
@@ -77,8 +76,7 @@ Plugins can declare variables that consumers must (or may) provide. Values are p
 
 For example, if a plugin declares a `team_name` variable:
 
-```yaml
-# In the plugin's plugin.yml
+```yaml title="plugin.yml"
 variables:
   team_name:
     description: "Team name for commit messages"
@@ -87,8 +85,7 @@ variables:
 
 You provide the value in your config:
 
-```yaml
-# .agloom/config.yml
+```yaml title=".agloom/config.yml"
 plugins:
   - git: git@github.com:user/team-plugin
     values:
@@ -97,7 +94,7 @@ plugins:
 
 Values can reference environment variables using `${env:VAR}`:
 
-```yaml
+```yaml title=".agloom/config.yml"
 plugins:
   - git: git@github.com:user/team-plugin
     values:
@@ -105,7 +102,7 @@ plugins:
       api_token: "${env:TEAM_API_TOKEN}"
 ```
 
-Sensitive variables (declared with `sensitive: true` in the plugin manifest) **must** use `${env:VAR}` -- inline values are rejected to prevent accidental commits of secrets.
+Sensitive variables (declared with `sensitive: true` in the plugin manifest) **must** use `${env:VAR}` — inline values are rejected to prevent accidental commits of secrets.
 
 See [Variables](variables.md) for more on how interpolation works.
 
@@ -113,8 +110,7 @@ See [Variables](variables.md) for more on how interpolation works.
 
 Step 1: Create a directory with a `plugin.yml` manifest:
 
-```yaml
-# my-plugin/plugin.yml
+```yaml title="my-plugin/plugin.yml"
 name: my-plugin
 version: 1.0.0
 description: "Shared coding conventions for our team"
@@ -125,7 +121,7 @@ author:
 
 Step 2: Add content using the same structure as `.agloom/`:
 
-```
+```title="my-plugin structure"
 my-plugin/
 ├── plugin.yml
 ├── skills/
@@ -141,8 +137,7 @@ my-plugin/
 
 Step 3: Optionally declare variables:
 
-```yaml
-# my-plugin/plugin.yml
+```yaml title="my-plugin/plugin.yml"
 name: my-plugin
 version: 1.0.0
 description: "Shared coding conventions"
@@ -179,4 +174,4 @@ agloom cache clean
 
 Plugins go through the same transpilation pipeline as your local `.agloom/` content. Their instructions, skills, agents, docs, schemas, and overlays are merged into the final output.
 
-The merge order follows the plugin declaration order in `config.yml`. Plugins listed first have lower priority -- later plugins and the local project can override earlier ones. The local project always has the highest priority.
+The merge order follows the plugin declaration order in `config.yml`. Plugins listed first have lower priority — later plugins and the local project can override earlier ones. The local project always has the highest priority.

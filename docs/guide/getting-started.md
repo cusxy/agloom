@@ -54,7 +54,7 @@ This creates a `config.yml` and copies any existing Claude Code files (`CLAUDE.m
 agloom init --adapter codex
 ```
 
-This creates a `config.yml` and copies any existing Codex files (`AGENTS.md`, `.codex/`, `.agents/`) into `.agloom/overlays/`.
+This creates a `config.yml` and copies any existing Codex files (`AGENTS.md`, `.codex/`, `.agents/`) into `.agloom/overlays/codex` so they are preserved as overlays.
 
 </TabItem>
 <TabItem value="gemini" label="Gemini">
@@ -63,7 +63,7 @@ This creates a `config.yml` and copies any existing Codex files (`AGENTS.md`, `.
 agloom init --adapter gemini
 ```
 
-This creates a `config.yml` and copies any existing Gemini files (`GEMINI.md`, `.gemini/`) into `.agloom/overlays/gemini/`.
+This creates a `config.yml` and copies any existing Gemini files (`GEMINI.md`, `.gemini/`) into `.agloom/overlays/gemini/` so they are preserved as overlays.
 
 </TabItem>
 <TabItem value="opencode" label="OpenCode">
@@ -72,7 +72,7 @@ This creates a `config.yml` and copies any existing Gemini files (`GEMINI.md`, `
 agloom init --adapter opencode
 ```
 
-This creates a `config.yml` and copies any existing OpenCode files (`AGENTS.md`, `.opencode/`, `opencode.json`) into `.agloom/overlays/`.
+This creates a `config.yml` and copies any existing OpenCode files (`AGENTS.md`, `.opencode/`, `opencode.json`) into `.agloom/overlays/opencode` so they are preserved as overlays.
 
 </TabItem>
 <TabItem value="kilocode" label="KiloCode">
@@ -81,7 +81,7 @@ This creates a `config.yml` and copies any existing OpenCode files (`AGENTS.md`,
 agloom init --adapter kilocode
 ```
 
-This creates a `config.yml` and copies any existing KiloCode files (`AGENTS.md`, `.kilo/`) into `.agloom/overlays/`.
+This creates a `config.yml` and copies any existing KiloCode files (`AGENTS.md`, `.kilo/`) into `.agloom/overlays/kilocode` so they are preserved as overlays.
 
 </TabItem>
 </Tabs>
@@ -179,17 +179,19 @@ Add `--verbose` to see all steps:
 agloom transpile --verbose
 ```
 
-```
+```text
 ✓ Transpiling for claude...
-  ✓ Instructions         1 file
-  ✓ Skills               0 files
-  ✓ Agents               0 files
-  ✓ Docs                 0 files
-  ✓ Schemas              0 files
-  ✓ MCP                  0 files
-  ✓ Permissions          0 files
-  ✓ Overlay              0 files
-Done. 1 file written.
+  ✓ Instructions     1 files
+  ✓ Commands         0 files
+  ✓ Skills           0 files
+  ✓ Agents           0 files
+  ✓ MCP              0 files
+  ✓ Permissions      0 files
+  ✓ Docs             0 files
+  ✓ Schemas          0 files
+  ✓ Overlay          0 files
+
+Done. 1 files written.
 ```
 
 </TabItem>
@@ -203,15 +205,18 @@ Add `--verbose` to see all steps:
 agloom transpile --verbose
 ```
 
-```
+```text
 ✓ Transpiling for agentsmd...
-  ✓ Instructions         1 file
+  ✓ Instructions     1 files
+  ✓ Overlay          0 files
 ✓ Transpiling for codex...
-  ✓ Instructions         0 files
-  ✓ Skills               0 files
-  ✓ Agents               0 files
-  ✓ Overlay              0 files
-Done. 1 file written.
+  ✓ Instructions     0 files
+  ✓ Commands         0 files
+  ✓ Skills           0 files
+  ✓ Agents           0 files
+  ✓ Overlay          0 files
+
+Done. 1 files written.
 ```
 
 </TabItem>
@@ -225,15 +230,17 @@ Add `--verbose` to see all steps:
 agloom transpile --verbose
 ```
 
-```
+```text
 ✓ Transpiling for gemini...
-  ✓ Instructions         1 file
-  ✓ Skills               0 files
-  ✓ Agents               0 files
-  ✓ Docs                 0 files
-  ✓ Schemas              0 files
-  ✓ Overlay              0 files
-Done. 1 file written.
+  ✓ Instructions     1 files
+  ✓ Commands         0 files
+  ✓ Skills           0 files
+  ✓ Agents           0 files
+  ✓ Docs             0 files
+  ✓ Schemas          0 files
+  ✓ Overlay          0 files
+
+Done. 1 files written.
 ```
 
 </TabItem>
@@ -247,17 +254,22 @@ Add `--verbose` to see all steps:
 agloom transpile --verbose
 ```
 
-```
+```text
 ✓ Transpiling for agentsmd...
-  ✓ Instructions         1 file
+  ✓ Instructions     1 files
+  ✓ Overlay          0 files
 ✓ Transpiling for opencode...
-  ✓ Instructions         0 files
-  ✓ Skills               0 files
-  ✓ Agents               0 files
-  ✓ MCP                  0 files
-  ✓ Permissions          0 files
-  ✓ Overlay              0 files
-Done. 1 file written.
+  ✓ Instructions     0 files
+  ✓ Commands         0 files
+  ✓ Skills           0 files
+  ✓ Agents           0 files
+  ✓ MCP              0 files
+  ✓ Permissions      0 files
+  ✓ Docs             0 files
+  ✓ Schemas          0 files
+  ✓ Overlay          0 files
+
+Done. 1 files written.
 ```
 
 </TabItem>
@@ -271,15 +283,20 @@ Add `--verbose` to see all steps:
 agloom transpile --verbose
 ```
 
-```
+```text
 ✓ Transpiling for agentsmd...
-  ✓ Instructions         1 file
+  ✓ Instructions     1 files
+  ✓ Overlay          0 files
 ✓ Transpiling for kilocode...
-  ✓ Instructions         0 files
-  ✓ Skills               0 files
-  ✓ Agents               0 files
-  ✓ Overlay              0 files
-Done. 1 file written.
+  ✓ Instructions     0 files
+  ✓ Commands         0 files
+  ✓ Skills           0 files
+  ✓ Agents           0 files
+  ✓ Docs             0 files
+  ✓ Schemas          0 files
+  ✓ Overlay          0 files
+
+Done. 1 files written
 ```
 
 </TabItem>

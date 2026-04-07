@@ -36,19 +36,21 @@ description: Reviews code changes for quality and conventions
 
 Review the provided code changes for:
 
-1. Correctness -- does the code do what it claims?
-2. Style -- does it follow project conventions?
-3. Tests -- are new features covered by tests?
-4. Security -- are there any obvious vulnerabilities?
+1. Correctness — does the code do what it claims?
+2. Style — does it follow project conventions?
+3. Tests — are new features covered by tests?
+4. Security — are there any obvious vulnerabilities?
 
 Provide feedback as a numbered list of findings.
 ```
 
-The frontmatter fields (`name`, `description`, etc.) are passed through to each adapter without modification. Agloom does not validate or transform skill content -- it copies files as-is (with interpolation for `.md` files; see [Variables](variables.md)).
+Markdown files inside a skill package (`SKILL.md` and any supporting
+`.md` files) support variable interpolation, agent-specific blocks, and a
+frontmatter `override` block for per-adapter customization.
 
 Step 3: Optionally add supporting files:
 
-```
+```text
 .agloom/skills/code-review/
 ├── SKILL.md
 ├── checklist.md
@@ -60,7 +62,7 @@ All files in the skill directory are copied to the output.
 
 Step 4: Run `agloom transpile`. The skill appears in each adapter's directory:
 
-```
+```text
 .claude/skills/code-review/SKILL.md
 .claude/skills/code-review/checklist.md
 .claude/skills/code-review/examples/good-review.md
@@ -104,7 +106,7 @@ The `override` block lets you customize frontmatter fields per adapter. In this 
 
 Step 2: Run `agloom transpile`. The agent file appears in each adapter's directory:
 
-```
+```text
 .claude/agents/reviewer.md
 .opencode/agents/reviewer.md
 ```
@@ -130,15 +132,15 @@ Deploy the current branch to production environment.
 Verify all tests pass before deploying.
 ```
 
-The frontmatter fields are passed through to each adapter. Agloom does not validate or interpret command-specific fields like `description` -- the target agent defines what fields are meaningful.
+The frontmatter fields are passed through to each adapter. Agloom does not validate or interpret command-specific fields like `description` — the target agent defines what fields are meaningful.
 
 Step 2: Run `agloom transpile`. The command appears in each adapter's commands directory:
 
-```
+```text
 .claude/commands/deploy.md
-.opencode/commands/deploy.md
-.kilo/commands/deploy.md
 .gemini/commands/deploy.toml
+.kilo/commands/deploy.md
+.opencode/commands/deploy.md
 ```
 
 Note that Gemini receives a `.toml` file (converted automatically) and Codex receives a skill package in `.agents/skills/deploy/SKILL.md` (since Codex does not support commands natively).
@@ -147,7 +149,7 @@ Note that Gemini receives a `.toml` file (converted automatically) and Codex rec
 
 You can organize commands into subdirectories:
 
-```
+```text
 .agloom/commands/
 ├── deploy.md
 └── git/
@@ -214,10 +216,10 @@ Not all adapters support skills, agents, and commands:
 | Adapter    | Skills | Agents | Commands        |
 | ---------- | ------ | ------ | --------------- |
 | `claude`   | Yes    | Yes    | Yes             |
-| `opencode` | Yes    | Yes    | Yes             |
-| `kilocode` | Yes    | Yes    | Yes             |
 | `codex`    | Yes    | Yes    | Yes (as skills) |
 | `gemini`   | Yes    | Yes    | Yes (TOML)      |
+| `opencode` | Yes    | Yes    | Yes             |
+| `kilocode` | Yes    | Yes    | Yes             |
 | `agentsmd` | No     | No     | No              |
 
 The `agentsmd` adapter only handles instruction files (`AGENTS.md`). It does not have its own skills, agents, or commands directories. The `codex` adapter converts commands into skill packages (`.agents/skills/<name>/SKILL.md`) since Codex does not support commands natively. The `gemini` adapter converts commands from Markdown to TOML format.
@@ -226,7 +228,7 @@ The `agentsmd` adapter only handles instruction files (`AGENTS.md`). It does not
 
 Here is a realistic skill and agent working together.
 
-**Skill** -- `.agloom/skills/spec-review/SKILL.md`:
+**Skill** — `.agloom/skills/spec-review/SKILL.md`:
 
 ```markdown
 ---
@@ -246,7 +248,7 @@ Given a specification document, check for:
 Output a checklist with pass/fail for each criterion.
 ```
 
-**Agent** -- `.agloom/agents/spec-reviewer.md`:
+**Agent** — `.agloom/agents/spec-reviewer.md`:
 
 ```markdown
 ---

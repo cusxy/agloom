@@ -24,7 +24,7 @@ out/
 .env
 
 # Agloom (local instructions)
-AGLOOM.local.md
+AGLOOM.override.md
 
 # AGENTS.md generated
 AGENTS.md
@@ -40,14 +40,10 @@ CLAUDE.md
 !.agloom/**/CALUDE.md
 
 # Codex generated
-.codex/
 .agents/
-!.agloom/**/.codex
+.codex/
 !.agloom/**/.agents
-
-# Cursor generated
-.cursor/
-!.agloom/**/.cursor
+!.agloom/**/.codex
 
 # Gemini generated
 .gemini/
@@ -55,19 +51,25 @@ GEMINI.md
 !.agloom/**/.gemini
 !.agloom/**/GEMINI.md
 
-# KiloCode generated
-.kilocode/
-kilocode.json
-!.agloom/**/.kilocode
-!.agloom/**/kilocode.json
-
 # OpenCode generated
 .opencode/
 opencode.json
+opencode.jsonc
 !.agloom/**/.opencode
 !.agloom/**/opencode.json
+!.agloom/**/opencode.jsonc
+
+# KiloCode generated
+.kilo/
+kilo.json
+kilo.jsonc
+!.agloom/**/.kilo
+!.agloom/**/kilo.json
+!.agloom/**/kilo.jsonc
 
 # Docusaurus
 website/build/
 website/.docusaurus/
 website/node_modules/
+# Symlink so docusaurus-plugin-llms can find docs/ inside siteDir
+website/docs

@@ -12,7 +12,7 @@ The file `.agloom/config.yml` is the project-level configuration for Agloom. It 
 
 ## File Location
 
-```
+```text
 <projectRoot>/.agloom/config.yml
 ```
 
@@ -70,12 +70,12 @@ plugins:
       api_token: "${env:API_TOKEN}"
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `git` | string | Git URL (SSH or HTTPS). |
-| `path` | string | Local path (for local plugins) or subpath within git repo (for git plugins). |
-| `ref` | string | Git ref (tag, branch, commit SHA). Optional for git plugins. |
-| `values` | object | Key-value pairs passed to the plugin. All values must be strings. |
+| Field    | Type   | Description                                                                  |
+| -------- | ------ | ---------------------------------------------------------------------------- |
+| `git`    | string | Git URL (SSH or HTTPS).                                                      |
+| `path`   | string | Local path (for local plugins) or subpath within git repo (for git plugins). |
+| `ref`    | string | Git ref (tag, branch, commit SHA). Optional for git plugins.                 |
+| `values` | object | Key-value pairs passed to the plugin. All values must be strings.            |
 
 ### variables
 
@@ -107,12 +107,12 @@ variables:
 
 Each variable declaration supports:
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | string | `""` | Description of the variable. Optional in config (required in plugin manifests). |
-| `required` | boolean | `false` | If `true`, variable must have a resolved value. |
-| `default` | string | - | Default value. May contain `${env:VAR}` for environment variable substitution. |
-| `sensitive` | boolean | `false` | If `true`, the value must reference an environment variable (cannot be set inline). |
+| Field         | Type    | Default | Description                                                                         |
+| ------------- | ------- | ------- | ----------------------------------------------------------------------------------- |
+| `description` | string  | `""`    | Description of the variable. Optional in config (required in plugin manifests).     |
+| `required`    | boolean | `false` | If `true`, variable must have a resolved value.                                     |
+| `default`     | string  | -       | Default value. May contain `${env:VAR}` for environment variable substitution.      |
+| `sensitive`   | boolean | `false` | If `true`, the value must reference an environment variable (cannot be set inline). |
 
 ### prettier
 
@@ -144,17 +144,17 @@ markdownlint:
 
 The following conditions produce errors during config loading:
 
-| Condition | Error Message |
-|-----------|---------------|
-| `adapters` field missing | `Invalid config: 'adapters' field is required.` |
-| `adapters` is not an array of strings | `Invalid config: 'adapters' must be an array of strings.` |
-| `adapters` is empty | `Invalid config: 'adapters' must not be empty.` |
-| Unknown adapter ID | `Invalid config: unknown adapter '<id>'.` |
-| Hidden adapter specified | `Invalid config: adapter '<id>' cannot be specified in config.` |
-| `variables` is not an object | `Invalid config: 'variables' must be an object.` |
+| Condition                                   | Error Message                                                     |
+| ------------------------------------------- | ----------------------------------------------------------------- |
+| `adapters` field missing                    | `Invalid config: 'adapters' field is required.`                   |
+| `adapters` is not an array of strings       | `Invalid config: 'adapters' must be an array of strings.`         |
+| `adapters` is empty                         | `Invalid config: 'adapters' must not be empty.`                   |
+| Unknown adapter ID                          | `Invalid config: unknown adapter '<id>'.`                         |
+| Hidden adapter specified                    | `Invalid config: adapter '<id>' cannot be specified in config.`   |
+| `variables` is not an object                | `Invalid config: 'variables' must be an object.`                  |
 | Variable value is neither string nor object | `Invalid config: variable '<key>' must be a string or an object.` |
-| Plugin `values` is not an object | `Invalid config: plugin 'values' must be an object.` |
-| Plugin `values` entry is not a string | `Invalid config: plugin 'values' entry '<key>' must be a string.` |
+| Plugin `values` is not an object            | `Invalid config: plugin 'values' must be an object.`              |
+| Plugin `values` entry is not a string       | `Invalid config: plugin 'values' entry '<key>' must be a string.` |
 
 ## Complete Example
 

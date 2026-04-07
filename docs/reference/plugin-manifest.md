@@ -12,13 +12,13 @@ The plugin manifest (`plugin.yml`) defines metadata for an Agloom plugin. It mus
 
 ## File Location
 
-```
+```text
 <plugin-root>/plugin.yml
 ```
 
 ## Plugin Directory Structure
 
-```
+```text
 <plugin-root>/
   plugin.yml          # Manifest (required)
   AGLOOM.md           # Plugin instructions (optional)
@@ -41,7 +41,7 @@ The plugin directory mirrors the structure of `.agloom/` in a local project. A `
 #### name
 
 - **Type:** `string`
-- **Constraints:** Lowercase letters (`a-z`), digits (`0-9`), and hyphens (`-`). Must start with a letter, end with a letter or digit. No consecutive hyphens (`--`). Length: 1--214 characters.
+- **Constraints:** Lowercase letters (`a-z`), digits (`0-9`), and hyphens (`-`). Must start with a letter, end with a letter or digit. No consecutive hyphens (`--`). Length: 1-214 characters.
 - **Regex:** `^[a-z]([a-z0-9]|(-(?!-)))*[a-z0-9]$|^[a-z]$`
 
 ```yaml
@@ -78,11 +78,11 @@ description: "Shared ESLint configuration for agloom projects"
 
 - **Type:** `object`
 
-| Field | Type | Required | Constraints |
-|-------|------|----------|-------------|
-| `name` | string | Yes | Non-empty string. |
-| `email` | string | Yes | Non-empty string. |
-| `url` | string | No | Must be a valid URL (parseable by the `URL` constructor). |
+| Field   | Type   | Required | Constraints                                               |
+| ------- | ------ | -------- | --------------------------------------------------------- |
+| `name`  | string | Yes      | Non-empty string.                                         |
+| `email` | string | Yes      | Non-empty string.                                         |
+| `url`   | string | No       | Must be a valid URL (parseable by the `URL` constructor). |
 
 ```yaml
 author:
@@ -130,12 +130,12 @@ keywords:
 
 Declares variables that consumers can set via `values` in their `config.yml`. Each key is a variable name; each value is a `VariableDeclaration` object.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | string | **required** | Description of the variable. |
-| `required` | boolean | `false` | If `true`, the variable must be provided or have a default. |
-| `default` | string | - | Default value. May contain `${env:VAR}`. |
-| `sensitive` | boolean | `false` | If `true`, value must reference `${env:VAR}` (no inline secrets). |
+| Field         | Type    | Default      | Description                                                       |
+| ------------- | ------- | ------------ | ----------------------------------------------------------------- |
+| `description` | string  | **required** | Description of the variable.                                      |
+| `required`    | boolean | `false`      | If `true`, the variable must be provided or have a default.       |
+| `default`     | string  | -            | Default value. May contain `${env:VAR}`.                          |
+| `sensitive`   | boolean | `false`      | If `true`, value must reference `${env:VAR}` (no inline secrets). |
 
 ```yaml
 variables:
@@ -156,28 +156,28 @@ variables:
 
 ## Validation Rules
 
-| Condition | Error Message |
-|-----------|---------------|
-| `plugin.yml` not found | `Plugin manifest not found: <pluginDir>/plugin.yml` |
-| Invalid YAML | `Invalid plugin manifest: <parse error>` |
-| `name` missing | `Invalid plugin manifest: 'name' is required.` |
-| `name` invalid format | `Invalid plugin manifest: 'name' must contain only lowercase letters, digits, and hyphens...` |
-| `version` missing | `Invalid plugin manifest: 'version' is required.` |
-| `version` invalid semver | `Invalid plugin manifest: 'version' must be a valid semver string.` |
-| `description` missing | `Invalid plugin manifest: 'description' is required.` |
-| `description` not a non-empty string | `Invalid plugin manifest: 'description' must be a non-empty string.` |
-| `author` missing | `Invalid plugin manifest: 'author' is required.` |
-| `author` not an object | `Invalid plugin manifest: 'author' must be an object.` |
-| `author.name` missing or empty | `Invalid plugin manifest: 'author.name' must be a non-empty string.` |
-| `author.email` missing or empty | `Invalid plugin manifest: 'author.email' must be a non-empty string.` |
-| `author.url` invalid URL | `Invalid plugin manifest: 'author.url' must be a valid URL.` |
-| `license` not a non-empty string | `Invalid plugin manifest: 'license' must be a non-empty string.` |
-| `homepage` invalid URL | `Invalid plugin manifest: 'homepage' must be a valid URL.` |
-| `keywords` not an array | `Invalid plugin manifest: 'keywords' must be an array of strings.` |
-| Keyword not a non-empty string | `Invalid plugin manifest: each keyword must be a non-empty string.` |
-| `variables` not an object | `Invalid plugin manifest: 'variables' must be an object.` |
-| Variable not an object | `Invalid plugin manifest: variable '<key>' must be an object.` |
-| Variable `description` missing/empty | `Invalid plugin manifest: variable '<key>' must have a non-empty 'description'.` |
+| Condition                            | Error Message                                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `plugin.yml` not found               | `Plugin manifest not found: <pluginDir>/plugin.yml`                                           |
+| Invalid YAML                         | `Invalid plugin manifest: <parse error>`                                                      |
+| `name` missing                       | `Invalid plugin manifest: 'name' is required.`                                                |
+| `name` invalid format                | `Invalid plugin manifest: 'name' must contain only lowercase letters, digits, and hyphens...` |
+| `version` missing                    | `Invalid plugin manifest: 'version' is required.`                                             |
+| `version` invalid semver             | `Invalid plugin manifest: 'version' must be a valid semver string.`                           |
+| `description` missing                | `Invalid plugin manifest: 'description' is required.`                                         |
+| `description` not a non-empty string | `Invalid plugin manifest: 'description' must be a non-empty string.`                          |
+| `author` missing                     | `Invalid plugin manifest: 'author' is required.`                                              |
+| `author` not an object               | `Invalid plugin manifest: 'author' must be an object.`                                        |
+| `author.name` missing or empty       | `Invalid plugin manifest: 'author.name' must be a non-empty string.`                          |
+| `author.email` missing or empty      | `Invalid plugin manifest: 'author.email' must be a non-empty string.`                         |
+| `author.url` invalid URL             | `Invalid plugin manifest: 'author.url' must be a valid URL.`                                  |
+| `license` not a non-empty string     | `Invalid plugin manifest: 'license' must be a non-empty string.`                              |
+| `homepage` invalid URL               | `Invalid plugin manifest: 'homepage' must be a valid URL.`                                    |
+| `keywords` not an array              | `Invalid plugin manifest: 'keywords' must be an array of strings.`                            |
+| Keyword not a non-empty string       | `Invalid plugin manifest: each keyword must be a non-empty string.`                           |
+| `variables` not an object            | `Invalid plugin manifest: 'variables' must be an object.`                                     |
+| Variable not an object               | `Invalid plugin manifest: variable '<key>' must be an object.`                                |
+| Variable `description` missing/empty | `Invalid plugin manifest: variable '<key>' must have a non-empty 'description'.`              |
 
 ## Complete Example
 
