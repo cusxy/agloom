@@ -1,0 +1,43 @@
+---
+const features = [
+  {
+    title: "One canonical file",
+    description:
+      "Write your project instructions once in AGLOOM.md and generate CLAUDE.md, AGENTS.md, GEMINI.md and more from the same source.",
+  },
+  {
+    title: "Multi-agent adapters",
+    description:
+      "Built-in adapters for Claude Code, OpenCode, Codex, Gemini, KiloCode and the shared AGENTS.md format.",
+  },
+  {
+    title: "Skills, agents and commands",
+    description:
+      "Author reusable skills, sub-agents and slash commands in .agloom/ and ship them to every supported tool with one command.",
+  },
+  {
+    title: "Overlays preserve your existing setup",
+    description:
+      "Existing CLAUDE.md, .claude/, AGENTS.md and similar files are kept as overlays so adoption is non-destructive.",
+  },
+  {
+    title: "Format and lint built in",
+    description:
+      "agloom format normalises Markdown, JSON, YAML and TOML in your .agloom/ directory so canonical files stay clean.",
+  },
+];
+---
+
+<section data-section="features">
+  <h2>Built for multi-agent workflows</h2>
+  <ul data-role="feature-grid">
+    {
+      features.map((feature) => (
+        <li data-role="feature">
+          <h3>{feature.title}</h3>
+          <p>{feature.description}</p>
+        </li>
+      ))
+    }
+  </ul>
+</section>

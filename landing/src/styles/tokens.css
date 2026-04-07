@@ -1,0 +1,35 @@
+:root {
+  --color-bg: #0a0b0f;
+  --color-bg-elevated: #0e0f14;
+  --color-fg: #c5c8d1;
+  --color-fg-muted: #7a7e8c;
+  --color-accent: #6b8caf;
+  --color-accent-hover: #88a4c4;
+  --color-border: #1c1e26;
+  --color-code-bg: #11131a;
+
+  --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", "Menlo", "Consolas", monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
+
+  --tracking-body: 0.01em;
+  --tracking-display: 0.04em;
+  --leading-body: 1.6;
+  --leading-display: 1.15;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 3rem;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+}

@@ -1,0 +1,22 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Hero from "../components/Hero.astro";
+import InstallSnippet from "../components/InstallSnippet.astro";
+import Features from "../components/Features.astro";
+import CTA from "../components/CTA.astro";
+import Footer from "../components/Footer.astro";
+
+const title = "Agloom — Transpile AI agent configurations";
+const description =
+  "Agloom transpiles canonical agent configurations into the formats expected by Claude Code, OpenCode, Codex, Gemini, KiloCode and Agents.md — from a single AGLOOM.md.";
+---
+
+<BaseLayout title={title} description={description}>
+  <main>
+    <Hero />
+    <InstallSnippet />
+    <Features />
+    <CTA />
+    <Footer />
+  </main>
+</BaseLayout>

@@ -1,0 +1,33 @@
+---
+import { Code } from "astro:components";
+
+const command = "npm install -g agloom";
+---
+
+<section data-section="install">
+  <h2>Install</h2>
+  <Code code={command} lang="bash" />
+  <code data-role="install-fallback">npm install -g agloom</code>
+  <button data-role="copy" data-clipboard-text="npm install -g agloom" type="button">Copy</button>
+</section>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('button[data-role="copy"]');
+  buttons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      const text = button.getAttribute("data-clipboard-text") ?? "";
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          await navigator.clipboard.writeText(text);
+          const original = button.textContent;
+          button.textContent = "Copied";
+          window.setTimeout(() => {
+            button.textContent = original;
+          }, 1500);
+        }
+      } catch {
+        // Clipboard API unavailable or denied — leave the command selectable.
+      }
+    });
+  });
+</script>
