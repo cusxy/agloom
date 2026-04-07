@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" color="#e8ebf5" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-label="agloom">
+  <!-- warp threads -->
+  <line x1="9"  y1="5" x2="9"  y2="23" />
+  <line x1="16" y1="5" x2="16" y2="23" />
+  <line x1="23" y1="5" x2="23" y2="23" />
+  <!-- weft thread weaving through -->
+  <path d="M4 14 Q9 11 16 14 T28 14" />
+  <!-- horizon -->
+  <line x1="4" y1="27" x2="28" y2="27" />
+</svg>
