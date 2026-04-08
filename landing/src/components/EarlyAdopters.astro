@@ -1,0 +1,68 @@
+---
+// base64("cusxies@gmail.com")
+const encoded = "Y3VzeGllc0BnbWFpbC5jb20=";
+---
+
+<aside class="early-adopters" aria-label="Early adopters">
+  <p>
+    <span class="early-adopters__label">Early adopters</span>
+    we'd love to hear how Agloom is working for your team.
+    <a
+      href="#"
+      class="obfuscated-email early-adopters__link"
+      data-e={encoded}
+    >Reach out →</a>
+  </p>
+</aside>
+
+<script>
+  document.querySelectorAll<HTMLAnchorElement>(".obfuscated-email").forEach((a) => {
+    const encoded = a.dataset.e;
+    if (encoded) a.href = "mailto:" + atob(encoded);
+  });
+</script>
+
+<style>
+  .early-adopters {
+    border-top: 1px solid var(--color-rule);
+    border-bottom: 1px solid var(--color-rule);
+    padding: var(--space-4) 0;
+    background: rgba(6, 8, 16, 0.35);
+  }
+  .early-adopters p {
+    margin: 0;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-fg-muted);
+  }
+  .early-adopters__label {
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-mono-tag);
+    color: var(--color-fg);
+    margin-right: var(--space-2);
+  }
+  .early-adopters__sep {
+    margin: 0 var(--space-2);
+    color: var(--color-rule);
+  }
+  .early-adopters__link {
+    margin-left: var(--space-3);
+    color: var(--color-accent);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .early-adopters__link:hover {
+    color: var(--color-accent-hover);
+  }
+  @media (max-width: 640px) {
+    .early-adopters p {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .early-adopters__sep {
+      display: none;
+    }
+  }
+</style>

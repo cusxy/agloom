@@ -1,0 +1,400 @@
+---
+const layers = [
+  { n: "4", label: "Local project", detail: "AGLOOM.md, .agloom/", priority: "highest" },
+  { n: "3", label: "plugin: acme/android-stack", detail: "@main" },
+  { n: "2", label: "plugin: acme/conventions", detail: "@v1.2.0" },
+  { n: "1", label: "plugin: acme/base", detail: "@v3.1.0", priority: "lowest" },
+];
+
+type Src = "1" | "2" | "3" | "4";
+type MergeRow = { text: string; src?: Src };
+const mergedSettings: MergeRow[] = [
+  { text: "{" },
+  { text: '  "permissions": {', src: "1" },
+  { text: '    "allow": [', src: "1" },
+  { text: '      "Read", "Grep",', src: "1" },
+  { text: '      "Bash(git log:*)",', src: "2" },
+  { text: '      "Bash(./gradlew:*)"', src: "3" },
+  { text: "    ],", src: "1" },
+  { text: '    "deny": ["Bash(rm -rf:*)"]', src: "1" },
+  { text: "  },", src: "1" },
+  { text: '  "hooks": {', src: "3" },
+  { text: '    "PostToolUse": [{ "matcher": "Edit", … }]', src: "3" },
+  { text: "  },", src: "3" },
+  { text: '  "env": { "PROJECT_NAME": "billing-service" }', src: "4" },
+  { text: "}" },
+];
+---
+
+<section class="teams" data-section="for-teams">
+  <header class="teams__head">
+    <p class="eyebrow">For teams</p>
+    <h2 class="teams__title">
+      Built for enterprise teams.<br />
+      Scaling AI tooling across the entire organization.
+    </h2>
+  </header>
+
+  <div class="teams__copy">
+    <p class="teams__body">
+      Agloom was designed around the assumption that engineering
+      organisations don't have one repo — they have dozens, sometimes
+      hundreds. The plugin system turns shared conventions into a
+      versioned dependency you publish once, pin per repo, and roll out
+      across your fleet.
+    </p>
+
+    <ol class="teams__list">
+      <li>
+        <h3>One canonical source per repo.</h3>
+        <p>
+          Every developer sees the same instructions, skills, and
+          sub-agents — no matter which assistant they run today. Drift
+          between <code>CLAUDE.md</code> and <code>AGENTS.md</code>
+          becomes structurally impossible because both files are
+          generated from the same source.
+        </p>
+      </li>
+      <li>
+        <h3>Reusable plugins across the fleet.</h3>
+        <p>
+          Package your team's conventions, review checklists, and
+          deployment skills as plugins. Each project references the plugins it needs
+          from <code>config.yml</code> and pins a version. Publish a new
+          tag to roll updates out across the fleet; keep laggards on the
+          old version until they're ready to migrate.
+        </p>
+      </li>
+      <li>
+        <h3>Project-scoped, never machine-scoped.</h3>
+        <p>
+          Agloom only reads from and writes to your project directory.
+          It never touches <code>~/.claude/</code>, <code>~/.codex/</code>,
+          or any global config. Reproducible across developer machines,
+          CI runners, and contractor laptops.
+        </p>
+      </li>
+    </ol>
+  </div>
+
+  <aside class="teams__visual" aria-label="Plugin layering">
+    <div class="stack">
+      {layers.map((layer) => (
+        <div class="layer">
+          <span class="layer__n">{layer.n}</span>
+          <div class="layer__body">
+            <span class="layer__label">{layer.label}</span>
+            <span class="layer__detail">{layer.detail}</span>
+          </div>
+          {layer.priority && <span class="layer__priority">{layer.priority}</span>}
+        </div>
+      ))}
+    </div>
+    <div class="stack__arrow" aria-hidden="true">
+      <span class="stack__arrow-line"></span>
+      <span class="stack__arrow-label">agloom transpile</span>
+      <span class="stack__arrow-line"></span>
+    </div>
+    <div class="merge" aria-label="Merged settings.json">
+      <div class="merge__head">
+        <span class="merge__label">Merged</span>
+        <span class="merge__path">.claude/settings.json</span>
+      </div>
+      <pre class="merge__body">{mergedSettings.map((r) => (
+        <div class={r.src ? `mrow mrow--s${r.src}` : "mrow"}>
+          <span class="mrow__text">{r.text}</span>
+          {r.src && <span class="mrow__src">{r.src}</span>}
+        </div>
+      ))}</pre>
+    </div>
+    <p class="stack__caption">
+      Every key is traceable to the layer that contributed it. Later layers override earlier ones by key, with <a href="https://docs.agloom.sh/docs/reference/transpilers#overlay-step">deep-merge</a> for objects and replace for arrays — with opt-in <a href="https://docs.agloom.sh/docs/reference/patch-operations">patch operations</a>.
+    </p>
+  </aside>
+</section>
+
+<style>
+  .teams {
+    padding: var(--space-20) 0 var(--space-6);
+    display: grid;
+    grid-template-columns: minmax(0, 6fr) minmax(0, 6fr);
+    column-gap: var(--space-12);
+    row-gap: var(--space-6);
+    align-items: start;
+  }
+  .teams__head {
+    grid-column: 1 / -1;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .teams__copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 56ch;
+  }
+  .eyebrow {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .eyebrow::before {
+    content: "";
+    width: 24px;
+    height: 1px;
+    background: var(--color-accent);
+  }
+  .teams__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    line-height: 1.05;
+    letter-spacing: var(--tracking-display);
+    color: var(--color-fg);
+    max-width: 100%;
+    text-wrap: balance;
+  }
+  .teams__body {
+    margin: 0;
+    font-family: var(--font-mono);
+    color: var(--color-fg-muted);
+    font-size: var(--text-sm);
+    line-height: 1.7;
+  }
+  .teams__list {
+    list-style: none;
+    counter-reset: step;
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .teams__list li {
+    position: relative;
+    padding-left: var(--space-12);
+    counter-increment: step;
+  }
+  .teams__list li::before {
+    content: counter(step, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 2px;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-accent);
+    letter-spacing: var(--tracking-mono-tag);
+  }
+  .teams__list h3 {
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--text-lg);
+    line-height: 1.2;
+    color: var(--color-fg);
+  }
+  .teams__list p {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    line-height: 1.7;
+    color: var(--color-fg-muted);
+  }
+
+  .teams__visual {
+    position: sticky;
+    top: var(--space-8);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+    padding: var(--space-8);
+    background: rgba(10, 11, 15, 0.7);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(8px);
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .layer {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    background: rgba(17, 19, 26, 0.8);
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    position: relative;
+  }
+  .layer:nth-child(1) {
+    background: linear-gradient(90deg, rgba(122, 155, 212, 0.22), rgba(122, 155, 212, 0.08));
+    border-color: rgba(122, 155, 212, 0.35);
+  }
+  .layer:nth-child(2) { background: rgba(196, 161, 129, 0.15); border-color: rgba(196, 161, 129, 0.28); }
+  .layer:nth-child(3) { background: rgba(112, 196, 184, 0.15); border-color: rgba(112, 196, 184, 0.28); }
+  .layer:nth-child(4) { background: rgba(168, 137, 212, 0.15); border-color: rgba(168, 137, 212, 0.28); }
+  .layer__n {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-accent);
+    letter-spacing: var(--tracking-mono-tag);
+    flex-shrink: 0;
+  }
+  .layer__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+  .layer__label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-fg);
+  }
+  .layer__detail {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    color: var(--color-fg-muted);
+  }
+  .layer__priority {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    color: var(--color-fg-muted);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .stack__arrow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+  }
+  .stack__arrow-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+  }
+  .stack__arrow-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-spark);
+  }
+
+  .merge {
+    background: rgba(6, 8, 16, 0.55);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .merge__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-rule);
+  }
+  .merge__label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg);
+  }
+  .merge__path {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--color-fg-muted);
+  }
+  .merge__body {
+    margin: 0;
+    padding: var(--space-3) 0;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1.7;
+    color: var(--color-fg);
+    overflow-x: auto;
+  }
+  .mrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: 1px var(--space-4) 1px calc(var(--space-4) - 3px);
+    border-left: 3px solid var(--color-rule);
+    background: rgba(122, 126, 140, 0.04);
+    white-space: pre;
+  }
+  .mrow__text {
+    white-space: pre;
+    color: var(--color-fg);
+  }
+  .mrow__src {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    color: var(--color-fg-muted);
+    letter-spacing: var(--tracking-mono-tag);
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+  .mrow--s1 {
+    border-left-color: #a889d4;
+    background: rgba(168, 137, 212, 0.08);
+  }
+  .mrow--s1 .mrow__text { color: #c4abe0; }
+  .mrow--s1 .mrow__src { color: #a889d4; opacity: 0.9; }
+  .mrow--s2 {
+    border-left-color: #70c4b8;
+    background: rgba(112, 196, 184, 0.08);
+  }
+  .mrow--s2 .mrow__text { color: #9bd4cb; }
+  .mrow--s2 .mrow__src { color: #70c4b8; opacity: 0.9; }
+  .mrow--s3 {
+    border-left-color: var(--color-warm);
+    background: rgba(196, 161, 129, 0.08);
+  }
+  .mrow--s3 .mrow__text { color: var(--color-warm); }
+  .mrow--s3 .mrow__src { color: var(--color-warm); opacity: 0.9; }
+  .mrow--s4 {
+    border-left-color: #7a9bd4;
+    background: rgba(122, 155, 212, 0.08);
+  }
+  .mrow--s4 .mrow__text { color: #a7bde0; }
+  .mrow--s4 .mrow__src { color: #7a9bd4; opacity: 0.9; }
+
+  .stack__caption {
+    margin: var(--space-3) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-fg-muted);
+    text-align: center;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 1100px) {
+    .teams {
+      grid-template-columns: 1fr;
+      column-gap: 0;
+      row-gap: var(--space-6);
+    }
+    .teams__head { grid-column: auto; }
+    .teams__copy, .teams__visual { max-width: none; }
+    .teams__visual { position: static; }
+  }
+</style>

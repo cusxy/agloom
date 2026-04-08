@@ -1,13 +1,273 @@
 ---
+const command = "npm install -g agloom";
+const docsHref = "https://docs.agloom.sh/";
+const githubHref = "https://github.com/cusxy/agloom";
 ---
 
-<section data-section="hero">
-  <span data-role="logo-slot" aria-hidden="true"></span>
-  <h1 class="wordmark">agloom</h1>
-  <p data-role="tagline">One source of truth for every AI coding assistant.</p>
-  <p data-role="lede">
-    Agloom transpiles canonical agent configurations into the formats expected
-    by Claude Code, OpenCode, Codex, Gemini, KiloCode and Agents.md — from a
-    single AGLOOM.md.
-  </p>
+<section class="hero">
+  <div class="hero__copy">
+    <h1 class="hero__headline">
+      Write once.<br />Ship to every agent.
+    </h1>
+
+    <p class="hero__lede">
+      Maintain a single <code>.agloom/</code> source of truth for your
+      instructions, skills, sub-agents, slash commands, permissions and
+      MCP servers. Run one command. Every supported assistant gets what
+      it reads natively.
+    </p>
+
+    <div class="hero__actions">
+      <a class="btn btn--ghost" href={githubHref} target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        Source on GitHub
+      </a>
+      <a class="btn btn--primary" href={docsHref} target="_blank" rel="noopener noreferrer">
+        Read the docs <span class="arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </div>
+
+  <aside class="install-window" aria-label="Install agloom">
+    <div class="install-window__bar">
+      <span class="dots" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </span>
+      <span class="install-window__title">~/your-project</span>
+    </div>
+    <div class="install-window__body">
+      <div class="row">
+        <span class="prompt" aria-hidden="true">$</span>
+        <code class="cmd">{command}</code>
+      </div>
+      <code data-role="install-fallback">{command}</code>
+    </div>
+    <div class="install-window__footer">
+      <span class="hint">macOS · Linux · Windows · Node ≥ 20</span>
+      <button
+        data-role="copy"
+        data-clipboard-text={command}
+        class="install-window__copy"
+        type="button"
+      >
+        Copy
+      </button>
+    </div>
+  </aside>
 </section>
+
+<script>
+  const copyButtons = document.querySelectorAll<HTMLButtonElement>('button[data-role="copy"]');
+  copyButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      const text = button.getAttribute("data-clipboard-text") ?? "";
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          await navigator.clipboard.writeText(text);
+          const original = button.textContent;
+          button.textContent = "Copied";
+          window.setTimeout(() => {
+            button.textContent = original;
+          }, 1500);
+        }
+      } catch {
+        // noop
+      }
+    });
+  });
+</script>
+
+<style>
+  .hero {
+    padding: var(--space-20) 0 var(--space-12);
+    display: grid;
+    grid-template-columns: minmax(0, 6fr) minmax(0, 6fr);
+    gap: var(--space-12);
+    align-items: center;
+  }
+
+  .hero__copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    max-width: 58ch;
+  }
+
+  .hero__headline {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(2rem, 3.6vw, 3.25rem);
+    line-height: 1.05;
+    letter-spacing: var(--tracking-display);
+    color: var(--color-fg);
+    text-wrap: balance;
+  }
+
+  .hero__lede {
+    margin: 0;
+    font-family: var(--font-mono);
+    color: var(--color-fg-muted);
+    font-size: var(--text-base);
+    line-height: 1.7;
+    max-width: 56ch;
+  }
+
+  .hero__lede code {
+    color: var(--color-fg);
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin-top: var(--space-2);
+  }
+
+  /* Install window — larger, macOS chrome with footer */
+  .install-window {
+    background:
+      linear-gradient(180deg, rgba(38, 28, 74, 0.28) 0%, rgba(17, 19, 26, 0.96) 80%),
+      var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 40px 80px -30px rgba(0, 0, 0, 0.95),
+      0 0 60px -20px rgba(107, 140, 175, 0.2);
+    backdrop-filter: blur(8px);
+    align-self: center;
+    justify-self: stretch;
+  }
+
+  .install-window__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-rule);
+    background: rgba(6, 8, 16, 0.55);
+  }
+
+  .install-window__bar .dots {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .install-window__bar .dots span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: block;
+  }
+
+  .install-window__bar .dots span:nth-child(1) { background: #ed6a5e; }
+  .install-window__bar .dots span:nth-child(2) { background: #f4bf4f; }
+  .install-window__bar .dots span:nth-child(3) { background: #61c554; }
+
+  .install-window__title {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+  }
+
+  .install-window__body {
+    padding: var(--space-8) var(--space-6);
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+
+  .install-window__body .row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .install-window__body .prompt {
+    color: var(--color-warm);
+    font-weight: 500;
+    user-select: none;
+  }
+
+  .install-window__body .cmd {
+    color: var(--color-spark);
+    background: transparent;
+    border: 0;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+  }
+
+  .install-window__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-rule);
+    background: rgba(6, 8, 16, 0.4);
+  }
+
+  .install-window__footer .hint {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+  }
+
+  .install-window__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background: rgba(10, 11, 15, 0.6);
+    color: var(--color-fg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      border-color 420ms var(--ease-out),
+      color 420ms var(--ease-out),
+      background 420ms var(--ease-out);
+  }
+
+  .install-window__copy:hover {
+    border-color: var(--color-accent);
+    color: var(--color-spark);
+    background: rgba(136, 164, 196, 0.08);
+  }
+
+  /* Responsive */
+  @media (max-width: 1020px) {
+    .hero {
+      grid-template-columns: 1fr;
+      gap: var(--space-10);
+      align-items: start;
+    }
+    .hero__copy {
+      max-width: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .hero { padding: var(--space-8) 0 var(--space-8); }
+    .install-window__body {
+      padding: var(--space-6) var(--space-4);
+      font-size: var(--text-sm);
+    }
+  }
+</style>

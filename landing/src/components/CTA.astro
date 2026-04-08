@@ -1,8 +1,175 @@
 ---
+const command = "npm install -g agloom";
 ---
 
-<section data-section="cta">
-  <h2>Get started in minutes.</h2>
-  <a href="https://docs.agloom.sh/" data-role="cta-docs">Read the docs</a>
-  <a href="https://github.com/cusxy/agloom" data-role="cta-github" rel="noopener">View on GitHub</a>
+<section class="cta" data-section="cta">
+  <h2 class="cta__title">Install Agloom and try it on your project.</h2>
+
+  <aside class="install-chip install-chip--cta" aria-label="Install agloom">
+    <div class="install-chip__bar">
+      <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span class="title">~/your-project</span>
+    </div>
+    <div class="install-chip__body">
+      <div class="row">
+        <span class="prompt" aria-hidden="true">$</span>
+        <code class="cmd">{command}</code>
+      </div>
+      <code data-role="install-fallback">{command}</code>
+    </div>
+    <div class="install-chip__footer">
+      <span class="hint">macOS · Linux · Windows · Node ≥ 20</span>
+      <button
+        data-role="copy"
+        data-clipboard-text={command}
+        class="install-chip__copy"
+        type="button"
+      >
+        Copy
+      </button>
+    </div>
+  </aside>
+
+  <div class="cta__links">
+    <a href="https://docs.agloom.sh/docs/guide/getting-started">Read the docs →</a>
+    <span class="cta__sep">·</span>
+    <a href="https://github.com/cusxy/agloom">View on GitHub →</a>
+  </div>
 </section>
+
+<style>
+  .cta {
+    padding: var(--space-20) 0 var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    align-items: center;
+    text-align: center;
+  }
+  .cta__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(1.75rem, 3vw, 2.75rem);
+    line-height: 1.05;
+    letter-spacing: var(--tracking-display);
+    color: var(--color-fg);
+    max-width: 22ch;
+    text-wrap: balance;
+  }
+  .install-chip--cta {
+    width: 100%;
+    max-width: 720px;
+    background:
+      linear-gradient(180deg, rgba(38, 28, 74, 0.28) 0%, rgba(17, 19, 26, 0.96) 80%),
+      var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 40px 80px -30px rgba(0, 0, 0, 0.95),
+      0 0 60px -20px rgba(107, 140, 175, 0.2);
+    backdrop-filter: blur(8px);
+  }
+  .install-chip__bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-rule);
+    background: rgba(6, 8, 16, 0.55);
+  }
+  .install-chip__bar .dots { display: inline-flex; gap: 6px; }
+  .install-chip__bar .dots span {
+    width: 10px; height: 10px; border-radius: 50%; display: block;
+  }
+  .install-chip__bar .dots span:nth-child(1) { background: #ed6a5e; }
+  .install-chip__bar .dots span:nth-child(2) { background: #f4bf4f; }
+  .install-chip__bar .dots span:nth-child(3) { background: #61c554; }
+  .install-chip__bar .title {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+    margin-left: auto;
+  }
+  .install-chip__body {
+    padding: var(--space-8) var(--space-6);
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    text-align: left;
+    overflow-x: auto;
+  }
+  .install-chip__body .row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .install-chip__body .prompt {
+    color: var(--color-warm);
+    font-weight: 500;
+    user-select: none;
+  }
+  .install-chip__body .cmd {
+    color: var(--color-spark);
+    background: transparent;
+    border: 0;
+    padding: 0;
+    font-size: inherit;
+    flex: 1;
+  }
+  .install-chip__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-rule);
+    background: rgba(6, 8, 16, 0.4);
+  }
+  .install-chip__footer .hint {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+  }
+  .install-chip__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background: rgba(10, 11, 15, 0.6);
+    color: var(--color-fg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      border-color 420ms var(--ease-out),
+      color 420ms var(--ease-out),
+      background 420ms var(--ease-out);
+  }
+  .install-chip__copy:hover {
+    border-color: var(--color-accent);
+    color: var(--color-spark);
+    background: rgba(136, 164, 196, 0.08);
+  }
+
+  .cta__links {
+    display: inline-flex;
+    gap: var(--space-4);
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+  }
+  .cta__sep { color: var(--color-rule); }
+</style>

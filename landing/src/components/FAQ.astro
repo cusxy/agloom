@@ -1,0 +1,169 @@
+---
+const qa = [
+  {
+    q: "Does Agloom replace Claude Code, Codex, Gemini, or OpenCode?",
+    a: "No. Agloom only generates the config files those tools read. Each assistant runs exactly the same way it does without Agloom — Agloom just makes sure their config files stay in sync with one canonical source. Install Agloom, uninstall it, switch assistants freely. The generated files are standard native configs.",
+  },
+  {
+    q: "Does Agloom touch global config like ~/.claude/, ~/.codex/, or ~/.config/gemini/?",
+    a: "Never. Agloom is strictly project-scoped. It only reads from and writes to your project directory. Your personal preferences, machine-wide tool settings, and home-directory configuration stay completely out of scope. Switching to Agloom in one project does not affect any other project or your global setup.",
+  },
+];
+---
+
+<section class="faq" data-section="faq">
+  <div class="faq__head">
+    <p class="eyebrow">FAQ</p>
+    <h2 class="faq__title">Questions you might have.</h2>
+  </div>
+  <div class="faq__list">
+    {qa.map((item) => (
+      <details class="faq__item">
+        <summary>
+          <span class="faq__q">{item.q}</span>
+          <span class="faq__icon" aria-hidden="true">+</span>
+        </summary>
+        <div class="faq__body">
+          <p class="faq__a">{item.a}</p>
+        </div>
+      </details>
+    ))}
+  </div>
+</section>
+
+<script>
+  const items = document.querySelectorAll<HTMLDetailsElement>(".faq__item");
+  items.forEach((item) => {
+    const summary = item.querySelector<HTMLElement>("summary");
+    const body = item.querySelector<HTMLElement>(".faq__body");
+    if (!summary || !body) return;
+
+    summary.addEventListener("click", (event) => {
+      event.preventDefault();
+      const isOpen = item.hasAttribute("open");
+
+      if (isOpen) {
+        // Animate close: fix current height, then transition to 0.
+        body.style.height = `${body.scrollHeight}px`;
+        requestAnimationFrame(() => {
+          body.style.height = "0px";
+        });
+        const onEnd = () => {
+          body.removeEventListener("transitionend", onEnd);
+          item.removeAttribute("open");
+          body.style.height = "";
+        };
+        body.addEventListener("transitionend", onEnd);
+      } else {
+        item.setAttribute("open", "");
+        body.style.height = "0px";
+        requestAnimationFrame(() => {
+          body.style.height = `${body.scrollHeight}px`;
+        });
+        const onEnd = () => {
+          body.removeEventListener("transitionend", onEnd);
+          body.style.height = "auto";
+        };
+        body.addEventListener("transitionend", onEnd);
+      }
+    });
+  });
+</script>
+
+<style>
+  .faq {
+    padding: var(--space-20) 0 var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+  .faq__head {
+    max-width: none;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .eyebrow {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .eyebrow::before {
+    content: "";
+    width: 24px;
+    height: 1px;
+    background: var(--color-accent);
+  }
+  .faq__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    line-height: 1.05;
+    letter-spacing: var(--tracking-display);
+    color: var(--color-fg);
+  }
+  .faq__list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .faq__item {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: rgba(10, 11, 15, 0.7);
+    backdrop-filter: blur(8px);
+    overflow: hidden;
+  }
+  .faq__item summary {
+    cursor: pointer;
+    list-style: none;
+    padding: var(--space-5) var(--space-6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+  .faq__item summary::-webkit-details-marker { display: none; }
+  .faq__q {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--text-base);
+    color: var(--color-fg);
+    line-height: 1.35;
+  }
+  .faq__icon {
+    font-family: var(--font-mono);
+    font-size: var(--text-lg);
+    color: var(--color-accent);
+    transition: transform 320ms var(--ease-out);
+    flex-shrink: 0;
+  }
+  .faq__item[open] .faq__icon {
+    transform: rotate(45deg);
+  }
+  .faq__body {
+    overflow: hidden;
+    height: 0;
+    transition: height 320ms var(--ease-out);
+  }
+  .faq__item[open] .faq__body {
+    height: auto;
+  }
+  .faq__a {
+    margin: 0;
+    padding: 0 var(--space-6) var(--space-5);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    line-height: 1.7;
+    color: var(--color-fg-muted);
+  }
+</style>

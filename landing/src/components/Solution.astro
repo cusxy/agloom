@@ -1,0 +1,674 @@
+---
+type Kind = "env" | "values" | "agloom" | "agent" | "override";
+type Row = { text: string; kind?: Kind };
+
+const canonical = `---
+name: release-manager
+description: Drives releases for \${env:PROJECT_NAME}
+model: zai-org/GLM-5-FP8
+override:
+  claude:
+    model: \${env:CLAUDE_DEFAULT_MODEL}
+  codex:
+    model: gpt-5-codex
+  gemini:
+    model: gemini-2.5-pro
+---
+
+You are the release manager for the \${values:team_name} team.
+
+## Release checklist
+
+1. Build the project: \`\${values:command_build}\`
+2. Run the test suite: \`\${values:command_test}\`
+3. Publish the package: \`\${values:command_publish}\`
+
+Runbooks live in \`\${agloom:DOCS_DIR}/release-notes/\`.
+
+<!-- agent:claude -->
+
+Use the \`Bash\` tool to execute each step. Before publishing, call
+\`AskUserQuestion\` to confirm the version and changelog with the human.
+
+<!-- /agent:claude -->
+
+<!-- agent:codex -->
+
+Commands run in the Codex sandbox. If a release step needs network
+access, request explicit approval before executing it.
+
+<!-- /agent:codex -->
+
+<!-- agent:gemini -->
+
+Use the \`run_shell_command\` tool for every step. After \`build\`,
+summarise the log in three lines or fewer before moving on to \`test\`.
+
+<!-- /agent:gemini -->`;
+
+function classifyCanonical(src: string): Row[] {
+  const lines = src.split("\n");
+  const rows: Row[] = [];
+  let inAgent = false;
+  let inOverride = false;
+  for (const line of lines) {
+    let kind: Kind | undefined;
+
+    if (/<!--\s*agent:[^/]/.test(line)) {
+      kind = "agent";
+      inAgent = true;
+    } else if (/<!--\s*\/agent:/.test(line)) {
+      kind = "agent";
+      inAgent = false;
+    } else if (inAgent) {
+      kind = "agent";
+    } else if (/^override:\s*$/.test(line)) {
+      kind = "override";
+      inOverride = true;
+    } else if (inOverride) {
+      if (line === "---" || (line.length > 0 && !/^\s/.test(line))) {
+        inOverride = false;
+      } else {
+        kind = "override";
+      }
+    }
+
+    if (!kind) {
+      if (line.includes("${env:")) kind = "env";
+      else if (line.includes("${values:")) kind = "values";
+      else if (line.includes("${agloom:")) kind = "agloom";
+    }
+
+    rows.push({ text: line, kind });
+  }
+  return rows;
+}
+
+const canonicalRows = classifyCanonical(canonical);
+
+const configRows: Row[] = [
+  { text: "adapters: [claude, codex, gemini, opencode]" },
+  { text: "" },
+  { text: "variables:" },
+  { text: '  team_name: "platform"', kind: "values" },
+  { text: '  command_build: "pnpm run build"', kind: "values" },
+  { text: '  command_test: "pnpm run test"', kind: "values" },
+  { text: '  command_publish: "pnpm publish --access public"', kind: "values" },
+];
+
+const envRows: Row[] = [
+  { text: "PROJECT_NAME=billing-service", kind: "env" },
+  { text: "CLAUDE_DEFAULT_MODEL=claude-opus-4-6", kind: "env" },
+];
+
+type Tab = {
+  id: string;
+  name: string;
+  model: string;
+  docsDir: string;
+  block?: string;
+};
+
+const adapters: Tab[] = [
+  {
+    id: "claude",
+    name: "Claude",
+    model: "claude-opus-4-6",
+    docsDir: ".claude/docs",
+    block: `Use the \`Bash\` tool to execute each step. Before publishing, call
+\`AskUserQuestion\` to confirm the version and changelog with the human.`,
+  },
+  {
+    id: "codex",
+    name: "Codex",
+    model: "gpt-5-codex",
+    docsDir: ".codex/docs",
+    block: `Commands run in the Codex sandbox. If a release step needs network
+access, request explicit approval before executing it.`,
+  },
+  {
+    id: "gemini",
+    name: "Gemini",
+    model: "gemini-2.5-pro",
+    docsDir: ".gemini/docs",
+    block: `Use the \`run_shell_command\` tool for every step. After \`build\`,
+summarise the log in three lines or fewer before moving on to \`test\`.`,
+  },
+  {
+    id: "opencode",
+    name: "OpenCode",
+    model: "zai-org/GLM-5-FP8",
+    docsDir: ".opencode/docs",
+  },
+];
+
+function buildOutputRows(t: Tab): Row[] {
+  const rows: Row[] = [];
+  rows.push({ text: "---" });
+  rows.push({ text: "name: release-manager" });
+  rows.push({
+    text: "description: Drives releases for billing-service",
+    kind: "env",
+  });
+  rows.push({
+    text: `model: ${t.model}`,
+    kind: t.model === "zai-org/GLM-5-FP8" ? undefined : "override",
+  });
+  rows.push({ text: "---" });
+  rows.push({ text: "" });
+  rows.push({
+    text: "You are the release manager for the platform team.",
+    kind: "values",
+  });
+  rows.push({ text: "" });
+  rows.push({ text: "## Release checklist" });
+  rows.push({ text: "" });
+  rows.push({ text: "1. Build the project: `pnpm run build`", kind: "values" });
+  rows.push({ text: "2. Run the test suite: `pnpm run test`", kind: "values" });
+  rows.push({
+    text: "3. Publish the package: `pnpm publish --access public`",
+    kind: "values",
+  });
+  rows.push({ text: "" });
+  rows.push({
+    text: `Runbooks live in \`${t.docsDir}/release-notes/\`.`,
+    kind: "agloom",
+  });
+  if (t.block) {
+    rows.push({ text: "" });
+    for (const line of t.block.split("\n")) {
+      rows.push({ text: line, kind: "agent" });
+    }
+  }
+  return rows;
+}
+
+const tabs = adapters.map((a) => ({ ...a, rows: buildOutputRows(a) }));
+
+const legend: { kind: Kind; label: string }[] = [
+  { kind: "env", label: "env" },
+  { kind: "values", label: "values" },
+  { kind: "agloom", label: "agloom" },
+  { kind: "override", label: "override" },
+  { kind: "agent", label: "agent block" },
+];
+
+function rowClass(r: Row) {
+  return r.kind ? `srow srow--${r.kind}` : "srow";
+}
+---
+
+<section class="solution" data-section="solution" aria-label="Interpolation demo">
+  <header class="solution__header">
+    <p class="eyebrow">Interpolation</p>
+    <h2 class="solution__title">
+      One canonical file.<br />Values resolved per agent at transpile time.
+    </h2>
+    <p class="solution__body">
+      Three namespaces of interpolation inside canonical files.
+      <code set:html="&#36;{env:VAR}" /> pulls from your <code>.env</code> and
+      process environment. <code set:html="&#36;{agloom:VAR}" /> expands
+      to agent-aware paths — <code>SKILLS_DIR</code> becomes
+      <code>.claude/skills</code> for Claude,
+      <code>.opencode/skills</code> for OpenCode.
+      <code set:html="&#36;{values:VAR}" /> reaches into plugin and
+      project variables declared in <code>config.yml</code>.
+      Agent-specific blocks and frontmatter overrides let each adapter
+      get exactly the instructions it needs.
+    </p>
+  </header>
+
+  <div class="demo">
+    <div class="demo__inputs">
+      <div class="demo__panel demo__panel--canonical">
+        <div class="demo__panel-head">
+          <span class="demo__panel-kind">.agloom/agents/release-manager.md</span>
+        </div>
+        <pre class="demo__code"><div class="srows">{canonicalRows.map((r) => (
+          <div class={rowClass(r)}><span class="srow__text">{r.text || " "}</span></div>
+        ))}</div></pre>
+      </div>
+
+      <div class="demo__panel">
+        <div class="demo__panel-head">
+          <span class="demo__panel-kind">.agloom/config.yml</span>
+        </div>
+        <pre class="demo__code demo__code--small"><div class="srows">{configRows.map((r) => (
+          <div class={rowClass(r)}><span class="srow__text">{r.text || " "}</span></div>
+        ))}</div></pre>
+      </div>
+
+      <div class="demo__panel">
+        <div class="demo__panel-head">
+          <span class="demo__panel-kind">.env</span>
+        </div>
+        <pre class="demo__code demo__code--small"><div class="srows">{envRows.map((r) => (
+          <div class={rowClass(r)}><span class="srow__text">{r.text || " "}</span></div>
+        ))}</div></pre>
+      </div>
+    </div>
+
+    <div class="demo__output">
+      <div class="demo__tabs" role="tablist" aria-label="Output adapters">
+        {tabs.map((t, i) => (
+          <button
+            type="button"
+            role="tab"
+            class={`demo__tab ${i === 0 ? "is-active" : ""}`}
+            data-sol-tab={t.id}
+            aria-selected={i === 0 ? "true" : "false"}
+            aria-controls={`sol-panel-${t.id}`}
+          >{t.name}</button>
+        ))}
+      </div>
+      <div class="demo__stage">
+        {tabs.map((t, i) => (
+          <pre
+            class={`demo__code demo__output-code ${i === 0 ? "is-active" : ""}`}
+            data-sol-panel={t.id}
+            id={`sol-panel-${t.id}`}
+            role="tabpanel"
+          ><div class="srows">{t.rows.map((r) => (
+            <div class={rowClass(r)}><span class="srow__text">{r.text || " "}</span></div>
+          ))}</div></pre>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <p class="solution__caption">
+    Learn how interpolation works end-to-end —
+    <a href="https://docs.agloom.sh/docs/guide/variables" target="_blank" rel="noopener noreferrer">variables guide →</a>
+  </p>
+</section>
+
+<script>
+  const solTabs = document.querySelectorAll<HTMLButtonElement>("[data-sol-tab]");
+  const solPanels = document.querySelectorAll<HTMLElement>("[data-sol-panel]");
+  solTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const id = tab.getAttribute("data-sol-tab");
+      solTabs.forEach((t) => {
+        const active = t === tab;
+        t.classList.toggle("is-active", active);
+        t.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      solPanels.forEach((p) => {
+        p.classList.toggle("is-active", p.getAttribute("data-sol-panel") === id);
+      });
+    });
+  });
+
+  const ROW_PADDING = 40; // 2 * var(--space-5), matches .srow horizontal padding + border
+
+  function measureContentWidth(pre: Element | null): number {
+    if (!pre) return 0;
+    const texts = pre.querySelectorAll<HTMLElement>(".srow__text");
+    let max = 0;
+    texts.forEach((t) => {
+      if (t.offsetWidth > max) max = t.offsetWidth;
+    });
+    return max > 0 ? max + ROW_PADDING : 0;
+  }
+
+  function updateSolBreakout() {
+    const demo = document.querySelector(".solution .demo") as HTMLElement | null;
+    const shell = document.querySelector(".shell") as HTMLElement | null;
+    if (!demo || !shell) return;
+
+    const shellRect = shell.getBoundingClientRect();
+    const outerGutter = 16;
+    const buffer = 0;
+    const leftSpace = Math.max(0, shellRect.left - outerGutter);
+    const rightSpace = Math.max(0, window.innerWidth - shellRect.right - outerGutter);
+    const available = Math.min(leftSpace, rightSpace);
+
+    const currentExtend =
+      parseFloat(demo.style.getPropertyValue("--sol-extend") || "0") || 0;
+
+    // Left column: max content width across all three input pres
+    const leftPres = demo.querySelectorAll(".demo__inputs .demo__code");
+    let leftContent = 0;
+    let leftBaseClient = 0;
+    leftPres.forEach((p) => {
+      leftContent = Math.max(leftContent, measureContentWidth(p));
+      const cw = (p as HTMLElement).clientWidth - currentExtend;
+      if (cw > leftBaseClient) leftBaseClient = cw;
+    });
+
+    // Right column: max content width across ALL output tabs (including hidden)
+    // so the extension stays constant when switching tabs.
+    const outputPres = demo.querySelectorAll(".demo__output-code");
+    let rightContent = 0;
+    let rightBaseClient = 0;
+    outputPres.forEach((p) => {
+      rightContent = Math.max(rightContent, measureContentWidth(p));
+      const cw = (p as HTMLElement).clientWidth - currentExtend;
+      if (cw > rightBaseClient) rightBaseClient = cw;
+    });
+
+    const leftOverflow = Math.max(0, leftContent - leftBaseClient);
+    const rightOverflow = Math.max(0, rightContent - rightBaseClient);
+
+    const needed = Math.max(leftOverflow, rightOverflow);
+    const extend = needed > 0 ? Math.min(needed + buffer, available) : 0;
+    demo.style.setProperty("--sol-extend", `${extend}px`);
+  }
+
+  function scheduleSolBreakout() {
+    requestAnimationFrame(() => requestAnimationFrame(updateSolBreakout));
+  }
+
+  window.addEventListener("resize", scheduleSolBreakout);
+
+  // Initial measurement must wait for webfonts — JetBrains Mono is wider/narrower
+  // than the fallback, so measuring before fonts load gives the wrong content width
+  // and the panels stay stuck in an over-extended state until the next resize.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(scheduleSolBreakout);
+  } else {
+    window.addEventListener("load", scheduleSolBreakout);
+  }
+
+  // Re-measure if any of the measured panels change size (e.g. tab switch in the
+  // output column swaps a different hidden pre, or the shell width shifts).
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(() => scheduleSolBreakout());
+    document.querySelectorAll(".solution .demo__code").forEach((p) => ro.observe(p));
+    const shellEl = document.querySelector(".shell");
+    if (shellEl) ro.observe(shellEl);
+  }
+</script>
+
+<style>
+  .solution {
+    padding: var(--space-20) 0 var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .solution__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: none;
+    width: 100%;
+  }
+  .eyebrow {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .eyebrow::before {
+    content: "";
+    width: 24px;
+    height: 1px;
+    background: var(--color-accent);
+  }
+  .solution__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    line-height: 1.05;
+    letter-spacing: var(--tracking-display);
+    color: var(--color-fg);
+    text-wrap: balance;
+  }
+  .solution__body {
+    margin: 0;
+    font-family: var(--font-mono);
+    color: var(--color-fg-muted);
+    font-size: var(--text-sm);
+    line-height: 1.7;
+  }
+  .solution__body code {
+    color: var(--color-fg);
+  }
+
+  .legend {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-5);
+  }
+  .legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+  }
+  .legend__swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border-left: 3px solid var(--color-rule);
+    background: rgba(122, 126, 140, 0.08);
+  }
+  .legend__item--env .legend__swatch {
+    border-left-color: var(--color-warm);
+    background: rgba(196, 161, 129, 0.18);
+  }
+  .legend__item--values .legend__swatch {
+    border-left-color: #7a9bd4;
+    background: rgba(122, 155, 212, 0.18);
+  }
+  .legend__item--agloom .legend__swatch {
+    border-left-color: #a889d4;
+    background: rgba(168, 137, 212, 0.18);
+  }
+  .legend__item--override .legend__swatch {
+    border-left-color: #d47a9b;
+    background: rgba(212, 122, 155, 0.18);
+  }
+  .legend__item--agent .legend__swatch {
+    border-left-color: #70c4b8;
+    background: rgba(112, 196, 184, 0.18);
+  }
+
+  .demo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: stretch;
+  }
+
+  .demo__inputs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+    margin-left: calc(-1 * var(--sol-extend, 0px));
+    width: calc(100% + var(--sol-extend, 0px));
+    transition: margin-left 320ms var(--ease-out), width 320ms var(--ease-out);
+  }
+
+  .demo__panel {
+    background: rgba(10, 11, 15, 0.75);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+  }
+  .demo__panel--canonical {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .demo__panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 var(--space-4);
+    min-height: 44px;
+    border-bottom: 1px solid var(--color-rule);
+    background: rgba(6, 8, 16, 0.4);
+  }
+  .demo__panel-kind {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg);
+  }
+
+  .demo__code {
+    margin: 0;
+    padding: var(--space-3) 0;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.75;
+    color: var(--color-fg);
+    overflow: auto;
+    flex: 1;
+    min-height: 0;
+  }
+  .demo__code--small {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    line-height: 1.65;
+  }
+
+  .srows {
+    display: inline-block;
+    min-width: 100%;
+    box-sizing: border-box;
+  }
+  .srow {
+    display: block;
+    padding: 1px var(--space-5) 1px calc(var(--space-5) - 3px);
+    border-left: 3px solid var(--color-rule);
+    background: rgba(122, 126, 140, 0.05);
+    white-space: pre;
+  }
+  .srow__text {
+    white-space: pre;
+    color: var(--color-fg);
+  }
+  .srow--env {
+    border-left-color: var(--color-warm);
+    background: rgba(196, 161, 129, 0.08);
+  }
+  .srow--env .srow__text { color: var(--color-warm); }
+  .srow--values {
+    border-left-color: #7a9bd4;
+    background: rgba(122, 155, 212, 0.08);
+  }
+  .srow--values .srow__text { color: #a7bde0; }
+  .srow--agloom {
+    border-left-color: #a889d4;
+    background: rgba(168, 137, 212, 0.08);
+  }
+  .srow--agloom .srow__text { color: #c4abe0; }
+  .srow--override {
+    border-left-color: #d47a9b;
+    background: rgba(212, 122, 155, 0.07);
+  }
+  .srow--override .srow__text { color: #e0a7bf; }
+  .srow--agent {
+    border-left-color: #70c4b8;
+    background: rgba(112, 196, 184, 0.07);
+  }
+  .srow--agent .srow__text { color: #9bd4cb; }
+
+  .demo__output {
+    background: rgba(10, 11, 15, 0.8);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(8px);
+    margin-right: calc(-1 * var(--sol-extend, 0px));
+    width: calc(100% + var(--sol-extend, 0px));
+    transition: margin-right 320ms var(--ease-out), width 320ms var(--ease-out);
+  }
+
+  .demo__tabs {
+    display: flex;
+    align-items: stretch;
+    min-height: 44px;
+    border-bottom: 1px solid var(--color-rule);
+    background: rgba(6, 8, 16, 0.55);
+  }
+  .demo__tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 var(--space-3);
+    background: transparent;
+    border: 0;
+    border-right: 1px solid var(--color-rule);
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    transition: color 380ms var(--ease-out), background 380ms var(--ease-out);
+    position: relative;
+    white-space: nowrap;
+  }
+  .demo__tab:last-child { border-right: 0; }
+  .demo__tab:hover { color: var(--color-fg); }
+  .demo__tab.is-active {
+    color: var(--color-spark);
+    background: rgba(38, 28, 74, 0.3);
+  }
+  .demo__tab.is-active::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px; height: 1px;
+    background: var(--color-accent);
+    box-shadow: 0 0 12px var(--color-accent);
+  }
+
+  .demo__stage {
+    position: relative;
+    flex: 1;
+    display: grid;
+    min-height: 0;
+  }
+  .demo__output-code {
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .demo__output-code.is-active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .solution__caption {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-fg-muted);
+    text-align: center;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 900px) {
+    .demo {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

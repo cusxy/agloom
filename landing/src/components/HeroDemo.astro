@@ -1,0 +1,404 @@
+---
+type TreeLine = { text: string; kind?: "plugin" | "local" | "overlay" | "dim" };
+
+const projectTree: TreeLine[] = [
+  { text: "~/your-project/", kind: "dim" },
+  { text: "├─ .agloom/", kind: "dim" },
+  { text: "│  ├─ agents/" },
+  { text: "│  │  └─ reviewer.md", kind: "local" },
+  { text: "│  ├─ commands/" },
+  { text: "│  │  └─ test.md", kind: "local" },
+  { text: "│  ├─ docs/" },
+  { text: "│  │  └─ codestyle.md", kind: "local" },
+  { text: "│  ├─ overlays/" },
+  { text: "│  │  └─ claude/" },
+  { text: "│  │     └─ commands/" },
+  { text: "│  │        └─ deploy.md", kind: "overlay" },
+  { text: "│  ├─ config.yml" },
+  { text: "│  ├─ mcp.yml", kind: "local" },
+  { text: "│  └─ permissions.yml", kind: "local" },
+  { text: "└─ AGLOOM.md", kind: "local" },
+];
+
+const pluginTree: TreeLine[] = [
+  { text: "git:acme/agloom-team-base", kind: "dim" },
+  { text: "├─ agents/" },
+  { text: "│  └─ architect.md", kind: "plugin" },
+  { text: "├─ docs/" },
+  { text: "│  └─ architecture.md", kind: "plugin" },
+  { text: "├─ skills/" },
+  { text: "│  └─ git-commit/" },
+  { text: "│     └─ SKILL.md", kind: "plugin" },
+  { text: "└─ plugin.yml", kind: "plugin" },
+];
+
+type Tab = { id: string; name: string; tree: TreeLine[] };
+
+const tabs: Tab[] = [
+  {
+    id: "claude",
+    name: "Claude",
+    tree: [
+      { text: "~/your-project/", kind: "dim" },
+      { text: "├─ .agloom/", kind: "dim" },
+      { text: "├─ .claude/", kind: "dim" },
+      { text: "│  ├─ agents/" },
+      { text: "│  │  ├─ architect.md", kind: "plugin" },
+      { text: "│  │  └─ reviewer.md", kind: "local" },
+      { text: "│  ├─ commands/" },
+      { text: "│  │  ├─ deploy.md", kind: "overlay" },
+      { text: "│  │  └─ test.md", kind: "local" },
+      { text: "│  ├─ docs/" },
+      { text: "│  │  ├─ architecture.md", kind: "plugin" },
+      { text: "│  │  └─ codestyle.md", kind: "local" },
+      { text: "│  ├─ skills/" },
+      { text: "│  │  └─ git-commit/" },
+      { text: "│  │     └─ SKILL.md", kind: "plugin" },
+      { text: "│  └─ settings.json", kind: "local" },
+      { text: "├─ .mcp.json", kind: "local" },
+      { text: "├─ AGLOOM.md" },
+      { text: "└─ CLAUDE.md", kind: "local" },
+    ],
+  },
+  {
+    id: "codex",
+    name: "Codex",
+    tree: [
+      { text: "~/your-project/", kind: "dim" },
+      { text: "├─ .agloom/", kind: "dim" },
+      { text: "├─ .codex/", kind: "dim" },
+      { text: "│  ├─ agents/" },
+      { text: "│  │  ├─ architect.md", kind: "plugin" },
+      { text: "│  │  └─ reviewer.md", kind: "local" },
+      { text: "│  ├─ docs/" },
+      { text: "│  │  ├─ architecture.md", kind: "plugin" },
+      { text: "│  │  └─ codestyle.md", kind: "local" },
+      { text: "│  ├─ rules/" },
+      { text: "│  │  └─ permissions.rules", kind: "local" },
+      { text: "│  ├─ skills/" },
+      { text: "│  │  ├─ git-commit/" },
+      { text: "│  │  │  └─ SKILL.md", kind: "plugin" },
+      { text: "│  │  └─ test/" },
+      { text: "│  │     └─ SKILL.md", kind: "local" },
+      { text: "│  └─ config.toml", kind: "local" },
+      { text: "├─ AGENTS.md", kind: "local" },
+      { text: "└─ AGLOOM.md" },
+    ],
+  },
+  {
+    id: "gemini",
+    name: "Gemini",
+    tree: [
+      { text: "~/your-project/", kind: "dim" },
+      { text: "├─ .agloom/", kind: "dim" },
+      { text: "├─ .gemini/", kind: "dim" },
+      { text: "│  ├─ agents/" },
+      { text: "│  │  ├─ architect.md", kind: "plugin" },
+      { text: "│  │  └─ reviewer.md", kind: "local" },
+      { text: "│  ├─ commands/" },
+      { text: "│  │  └─ test.toml", kind: "local" },
+      { text: "│  ├─ docs/" },
+      { text: "│  │  ├─ architecture.md", kind: "plugin" },
+      { text: "│  │  └─ codestyle.md", kind: "local" },
+      { text: "│  ├─ policies/" },
+      { text: "│  │  └─ permissions.toml", kind: "local" },
+      { text: "│  ├─ skills/" },
+      { text: "│  │  └─ git-commit/" },
+      { text: "│  │     └─ SKILL.md", kind: "plugin" },
+      { text: "│  └─ settings.json", kind: "local" },
+      { text: "├─ AGLOOM.md" },
+      { text: "└─ GEMINI.md", kind: "local" },
+    ],
+  },
+  {
+    id: "opencode",
+    name: "OpenCode",
+    tree: [
+      { text: "~/your-project/", kind: "dim" },
+      { text: "├─ .agloom/", kind: "dim" },
+      { text: "├─ .opencode/", kind: "dim" },
+      { text: "│  ├─ agents/" },
+      { text: "│  │  ├─ architect.md", kind: "plugin" },
+      { text: "│  │  └─ reviewer.md", kind: "local" },
+      { text: "│  ├─ commands/" },
+      { text: "│  │  └─ test.md", kind: "local" },
+      { text: "│  ├─ docs/" },
+      { text: "│  │  ├─ architecture.md", kind: "plugin" },
+      { text: "│  │  └─ codestyle.md", kind: "local" },
+      { text: "│  └─ skills/" },
+      { text: "│     └─ git-commit/" },
+      { text: "│        └─ SKILL.md", kind: "plugin" },
+      { text: "├─ AGENTS.md", kind: "local" },
+      { text: "├─ AGLOOM.md" },
+      { text: "└─ opencode.json", kind: "local" },
+    ],
+  },
+];
+
+function renderRow(row: TreeLine) {
+  const cls = row.kind ? `row row--${row.kind}` : "row";
+  return { cls, text: row.text };
+}
+---
+
+<section class="hero-demo" aria-label="Interactive transpile demo">
+  <div class="demo">
+    <div class="demo__inputs">
+      <div class="demo__panel">
+        <div class="demo__panel-head">
+          <span class="demo__panel-kind">Project</span>
+          <span class="demo__panel-type">local</span>
+        </div>
+        <pre class="demo__tree"><div class="rows">{projectTree.map((r) => {
+          const row = renderRow(r);
+          return (<div class={row.cls}><span class="txt">{row.text}</span></div>);
+        })}</div></pre>
+      </div>
+
+      <div class="demo__panel">
+        <div class="demo__panel-head">
+          <span class="demo__panel-kind">Plugin</span>
+          <span class="demo__panel-type">git</span>
+        </div>
+        <pre class="demo__tree"><div class="rows">{pluginTree.map((r) => {
+          const row = renderRow(r);
+          return (<div class={row.cls}><span class="txt">{row.text}</span></div>);
+        })}</div></pre>
+      </div>
+    </div>
+
+    <div class="demo__output">
+      <div class="demo__tabs" role="tablist" aria-label="Adapters">
+        {tabs.map((tab, i) => (
+          <button
+            type="button"
+            role="tab"
+            class={`demo__tab ${i === 0 ? "is-active" : ""}`}
+            data-demo-tab={tab.id}
+            aria-selected={i === 0 ? "true" : "false"}
+            aria-controls={`demo-panel-${tab.id}`}
+          >
+            {tab.name}
+          </button>
+        ))}
+      </div>
+      <div class="demo__stage">
+        {tabs.map((tab, i) => (
+          <pre
+            class={`demo__tree demo__output-tree ${i === 0 ? "is-active" : ""}`}
+            data-demo-panel={tab.id}
+            id={`demo-panel-${tab.id}`}
+            role="tabpanel"
+          ><div class="rows">{tab.tree.map((r) => {
+            const row = renderRow(r);
+            return (<div class={row.cls}><span class="txt">{row.text}</span></div>);
+          })}</div></pre>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <p class="hero-demo__caption">
+    See how every canonical file maps to its native slot —
+    <a href="https://docs.agloom.sh/docs/guide/project-structure" target="_blank" rel="noopener noreferrer">project structure guide →</a>
+  </p>
+</section>
+
+<script>
+  const demoTabs = document.querySelectorAll<HTMLButtonElement>("[data-demo-tab]");
+  const demoPanels = document.querySelectorAll<HTMLElement>("[data-demo-panel]");
+  demoTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const id = tab.getAttribute("data-demo-tab");
+      demoTabs.forEach((t) => {
+        const active = t === tab;
+        t.classList.toggle("is-active", active);
+        t.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      demoPanels.forEach((p) => {
+        p.classList.toggle("is-active", p.getAttribute("data-demo-panel") === id);
+      });
+    });
+  });
+</script>
+
+<style>
+  .hero-demo {
+    padding: var(--space-12) 0 var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .demo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: var(--space-6);
+    align-items: stretch;
+  }
+
+  .demo__inputs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  .demo__panel {
+    background: rgba(10, 11, 15, 0.75);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+  }
+
+  .demo__panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-4);
+    min-height: 44px;
+    border-bottom: 1px solid var(--color-rule);
+    background: rgba(6, 8, 16, 0.4);
+  }
+  .demo__panel-kind {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg);
+  }
+  .demo__panel-type {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+  }
+
+  .demo__tree {
+    margin: 0;
+    padding: var(--space-4) 0;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.8;
+    color: var(--color-fg);
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .demo__tree .rows {
+    display: inline-block;
+    min-width: 100%;
+    box-sizing: border-box;
+  }
+  .demo__tree .row {
+    padding: 0 var(--space-5) 0 calc(var(--space-5) - 3px);
+    border-left: 3px solid var(--color-rule);
+    background: rgba(122, 126, 140, 0.05);
+  }
+  .demo__tree .row--local {
+    border-left-color: #7a9bd4;
+    background: rgba(122, 155, 212, 0.10);
+  }
+  .demo__tree .row--local .txt {
+    color: #a7bde0;
+  }
+  .demo__tree .row--plugin {
+    border-left-color: #a889d4;
+    background: rgba(168, 137, 212, 0.12);
+  }
+  .demo__tree .row--plugin .txt {
+    color: #c4abe0;
+  }
+  .demo__tree .row--overlay {
+    border-left-color: var(--color-warm);
+    background: rgba(196, 161, 129, 0.10);
+  }
+  .demo__tree .row--overlay .txt {
+    color: var(--color-warm);
+  }
+  .demo__tree .row--dim .txt {
+    color: var(--color-fg-muted);
+  }
+
+  .demo__output {
+    background: rgba(10, 11, 15, 0.8);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(8px);
+  }
+
+  .demo__tabs {
+    display: flex;
+    align-items: stretch;
+    min-height: 44px;
+    border-bottom: 1px solid var(--color-rule);
+    background: rgba(6, 8, 16, 0.55);
+  }
+  .demo__tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 var(--space-3);
+    background: transparent;
+    border: 0;
+    border-right: 1px solid var(--color-rule);
+    color: var(--color-fg-muted);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    transition: color 380ms var(--ease-out), background 380ms var(--ease-out);
+    position: relative;
+    white-space: nowrap;
+  }
+  .demo__tab:last-child { border-right: 0; }
+  .demo__tab:hover { color: var(--color-fg); }
+  .demo__tab.is-active {
+    color: var(--color-spark);
+    background: rgba(38, 28, 74, 0.3);
+  }
+  .demo__tab.is-active::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px; height: 1px;
+    background: var(--color-accent);
+    box-shadow: 0 0 12px var(--color-accent);
+  }
+
+  .demo__stage {
+    position: relative;
+    flex: 1;
+    display: grid;
+  }
+  .demo__output-tree {
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .demo__output-tree.is-active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .hero-demo__caption {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-fg-muted);
+    text-align: center;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 900px) {
+    .demo {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

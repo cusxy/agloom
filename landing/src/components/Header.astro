@@ -1,8 +1,8 @@
 ---
 ---
 
-<footer class="site-footer">
-  <div class="site-footer__brand" aria-label="Agloom">
+<header class="site-header">
+  <div class="site-header__brand" aria-label="Agloom">
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 32 32"
@@ -21,22 +21,20 @@
     </svg>
     <span>Agloom</span>
   </div>
-  <span class="site-footer__license">Apache 2.0</span>
-  <span class="site-footer__copy">© 2026 The Agloom Authors</span>
-</footer>
+  <span class="site-header__kicker">
+    Canonical Config · Transpiler for AI coding agents
+  </span>
+</header>
 
 <style>
-  .site-footer {
-    margin-top: var(--space-8);
-    border-top: 1px solid var(--color-rule);
-    padding: var(--space-6) 0 var(--space-8);
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
+  .site-header {
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-6);
-    color: var(--color-fg-muted);
+    padding: var(--space-6) 0 var(--space-4);
   }
-  .site-footer__brand {
+  .site-header__brand {
     display: inline-flex;
     align-items: center;
     gap: var(--space-3);
@@ -44,43 +42,26 @@
     font-family: var(--font-mono);
     font-size: var(--text-sm);
     letter-spacing: 0.04em;
+    flex-shrink: 0;
     user-select: none;
-    justify-self: start;
   }
-  .site-footer__brand svg {
+  .site-header__brand svg {
     width: 22px;
     height: 22px;
     color: var(--color-spark);
     filter: drop-shadow(0 0 12px rgba(107, 140, 175, 0.45));
   }
-  .site-footer__license {
-    justify-self: center;
+  .site-header__kicker {
     font-family: var(--font-mono);
     font-size: var(--text-xxs);
     letter-spacing: var(--tracking-mono-tag);
     text-transform: uppercase;
     color: var(--color-fg-muted);
+    text-align: right;
   }
-  .site-footer__copy {
-    justify-self: end;
-    font-family: var(--font-mono);
-    font-size: var(--text-xxs);
-    letter-spacing: var(--tracking-mono-tag);
-    text-transform: uppercase;
-    color: var(--color-fg-muted);
-    white-space: nowrap;
-  }
-
   @media (max-width: 640px) {
-    .site-footer {
-      grid-template-columns: 1fr;
-      justify-items: center;
-      gap: var(--space-3);
-    }
-    .site-footer__brand,
-    .site-footer__license,
-    .site-footer__copy {
-      justify-self: center;
+    .site-header__kicker {
+      display: none;
     }
   }
 </style>

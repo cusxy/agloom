@@ -1,0 +1,278 @@
+---
+type PluginKind = "base" | "conv" | "stack";
+type CfgRow = { text: string; kind?: PluginKind };
+
+const configRows: CfgRow[] = [
+  { text: "adapters:" },
+  { text: "  - claude" },
+  { text: "  - codex" },
+  { text: "  - gemini" },
+  { text: "  - opencode" },
+  { text: "" },
+  { text: "plugins:" },
+  { text: "  - git@github.com:acme/agloom-base#v3.1.0", kind: "base" },
+  { text: "  - git: git@github.com:acme/agloom-conventions", kind: "conv" },
+  { text: "    ref: v1.2.0", kind: "conv" },
+  { text: "    values:", kind: "conv" },
+  { text: '      team_name: "platform"', kind: "conv" },
+  { text: "  - ../shared/android-stack", kind: "stack" },
+];
+
+type Row = { text: string; kind?: PluginKind | "local" | "dim"; source?: string };
+const tree: Row[] = [
+  { text: "~/your-project/", kind: "dim" },
+  { text: "├─ .agloom/", kind: "dim" },
+  { text: "│  ├─ config.yml", kind: "local" },
+  { text: "│  └─ overlays/claude/.claude/settings.json", kind: "local" },
+  { text: "├─ .claude/", kind: "dim" },
+  { text: "│  ├─ agents/" },
+  { text: "│  │  ├─ android-lint.md", kind: "stack", source: "android-stack" },
+  { text: "│  │  ├─ architect.md", kind: "base", source: "agloom-base" },
+  { text: "│  │  └─ code-reviewer.md", kind: "conv", source: "agloom-conventions" },
+  { text: "│  ├─ skills/" },
+  { text: "│  │  ├─ android-build/", kind: "stack", source: "android-stack" },
+  { text: "│  │  ├─ git-commit/", kind: "base", source: "agloom-base" },
+  { text: "│  │  └─ pr-review/", kind: "conv", source: "agloom-conventions" },
+  { text: "│  └─ settings.json" },
+  { text: "├─ .codex/ …", kind: "dim" },
+  { text: "├─ .gemini/ …", kind: "dim" },
+  { text: "├─ .opencode/ …", kind: "dim" },
+  { text: "├─ AGENTS.md" },
+  { text: "├─ AGLOOM.md", kind: "local", source: "authored by you" },
+  { text: "├─ CLAUDE.md" },
+  { text: "└─ GEMINI.md" },
+];
+---
+
+<section class="plugins-sec" data-section="plugins">
+  <div class="plugins-sec__head">
+    <p class="eyebrow">Plugins</p>
+    <h2 class="plugins-sec__title">Three lines of config.<br />A whole team's worth of conventions.</h2>
+    <p class="plugins-sec__body">
+      A plugin is a directory with a <code>plugin.yml</code> manifest and
+      the same structure as a local project. Reference it by git URL or
+      local path, optionally passing values for variables the plugin
+      declares. Plugins stack in declaration order — later plugins and
+      the local project override earlier ones.
+    </p>
+  </div>
+
+  <div class="plugins-sec__grid">
+    <div class="pane">
+      <div class="pane__head">
+        <span class="pane__label">Before</span>
+        <span class="pane__path">.agloom/config.yml</span>
+      </div>
+      <pre class="plugins-sec__code"><div class="crows">{configRows.map((r) => {
+        const cls = r.kind ? `crow crow--${r.kind}` : "crow";
+        return (<div class={cls}><span class="ctxt">{r.text || " "}</span></div>);
+      })}</div></pre>
+    </div>
+
+    <div class="pane plugins-sec__tree-pane">
+      <div class="pane__head">
+        <span class="pane__label">After</span>
+        <span class="pane__path">resulting layout</span>
+      </div>
+      <pre class="plugins-sec__tree"><div class="trows">{tree.map((r) => {
+        const cls = r.kind ? `trow trow--${r.kind}` : "trow";
+        return (<div class={cls}><span class="txt">{r.text}</span>{r.source && <span class="src">← {r.source}</span>}</div>);
+      })}</div></pre>
+    </div>
+  </div>
+
+  <p class="plugins-sec__caption">
+    Plugins can declare typed variables (<code>description</code>,
+    <code>default</code>, <code>required</code>, <code>sensitive</code>).
+    Sensitive values must come from environment variables — Agloom
+    rejects inline secrets so they never end up in commits.
+    <a href="https://docs.agloom.sh/docs/guide/plugins">Learn more about plugins →</a>
+  </p>
+</section>
+
+<style>
+  .plugins-sec {
+    padding: var(--space-20) 0 var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+  .plugins-sec__head {
+    max-width: none;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .eyebrow {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .eyebrow::before {
+    content: "";
+    width: 24px;
+    height: 1px;
+    background: var(--color-accent);
+  }
+  .plugins-sec__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    line-height: 1.05;
+    letter-spacing: var(--tracking-display);
+    color: var(--color-fg);
+    text-wrap: balance;
+  }
+  .plugins-sec__body {
+    margin: 0;
+    font-family: var(--font-mono);
+    color: var(--color-fg-muted);
+    font-size: var(--text-sm);
+    line-height: 1.7;
+  }
+  .plugins-sec__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--space-6);
+  }
+  .pane {
+    background: rgba(10, 11, 15, 0.8);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    backdrop-filter: blur(8px);
+  }
+  .pane__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-rule);
+    background: rgba(6, 8, 16, 0.55);
+  }
+  .pane__label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xxs);
+    letter-spacing: var(--tracking-mono-tag);
+    text-transform: uppercase;
+    color: var(--color-fg);
+  }
+  .pane__path {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--color-fg-muted);
+  }
+  .plugins-sec__code {
+    margin: 0;
+    padding: var(--space-4) 0;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: var(--color-fg);
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .plugins-sec__code .crows {
+    display: inline-block;
+    min-width: 100%;
+    box-sizing: border-box;
+  }
+  .plugins-sec__code .crow {
+    padding: 0 var(--space-5) 0 calc(var(--space-5) - 3px);
+    border-left: 3px solid var(--color-rule);
+    background: rgba(122, 126, 140, 0.05);
+  }
+  .plugins-sec__code .crow--base {
+    border-left-color: #a889d4;
+    background: rgba(168, 137, 212, 0.12);
+  }
+  .plugins-sec__code .crow--base .ctxt { color: #c4abe0; }
+  .plugins-sec__code .crow--conv {
+    border-left-color: #70c4b8;
+    background: rgba(112, 196, 184, 0.10);
+  }
+  .plugins-sec__code .crow--conv .ctxt { color: #9bd4cb; }
+  .plugins-sec__code .crow--stack {
+    border-left-color: var(--color-warm);
+    background: rgba(196, 161, 129, 0.10);
+  }
+  .plugins-sec__code .crow--stack .ctxt { color: var(--color-warm); }
+  .plugins-sec__tree {
+    margin: 0;
+    padding: var(--space-4) 0;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    line-height: 1.75;
+    color: var(--color-fg);
+    overflow-x: auto;
+  }
+  .plugins-sec__tree .trows {
+    display: inline-block;
+    min-width: 100%;
+    box-sizing: border-box;
+  }
+  .plugins-sec__tree .trow {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: 1px var(--space-5) 1px calc(var(--space-5) - 3px);
+    border-left: 3px solid var(--color-rule);
+    background: rgba(122, 126, 140, 0.05);
+  }
+  .plugins-sec__tree .trow--dim .txt { color: var(--color-fg-muted); }
+  .plugins-sec__tree .trow--local {
+    border-left-color: #7a9bd4;
+    background: rgba(122, 155, 212, 0.10);
+  }
+  .plugins-sec__tree .trow--local .txt { color: #a7bde0; }
+  .plugins-sec__tree .trow--base {
+    border-left-color: #a889d4;
+    background: rgba(168, 137, 212, 0.12);
+  }
+  .plugins-sec__tree .trow--base .txt { color: #c4abe0; }
+  .plugins-sec__tree .trow--conv {
+    border-left-color: #70c4b8;
+    background: rgba(112, 196, 184, 0.10);
+  }
+  .plugins-sec__tree .trow--conv .txt { color: #9bd4cb; }
+  .plugins-sec__tree .trow--stack {
+    border-left-color: var(--color-warm);
+    background: rgba(196, 161, 129, 0.10);
+  }
+  .plugins-sec__tree .trow--stack .txt { color: var(--color-warm); }
+  .plugins-sec__tree .src {
+    color: var(--color-fg-muted);
+    font-size: 0.62rem;
+    white-space: nowrap;
+  }
+
+  .plugins-sec__caption {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-fg-muted);
+    line-height: 1.7;
+    text-align: center;
+  }
+  .plugins-sec__caption code {
+    font-size: 0.9em;
+  }
+
+  @media (max-width: 960px) {
+    .plugins-sec__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

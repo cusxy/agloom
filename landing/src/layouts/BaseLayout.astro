@@ -37,9 +37,18 @@ const hasCfToken = typeof cfToken === "string" && cfToken.length > 0;
     <meta name="twitter:image" content={ogImage} />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
-    <slot />
+    <div class="shell">
+      <slot />
+    </div>
     {
       hasCfToken && (
         <script
