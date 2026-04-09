@@ -12,6 +12,14 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # npm's Trusted Publisher config for this package includes an
+    # environment name (`default`), so the OIDC id token minted for
+    # this job must carry the matching `environment` claim. The
+    # claim only appears when the job itself joins a GitHub
+    # environment, hence this declaration. The secrets this
+    # environment holds (Cloudflare tokens) are not referenced here
+    # — publish only consumes the GitHub-minted OIDC token.
+    environment: default
     steps:
       - uses: actions/checkout@v4
 
