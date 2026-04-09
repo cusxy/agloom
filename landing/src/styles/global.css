@@ -16,6 +16,15 @@ body {
 
 html {
   scroll-behavior: smooth;
+  /* Viewport-level horizontal clamp. Required because `body { overflow-x: hidden }`
+     alone is not enough on iOS Safari / Chrome DevTools touch emulation — the root
+     scroll container is <html>, and without its own horizontal clamp a touch swipe
+     over a child `overflow-x: auto` scroller (e.g. .frag__matrix-wrap, .demo__code)
+     can propagate into a page-level horizontal rubber-band. `overflow-x: clip`
+     clips without establishing a scroll container, so vertical scrolling still
+     inherits the default viewport behaviour. Supported in all browsers relevant
+     to this project (Chrome 90+, Safari 15.4+, Firefox 81+). */
+  overflow-x: clip;
 }
 
 body {
@@ -30,7 +39,10 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  /* Paired with `html { overflow-x: clip }`. `clip` instead of `hidden` avoids
+     establishing a new scroll container on <body>, which otherwise competes with
+     the root scroll on iOS and can still leak horizontal gestures. */
+  overflow-x: clip;
 }
 
 /* Fog atmosphere — animated orbs live in <FogBackground />. This base
