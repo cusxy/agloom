@@ -389,7 +389,17 @@ const mergedSettings: MergeRow[] = [
 
   @media (max-width: 1100px) {
     .teams {
-      grid-template-columns: 1fr;
+      /* minmax(0, 1fr) (rather than bare 1fr = minmax(auto, 1fr))
+         lets the single column shrink below its min-content, which
+         matters here because `.merge__body` contains monospaced
+         lines marked `white-space: pre`. With bare `1fr` the grid
+         track grows to fit the longest unbreakable line (~436px)
+         and drags every sibling — including the header copy —
+         past the viewport edge on phones. Allowing the track to
+         collapse hands overflow control back to `.merge__body`'s
+         own `overflow-x: auto`, which scrolls the code block in
+         place instead of leaking out of the section. */
+      grid-template-columns: minmax(0, 1fr);
       column-gap: 0;
       row-gap: var(--space-6);
     }
