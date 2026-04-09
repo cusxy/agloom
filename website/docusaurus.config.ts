@@ -1,5 +1,6 @@
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
+import { themes as prismThemes } from "prism-react-renderer";
 import agloomLlmsPlugin from "./src/plugins/agloom-llms";
 
 const config: Config = {
@@ -86,6 +87,14 @@ const config: Config = {
     footer: {
       style: "dark",
       copyright: `Copyright \u00A9 ${new Date().getFullYear()} Agloom contributors. Apache-2.0 License.`,
+    },
+    // vsDark pairs well with landing's cool-slate palette (dominant blues,
+    // warm strings), github gives a neutral light theme that reads cleanly
+    // against the hue-preserving inverted palette in custom.css.
+    prism: {
+      theme: prismThemes.github,
+      darkTheme: prismThemes.vsDark,
+      additionalLanguages: ["bash", "yaml", "toml", "json"],
     },
   } satisfies Preset.ThemeConfig,
 };
