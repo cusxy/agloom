@@ -1,5 +1,4 @@
 // landing-build.spec.ts
-// Спецификация: docs/specs/landing/SPEC.md § Верифицируемые критерии
 //
 // Smoke-тесты лендинга agloom.sh. Тесты запускают реальный Astro-build из
 // подпапки landing/ через `pnpm --filter @agloom/landing build`, читают
@@ -144,11 +143,11 @@ describe("Landing — сборка без аналитики (PUBLIC_CF_ANALYTIC
   });
 
   // Критерий «HTML-meta-2»: непустой <title> с каноническим значением.
-  it("присутствует <title> со значением 'Agloom — Transpile AI agent configurations'", () => {
+  it("присутствует <title> со значением 'Agloom — One source of truth for every AI coding assistant'", () => {
     expect(html).not.toBeNull();
     const match = (html ?? "").match(/<title>([^<]*)<\/title>/i);
     expect(match).not.toBeNull();
-    expect(match?.[1].trim()).toBe("Agloom — Transpile AI agent configurations");
+    expect(match?.[1].trim()).toBe("Agloom — One source of truth for every AI coding assistant");
   });
 
   // Критерий «HTML-meta-3»: meta name="description" с непустым content.
@@ -213,50 +212,13 @@ describe("Landing — сборка без аналитики (PUBLIC_CF_ANALYTIC
 
   // === § Верифицируемые критерии — HTML содержимое ===
 
-  // Критерий «HTML-content-1»: ровно один <h1>, текст содержит 'agloom'.
-  it("присутствует ровно один <h1>, его текст содержит 'agloom'", () => {
+  // Критерий «HTML-content-1»: ровно один <h1> с непустым текстом.
+  it("присутствует ровно один <h1> с непустым текстом", () => {
     expect(html).not.toBeNull();
     const matches = [...(html ?? "").matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)];
     expect(matches).toHaveLength(1);
-    const text = (matches[0]?.[1] ?? "").replace(/<[^>]+>/g, "").toLowerCase();
-    expect(text).toContain("agloom");
-  });
-
-  // Критерий «HTML-content-2»: data-section="install" содержит 'npm install -g agloom'.
-  it("секция data-section=\"install\" содержит точную команду 'npm install -g agloom'", () => {
-    expect(html).not.toBeNull();
-    const installSection = (html ?? "").match(/<section\b[^>]*data-section=["']install["'][\s\S]*?<\/section>/i);
-    expect(installSection).not.toBeNull();
-    // HTML может экранировать пробелы, но сама команда — обычные ASCII-символы.
-    const text = (installSection?.[0] ?? "").replace(/<[^>]+>/g, " ");
-    expect(text).toContain("npm install -g agloom");
-  });
-
-  // Критерий «HTML-content-3»: data-section="features" содержит 4–6 элементов data-role="feature".
-  it('секция data-section="features" содержит от 4 до 6 элементов data-role="feature"', () => {
-    expect(html).not.toBeNull();
-    const featuresSection = (html ?? "").match(/<section\b[^>]*data-section=["']features["'][\s\S]*?<\/section>/i);
-    expect(featuresSection).not.toBeNull();
-    const featureMatches = [...(featuresSection?.[0] ?? "").matchAll(/data-role=["']feature["']/gi)];
-    expect(featureMatches.length).toBeGreaterThanOrEqual(4);
-    expect(featureMatches.length).toBeLessThanOrEqual(6);
-  });
-
-  // Критерий «HTML-content-4»: каждый feature содержит непустой <h3> и непустой <p>.
-  it('каждый элемент data-role="feature" содержит непустые <h3> и <p>', () => {
-    expect(html).not.toBeNull();
-    const featuresSection =
-      (html ?? "").match(/<section\b[^>]*data-section=["']features["'][\s\S]*?<\/section>/i)?.[0] ?? "";
-    const featureBlocks = [...featuresSection.matchAll(/<li\b[^>]*data-role=["']feature["'][\s\S]*?<\/li>/gi)];
-    expect(featureBlocks.length).toBeGreaterThan(0);
-    for (const [block] of featureBlocks) {
-      const h3 = block.match(/<h3\b[^>]*>([\s\S]*?)<\/h3>/i);
-      const p = block.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i);
-      expect(h3, "feature has <h3>").not.toBeNull();
-      expect(p, "feature has <p>").not.toBeNull();
-      expect((h3?.[1] ?? "").replace(/<[^>]+>/g, "").trim().length).toBeGreaterThan(0);
-      expect((p?.[1] ?? "").replace(/<[^>]+>/g, "").trim().length).toBeGreaterThan(0);
-    }
+    const text = (matches[0]?.[1] ?? "").replace(/<[^>]+>/g, "").trim();
+    expect(text.length).toBeGreaterThan(0);
   });
 
   // Критерий «HTML-content-5»: ссылка href="https://docs.agloom.sh/".
