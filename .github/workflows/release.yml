@@ -59,11 +59,16 @@ jobs:
       - name: Pack tarball with pnpm (resolves workspace:* refs)
         run: pnpm pack
 
-      - name: Upgrade npm to latest (for Trusted Publisher OIDC)
-        run: npm install -g npm@latest
-
+      # Use npx to run a freshly downloaded npm@latest rather than
+      # `npm install -g npm@latest`. The latter routinely leaves
+      # Node 22's bundled npm in a half-upgraded state ("Cannot find
+      # module 'promise-retry'" and similar) because the installer
+      # overwrites files under the same global prefix the running
+      # npm is reading from. npx runs the new npm in a throwaway
+      # temp dir, so the bootstrap install never touches the
+      # system-wide copy.
       - name: Publish tarball via npm (OIDC Trusted Publisher)
-        run: npm publish agloom-*.tgz --provenance
+        run: npx -y npm@latest publish agloom-*.tgz --provenance
 
   deploy-docs:
     needs: publish
