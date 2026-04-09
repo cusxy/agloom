@@ -138,14 +138,33 @@ function renderLlmsFullTxt(pages: DocPage[]): string {
 }
 
 /**
+ * Quick lookup for raw-markdown requests in dev mode — keyed by URL path
+ * (e.g. "/guide/introduction.md"), value is the absolute source file path.
+ */
+function buildRawFileIndex(pages: DocPage[]): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const page of pages) {
+    index.set(`/${page.relPath}`, path.join(DOCS_SOURCE_DIR, page.relPath));
+  }
+  return index;
+}
+
+/**
  * Inline plugin that publishes documentation in LLM-friendly formats:
  *  - /llms.txt — index per llmstxt.org convention
  *  - /llms-full.txt — full text dump for direct LLM ingestion
  *  - /<group>/<slug>.md — raw markdown source for each doc page
+ *
+ * Prod (`docusaurus build`) writes these files to the output directory via
+ * `postBuild`. Dev (`docusaurus start`) serves them on demand through a
+ * webpack-dev-server middleware so the paths work identically in both
+ * modes — otherwise the <link rel="alternate"> tags in headTags would 404
+ * during local development.
  */
 export default function agloomLlmsPlugin(): Plugin {
   return {
     name: "agloom-llms",
+
     async postBuild({ outDir }) {
       const pages = await collectDocs();
       await fs.writeFile(path.join(outDir, "llms.txt"), renderLlmsTxt(pages));
@@ -162,6 +181,65 @@ export default function agloomLlmsPlugin(): Plugin {
       console.log(
         `[agloom-llms] wrote llms.txt, llms-full.txt and ${pages.length} raw .md files`,
       );
+    },
+
+    configureWebpack(_config, isServer) {
+      // configureWebpack is called once per compiler (client + SSR); the
+      // dev server only belongs to the client build, so skip the SSR pass
+      // to avoid registering the middleware twice.
+      if (isServer) return {};
+      return {
+        mergeStrategy: { "devServer.setupMiddlewares": "replace" },
+        devServer: {
+          setupMiddlewares: (
+            middlewares: Array<{
+              name?: string;
+              path?: string;
+              middleware: (req: any, res: any, next: () => void) => void;
+            }>,
+          ) => {
+            middlewares.unshift({
+              name: "agloom-llms",
+              middleware: async (req, res, next) => {
+                const url = (req.url ?? "").split("?")[0];
+                try {
+                  if (url === "/llms.txt") {
+                    const pages = await collectDocs();
+                    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+                    res.end(renderLlmsTxt(pages));
+                    return;
+                  }
+                  if (url === "/llms-full.txt") {
+                    const pages = await collectDocs();
+                    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+                    res.end(renderLlmsFullTxt(pages));
+                    return;
+                  }
+                  if (url.endsWith(".md")) {
+                    const pages = await collectDocs();
+                    const src = buildRawFileIndex(pages).get(url);
+                    if (src) {
+                      const body = await fs.readFile(src, "utf8");
+                      res.setHeader(
+                        "Content-Type",
+                        "text/markdown; charset=utf-8",
+                      );
+                      res.end(body);
+                      return;
+                    }
+                  }
+                } catch (err) {
+                  res.statusCode = 500;
+                  res.end(`[agloom-llms] ${(err as Error).message}`);
+                  return;
+                }
+                next();
+              },
+            });
+            return middlewares;
+          },
+        },
+      };
     },
   };
 }
