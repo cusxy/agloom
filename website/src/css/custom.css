@@ -69,3 +69,82 @@
   --ifm-code-background: var(--agloom-color-code-bg);
   --docusaurus-highlighted-code-line-bg: rgba(107, 140, 175, 0.18);
 }
+
+/* ============================================================
+   Search widget (@easyops-cn/docusaurus-search-local)
+   ------------------------------------------------------------
+   The plugin exposes its own --search-local-* CSS variables as
+   its public theming API, so we override those instead of
+   fighting its scoped selectors. The <mark> highlight inside
+   hits uses an attribute-substring selector because the plugin
+   binds active-row text colour to the mark too, and we need
+   enough specificity to keep matches warm-tinted regardless of
+   row state.
+   ============================================================ */
+
+:root {
+  /* Search — light theme (root defaults). */
+  --search-local-modal-background: var(--ifm-background-surface-color);
+  --search-local-modal-shadow: 0 16px 40px rgba(28, 30, 38, 0.14);
+  --search-local-hit-background: transparent;
+  --search-local-hit-color: var(--ifm-color-content);
+  --search-local-hit-active-color: var(--ifm-color-content);
+  --search-local-hit-shadow: none;
+  --search-local-muted-color: var(--ifm-color-content-secondary);
+  --search-local-highlight-color: rgba(61, 90, 122, 0.12);
+  --search-local-input-active-border-color: var(--ifm-color-primary);
+}
+
+[data-theme="dark"] {
+  /* Search — dark theme overrides. */
+  --search-local-modal-background: var(--ifm-background-surface-color);
+  --search-local-modal-shadow: 0 16px 40px rgba(6, 8, 16, 0.55);
+  --search-local-highlight-color: rgba(107, 140, 175, 0.2);
+}
+
+/* Navbar input — pick up the palette and soften the focus ring. */
+.navbar__search-input {
+  background-color: var(--ifm-background-surface-color);
+  color: var(--ifm-color-content);
+  border: 1px solid var(--ifm-toc-border-color);
+  transition: border-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.navbar__search-input::placeholder {
+  color: var(--ifm-color-content-secondary);
+}
+
+.navbar__search-input:focus {
+  border-color: var(--ifm-color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(61, 90, 122, 0.16);
+}
+
+[data-theme="dark"] .navbar__search-input:focus {
+  box-shadow: 0 0 0 3px rgba(107, 140, 175, 0.22);
+}
+
+/* Inline "⌘K" hint pills next to the input. */
+[class*="searchHint"] {
+  background-color: var(--ifm-code-background);
+  border: 1px solid var(--ifm-toc-border-color);
+  color: var(--ifm-color-content-secondary);
+  border-radius: 4px;
+}
+
+/* Warm-tinted match highlights inside hits. Specificity is 0,3,1 so
+   it beats the plugin's own `.suggestion.cursor mark` rule (0,2,1)
+   and survives both idle and active row states. */
+[class*="dropdownMenu"] [class*="suggestion"] mark {
+  background-color: transparent;
+  color: #8a6744;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(138, 103, 68, 0.55);
+  text-underline-offset: 3px;
+}
+
+[data-theme="dark"] [class*="dropdownMenu"] [class*="suggestion"] mark {
+  color: var(--agloom-color-warm);
+  text-decoration-color: rgba(196, 161, 129, 0.55);
+}
