@@ -3,6 +3,7 @@ title: Introduction
 description: What Agloom does, why it exists, and when to use it
 next: getting-started
 sidebar_position: 1
+slug: /
 ---
 
 # Introduction

@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SITE_URL = "https://agloom.sh";
+const SITE_URL = "https://docs.agloom.sh";
 const DOCS_SOURCE_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -16,7 +16,7 @@ const DOCS_INCLUDE_DIRS = ["guide", "reference"] as const;
 interface DocPage {
   /** Relative path inside docs/, e.g. "guide/getting-started.md" */
   relPath: string;
-  /** Public URL on the site, e.g. "https://agloom.sh/docs/guide/getting-started" */
+  /** Public URL on the site, e.g. "https://docs.agloom.sh/guide/getting-started" */
   url: string;
   /** Public URL of the raw .md file */
   rawUrl: string;
@@ -63,10 +63,13 @@ async function collectDocs(): Promise<DocPage[]> {
       const source = await fs.readFile(path.join(dir, entry.name), "utf8");
       const { data, body } = parseFrontmatter(source);
       const slug = entry.name.replace(/\.md$/, "");
+      // `slug: /` in frontmatter promotes a doc to the site root, so its
+      // public URL is the bare origin rather than /<group>/<slug>.
+      const url = data.slug === "/" ? `${SITE_URL}/` : `${SITE_URL}/${sub}/${slug}`;
       pages.push({
         relPath,
-        url: `${SITE_URL}/docs/${sub}/${slug}`,
-        rawUrl: `${SITE_URL}/docs/${relPath}`,
+        url,
+        rawUrl: `${SITE_URL}/${relPath}`,
         title: data.title || slug,
         description: data.description || "",
         body: body.trimStart(),
@@ -138,7 +141,7 @@ function renderLlmsFullTxt(pages: DocPage[]): string {
  * Inline plugin that publishes documentation in LLM-friendly formats:
  *  - /llms.txt — index per llmstxt.org convention
  *  - /llms-full.txt — full text dump for direct LLM ingestion
- *  - /docs/<group>/<slug>.md — raw markdown source for each doc page
+ *  - /<group>/<slug>.md — raw markdown source for each doc page
  */
 export default function agloomLlmsPlugin(): Plugin {
   return {
@@ -151,7 +154,7 @@ export default function agloomLlmsPlugin(): Plugin {
         renderLlmsFullTxt(pages),
       );
       for (const page of pages) {
-        const dest = path.join(outDir, "docs", page.relPath);
+        const dest = path.join(outDir, page.relPath);
         await fs.mkdir(path.dirname(dest), { recursive: true });
         const src = path.join(DOCS_SOURCE_DIR, page.relPath);
         await fs.copyFile(src, dest);

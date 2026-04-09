@@ -5,7 +5,7 @@ import agloomLlmsPlugin from "./src/plugins/agloom-llms";
 const config: Config = {
   title: "Agloom",
   tagline: "Transpile canonical agent configurations across AI coding assistants",
-  url: "https://agloom.sh",
+  url: "https://docs.agloom.sh",
   baseUrl: "/",
   organizationName: "cusxies",
   projectName: "agloom",
@@ -18,7 +18,7 @@ const config: Config = {
       {
         docs: {
           path: "../docs",
-          routeBasePath: "docs",
+          routeBasePath: "/",
           sidebarPath: "./sidebars.ts",
           exclude: [
             "postmortems/**",
