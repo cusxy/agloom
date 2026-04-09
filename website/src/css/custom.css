@@ -124,12 +124,12 @@
   box-shadow: 0 0 0 3px rgba(107, 140, 175, 0.22);
 }
 
-/* Inline "⌘K" hint pills next to the input. */
+/* Hide the "⌘K" keyboard hint — the plugin renders it inside the
+   input when idle, but we want a cleaner navbar without stray kbd
+   affordances competing with the icon. */
+[class*="searchHintContainer"],
 [class*="searchHint"] {
-  background-color: var(--ifm-code-background);
-  border: 1px solid var(--ifm-toc-border-color);
-  color: var(--ifm-color-content-secondary);
-  border-radius: 4px;
+  display: none !important;
 }
 
 /* Warm-tinted match highlights inside hits. Specificity is 0,3,1 so
