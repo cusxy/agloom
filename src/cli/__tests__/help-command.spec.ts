@@ -34,66 +34,38 @@ function createDocFile(
   fs.writeFileSync(path.join(dir, filename), `${fm}\n${body}`, "utf-8");
 }
 
-/**
- * Вычисляет абсолютный путь к docs/ как его видит код через import.meta.dirname.
- * Spec: docs/specs/help-command.md § Поведение шаг 2
- */
-function getBaseDocsDir(): string {
-  return path.resolve(import.meta.dirname, "../../../docs");
-}
-
 describe("CLI", () => {
   describe("Команда help", () => {
     let originalExitCode: number | undefined;
+    let originalDocsDirEnv: string | undefined;
+    let tmpDocsDir: string;
     let guideDir: string;
     let referenceDir: string;
-    let guideBackup: string | null = null;
-    let referenceBackup: string | null = null;
 
     beforeEach(() => {
       originalExitCode = process.exitCode;
-      const baseDocsDir = getBaseDocsDir();
-      guideDir = path.join(baseDocsDir, "guide");
-      referenceDir = path.join(baseDocsDir, "reference");
+      originalDocsDirEnv = process.env.AGLOOM_DOCS_DIR;
 
-      // Бэкап существующих директорий (если существуют)
-      if (fs.existsSync(guideDir)) {
-        guideBackup = fs.mkdtempSync(path.join(os.tmpdir(), "agl-guide-backup-"));
-        fs.cpSync(guideDir, guideBackup, { recursive: true });
-        fs.rmSync(guideDir, { recursive: true, force: true });
-      }
-      if (fs.existsSync(referenceDir)) {
-        referenceBackup = fs.mkdtempSync(path.join(os.tmpdir(), "agl-ref-backup-"));
-        fs.cpSync(referenceDir, referenceBackup, { recursive: true });
-        fs.rmSync(referenceDir, { recursive: true, force: true });
-      }
+      // Изолированная docs/ директория per-test. Используем env var
+      // AGLOOM_DOCS_DIR для переопределения пути, чтобы не мутировать
+      // реальную docs/ (иначе — кросс-воркерная гонка с другими spec-файлами,
+      // которые запускают `agloom help` и читают topics из реального docs/).
+      tmpDocsDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-help-docs-"));
+      process.env.AGLOOM_DOCS_DIR = tmpDocsDir;
+      guideDir = path.join(tmpDocsDir, "guide");
+      referenceDir = path.join(tmpDocsDir, "reference");
     });
 
     afterEach(() => {
       process.exitCode = originalExitCode;
-      const baseDocsDir = getBaseDocsDir();
 
-      // Очистить созданные тестовые директории
-      const gDir = path.join(baseDocsDir, "guide");
-      const rDir = path.join(baseDocsDir, "reference");
-      if (fs.existsSync(gDir)) {
-        fs.rmSync(gDir, { recursive: true, force: true });
-      }
-      if (fs.existsSync(rDir)) {
-        fs.rmSync(rDir, { recursive: true, force: true });
+      if (originalDocsDirEnv === undefined) {
+        delete process.env.AGLOOM_DOCS_DIR;
+      } else {
+        process.env.AGLOOM_DOCS_DIR = originalDocsDirEnv;
       }
 
-      // Восстановить бэкап
-      if (guideBackup) {
-        fs.cpSync(guideBackup, gDir, { recursive: true });
-        fs.rmSync(guideBackup, { recursive: true, force: true });
-        guideBackup = null;
-      }
-      if (referenceBackup) {
-        fs.cpSync(referenceBackup, rDir, { recursive: true });
-        fs.rmSync(referenceBackup, { recursive: true, force: true });
-        referenceBackup = null;
-      }
+      fs.rmSync(tmpDocsDir, { recursive: true, force: true });
     });
 
     // =====================================================================

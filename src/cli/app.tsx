@@ -255,8 +255,16 @@ function HelpCommandHelpView(): React.ReactElement {
 /**
  * Вычисляет абсолютный путь к базовой директории документации.
  * Spec: docs/specs/help-command.md § Поведение шаг 2
+ *
+ * Env var `AGLOOM_DOCS_DIR` переопределяет путь — используется тестами
+ * для изоляции от реальной директории `docs/` (избегает кросс-воркерной
+ * пересечения с другими spec-файлами, которые читают help topics).
  */
 function getBaseDocsDir(): string {
+  const override = process.env.AGLOOM_DOCS_DIR;
+  if (override !== undefined && override !== "") {
+    return path.resolve(override);
+  }
   return path.resolve(import.meta.dirname, "../../docs");
 }
 
