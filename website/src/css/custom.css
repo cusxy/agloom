@@ -9,6 +9,17 @@
    ============================================================ */
 
 :root {
+  /* Typography — deliberately neutral. Opinionated type (Fraunces +
+     JetBrains Mono) lives on the landing, where it carries brand.
+     Long-form documentation reads better in the reader's native
+     system sans, so we stay with Infima's default stack and ship
+     no webfont requests. */
+  --ifm-font-family-base: system-ui, -apple-system, "Segoe UI", Roboto,
+    Ubuntu, Cantarell, "Noto Sans", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --ifm-font-family-monospace: ui-monospace, SFMono-Regular, "SF Mono",
+    Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
   /* Canonical palette (mirrors @agloom/landing tokens.css). */
   --agloom-color-bg: #0a0b0f;
   --agloom-color-bg-elevated: #0e0f14;
