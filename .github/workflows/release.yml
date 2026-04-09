@@ -29,7 +29,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://registry.npmjs.org
+          # Intentionally no `registry-url`: that option asks
+          # actions/setup-node to stamp out a .npmrc with an
+          # `_authToken=${NODE_AUTH_TOKEN}` template, and the action
+          # then exports a placeholder NODE_AUTH_TOKEN so the
+          # template always resolves. With that placeholder in
+          # place, `npm publish` skips OIDC Trusted Publisher auth
+          # and tries the placeholder as a classic token, which
+          # npm rejects with a misleading `PUT /agloom → 404`.
+          # Leaving registry-url unset keeps .npmrc clean so npm
+          # CLI takes the OIDC path.
 
       - run: pnpm install --frozen-lockfile
 
@@ -37,26 +46,14 @@ jobs:
 
       - run: pnpm run test
 
-      # TEMPORARY debug: decode the OIDC id token minted for the
-      # "npm" audience and print its claim set so we can compare
-      # against the npm Trusted Publisher config. Remove after the
-      # first successful publish.
-      - name: Debug OIDC claims
-        run: |
-          TOKEN=$(curl -sSL "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm" \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" | jq -r .value)
-          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2)
-          # Pad base64url to multiple of 4
-          PADDED="$PAYLOAD$(printf '=%.0s' $(seq 1 $((4 - ${#PAYLOAD} % 4))))"
-          DECODED=$(echo "$PADDED" | tr '_-' '/+' | base64 -d 2>/dev/null)
-          echo "OIDC payload:"
-          echo "$DECODED" | jq '{
-            iss, aud, repository, repository_owner, workflow,
-            workflow_ref, job_workflow_ref, event_name, ref,
-            environment, sub
-          }'
+      # Node 22 ships with npm 10.9.x, which signs provenance via
+      # sigstore OIDC but still auths the npm PUT with a classic
+      # token. Trusted Publisher OIDC auth landed in npm 11.5.1;
+      # upgrade to latest before publishing so we can rely on it.
+      - name: Upgrade npm to latest (for Trusted Publisher OIDC)
+        run: npm install -g npm@latest
 
-      - run: pnpm publish --no-git-checks --provenance
+      - run: npm publish --provenance
 
   deploy-docs:
     needs: publish
