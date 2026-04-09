@@ -96,6 +96,13 @@ const config: Config = {
           label: "Docs",
           position: "left",
         },
+        // Explicit placement wins over the search-local plugin's
+        // auto-append, so search sits left of the GitHub link in the
+        // right-aligned cluster.
+        {
+          type: "search",
+          position: "right",
+        },
         {
           href: "https://github.com/cusxy/agloom",
           label: "GitHub",
