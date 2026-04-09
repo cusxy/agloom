@@ -38,6 +38,25 @@ const config: Config = {
 
   plugins: [agloomLlmsPlugin],
 
+  themes: [
+    [
+      // Local, build-time search index. No external services, no API keys.
+      // docsRouteBasePath must mirror presets.classic.docs.routeBasePath
+      // (we mount docs at "/") or the indexer will look in the wrong dir.
+      "@easyops-cn/docusaurus-search-local",
+      {
+        hashed: true,
+        language: ["en"],
+        docsDir: "../docs",
+        docsRouteBasePath: "/",
+        indexDocs: true,
+        indexBlog: false,
+        indexPages: false,
+        highlightSearchTermsOnTargetPage: true,
+      },
+    ],
+  ],
+
   headTags: [
     {
       tagName: "link",
