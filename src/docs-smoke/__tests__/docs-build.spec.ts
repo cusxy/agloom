@@ -44,16 +44,12 @@ interface BuildResult {
 
 function runBuild(env: NodeJS.ProcessEnv = {}): BuildResult {
   try {
-    const result = spawnSync(
-      "pnpm",
-      ["--filter", "@agloom/website", "run", "build:site"],
-      {
-        cwd: REPO_ROOT,
-        env: { ...process.env, ...env },
-        encoding: "utf-8",
-        timeout: 180_000,
-      },
-    );
+    const result = spawnSync("pnpm", ["--filter", "@agloom/website", "run", "build:site"], {
+      cwd: REPO_ROOT,
+      env: { ...process.env, ...env },
+      encoding: "utf-8",
+      timeout: 180_000,
+    });
     return {
       status: result.status,
       stdout: result.stdout ?? "",
