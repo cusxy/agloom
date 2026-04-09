@@ -34,7 +34,7 @@ build is fully script-free.
 1. Create a Web Analytics site in the Cloudflare dashboard for `agloom.sh`.
 2. Copy the site token from the dashboard.
 3. In the Cloudflare Pages project settings for `agloom-landing`, add an
-   environment variable named `PUBLIC_CF_ANALYTICS_TOKEN` with the token as
+   environment variable named `CF_ANALYTICS_TOKEN_LANDING` with the token as
    its value.
 4. Trigger a redeploy. The resulting `index.html` will include the
    `static.cloudflareinsights.com/beacon.min.js` script with the configured

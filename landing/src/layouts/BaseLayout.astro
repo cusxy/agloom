@@ -12,7 +12,11 @@ interface Props {
 
 const { title, description, canonical = "https://agloom.sh/" } = Astro.props;
 const ogImage = "https://agloom.sh/og-image.png";
-const cfToken = import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN;
+// Read from `process.env` rather than `import.meta.env` because the
+// new var name does not carry Astro's `PUBLIC_` prefix, which would
+// otherwise filter it out of `import.meta.env`. Frontmatter runs on
+// Node at build time, so `process.env` is the authoritative source.
+const cfToken = process.env.CF_ANALYTICS_TOKEN_LANDING;
 const hasCfToken = typeof cfToken === "string" && cfToken.length > 0;
 ---
 

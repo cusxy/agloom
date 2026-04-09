@@ -84,7 +84,7 @@ function readDistCss(): string {
   return cssFiles.join("\n");
 }
 
-describe("Landing — сборка без аналитики (PUBLIC_CF_ANALYTICS_TOKEN не задан)", () => {
+describe("Landing — сборка без аналитики (CF_ANALYTICS_TOKEN_LANDING не задан)", () => {
   let buildResult: BuildResult;
   let html: string | null;
   let css: string;
@@ -96,8 +96,8 @@ describe("Landing — сборка без аналитики (PUBLIC_CF_ANALYTIC
     }
     // Гарантируем отсутствие токена.
     const env = { ...process.env };
-    delete env.PUBLIC_CF_ANALYTICS_TOKEN;
-    buildResult = runBuild({ PUBLIC_CF_ANALYTICS_TOKEN: "" });
+    delete env.CF_ANALYTICS_TOKEN_LANDING;
+    buildResult = runBuild({ CF_ANALYTICS_TOKEN_LANDING: "" });
     html = readIfExists(INDEX_HTML);
     css = readDistCss();
   }, 180_000);
@@ -259,7 +259,7 @@ describe("Landing — сборка без аналитики (PUBLIC_CF_ANALYTIC
   // === § Cloudflare Web Analytics — критерий 1 ===
 
   // Критерий «CFA-1»: без переменной окружения скрипт аналитики отсутствует.
-  it("без PUBLIC_CF_ANALYTICS_TOKEN скрипт cloudflareinsights отсутствует", () => {
+  it("без CF_ANALYTICS_TOKEN_LANDING скрипт cloudflareinsights отсутствует", () => {
     expect(html).not.toBeNull();
     expect(html ?? "").not.toContain("cloudflareinsights.com");
   });
@@ -331,7 +331,7 @@ describe("Landing — сборка без аналитики (PUBLIC_CF_ANALYTIC
   });
 });
 
-describe("Landing — сборка с PUBLIC_CF_ANALYTICS_TOKEN=test123", () => {
+describe("Landing — сборка с CF_ANALYTICS_TOKEN_LANDING=test123", () => {
   let buildResult: BuildResult;
   let html: string | null;
 
@@ -339,7 +339,7 @@ describe("Landing — сборка с PUBLIC_CF_ANALYTICS_TOKEN=test123", () => 
     if (fs.existsSync(DIST_DIR)) {
       fs.rmSync(DIST_DIR, { recursive: true, force: true });
     }
-    buildResult = runBuild({ PUBLIC_CF_ANALYTICS_TOKEN: "test123" });
+    buildResult = runBuild({ CF_ANALYTICS_TOKEN_LANDING: "test123" });
     html = readIfExists(INDEX_HTML);
   }, 180_000);
 
@@ -350,7 +350,7 @@ describe("Landing — сборка с PUBLIC_CF_ANALYTICS_TOKEN=test123", () => 
     expect(buildResult.status).toBe(0);
   });
 
-  it("при заданном PUBLIC_CF_ANALYTICS_TOKEN HTML содержит data-cf-beacon и токен", () => {
+  it("при заданном CF_ANALYTICS_TOKEN_LANDING HTML содержит data-cf-beacon и токен", () => {
     expect(html).not.toBeNull();
     expect(html ?? "").toContain("data-cf-beacon");
     expect(html ?? "").toContain("test123");
