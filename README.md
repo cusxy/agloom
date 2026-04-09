@@ -1,4 +1,4 @@
-# agloom
+# Agloom
 
 > **Warning:** This project is in active development. Its API may introduce breaking changes between minor versions. Use at your own risk.
 
