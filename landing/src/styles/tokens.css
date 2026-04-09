@@ -1,5 +1,5 @@
 :root {
-  /* Canonical palette — locked by docs/specs/landing/SPEC.md. Do not edit values. */
+  /* Canonical palette. Do not edit values. */
   --color-bg: #0a0b0f;
   --color-bg-elevated: #0e0f14;
   --color-fg: #c5c8d1;
