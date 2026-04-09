@@ -2,6 +2,7 @@ import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 import { themes as prismThemes } from "prism-react-renderer";
 import agloomLlmsPlugin from "./src/plugins/agloom-llms";
+import { cloudflareBeaconScripts } from "./src/analytics";
 
 const config: Config = {
   title: "Agloom",
@@ -37,6 +38,10 @@ const config: Config = {
   ],
 
   plugins: [agloomLlmsPlugin],
+
+  // Cloudflare Web Analytics beacon — gated by CF_ANALYTICS_TOKEN_DOCS
+  // so local / PR builds stay script-free. See src/analytics.ts.
+  scripts: cloudflareBeaconScripts(process.env.CF_ANALYTICS_TOKEN_DOCS),
 
   themes: [
     [
