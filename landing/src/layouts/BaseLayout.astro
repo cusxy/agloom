@@ -1,6 +1,8 @@
 ---
 import "../styles/tokens.css";
 import "../styles/global.css";
+import FogBackground from "../components/FogBackground.astro";
+import ScrollReveal from "../components/ScrollReveal.astro";
 
 interface Props {
   title: string;
@@ -38,6 +40,18 @@ const hasCfToken = typeof cfToken === "string" && cfToken.length > 0;
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
+    <script is:inline>
+      // Gate scroll-reveal starting state before first paint so sections
+      // can't flash visible-then-hidden. Skipped for reduced-motion users.
+      try {
+        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          document.documentElement.classList.add("js-reveal");
+        }
+      } catch (_) {
+        /* ignore */
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -46,9 +60,11 @@ const hasCfToken = typeof cfToken === "string" && cfToken.length > 0;
     />
   </head>
   <body>
+    <FogBackground />
     <div class="shell">
       <slot />
     </div>
+    <ScrollReveal />
     {
       hasCfToken && (
         <script

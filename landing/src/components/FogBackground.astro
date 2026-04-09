@@ -1,0 +1,131 @@
+---
+/**
+ * Animated atmospheric background.
+ *
+ * Renders three large, blurred radial "fog" orbs behind all content.
+ * GSAP drifts them on infinite yoyo timelines so the background feels
+ * alive without being distracting. Respects prefers-reduced-motion.
+ */
+---
+
+<div class="fog" aria-hidden="true">
+  <span class="fog__orb fog__orb--violet" data-orb="violet"></span>
+  <span class="fog__orb fog__orb--blue" data-orb="blue"></span>
+  <span class="fog__orb fog__orb--spark" data-orb="spark"></span>
+</div>
+
+<script>
+  import { gsap } from "gsap";
+
+  const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!prefersReduced) {
+    const orbs = document.querySelectorAll<HTMLElement>(".fog__orb");
+    orbs.forEach((orb, index) => {
+      // Seed each orb with slightly different drift so they don't sync up.
+      const drift = 80 + index * 30;
+      const duration = 22 + index * 6;
+      const delay = index * 1.2;
+
+      gsap.to(orb, {
+        xPercent: () => gsap.utils.random(-drift, drift),
+        yPercent: () => gsap.utils.random(-drift * 0.6, drift * 0.6),
+        scale: () => gsap.utils.random(0.9, 1.25),
+        duration,
+        delay,
+        ease: "sine.inOut",
+        repeat: -1,
+        yoyo: true,
+        repeatRefresh: true,
+      });
+
+      gsap.to(orb, {
+        opacity: () => gsap.utils.random(0.55, 1),
+        duration: duration * 0.6,
+        delay: delay * 0.5,
+        ease: "sine.inOut",
+        repeat: -1,
+        yoyo: true,
+        repeatRefresh: true,
+      });
+    });
+  }
+</script>
+
+<style>
+  .fog {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: -2;
+    filter: saturate(0.9);
+  }
+
+  .fog__orb {
+    position: absolute;
+    display: block;
+    border-radius: 50%;
+    filter: blur(90px);
+    will-change: transform, opacity;
+    mix-blend-mode: screen;
+    opacity: 0.8;
+  }
+
+  .fog__orb--violet {
+    top: -10%;
+    left: -5%;
+    width: 70vmax;
+    height: 70vmax;
+    background: radial-gradient(
+      circle at 50% 50%,
+      var(--color-fog-violet) 0%,
+      rgba(38, 28, 74, 0.55) 35%,
+      transparent 65%
+    );
+  }
+
+  .fog__orb--blue {
+    bottom: -20%;
+    right: -10%;
+    width: 75vmax;
+    height: 75vmax;
+    background: radial-gradient(
+      circle at 50% 50%,
+      var(--color-fog-blue) 0%,
+      rgba(17, 38, 74, 0.55) 35%,
+      transparent 65%
+    );
+  }
+
+  .fog__orb--spark {
+    top: 40%;
+    left: 35%;
+    width: 45vmax;
+    height: 45vmax;
+    opacity: 0.35;
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(136, 164, 196, 0.5) 0%,
+      rgba(107, 140, 175, 0.2) 40%,
+      transparent 70%
+    );
+  }
+
+  /* Vignette floor so orbs fade into the page edges */
+  .fog::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse 100% 80% at 50% 50%,
+      transparent 40%,
+      var(--color-fog-deep) 100%
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fog__orb {
+      animation: none;
+    }
+  }
+</style>

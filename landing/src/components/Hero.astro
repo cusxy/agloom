@@ -59,6 +59,124 @@ const githubHref = "https://github.com/cusxy/agloom";
 </section>
 
 <script>
+  import { gsap } from "gsap";
+
+  const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const hero = document.querySelector<HTMLElement>("section.hero");
+
+  if (hero) {
+    const headline = hero.querySelector<HTMLElement>(".hero__headline");
+    // Wrap each headline text line in a span so we can stagger them.
+    if (headline) {
+      const frag = document.createDocumentFragment();
+      headline.childNodes.forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+          const line = document.createElement("span");
+          line.className = "hero__headline-line";
+          line.textContent = node.textContent;
+          // Hide via opacity only. We deliberately don't set an inline
+          // transform here — GSAP's transform parser adds yPercent on
+          // top of any existing translate(), which leaves the line off
+          // screen forever.
+          if (!prefersReduced) {
+            line.style.opacity = "0";
+          }
+          frag.appendChild(line);
+        }
+        // <br> and whitespace text nodes are dropped: each line is block.
+      });
+      headline.replaceChildren(frag);
+    }
+
+    const lines = hero.querySelectorAll<HTMLElement>(".hero__headline-line");
+    const lede = hero.querySelector<HTMLElement>(".hero__lede");
+    const actions = hero.querySelector<HTMLElement>(".hero__actions");
+    const installWindow = hero.querySelector<HTMLElement>(".install-window");
+
+    if (prefersReduced) {
+      [lines, lede, actions, installWindow].forEach((target) => {
+        if (!target) return;
+        if (target instanceof NodeList) {
+          target.forEach((el) => {
+            (el as HTMLElement).style.opacity = "1";
+            (el as HTMLElement).style.transform = "none";
+          });
+          return;
+        }
+        target.style.opacity = "1";
+        target.style.transform = "none";
+      });
+    } else {
+      const tl = gsap.timeline({
+        defaults: { ease: "power3.out" },
+        delay: 0.05,
+      });
+
+      if (lines.length > 0) {
+        tl.fromTo(
+          lines,
+          { y: 36, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.9,
+            stagger: 0.09,
+            ease: "expo.out",
+          },
+          0,
+        );
+      }
+
+      if (installWindow) {
+        tl.fromTo(
+          installWindow,
+          { x: 60, opacity: 0, scale: 0.96 },
+          {
+            x: 0,
+            opacity: 1,
+            scale: 1,
+            duration: 1.0,
+            ease: "power4.out",
+          },
+          0.1,
+        );
+      }
+
+      if (lede) {
+        tl.fromTo(
+          lede,
+          { y: 20, opacity: 0, filter: "blur(6px)" },
+          { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.7 },
+          0.35,
+        );
+      }
+
+      if (actions) {
+        tl.fromTo(
+          actions.children,
+          { y: 14, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.55, stagger: 0.07 },
+          0.55,
+        );
+      }
+
+      if (installWindow) {
+        // Subtle continuous drift after the intro settles.
+        tl.to(
+          installWindow,
+          {
+            y: -8,
+            duration: 3.6,
+            ease: "sine.inOut",
+            repeat: -1,
+            yoyo: true,
+          },
+          ">-0.1",
+        );
+      }
+    }
+  }
+
   const copyButtons = document.querySelectorAll<HTMLButtonElement>('button[data-role="copy"]');
   copyButtons.forEach((button) => {
     button.addEventListener("click", async () => {
@@ -80,6 +198,26 @@ const githubHref = "https://github.com/cusxy/agloom";
 </script>
 
 <style>
+  /* Pre-intro gating — matches <html class="js-reveal"> added in BaseLayout.
+     Hides hero pieces before GSAP takes over so there's no flash.
+     Headline lines hide themselves via inline style at creation time. */
+  :global(.js-reveal) .hero__lede,
+  :global(.js-reveal) .hero__actions > *,
+  :global(.js-reveal) .install-window {
+    opacity: 0;
+  }
+
+  /* :global — these spans are injected at runtime by Hero's script,
+     so they don't carry Astro's scoped-CSS data attribute. */
+  :global(.hero__headline-line) {
+    display: block;
+    will-change: transform, opacity;
+  }
+
+  .install-window {
+    will-change: transform, opacity;
+  }
+
   .hero {
     padding: var(--space-20) 0 var(--space-12);
     display: grid;

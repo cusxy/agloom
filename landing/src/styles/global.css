@@ -33,18 +33,16 @@ body {
   overflow-x: hidden;
 }
 
-/* Fog atmosphere */
+/* Fog atmosphere — animated orbs live in <FogBackground />. This base
+   layer is a static fallback that paints instantly before JS boots. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: -2;
+  z-index: -3;
   background:
-    radial-gradient(ellipse 80% 60% at 18% 8%, var(--color-fog-violet) 0%, transparent 60%),
-    radial-gradient(ellipse 70% 55% at 88% 92%, var(--color-fog-blue) 0%, transparent 65%),
     radial-gradient(ellipse 100% 80% at 50% 50%, var(--color-fog-edge) 0%, var(--color-fog-deep) 100%);
-  filter: saturate(0.85);
 }
 
 /* Dot grid + grain */
@@ -80,6 +78,13 @@ main {
 
 section {
   position: relative;
+}
+
+/* Scroll-reveal starting state. The .js-reveal class is added
+   synchronously in <head> before first paint; GSAP then animates
+   sections to opacity 1 / y 0. Removed entirely for reduced-motion. */
+.js-reveal main > section:not(.hero) {
+  opacity: 0;
 }
 
 a {

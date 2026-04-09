@@ -1,0 +1,42 @@
+---
+/**
+ * Client-only GSAP ScrollTrigger setup that reveals every top-level
+ * <main> section as it scrolls into view. Sections start slightly
+ * translated and faded, then ease into place once their top edge
+ * clears ~85% of the viewport. Fully skipped under reduced-motion.
+ */
+---
+
+<script>
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Hero runs its own intro timeline from Hero.astro, so skip it here.
+  const sections = document.querySelectorAll<HTMLElement>("main > section:not(.hero)");
+
+  if (prefersReduced) {
+    sections.forEach((section) => {
+      section.style.opacity = "1";
+      section.style.transform = "none";
+    });
+  } else {
+    sections.forEach((section) => {
+      gsap.set(section, { opacity: 0, y: 40 });
+      gsap.to(section, {
+        opacity: 1,
+        y: 0,
+        duration: 1.1,
+        ease: "power3.out",
+        scrollTrigger: {
+          trigger: section,
+          start: "top 85%",
+          once: true,
+        },
+      });
+    });
+  }
+</script>
