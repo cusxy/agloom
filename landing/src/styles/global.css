@@ -25,6 +25,15 @@ html {
      inherits the default viewport behaviour. Supported in all browsers relevant
      to this project (Chrome 90+, Safari 15.4+, Firefox 81+). */
   overflow-x: clip;
+  /* Disable mobile browser text auto-inflation ("font boosting"). Without this,
+     iOS Safari and Chrome on Android inflate the font-size of `<pre>` blocks
+     whose unbreakable content is wider than the viewport — so code blocks in
+     sections like Interpolation and Plugins (with long URLs and interpolation
+     markers) render noticeably larger than neighbouring code blocks with
+     shorter lines. Fixing the CSS font-size is not enough; boosting overrides
+     it at the rendering layer. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
