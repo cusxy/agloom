@@ -3,6 +3,11 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Manual re-run of the deploy jobs without bumping the package
+  # version — useful when the site build needs to be promoted to
+  # production after a workflow/config fix without republishing
+  # the npm tarball.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -11,6 +16,10 @@ permissions:
 
 jobs:
   publish:
+    # Publish only on actual tag pushes. Manual dispatches skip this
+    # job entirely so the deploy jobs can run against an already
+    # published version without npm rejecting a duplicate upload.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     # npm's Trusted Publisher config for this package includes an
     # environment name (`default`), so the OIDC id token minted for
@@ -72,6 +81,12 @@ jobs:
 
   deploy-docs:
     needs: publish
+    # Run after a successful publish (tag push) OR after publish was
+    # skipped (manual dispatch). `always()` is required because a
+    # skipped dependency would otherwise cascade-skip this job.
+    if: |
+      always() &&
+      (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     runs-on: ubuntu-latest
     name: Deploy Docs
     # Cloudflare secrets (tokens, account id) live in the `default`
@@ -97,13 +112,24 @@ jobs:
           CF_ANALYTICS_TOKEN_DOCS: ${{ secrets.CF_ANALYTICS_TOKEN_DOCS }}
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy website/build --project-name=agloom-docs
+        # --branch=main is required: without it, wrangler reads the
+        # git context (detached HEAD on a tag push, or the dispatch
+        # ref on workflow_dispatch) and lands the upload in the
+        # project's preview slot. Production is only assigned to
+        # deployments whose branch matches the project's configured
+        # production branch (main).
+        run: npx wrangler pages deploy website/build --project-name=agloom-docs --branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   deploy-landing:
     needs: publish
+    # Same gating as deploy-docs: tag push with successful publish,
+    # or manual dispatch (publish skipped).
+    if: |
+      always() &&
+      (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     runs-on: ubuntu-latest
     name: Deploy Landing
     # Same reasoning as deploy-docs — Cloudflare secrets are scoped
@@ -128,7 +154,8 @@ jobs:
           CF_ANALYTICS_TOKEN_LANDING: ${{ secrets.CF_ANALYTICS_TOKEN_LANDING }}
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy landing/dist --project-name=agloom
+        # See deploy-docs for the reason behind --branch=main.
+        run: npx wrangler pages deploy landing/dist --project-name=agloom --branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
