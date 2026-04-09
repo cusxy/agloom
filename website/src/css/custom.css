@@ -148,3 +148,37 @@
   color: var(--agloom-color-warm);
   text-decoration-color: rgba(196, 161, 129, 0.55);
 }
+
+/* ============================================================
+   Code-block FOUC guard (light theme)
+   ------------------------------------------------------------
+   Docusaurus SSR bakes the chosen defaultMode ("dark" here) into
+   the HTML, including inline Prism styles on code blocks
+   (background-color:#1E1E1E from vsDark). A blocking inline
+   script in <head> then flips data-theme on <html> to "light"
+   for users whose system prefers light, and the rest of the
+   page repaints via CSS variables — but code-block inline
+   styles survive until React hydration re-renders them with
+   the github Prism theme, producing a dark→light flash.
+
+   During the pre-hydration window (data-has-hydrated="false",
+   flipped to "true" after React hydrates) we neutralize the
+   baked-in Prism colors so the code blocks sit on a light
+   background with plain-text tokens. Tokens re-gain syntax
+   highlighting once hydration completes.
+   ============================================================ */
+html[data-theme="light"]:not([data-has-hydrated="true"]) .theme-code-block {
+  --prism-background-color: var(--ifm-code-background) !important;
+  --prism-color: var(--ifm-color-content) !important;
+}
+html[data-theme="light"]:not([data-has-hydrated="true"]) .theme-code-block .prism-code {
+  background-color: var(--ifm-code-background) !important;
+  color: var(--ifm-color-content) !important;
+}
+/* prism-react-renderer pins an inline color on every descendant of
+   .prism-code (.token-line, .token), so overriding just .token (or
+   relying on `inherit`) loses to the .token-line inline color. Apply
+   the override to all descendants, not just .token. */
+html[data-theme="light"]:not([data-has-hydrated="true"]) .theme-code-block .prism-code * {
+  color: var(--ifm-color-content) !important;
+}
