@@ -35,6 +35,11 @@ jobs:
     needs: publish
     runs-on: ubuntu-latest
     name: Deploy Docs
+    # Cloudflare secrets (tokens, account id) live in the `default`
+    # GitHub environment, so the job must declare membership to see
+    # them — otherwise `secrets.*` resolves to empty strings and
+    # wrangler / the analytics beacon get no credentials.
+    environment: default
     steps:
       - uses: actions/checkout@v4
 
@@ -62,6 +67,10 @@ jobs:
     needs: publish
     runs-on: ubuntu-latest
     name: Deploy Landing
+    # Same reasoning as deploy-docs — Cloudflare secrets are scoped
+    # to the `default` environment and become visible only to jobs
+    # that join it.
+    environment: default
     steps:
       - uses: actions/checkout@v4
 
