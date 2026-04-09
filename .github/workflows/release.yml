@@ -37,6 +37,25 @@ jobs:
 
       - run: pnpm run test
 
+      # TEMPORARY debug: decode the OIDC id token minted for the
+      # "npm" audience and print its claim set so we can compare
+      # against the npm Trusted Publisher config. Remove after the
+      # first successful publish.
+      - name: Debug OIDC claims
+        run: |
+          TOKEN=$(curl -sSL "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm" \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" | jq -r .value)
+          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2)
+          # Pad base64url to multiple of 4
+          PADDED="$PAYLOAD$(printf '=%.0s' $(seq 1 $((4 - ${#PAYLOAD} % 4))))"
+          DECODED=$(echo "$PADDED" | tr '_-' '/+' | base64 -d 2>/dev/null)
+          echo "OIDC payload:"
+          echo "$DECODED" | jq '{
+            iss, aud, repository, repository_owner, workflow,
+            workflow_ref, job_workflow_ref, event_name, ref,
+            environment, sub
+          }'
+
       - run: pnpm publish --no-git-checks --provenance
 
   deploy-docs:
