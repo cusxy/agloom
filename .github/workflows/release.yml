@@ -46,14 +46,24 @@ jobs:
 
       - run: pnpm run test
 
-      # Node 22 ships with npm 10.9.x, which signs provenance via
-      # sigstore OIDC but still auths the npm PUT with a classic
-      # token. Trusted Publisher OIDC auth landed in npm 11.5.1;
-      # upgrade to latest before publishing so we can rely on it.
+      # Hybrid publish path: pnpm packs the tarball (correctly
+      # rewriting `workspace:*` → concrete versions for the
+      # devDependency on @agloom/markdown-tools), then npm CLI
+      # uploads the pre-packed tarball. We go through npm for the
+      # upload because pnpm 10 still auths the npm PUT with the
+      # classic _authToken from .npmrc, which in a CI context is
+      # the placeholder that actions/setup-node bakes in — npm
+      # rejects that with `PUT /agloom → 404`. Trusted Publisher
+      # OIDC auth (the flow we actually want) landed in npm 11.5.1;
+      # Node 22 ships with 10.9.x so we upgrade first.
+      - name: Pack tarball with pnpm (resolves workspace:* refs)
+        run: pnpm pack
+
       - name: Upgrade npm to latest (for Trusted Publisher OIDC)
         run: npm install -g npm@latest
 
-      - run: npm publish --provenance
+      - name: Publish tarball via npm (OIDC Trusted Publisher)
+        run: npm publish agloom-*.tgz --provenance
 
   deploy-docs:
     needs: publish
