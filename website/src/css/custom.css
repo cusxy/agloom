@@ -182,3 +182,35 @@ html[data-theme="light"]:not([data-has-hydrated="true"]) .theme-code-block .pris
 html[data-theme="light"]:not([data-has-hydrated="true"]) .theme-code-block .prism-code * {
   color: var(--ifm-color-content) !important;
 }
+
+/* ============================================================
+   Navbar — use position: fixed instead of sticky
+   ------------------------------------------------------------
+   Docusaurus ships `.navbar--fixed-top` as `position: sticky;
+   top: 0` (despite the class name). In most browsers that works,
+   but Telegram's in-app web view on iOS wraps the page in a
+   container that interferes with the scroll context sticky uses,
+   so the navbar stops sticking once the user scrolls — it stays
+   in its natural flow position at the top of the document and
+   scrolls out of view. Reported via a screenshot where the
+   navbar was rendered halfway down the viewport with the end of
+   the previous section ("… single source of truth for how your
+   project should be understood …") visible above it.
+
+   `position: fixed` is unaffected by the ancestor wrapping and
+   behaves the same in Telegram, iOS Safari, and desktop. The
+   sticky navbar used to reserve its own height in the flex
+   column, so switching to fixed collapses that space; we add
+   `padding-top: var(--ifm-navbar-height)` to `.main-wrapper` to
+   push content back down by the same amount, preserving the
+   existing layout on every other browser.
+   ============================================================ */
+.navbar.navbar--fixed-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+.main-wrapper {
+  padding-top: var(--ifm-navbar-height);
+}
