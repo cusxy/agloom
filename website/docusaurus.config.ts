@@ -9,6 +9,7 @@ const config: Config = {
   baseUrl: "/",
   organizationName: "cusxies",
   projectName: "agloom",
+  favicon: "img/favicon.svg",
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "throw",
 
@@ -64,6 +65,10 @@ const config: Config = {
     },
     navbar: {
       title: "Agloom",
+      logo: {
+        alt: "Agloom docs",
+        src: "img/favicon.svg",
+      },
       items: [
         {
           type: "docSidebar",
