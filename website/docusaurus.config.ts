@@ -110,8 +110,14 @@ const config: Config = {
         },
         {
           href: "https://github.com/cusxy/agloom",
+          // Rendered as icon-only via `.navbar-github-link` CSS
+          // (see custom.css). `label` still drives the a11y
+          // accessible name because Docusaurus requires it; we
+          // hide it visually and expose it via aria-label.
           label: "GitHub",
           position: "right",
+          className: "navbar-github-link",
+          "aria-label": "GitHub repository",
         },
       ],
     },

@@ -100,6 +100,16 @@
   --search-local-modal-background: var(--ifm-background-surface-color);
   --search-local-modal-shadow: 0 16px 40px rgba(6, 8, 16, 0.55);
   --search-local-highlight-color: rgba(107, 140, 175, 0.2);
+
+  /* Infima bakes the navbar search-input icon as a data-URL SVG
+     with `fill="currentColor"`, but `currentColor` inside an SVG
+     loaded via `background-image: url(data:...)` is NOT inherited
+     from the host document — the SVG is treated as a separate
+     document whose root `color` defaults to black. So the icon
+     stays dark even in dark mode. Override the variable with the
+     same SVG path but an explicit light fill (%23 = URL-escaped
+     #) tuned to our dark palette. */
+  --ifm-navbar-search-input-icon: url('data:image/svg+xml;utf8,<svg fill="%23c6cbd3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" height="16px" width="16px"><path d="M6.02945,10.20327a4.17382,4.17382,0,1,1,4.17382-4.17382A4.15609,4.15609,0,0,1,6.02945,10.20327Zm9.69195,4.2199L10.8989,9.59979A5.88021,5.88021,0,0,0,12.058,6.02856,6.00467,6.00467,0,1,0,9.59979,10.8989l4.82338,4.82338a.89729.89729,0,0,0,1.29912,0,.89749.89749,0,0,0-.00087-1.29909Z" /></svg>');
 }
 
 /* Navbar input — pick up the palette and soften the focus ring. */
@@ -130,6 +140,68 @@
 [class*="searchHintContainer"],
 [class*="searchHint"] {
   display: none !important;
+}
+
+/* ============================================================
+   GitHub navbar link — icon-only, visible on mobile too
+   ------------------------------------------------------------
+   Docusaurus renders the GitHub nav item as an `.navbar__item
+   .navbar__link` anchor containing the label text. We:
+
+   1. Hide the text ("GitHub") visually with `font-size: 0`
+      while keeping it in the DOM so assistive tech still reads
+      the label (Docusaurus also emits an `aria-label` from
+      config for belt-and-braces).
+   2. Paint a GitHub mark as a CSS mask — the element's
+      `background-color` becomes the icon fill, which means the
+      icon automatically picks up the navbar link colour in
+      both light and dark themes.
+   3. Override infima's `@media (max-width: 996px) .navbar__item
+      { display: none }` rule so the icon stays visible on
+      mobile, positioned next to the search button where all
+      the other right-side navbar items live.
+   ============================================================ */
+.navbar-github-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font-size: 0;
+  background-color: var(--ifm-navbar-link-color);
+  -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>')
+    center / 20px 20px no-repeat;
+  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>')
+    center / 20px 20px no-repeat;
+  transition: background-color 120ms ease-out;
+}
+
+.navbar-github-link:hover {
+  background-color: var(--ifm-navbar-link-hover-color);
+}
+
+@media (max-width: 996px) {
+  .navbar-github-link.navbar__item {
+    display: inline-flex;
+  }
+
+  /* Docusaurus's theme-classic wraps the navbar search in a
+     `.navbarSearchContainer` div and, under `@media (max-width:
+     996px)`, sets `position: absolute; right: <nav padding>`.
+     That pins the search to the right edge of the navbar and
+     takes it out of the flex flow of `.navbar__items--right`.
+     Our flex-laid-out GitHub icon also lands against flex-end,
+     so the two elements render in the same spot and overlap.
+     Reset the container to the default so it participates in
+     flex again; `flex-end` on the parent still keeps both items
+     right-aligned with natural spacing between them.
+     Class name is a CSS module so we match by substring; the
+     `.navbar` prefix lifts specificity above Docusaurus's own
+     single-class rule, which otherwise wins on source order. */
+  .navbar [class*="navbarSearchContainer"] {
+    position: static;
+  }
 }
 
 /* Warm-tinted match highlights inside hits. Specificity is 0,3,1 so
@@ -184,33 +256,146 @@ html[data-theme="light"]:not([data-has-hydrated="true"]) .theme-code-block .pris
 }
 
 /* ============================================================
-   Navbar — use position: fixed instead of sticky
+   Navbar — make it static on small screens
    ------------------------------------------------------------
    Docusaurus ships `.navbar--fixed-top` as `position: sticky;
-   top: 0` (despite the class name). In most browsers that works,
-   but Telegram's in-app web view on iOS wraps the page in a
-   container that interferes with the scroll context sticky uses,
-   so the navbar stops sticking once the user scrolls — it stays
-   in its natural flow position at the top of the document and
-   scrolls out of view. Reported via a screenshot where the
-   navbar was rendered halfway down the viewport with the end of
-   the previous section ("… single source of truth for how your
-   project should be understood …") visible above it.
+   top: 0` (despite the class name). That works in normal
+   browsers, but Telegram's in-app WKWebView on iOS applies its
+   own viewport/scroll handling that breaks both `position:
+   sticky` and `position: fixed` for the navbar — the element
+   ends up rendered partway down the viewport while the previous
+   section of the document peeks above it, with the end of one
+   paragraph ("… single source of truth for how your project
+   should be understood …") visible in the gap above the navbar.
+   Both sticky (the default) and an override to fixed were
+   verified as broken on the same device.
 
-   `position: fixed` is unaffected by the ancestor wrapping and
-   behaves the same in Telegram, iOS Safari, and desktop. The
-   sticky navbar used to reserve its own height in the flex
-   column, so switching to fixed collapses that space; we add
-   `padding-top: var(--ifm-navbar-height)` to `.main-wrapper` to
-   push content back down by the same amount, preserving the
-   existing layout on every other browser.
+   On mobile the cleanest fix is to let the navbar flow with the
+   document: no sticky, no fixed, just a regular block that
+   scrolls off screen with everything else. Users can still
+   scroll up to reach it. Desktop keeps the sticky behaviour
+   unchanged, so nothing regresses on wider viewports.
+
+   The `996px` breakpoint mirrors Docusaurus's own
+   `--ifm-mobile-breakpoint` so this switch lines up with the
+   point at which the mobile sidebar drawer takes over.
    ============================================================ */
-.navbar.navbar--fixed-top {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+@media (max-width: 996px) {
+  .navbar.navbar--fixed-top {
+    position: static;
+  }
 }
-.main-wrapper {
-  padding-top: var(--ifm-navbar-height);
+
+/* ============================================================
+   Mobile sidebar drawer — hide document flow while drawer open
+   ------------------------------------------------------------
+   Docusaurus's mobile drawer (`.navbar-sidebar`) and its dim
+   backdrop (`.navbar-sidebar__backdrop`) are both `position:
+   fixed; top: 0; bottom: 0`. In standards-compliant browsers
+   fixed positioning is anchored to the *layout viewport* — the
+   full area between the top system bar and the bottom of the
+   screen — so a fixed element with `top: 0; bottom: 0` fills
+   everything and there is nothing to leak.
+
+   Telegram's in-app iOS WKWebView doesn't behave that way. It
+   anchors `position: fixed` to the **visual viewport**: the
+   area that isn't obscured by the expanded URL bar at the top
+   or the translucent navigation toolbar at the bottom. The
+   layout viewport is still the full screen height, and static
+   document content (the `.navbar` box, the doc body) is still
+   painted into it. Telegram's system bars are translucent and
+   reveal whatever sits underneath them in the layout viewport.
+   Result: while the drawer is open, the page's own navbar
+   peeks above the drawer and the doc body text peeks below it,
+   both leaking through the translucent chrome.
+
+   This was verified empirically by adding debug outlines and
+   two `position: fixed` marker labels (`body::before` at `top:
+   0` and `body::after` at `bottom: 0`): the drawer, backdrop,
+   and both markers lined up at the visual viewport edges,
+   while the `.navbar` box and the body content extended into
+   the chrome regions above and below, visible through them.
+
+   Fix: make everything in document flow invisible while the
+   drawer is shown, so the translucent chrome has nothing to
+   reveal. The drawer and backdrop are `position: fixed` and
+   stay visible; everything else inside `<nav class="navbar">`
+   (the page's own brand, hamburger, search) and every sibling
+   of that nav (the doc content) gets `visibility: hidden`.
+   The nav's own background band is also set transparent so
+   the 60px-tall navbar box doesn't paint its colour into the
+   layout viewport either.
+
+   `.navbar-sidebar--show` is toggled on the `<nav>` element by
+   Docusaurus (see theme-classic/Navbar/Layout), so we anchor
+   every selector to it and stay within the mobile breakpoint.
+   ============================================================ */
+@media (max-width: 996px) {
+  .navbar.navbar-sidebar--show {
+    background-color: transparent;
+  }
+  .navbar.navbar-sidebar--show
+    > :not(.navbar-sidebar):not(.navbar-sidebar__backdrop) {
+    visibility: hidden;
+  }
+  .navbar.navbar-sidebar--show ~ * {
+    visibility: hidden;
+  }
 }
+
+/* ============================================================
+   Mobile sidebar drawer — hide "Back to main menu" button
+   ------------------------------------------------------------
+   On a doc page Docusaurus auto-opens the drawer in its
+   "secondary" view (the doc sidebar with Guide/Reference) and
+   prepends `.navbar-sidebar__back` ("Back to main menu") so the
+   user can pop back to the "primary" view that lists navbar
+   items. For us that primary view is useless: `routeBasePath`
+   is `/`, so the only navbar entry is a `Docs` link that points
+   right back at the same site root, plus a `GitHub` link that
+   stays reachable from the navbar at the top of the document
+   (which is `position: static` on mobile and scrolls with the
+   page). Hiding the back button removes a confusing dead end
+   without losing any navigation.
+   ============================================================ */
+@media (max-width: 996px) {
+  .navbar-sidebar__back {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Mobile sidebar drawer — breathing room + touch-hover reset
+   ------------------------------------------------------------
+   Two small touch-UX tweaks for the mobile drawer:
+
+   1. Add bottom padding to the scrollable menu panel so the
+      last item (e.g. Reference > Transpilers) doesn't butt up
+      against the drawer's bottom edge, where the tap target
+      gets clipped and there's no visual slack to grip.
+
+   2. Cancel infima's `:hover` backgrounds on touch devices.
+      On a phone there is no real hover — after a tap, WebKit
+      keeps the `:hover` style applied to the tapped element
+      until the user taps somewhere else, so a half-swipe that
+      doesn't become a real tap still leaves a highlighted row
+      behind. Gating the hover styles behind `(hover: hover)`
+      means touch-only devices never apply them in the first
+      place; we keep the `:active` feedback (which fires and
+      clears correctly on touch) and the `--active` class used
+      for the current page.
+   ============================================================ */
+@media (max-width: 996px) {
+  .navbar-sidebar__item.menu {
+    padding-bottom: var(--ifm-navbar-height);
+  }
+}
+
+@media (hover: none) {
+  .menu__link:hover,
+  .menu__caret:hover,
+  .menu__list-item-collapsible:hover {
+    background: none;
+  }
+}
+
