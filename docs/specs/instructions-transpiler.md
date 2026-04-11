@@ -683,7 +683,7 @@ instructions-transpiler является no-op.
 Следующие аспекты НЕ ВХОДЯТ в scope данной спецификации:
 
 - Skills, commands, sub-agents, MCP-конфигурация.
-- Модульные правила (`.claude/rules/`, `.kilocode/rules/`).
+- Модульные правила (`.claude/rules/`, `.kilo/rules/`).
 - Executable hooks, tool settings, permissions.
 - CLI-интерфейс (отдельная спецификация).
 - Watch mode (отслеживание изменений канонических файлов).

@@ -3,7 +3,7 @@
  * Spec: docs/specs/mcp-transpiler.md § Kilocode MCP-адаптер
  *
  * agentId: "kilocode"
- * Генерирует файл .kilocode/mcp.json.
+ * Генерирует файл kilo.jsonc в корне проекта.
  */
 
 import { buildStdioServerConfig } from "./shared.js";
@@ -55,6 +55,6 @@ export class KilocodeMcpAdapter implements McpAdapter {
     };
     const content = JSON.stringify(output, null, 2) + "\n";
 
-    return [{ relativePath: ".kilocode/mcp.json", content }];
+    return [{ relativePath: "kilo.jsonc", content }];
   }
 }

@@ -679,6 +679,82 @@ describe("Модель слоёв", () => {
       });
     });
 
+    // --- hotfix-регрессия: .jsonc merge-eligible с JSON.parse ---
+    // § Парсинг файлов для merge: "Для .jsonc ТРЕБУЕТСЯ использовать стандартный
+    // JSON-парсер (JSON.parse)". Два слоя .jsonc должны deep-merge'иться как JSON.
+    it("выполняет deep merge .jsonc-файла из двух слоёв (JSON.parse)", () => {
+      const entry = createTestEntry({ id: "kilocode" });
+
+      const pluginDir = createLayer("plugin-a", {
+        "kilo.jsonc": JSON.stringify({
+          $schema: "https://app.kilo.ai/config.json",
+          mcpServers: { a: { command: "npx", args: ["-y", "a"] } },
+        }),
+      });
+      const localDir = createLayer("local", {
+        "kilo.jsonc": JSON.stringify({
+          mcpServers: { b: { command: "node", args: ["b.js"] } },
+        }),
+      });
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        layers: [
+          { id: "plugin-a", overlayDir: pluginDir },
+          { id: "local", overlayDir: localDir },
+        ],
+      });
+
+      expect(outcome.writtenCount).toBe(1);
+      expect(outcome.errors).toEqual([]);
+
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "kilo.jsonc"), "utf-8"));
+      expect(written).toEqual({
+        $schema: "https://app.kilo.ai/config.json",
+        mcpServers: {
+          a: { command: "npx", args: ["-y", "a"] },
+          b: { command: "node", args: ["b.js"] },
+        },
+      });
+    });
+
+    // --- hotfix-регрессия: невалидный JSONC base → rewrite целиком ---
+    // § Парсинг файлов для merge: "Если существующий базовый .jsonc-файл содержит
+    // JSONC-специфичные конструкции ... и не распарсивается стандартным JSON-парсером --
+    // base ТРЕБУЕТСЯ игнорировать и полностью перезаписать файл результатом merge".
+    it("перезаписывает .jsonc целиком, если существующий base содержит // комментарии", () => {
+      const entry = createTestEntry({ id: "kilocode" });
+
+      // Существующий файл с JSONC-комментариями — невалидный JSON
+      fs.writeFileSync(
+        path.join(tmpDir, "kilo.jsonc"),
+        '// user comment\n{\n  "mcpServers": { "old": { "command": "old" } }\n}\n',
+      );
+
+      const layerDir = createLayer("local", {
+        "kilo.jsonc": JSON.stringify({
+          $schema: "https://app.kilo.ai/config.json",
+          mcpServers: { fresh: { command: "npx" } },
+        }),
+      });
+
+      const outcome = runOverlayStep({
+        entry,
+        projectRoot: tmpDir,
+        layers: [{ id: "local", overlayDir: layerDir }],
+      });
+
+      expect(outcome.errors).toEqual([]);
+
+      const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "kilo.jsonc"), "utf-8"));
+      // base полностью отброшен: нет сервера "old", только "fresh"
+      expect(written).toEqual({
+        $schema: "https://app.kilo.ai/config.json",
+        mcpServers: { fresh: { command: "npx" } },
+      });
+    });
+
     // --- Сериализация результата в формат incoming файла ---
     // § Парсинг файлов для merge: после merge результат сериализуется в формат incoming
     it("сериализует результат merge в формат incoming файла (YAML)", () => {

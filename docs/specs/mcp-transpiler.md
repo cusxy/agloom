@@ -5,7 +5,7 @@ description: >
   или .agloom/mcp.json) в agent-specific MCP-файлы. Поддерживает stdio,
   HTTP и SSE транспорты. Генерирует .mcp.json и .claude/settings.json
   для Claude Code, opencode.json для OpenCode, .codex/config.toml для Codex,
-  .gemini/settings.json для Gemini, .kilocode/mcp.json для Kilocode.
+  .gemini/settings.json для Gemini, kilo.jsonc для Kilocode.
   Поддерживает tool filtering в каноническом формате с native-маппингом
   для адаптеров, поддерживающих фильтрацию, и транспиляцией в permission-
   entries для Claude и OpenCode. Расширяется через адаптеры.
@@ -1078,8 +1078,19 @@ deep merge в соответствии с `docs/specs/layer-model.md`
 
 Адаптер для Kilocode. `agentId`: `"kilocode"`.
 
-Генерирует единственный файл `.kilocode/mcp.json` в корне проекта.
-Формат -- JSON. Верхний уровень содержит ключ `"$schema"` со значением
+Генерирует единственный файл `kilo.jsonc` в корне проекта. Файл
+является единым конфигурационным файлом Kilocode (аналогично
+`opencode.json` для OpenCode): содержит ключ `"$schema"`, ключ
+`"mcpServers"` (описание MCP-серверов) и, в будущих циклах,
+также ключ `"permission"` (правила permissions), записываемые
+в тот же файл через deep merge.
+
+Хотя расширение файла -- `.jsonc` (JSONC-совместимый формат
+Kilocode), содержимое, эмитируемое данным адаптером, ТРЕБУЕТСЯ
+сериализовать как чистый JSON (без `//`- и `/* */`-комментариев
+со стороны Agloom). Чистый JSON является валидным JSONC, поэтому
+Kilocode читает такой файл штатно. Верхний уровень итогового
+объекта содержит ключ `"$schema"` со значением
 `"https://app.kilo.ai/config.json"` и ключ `"mcpServers"`.
 
 ### Маппинг транспортов и полей
@@ -1147,9 +1158,11 @@ denylist (аналог `disabledTools`) в формате Kilocode отсутс�
    `"https://app.kilo.ai/config.json"`.
    3.2. Добавить ключ `"mcpServers"` со значением `mcpServers`.
 4. Сериализовать `output` в JSON с отступом 2 пробела
-   и завершающим переводом строки.
+   и завершающим переводом строки. Сериализация ТРЕБУЕТСЯ
+   выполняться стандартным JSON-сериализатором; комментарии
+   (`//` или `/* */`) в вывод ЗАПРЕЩАЕТСЯ эмитировать.
 5. Сформировать `McpOutputFile`
-   с `relativePath: ".kilocode/mcp.json"`.
+   с `relativePath: "kilo.jsonc"`.
 
 **Расширения:**
 
@@ -1159,14 +1172,22 @@ denylist (аналог `disabledTools`) в формате Kilocode отсутс�
 
 `McpOutputFile[]` (массив из одного элемента).
 
-### Deep merge с существующим .kilocode/mcp.json
+### Deep merge с существующим kilo.jsonc
 
-Файл `.kilocode/mcp.json` является merge-eligible (`.json`). При
-наличии существующего файла по целевому пути ТРЕБУЕТСЯ применить
-deep merge в соответствии с `docs/specs/layer-model.md`
-§ Алгоритм deep merge.
+Файл `kilo.jsonc` является merge-eligible (`.jsonc`,
+см. `docs/specs/layer-model.md` § Классификация файлов
+по стратегии слияния). При наличии существующего файла
+по целевому пути `kilo.jsonc` (от overlay, плагина
+или предыдущего шага) ТРЕБУЕТСЯ применить deep merge
+в соответствии с `docs/specs/layer-model.md`
+§ Алгоритм deep merge. Если существующее содержимое
+файла не является валидным JSON (например, пользователь
+вручную добавил `//`-комментарии) -- base ТРЕБУЕТСЯ
+игнорировать и полностью перезаписать файл результатом
+транспиляции (симметрично поведению для невалидного JSON,
+см. `docs/specs/layer-model.md` § Парсинг файлов для merge).
 
-### Пример выходного файла `.kilocode/mcp.json`
+### Пример выходного файла `kilo.jsonc`
 
 ```json
 {

@@ -7,7 +7,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import yaml from "js-yaml";
-import * as jsonc from "jsonc-parser";
 import * as TOML from "smol-toml";
 import type { AdapterRegistryEntry, TranspilerStepOutcome } from "./types.js";
 import { interpolate, InterpolationError } from "../interpolation/index.js";
@@ -275,9 +274,12 @@ function parseContent(content: string, ext: string): Record<string, unknown> | n
   const lower = ext.toLowerCase();
   switch (lower) {
     case ".json":
-      return JSON.parse(content) as Record<string, unknown>;
     case ".jsonc":
-      return jsonc.parse(content) as Record<string, unknown>;
+      // Spec: docs/specs/layer-model.md § Парсинг файлов для merge
+      // "Для .jsonc ТРЕБУЕТСЯ использовать стандартный JSON-парсер (JSON.parse)".
+      // Невалидный JSON (например, с // комментариями) бросает → вызывающий код
+      // игнорирует base и полностью перезаписывает файл.
+      return JSON.parse(content) as Record<string, unknown>;
     case ".yaml":
     case ".yml":
       return (yaml.load(content) as Record<string, unknown>) ?? {};

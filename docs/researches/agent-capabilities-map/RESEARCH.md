@@ -89,7 +89,7 @@ Agloom — CLI-инструмент (Node.js/TypeScript/Ink), предостав
 | **Формат конфигурации**        | JSON                | TOML                 | JSON                     | JSON/JSONC            |
 | **Инструкции (файл)**          | `CLAUDE.md`         | `AGENTS.md`          | `GEMINI.md`              | `AGENTS.md`           |
 | **Иерархия инструкций**        | global→project→dir  | global→project       | global→project→subdir    | global→project        |
-| **Модульные правила**          | `.claude/rules/`    | `.codex/rules/`      | `@import` синтаксис      | `.kilocode/rules/`    |
+| **Модульные правила**          | `.claude/rules/`    | `.codex/rules/`      | `@import` синтаксис      | `.kilo/rules/`        |
 | **Slash-команды (project)**    | `.claude/commands/` | нет (через Skills)   | `.gemini/commands/`      | `opencode.json`       |
 | **Формат команд**              | Markdown            | —                    | TOML                     | JSON template         |
 | **Skills (SKILL.md)**          | `.claude/skills/`   | `.agents/skills/`    | `.gemini/skills/`        | `.opencode/skills/`   |

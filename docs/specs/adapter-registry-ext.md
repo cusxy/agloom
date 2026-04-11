@@ -105,7 +105,7 @@ maps_to:
 | `"claude"`   | `["CLAUDE.md", ".mcp.json"]`          | `["CLAUDE.md"]`                       | `"CLAUDE.md"`      | `[]`           | `[".claude", "**/CLAUDE.md", ".mcp.json"]`             | `false`  | `{ skills: ".claude/skills", agents: ".claude/agents", commands: ".claude/commands", docs: ".claude/docs", schemas: ".claude/schemas" }`           |
 | `"opencode"` | `["opencode.json"]`                   | `[]`                                  | `null`             | `["agentsmd"]` | `[".opencode", "opencode.json"]`                       | `false`  | `{ skills: ".opencode/skills", agents: ".opencode/agents", commands: ".opencode/commands", docs: ".opencode/docs", schemas: ".opencode/schemas" }` |
 | `"agentsmd"` | `["AGENTS.md", "AGENTS.override.md"]` | `["AGENTS.md", "AGENTS.override.md"]` | `"AGENTS.md"`      | `[]`           | `[".agents", "**/AGENTS.md", "**/AGENTS.override.md"]` | `true`   | `{}`                                                                                                                                               |
-| `"kilocode"` | `[]`                                  | `[]`                                  | `null`             | `["agentsmd"]` | `[".kilo"]`                                            | `false`  | `{ skills: ".kilo/skills", agents: ".kilo/agents", commands: ".kilo/commands", docs: ".kilo/docs", schemas: ".kilo/schemas" }`                     |
+| `"kilocode"` | `["kilo.jsonc"]`                      | `[]`                                  | `null`             | `["agentsmd"]` | `[".kilo", "kilo.jsonc"]`                              | `false`  | `{ skills: ".kilo/skills", agents: ".kilo/agents", commands: ".kilo/commands", docs: ".kilo/docs", schemas: ".kilo/schemas" }`                     |
 | `"codex"`    | `[]`                                  | `[]`                                  | `null`             | `["agentsmd"]` | `[".codex", ".agents"]`                                | `false`  | `{ skills: ".agents/skills", agents: ".codex/agents", docs: ".codex/docs", schemas: ".codex/schemas" }`                                            |
 | `"gemini"`   | `["GEMINI.md"]`                       | `["GEMINI.md"]`                       | `"GEMINI.md"`      | `[]`           | `[".gemini", "**/GEMINI.md"]`                          | `false`  | `{ skills: ".gemini/skills", agents: ".gemini/agents", commands: ".gemini/commands", docs: ".gemini/docs", schemas: ".gemini/schemas" }`           |
 
@@ -140,8 +140,13 @@ MCP-транспилером (см. `docs/specs/mcp-transpiler.md`) и permissio
 ДОЛЖНО быть `null`, поскольку KiloCode не имеет собственного формата
 файла инструкций — использует `AGENTS.md` через адаптер `"agentsmd"`.
 Поле `dependsOn` ДОЛЖНО содержать `["agentsmd"]`. Поле `targetFiles`
-ДОЛЖНО быть пустым массивом, поскольку KiloCode не генерирует файлов
-в корне проекта. Поле `overlayImportPaths` ДОЛЖНО содержать `[".kilo"]`.
+ДОЛЖНО содержать `["kilo.jsonc"]`, поскольку MCP-транспилер
+(см. `docs/specs/mcp-transpiler.md` § Kilocode MCP-адаптер) генерирует
+файл `kilo.jsonc` в корне проекта. В будущем permissions-транспилер
+также будет записывать в этот файл через deep-merge. Поле
+`overlayImportPaths` ДОЛЖНО содержать `[".kilo", "kilo.jsonc"]`, чтобы
+overlay-механизм подхватывал как существующий каталог `.kilo/`, так и
+корневой конфиг-файл `kilo.jsonc`.
 
 ### Запись codex
 

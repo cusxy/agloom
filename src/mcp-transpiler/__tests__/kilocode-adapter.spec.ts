@@ -26,11 +26,36 @@ describe("KilocodeMcpAdapter", () => {
   });
 
   describe("transpile", () => {
-    it("возвращает единственный .kilocode/mcp.json", () => {
+    it("возвращает единственный kilo.jsonc в корне проекта", () => {
       const adapter = new KilocodeMcpAdapter();
       const files = adapter.transpile(makeCanonicalFile({ s: { command: "npx" } }));
       expect(files).toHaveLength(1);
-      expect(files[0].relativePath).toBe(".kilocode/mcp.json");
+      expect(files[0].relativePath).toBe("kilo.jsonc");
+    });
+
+    // --- hotfix-регрессия: путь относителен корню проекта, без ведущего слэша ---
+    // § Kilocode MCP-адаптер: "Генерирует единственный файл kilo.jsonc в корне проекта"
+    it("relativePath начинается с имени файла (без ведущего слэша и без .kilocode/)", () => {
+      const adapter = new KilocodeMcpAdapter();
+      const files = adapter.transpile(makeCanonicalFile({ s: { command: "npx" } }));
+      const rp = files[0].relativePath;
+      expect(rp.startsWith("/")).toBe(false);
+      expect(rp).not.toContain(".kilocode");
+      expect(rp).toBe("kilo.jsonc");
+    });
+
+    // --- hotfix-регрессия: содержимое сериализуется как чистый JSON (без комментариев) ---
+    // § Kilocode MCP-адаптер: "содержимое ... ТРЕБУЕТСЯ сериализовать как чистый JSON
+    // (без //- и /* */-комментариев со стороны Agloom)"
+    it("content парсится стандартным JSON.parse (чистый JSON, без JSONC-комментариев)", () => {
+      const adapter = new KilocodeMcpAdapter();
+      const files = adapter.transpile(makeCanonicalFile({ s: { command: "npx" } }));
+      // JSON.parse отвергает любые //- и /* */-комментарии,
+      // поэтому успешный parse гарантирует отсутствие JSONC-конструкций.
+      expect(() => JSON.parse(files[0].content)).not.toThrow();
+      const parsed = JSON.parse(files[0].content);
+      expect(parsed.$schema).toBe(KILOCODE_SCHEMA);
+      expect(parsed.mcpServers.s).toEqual({ command: "npx" });
     });
 
     it("содержит top-level $schema", () => {

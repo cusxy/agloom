@@ -28,8 +28,7 @@ Multi-provider (любой провайдер через OpenRouter). Конфи
 ## C2. Rules
 
 Каталог `.kilo/rules/` содержит `.md`-файлы. Global rules --- через ключ
-`instructions` в `~/.config/kilo/kilo.jsonc`. Legacy: `.kilocode/rules/`
-(backward compatible).
+`instructions` в `~/.config/kilo/kilo.jsonc`.
 
 **Mode-specific rules** (`.kilo/rules-code/`, `.kilo/rules-architect/`) ---
 загружаются для всех агентов вместо активного (known bug). Список режимов
@@ -43,8 +42,8 @@ Workflows доступны как repeatable prompt templates в UI.
 ## C4. Skills
 
 Формат SKILL.md. Размещение: `.kilo/skills/<name>/SKILL.md` (project),
-`~/.kilo/skills/` (global). Legacy: `.kilocode/skills/`. Дополнительные
-пути и remote URLs через `skills.paths` и `skills.urls` в `kilo.jsonc`.
+`~/.kilo/skills/` (global). Дополнительные пути и remote URLs через
+`skills.paths` и `skills.urls` в `kilo.jsonc`.
 Все skills загружаются в общий пул --- агент выбирает по описанию.
 
 ## C5. Agents

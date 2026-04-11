@@ -431,16 +431,16 @@ describe("CLI", () => {
       expect(kilocode).toHaveProperty("hidden", false);
     });
 
-    it('запись "kilocode" содержит targetFiles [] (пустой массив)', () => {
+    it('запись "kilocode" содержит targetFiles ["kilo.jsonc"]', () => {
       const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
       expect(kilocode).toBeDefined();
-      expect(kilocode!.targetFiles).toEqual([]);
+      expect(kilocode!.targetFiles).toEqual(["kilo.jsonc"]);
     });
 
-    it('запись "kilocode" содержит overlayImportPaths [".kilo"]', () => {
+    it('запись "kilocode" содержит overlayImportPaths [".kilo", "kilo.jsonc"]', () => {
       const kilocode = adapterRegistry.find((e) => e.id === "kilocode");
       expect(kilocode).toBeDefined();
-      expect(kilocode!.overlayImportPaths).toEqual([".kilo"]);
+      expect(kilocode!.overlayImportPaths).toEqual([".kilo", "kilo.jsonc"]);
     });
 
     // --- Happy path: запись kilocode содержит поле projectFiles ---

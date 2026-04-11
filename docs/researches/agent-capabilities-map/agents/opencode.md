@@ -46,9 +46,9 @@ project-root/
 Для KiloCode CLI: `~/.config/kilo/opencode.json` (глобальный),
 `./opencode.json` (проект). Дополнительно KiloCode использует:
 
-- `.kilocode/rules/*.md` — правила проекта.
+- `.kilo/rules/*.md` — правила проекта.
 - `.kilocodemodes` (YAML/JSON) — определения пользовательских режимов.
-- `.kilocode/rules-{mode}/` — mode-specific правила.
+- `.kilo/rules-{mode}/` — mode-specific правила.
 
 Формат: JSON/JSONC для конфигурации, Markdown для агентов/skills/инструкций,
 YAML для режимов KiloCode.
@@ -75,9 +75,9 @@ fallback на `CLAUDE.md` (кросс-совместимость с Claude Code,
 
 KiloCode дополнительно поддерживает:
 
-- `.kilocode/rules/*.md` — правила проекта (рекомендуемый подход).
-- `.kilocode/rules-{mode}/` — mode-specific правила.
-- `~/.kilocode/rules/` — глобальные правила.
+- `.kilo/rules/*.md` — правила проекта (рекомендуемый подход).
+- `.kilo/rules-{mode}/` — mode-specific правила.
+- `~/.kilo/rules/` — глобальные правила.
 - Приоритет (от высшего к низшему): mode-specific rules → custom rules → AGENTS.md
   → global rules → IDE custom instructions.
 
@@ -104,7 +104,7 @@ KiloCode дополнительно поддерживает:
 }
 ```
 
-KiloCode использует отдельный каталог `.kilocode/workflows/*.md` для команд.
+KiloCode использует отдельный каталог `.kilo/commands/*.md` для команд.
 
 ## C4. Навыки (Skills)
 
@@ -113,8 +113,8 @@ KiloCode использует отдельный каталог `.kilocode/workf
 ```text
 .opencode/skills/<name>/SKILL.md   # OpenCode project-level
 .agents/skills/<name>/SKILL.md     # cross-agent portable path
-.kilocode/skills/<name>/SKILL.md   # KiloCode project-level
-.kilocode/skills-{mode}/<name>/    # KiloCode mode-specific skills
+.kilo/skills/<name>/SKILL.md       # KiloCode project-level
+.kilo/skills-{mode}/<name>/        # KiloCode mode-specific skills
 ```
 
 Skills загружаются on-demand: при старте в контекст попадают только `name`
