@@ -13,6 +13,7 @@ import type {
   ShellPermissionRule,
   McpPermissionRule,
 } from "../types.js";
+import { dropShadowedRules, flattenWhitelistConflicts } from "../preprocessing.js";
 
 /**
  * Трансформирует shell-паттерн в формат Claude Code: Bash(<pattern>).
@@ -44,10 +45,14 @@ export class ClaudePermissionsAdapter implements PermissionsAdapter {
     const allow: string[] = [];
     const deny: string[] = [];
 
-    // Шаг 2: shell-правила -- итерировать ordered list
+    // Шаг 2: shell-правила -- итерировать ordered list (после препроцессинга)
     if (file.content.shell) {
+      const preprocessed = flattenWhitelistConflicts(
+        dropShadowedRules(file.content.shell as ShellPermissionRule[], "shell"),
+        "shell",
+      );
       let askCount = 0;
-      for (const rule of file.content.shell as ShellPermissionRule[]) {
+      for (const rule of preprocessed) {
         const [pattern, action] = extractRule(rule);
         if (action === "allow") {
           allow.push(transformShellPattern(pattern));
@@ -65,10 +70,14 @@ export class ClaudePermissionsAdapter implements PermissionsAdapter {
       }
     }
 
-    // Шаг 3: MCP-правила -- итерировать ordered list
+    // Шаг 3: MCP-правила -- итерировать ordered list (после препроцессинга)
     if (file.content.mcp) {
+      const preprocessed = flattenWhitelistConflicts(
+        dropShadowedRules(file.content.mcp as McpPermissionRule[], "mcp"),
+        "mcp",
+      );
       let askCount = 0;
-      for (const rule of file.content.mcp as McpPermissionRule[]) {
+      for (const rule of preprocessed) {
         const [pattern, action] = extractRule(rule);
         if (action === "allow") {
           allow.push(transformMcpPattern(pattern));

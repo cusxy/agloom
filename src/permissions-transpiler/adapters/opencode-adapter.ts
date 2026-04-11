@@ -7,6 +7,7 @@
  */
 
 import type { PermissionsAdapter, PermissionsCanonicalFile, PermissionsOutputFile, PermissionRule } from "../types.js";
+import { dropShadowedRules } from "../preprocessing.js";
 
 /**
  * Трансформирует MCP-паттерн для OpenCode: ':' заменяется на '_'.
@@ -32,8 +33,9 @@ export class OpenCodePermissionsAdapter implements PermissionsAdapter {
 
     // Шаг 2: MCP-правила (плоские ключи в permission)
     if (file.content.mcp && file.content.mcp.length > 0) {
+      const preprocessed = dropShadowedRules(file.content.mcp, "mcp");
       // 2.1: развернуть массив MCP-правил (reverse)
-      const reversed = [...file.content.mcp].reverse();
+      const reversed = [...preprocessed].reverse();
       // 2.2: для каждого правила -- трансформировать и добавить
       for (const rule of reversed) {
         const [pattern, action] = extractRule(rule);
@@ -43,8 +45,9 @@ export class OpenCodePermissionsAdapter implements PermissionsAdapter {
 
     // Шаг 3: shell-правила (объект bash внутри permission)
     if (file.content.shell && file.content.shell.length > 0) {
+      const preprocessed = dropShadowedRules(file.content.shell, "shell");
       // 3.1: развернуть массив shell-правил (reverse)
-      const reversed = [...file.content.shell].reverse();
+      const reversed = [...preprocessed].reverse();
       // 3.2: создать объект bash
       const bash: Record<string, string> = {};
       // 3.3: для каждого правила -- передать паттерн as-is
@@ -58,8 +61,9 @@ export class OpenCodePermissionsAdapter implements PermissionsAdapter {
 
     // Шаг 4: file-правила (объект file внутри permission)
     if (file.content.file && file.content.file.length > 0) {
+      const preprocessed = dropShadowedRules(file.content.file, "file");
       // 4.1: развернуть массив file-правил (reverse)
-      const reversed = [...file.content.file].reverse();
+      const reversed = [...preprocessed].reverse();
       // 4.2: создать объект file
       const fileObj: Record<string, string> = {};
       // 4.3: для каждого правила -- добавить как ключ-значение

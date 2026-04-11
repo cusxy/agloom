@@ -3,7 +3,7 @@
  * Spec: docs/specs/mcp-transpiler.md § OpenCode MCP-адаптер
  *
  * agentId: "opencode"
- * Генерирует файл opencode.json с ключами $schema, mcp и (опц.) permission.
+ * Генерирует файл opencode.json с ключами $schema и mcp.
  */
 
 import { buildStdioServerConfig } from "./shared.js";
@@ -16,33 +16,36 @@ export class OpenCodeMcpAdapter implements McpAdapter {
 
   transpile(file: McpCanonicalFile): McpOutputFile[] {
     const mcpSection: Record<string, unknown> = {};
-    const permissionSection: Record<string, string> = {};
 
     for (const [serverId, serverConfig] of Object.entries(file.content.mcpServers)) {
       const transport = serverConfig.type ?? "stdio";
+
+      if (transport === "sse") {
+        process.stderr.write(`Warning: OpenCode does not support SSE transport. Server '${serverId}' skipped.\n`);
+        continue;
+      }
 
       if (transport === "stdio") {
         const stdio = buildStdioServerConfig(serverConfig, false);
         mcpSection[serverId] = { type: "stdio", ...stdio };
       } else {
-        // http | sse → remote. Headers не поддерживаются OpenCode.
+        // http → remote
+        const entry: Record<string, unknown> = {
+          type: "remote",
+          url: serverConfig.url,
+        };
         if (serverConfig.headers && Object.keys(serverConfig.headers).length > 0) {
-          process.stderr.write(
-            `Warning: OpenCode does not support MCP 'headers' field. Server '${serverId}': headers ignored.\n`,
-          );
+          entry.headers = serverConfig.headers;
         }
-        mcpSection[serverId] = { type: "remote", url: serverConfig.url };
+        mcpSection[serverId] = entry;
       }
 
-      if (serverConfig.includeTools) {
-        for (const tool of serverConfig.includeTools) {
-          permissionSection[`${serverId}_${tool}`] = "allow";
-        }
-      }
-      if (serverConfig.excludeTools) {
-        for (const tool of serverConfig.excludeTools) {
-          permissionSection[`${serverId}_${tool}`] = "deny";
-        }
+      const hasInclude = serverConfig.includeTools && serverConfig.includeTools.length > 0;
+      const hasExclude = serverConfig.excludeTools && serverConfig.excludeTools.length > 0;
+      if (hasInclude || hasExclude) {
+        process.stderr.write(
+          `Warning: OpenCode does not support discovery-level tool filtering. Server '${serverId}': 'includeTools'/'excludeTools' ignored. Use .agloom/permissions.yml for postfactum permission gating.\n`,
+        );
       }
     }
 
@@ -50,9 +53,6 @@ export class OpenCodeMcpAdapter implements McpAdapter {
       $schema: OPENCODE_SCHEMA,
       mcp: mcpSection,
     };
-    if (Object.keys(permissionSection).length > 0) {
-      output.permission = permissionSection;
-    }
 
     const content = JSON.stringify(output, null, 2) + "\n";
 

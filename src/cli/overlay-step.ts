@@ -8,8 +8,87 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import yaml from "js-yaml";
 import * as TOML from "smol-toml";
+import { stripComments } from "jsonc-parser";
 import type { AdapterRegistryEntry, TranspilerStepOutcome } from "./types.js";
 import { interpolate, InterpolationError } from "../interpolation/index.js";
+
+/**
+ * Ошибка парсинга merge-eligible файла (base или incoming).
+ * Spec: docs/specs/layer-model.md § Парсинг файлов для merge (fail-fast)
+ *
+ * Бросается, если один из файлов (существующий целевой base или incoming layer-файл)
+ * в merge-eligible формате не может быть распарсен. Прерывает транспиляцию.
+ */
+export class LayerMergeError extends Error {
+  readonly filePath: string;
+  readonly format: string;
+  readonly parserMessage: string;
+
+  constructor(opts: { filePath: string; format: string; parserMessage: string }) {
+    super(`Failed to parse ${opts.format} file at ${opts.filePath}: ${opts.parserMessage}`);
+    this.name = "LayerMergeError";
+    this.filePath = opts.filePath;
+    this.format = opts.format;
+    this.parserMessage = opts.parserMessage;
+  }
+}
+
+/**
+ * Удаляет trailing commas из JSON-строки (простым regex).
+ * Обрабатывает только случаи вне строковых литералов.
+ */
+function stripTrailingCommas(input: string): string {
+  // Простая state-machine: пропускаем содержимое строк "..." и \" внутри них,
+  // а запятые перед } или ] (с опциональными whitespace) убираем.
+  let out = "";
+  let i = 0;
+  const n = input.length;
+  let inString = false;
+  while (i < n) {
+    const ch = input[i];
+    if (inString) {
+      out += ch;
+      if (ch === "\\" && i + 1 < n) {
+        out += input[i + 1];
+        i += 2;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+      }
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      out += ch;
+      i++;
+      continue;
+    }
+    if (ch === ",") {
+      // Проверяем: после запятой (возможно с whitespace) идёт ] или }?
+      let j = i + 1;
+      while (j < n && /\s/.test(input[j]!)) j++;
+      if (j < n && (input[j] === "}" || input[j] === "]")) {
+        // Пропускаем запятую.
+        i++;
+        continue;
+      }
+    }
+    out += ch;
+    i++;
+  }
+  return out;
+}
+
+/**
+ * Парсит JSONC-содержимое через strip-then-parse pipeline.
+ * Spec: docs/specs/layer-model.md § Парсинг файлов для merge (JSONC)
+ */
+function parseJsonc(content: string): Record<string, unknown> {
+  const stripped = stripTrailingCommas(stripComments(content));
+  return JSON.parse(stripped) as Record<string, unknown>;
+}
 
 /**
  * Whitelist расширений для интерполяции.
@@ -158,54 +237,25 @@ export function stripOverrideSuffix(filePath: string): string {
 }
 
 /**
- * Контекст deep merge для активации специальных правил (например, union-merge
- * для permission-массивов в .claude/settings.json).
- *
- * Spec: docs/specs/layer-model.md § Union-merge для permission-ключей
+ * Контекст deep merge. Поле filePath сохранено для обратной совместимости
+ * сигнатуры, но больше не активирует специальные правила (union-merge удалён
+ * в Cycle 1).
  */
 export interface DeepMergeContext {
-  /** Относительный путь целевого файла (например, ".claude/settings.json"). */
+  /** Относительный путь целевого файла. Информационное поле. */
   filePath?: string;
-  /** Текущий JSON-path внутри документа, разделённый точками. Внутреннее поле. */
-  jsonPath?: string;
-}
-
-/** Пути, для которых применяется union-merge вместо стандартной замены массивов. */
-const UNION_MERGE_PATHS: Record<string, Set<string>> = {
-  ".claude/settings.json": new Set(["permissions.allow", "permissions.deny"]),
-};
-
-/**
- * Проверяет, должен ли текущий (filePath, jsonPath) использовать union-merge.
- */
-function shouldUnionMerge(context: DeepMergeContext | undefined): boolean {
-  if (!context || !context.filePath || !context.jsonPath) return false;
-  const pathsForFile = UNION_MERGE_PATHS[context.filePath];
-  if (!pathsForFile) return false;
-  return pathsForFile.has(context.jsonPath);
-}
-
-/**
- * Union-merge двух массивов примитивов с сохранением first-occurrence порядка.
- * Spec: docs/specs/layer-model.md § Алгоритм union-merge для массива
- */
-function unionMergeArrays(base: unknown[], incoming: unknown[]): unknown[] {
-  const merged: unknown[] = [...base];
-  for (const item of incoming) {
-    if (!merged.some((existing) => existing === item)) {
-      merged.push(item);
-    }
-  }
-  return merged;
 }
 
 /**
  * Рекурсивный deep merge двух объектов.
  * Spec: docs/specs/layer-model.md § Алгоритм deep merge
  *
- * @param context Опциональный контекст для активации union-merge на определённых
- *                JSON-путях конкретных файлов (например, permissions.allow
- *                в .claude/settings.json).
+ * Правила:
+ *   1. Оба значения — объекты → рекурсия.
+ *   2. incoming — массив → replace.
+ *   3. incoming — null → удалить ключ.
+ *   4. incoming — скаляр → last-writer-wins.
+ *   5. base — не объект, incoming — объект → замена.
  */
 export function deepMerge(
   base: Record<string, unknown>,
@@ -216,10 +266,6 @@ export function deepMerge(
 
   for (const key of Object.keys(incoming)) {
     const incomingVal = incoming[key];
-    const childJsonPath = context?.jsonPath ? `${context.jsonPath}.${key}` : key;
-    const childContext: DeepMergeContext | undefined = context
-      ? { filePath: context.filePath, jsonPath: childJsonPath }
-      : undefined;
 
     // Правило 3: null → удалить ключ
     if (incomingVal === null) {
@@ -227,14 +273,9 @@ export function deepMerge(
       continue;
     }
 
-    // Правило 2 (+union-merge override): incoming — массив
+    // Правило 2: incoming — массив → replace (единое правило для всех файлов)
     if (Array.isArray(incomingVal)) {
-      const baseVal = result[key];
-      if (Array.isArray(baseVal) && shouldUnionMerge(childContext)) {
-        result[key] = unionMergeArrays(baseVal, incomingVal);
-      } else {
-        result[key] = incomingVal;
-      }
+      result[key] = incomingVal;
       continue;
     }
 
@@ -242,12 +283,8 @@ export function deepMerge(
     if (isPlainObject(incomingVal)) {
       const baseVal = result[key];
       if (isPlainObject(baseVal)) {
-        // Правило 1: оба объекта → рекурсия с пробросом контекста
-        result[key] = deepMerge(
-          baseVal as Record<string, unknown>,
-          incomingVal as Record<string, unknown>,
-          childContext,
-        );
+        // Правило 1: оба объекта → рекурсия
+        result[key] = deepMerge(baseVal as Record<string, unknown>, incomingVal as Record<string, unknown>, context);
       } else {
         // Правило 5: base не объект → замена
         result[key] = incomingVal;
@@ -269,17 +306,18 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 /**
  * Парсит содержимое файла в соответствии с расширением.
  * Spec: docs/specs/layer-model.md § Парсинг файлов для merge
+ *
+ * Для .jsonc применяется proactive strip pipeline: удаление комментариев
+ * и trailing commas, затем JSON.parse. При ошибке парсер бросает исключение,
+ * которое вызывающий код оборачивает в LayerMergeError.
  */
 function parseContent(content: string, ext: string): Record<string, unknown> | null {
   const lower = ext.toLowerCase();
   switch (lower) {
     case ".json":
-    case ".jsonc":
-      // Spec: docs/specs/layer-model.md § Парсинг файлов для merge
-      // "Для .jsonc ТРЕБУЕТСЯ использовать стандартный JSON-парсер (JSON.parse)".
-      // Невалидный JSON (например, с // комментариями) бросает → вызывающий код
-      // игнорирует base и полностью перезаписывает файл.
       return JSON.parse(content) as Record<string, unknown>;
+    case ".jsonc":
+      return parseJsonc(content);
     case ".yaml":
     case ".yml":
       return (yaml.load(content) as Record<string, unknown>) ?? {};
@@ -288,6 +326,36 @@ function parseContent(content: string, ext: string): Record<string, unknown> | n
     default:
       return null;
   }
+}
+
+/**
+ * Парсит содержимое merge-eligible файла с fail-fast поведением.
+ * Spec: docs/specs/layer-model.md § Парсинг файлов для merge
+ *
+ * При ошибке парсинга бросает LayerMergeError с абсолютным путём, форматом
+ * и исходным сообщением парсера.
+ */
+function parseMergeEligible(content: string, absFilePath: string): Record<string, unknown> {
+  const ext = path.extname(absFilePath).toLowerCase();
+  let parsed: Record<string, unknown> | null;
+  try {
+    parsed = parseContent(content, ext);
+  } catch (err) {
+    const parserMessage = err instanceof Error ? err.message : String(err);
+    throw new LayerMergeError({
+      filePath: absFilePath,
+      format: ext,
+      parserMessage,
+    });
+  }
+  if (parsed === null) {
+    throw new LayerMergeError({
+      filePath: absFilePath,
+      format: ext,
+      parserMessage: `unsupported format '${ext}'`,
+    });
+  }
+  return parsed;
 }
 
 /**
@@ -864,6 +932,7 @@ function runMultiLayerOverlay(
   env?: Record<string, string | undefined>,
 ): TranspilerStepOutcome {
   const errors: string[] = [];
+  let writtenCount = 0;
 
   // Шаг 1: инициализировать mergeState
   // Значение: parsed object для merge-eligible, или { __override: true, content, sourcePath } для override
@@ -873,230 +942,225 @@ function runMultiLayerOverlay(
     | { type: "override"; content: string | null; sourcePath: string | null }
   >();
 
-  // Шаг 2: для каждого слоя
-  for (const layer of layers) {
-    // Расширение 2.2a: директория-источник не существует → пропустить
-    if (!fs.existsSync(layer.overlayDir)) {
-      continue;
-    }
-
-    // Шаг 2.2: рекурсивно обнаружить файлы
-    let files: string[];
-    try {
-      files = discoverFiles(layer.overlayDir);
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      errors.push(error.message);
-      continue;
-    }
-
-    for (const filePath of files) {
-      // Шаг 2.3: относительный путь внутри директории-источника
-      const relativePath = path.relative(layer.overlayDir, filePath);
-
-      // Шаг 2.4: целевой относительный путь (с удалением .override/.patch)
-      const targetRelativePath = stripOverrideSuffix(relativePath);
-
-      // Check mutual exclusivity of .patch and .override
-      // Spec: docs/specs/patch-mechanism.md § Взаимоисключаемость с .override
-      if (hasBothPatchAndOverride(relativePath)) {
-        errors.push(`File '${relativePath}' has both .patch and .override suffixes in layer ${layer.id}`);
+  // Non-throw контракт (spec: layer-model.md § 2.7a, provider-overlay.md § Результат):
+  // LayerMergeError из parseMergeEligible перехватывается здесь и конвертируется
+  // в 3-строчный errors[] согласно формату из спецификации. Обработка оставшихся
+  // записей прерывается (return с partial writtenCount).
+  try {
+    // Шаг 2: для каждого слоя
+    for (const layer of layers) {
+      // Расширение 2.2a: директория-источник не существует → пропустить
+      if (!fs.existsSync(layer.overlayDir)) {
         continue;
       }
 
-      // Шаг 2.5: определить стратегию
-      const strategy = classifyFile(relativePath);
-
-      // Шаг 2.6: интерполяция
-      const ext = path.extname(filePath).toLowerCase();
-      const shouldInterpolate = variables !== undefined && INTERPOLATABLE_EXTENSIONS.includes(ext);
-
-      let content: string | null = null;
-
-      if (shouldInterpolate || strategy === "overlay" || strategy === "patch") {
-        // Нужно прочитать файл как текст
-        try {
-          content = fs.readFileSync(filePath, "utf-8");
-        } catch (err) {
-          const error = err instanceof Error ? err : new Error(String(err));
-          errors.push(error.message);
-          continue;
-        }
-
-        if (shouldInterpolate) {
-          try {
-            content = interpolate(content, variables!, env, layer.values);
-          } catch (err) {
-            if (err instanceof InterpolationError) {
-              // Расширение 2.6a
-              errors.push(`Interpolation failed for ${layer.id}:${relativePath}: ${err.message}`);
-              continue;
-            }
-            throw err;
-          }
-        }
+      // Шаг 2.2: рекурсивно обнаружить файлы
+      let files: string[];
+      try {
+        files = discoverFiles(layer.overlayDir);
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        errors.push(error.message);
+        continue;
       }
 
-      // Шаг 2.7: merge-eligible → deep merge
-      if (strategy === "overlay") {
-        const fileExt = path.extname(relativePath).toLowerCase();
-        let parsed: Record<string, unknown>;
-        try {
-          const result = parseContent(content!, fileExt);
-          if (result === null) {
-            // Should not happen for merge-eligible files, but handle gracefully
-            errors.push(`Parse failed for ${layer.id}:${relativePath}: unsupported format`);
-            continue;
-          }
-          parsed = result;
-        } catch (err) {
-          // Расширение 2.7a
-          const error = err instanceof Error ? err : new Error(String(err));
-          errors.push(`Parse failed for ${layer.id}:${relativePath}: ${error.message}`);
+      for (const filePath of files) {
+        // Шаг 2.3: относительный путь внутри директории-источника
+        const relativePath = path.relative(layer.overlayDir, filePath);
+
+        // Шаг 2.4: целевой относительный путь (с удалением .override/.patch)
+        const targetRelativePath = stripOverrideSuffix(relativePath);
+
+        // Check mutual exclusivity of .patch and .override
+        // Spec: docs/specs/patch-mechanism.md § Взаимоисключаемость с .override
+        if (hasBothPatchAndOverride(relativePath)) {
+          errors.push(`File '${relativePath}' has both .patch and .override suffixes in layer ${layer.id}`);
           continue;
         }
 
-        const mergeContext: DeepMergeContext = {
-          filePath: targetRelativePath,
-          jsonPath: "",
-        };
+        // Шаг 2.5: определить стратегию
+        const strategy = classifyFile(relativePath);
 
-        const existing = mergeState.get(targetRelativePath);
-        if (existing && existing.type === "merged") {
-          // Merge with existing mergeState
-          mergeState.set(targetRelativePath, {
-            type: "merged",
-            data: deepMerge(existing.data, parsed, mergeContext),
-            ext: fileExt,
-          });
-        } else {
-          // No mergeState entry yet — try to merge with existing target file
-          const targetPath = path.join(projectRoot, targetRelativePath);
-          let baseData: Record<string, unknown> = {};
-          if (!existing && fs.existsSync(targetPath) && fs.statSync(targetPath).isFile()) {
-            try {
-              const existingContent = fs.readFileSync(targetPath, "utf-8");
-              const existingParsed = parseContent(existingContent, fileExt);
-              if (existingParsed) {
-                baseData = existingParsed;
-              }
-            } catch {
-              // If we can't parse the existing file, start fresh
-            }
-          }
-          mergeState.set(targetRelativePath, {
-            type: "merged",
-            data: deepMerge(baseData, parsed, mergeContext),
-            ext: fileExt,
-          });
-        }
-      } else if (strategy === "patch") {
-        // Шаг 2.9: patch — parse patch file, get base, apply patch
-        // Spec: docs/specs/patch-mechanism.md § Расширение overlay-step
-        const patchFileExt = path.extname(relativePath).toLowerCase();
-        const targetExt = path.extname(targetRelativePath).toLowerCase();
+        // Шаг 2.6: интерполяция
+        const ext = path.extname(filePath).toLowerCase();
+        const shouldInterpolate = variables !== undefined && INTERPOLATABLE_EXTENSIONS.includes(ext);
 
-        // Parse patch file
-        let patchData: Record<string, unknown>;
-        try {
-          const result = parseContent(content!, patchFileExt);
-          if (result === null) {
-            errors.push(`Patch parse failed for ${layer.id}:${relativePath}: unsupported format`);
+        let content: string | null = null;
+
+        if (shouldInterpolate || strategy === "overlay" || strategy === "patch") {
+          // Нужно прочитать файл как текст
+          try {
+            content = fs.readFileSync(filePath, "utf-8");
+          } catch (err) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            errors.push(error.message);
             continue;
           }
-          patchData = result;
-        } catch (err) {
-          // Расширение 2.9a
-          const error = err instanceof Error ? err : new Error(String(err));
-          errors.push(`Patch parse failed for ${layer.id}:${relativePath}: ${error.message}`);
-          continue;
-        }
 
-        // Get current state of target file
-        let baseData: Record<string, unknown> | undefined;
-        const existing = mergeState.get(targetRelativePath);
-        if (existing) {
-          if (existing.type === "merged") {
-            baseData = existing.data;
-          } else if (existing.type === "override") {
-            // Get content from override entry
-            let overrideContent: string | null = existing.content;
-            if (overrideContent === null && existing.sourcePath !== null) {
-              try {
-                overrideContent = fs.readFileSync(existing.sourcePath, "utf-8");
-              } catch (err) {
-                const error = err instanceof Error ? err : new Error(String(err));
-                errors.push(`Target parse failed for ${targetRelativePath}: ${error.message}`);
-                continue;
-              }
-            }
-            if (overrideContent !== null) {
-              try {
-                const parsed = parseContent(overrideContent, targetExt);
-                baseData = parsed ?? undefined;
-              } catch (err) {
-                const error = err instanceof Error ? err : new Error(String(err));
-                errors.push(`Target parse failed for ${targetRelativePath}: ${error.message}`);
-                continue;
-              }
-            }
-          }
-        } else {
-          // Read existing target file from filesystem
-          const targetPath = path.join(projectRoot, targetRelativePath);
-          if (fs.existsSync(targetPath) && fs.statSync(targetPath).isFile()) {
+          if (shouldInterpolate) {
             try {
-              const existingContent = fs.readFileSync(targetPath, "utf-8");
-              const parsed = parseContent(existingContent, targetExt);
-              baseData = parsed ?? undefined;
+              content = interpolate(content, variables!, env, layer.values);
             } catch (err) {
-              // Расширение 2.9b
-              const error = err instanceof Error ? err : new Error(String(err));
-              errors.push(`Target parse failed for ${targetRelativePath}: ${error.message}`);
+              if (err instanceof InterpolationError) {
+                // Расширение 2.6a
+                errors.push(`Interpolation failed for ${layer.id}:${relativePath}: ${err.message}`);
+                continue;
+              }
+              throw err;
+            }
+          }
+        }
+
+        // Шаг 2.7: merge-eligible → deep merge
+        if (strategy === "overlay") {
+          const fileExt = path.extname(relativePath).toLowerCase();
+          // Расширение 2.7a (Cycle 1): fail-fast для incoming файла.
+          // LayerMergeError пробрасывается наружу и прерывает транспиляцию.
+          const parsed = parseMergeEligible(content!, filePath);
+
+          const mergeContext: DeepMergeContext = {
+            filePath: targetRelativePath,
+          };
+
+          const existing = mergeState.get(targetRelativePath);
+          if (existing && existing.type === "merged") {
+            // Merge with existing mergeState
+            mergeState.set(targetRelativePath, {
+              type: "merged",
+              data: deepMerge(existing.data, parsed, mergeContext),
+              ext: fileExt,
+            });
+          } else {
+            // No mergeState entry yet — try to merge with existing target file
+            const targetPath = path.join(projectRoot, targetRelativePath);
+            let baseData: Record<string, unknown> = {};
+            if (!existing && fs.existsSync(targetPath) && fs.statSync(targetPath).isFile()) {
+              // Расширение 2.7a (Cycle 1): fail-fast для base файла.
+              const existingContent = fs.readFileSync(targetPath, "utf-8");
+              baseData = parseMergeEligible(existingContent, targetPath);
+            }
+            mergeState.set(targetRelativePath, {
+              type: "merged",
+              data: deepMerge(baseData, parsed, mergeContext),
+              ext: fileExt,
+            });
+          }
+        } else if (strategy === "patch") {
+          // Шаг 2.9: patch — parse patch file, get base, apply patch
+          // Spec: docs/specs/patch-mechanism.md § Расширение overlay-step
+          const patchFileExt = path.extname(relativePath).toLowerCase();
+          const targetExt = path.extname(targetRelativePath).toLowerCase();
+
+          // Parse patch file
+          let patchData: Record<string, unknown>;
+          try {
+            const result = parseContent(content!, patchFileExt);
+            if (result === null) {
+              errors.push(`Patch parse failed for ${layer.id}:${relativePath}: unsupported format`);
               continue;
             }
+            patchData = result;
+          } catch (err) {
+            // Расширение 2.9a
+            const error = err instanceof Error ? err : new Error(String(err));
+            errors.push(`Patch parse failed for ${layer.id}:${relativePath}: ${error.message}`);
+            continue;
           }
-        }
 
-        // Apply patch
-        try {
-          const patchResult = applyPatchWithWarnings(baseData, patchData);
-          // Add warnings to errors (non-fatal, e.g. missing target fields)
-          errors.push(...patchResult.warnings);
-          mergeState.set(targetRelativePath, {
-            type: "merged",
-            data: patchResult.result,
-            ext: targetExt || patchFileExt,
-          });
-        } catch (err) {
-          // Расширение 2.9c
-          const error = err instanceof Error ? err : new Error(String(err));
-          errors.push(error.message);
-          continue;
-        }
-      } else {
-        // Шаг 2.8: override — сохранить содержимое или путь к файлу
-        if (content !== null) {
-          mergeState.set(targetRelativePath, {
-            type: "override",
-            content,
-            sourcePath: null,
-          });
+          // Get current state of target file
+          let baseData: Record<string, unknown> | undefined;
+          const existing = mergeState.get(targetRelativePath);
+          if (existing) {
+            if (existing.type === "merged") {
+              baseData = existing.data;
+            } else if (existing.type === "override") {
+              // Get content from override entry
+              let overrideContent: string | null = existing.content;
+              if (overrideContent === null && existing.sourcePath !== null) {
+                try {
+                  overrideContent = fs.readFileSync(existing.sourcePath, "utf-8");
+                } catch (err) {
+                  const error = err instanceof Error ? err : new Error(String(err));
+                  errors.push(`Target parse failed for ${targetRelativePath}: ${error.message}`);
+                  continue;
+                }
+              }
+              if (overrideContent !== null) {
+                try {
+                  const parsed = parseContent(overrideContent, targetExt);
+                  baseData = parsed ?? undefined;
+                } catch (err) {
+                  const error = err instanceof Error ? err : new Error(String(err));
+                  errors.push(`Target parse failed for ${targetRelativePath}: ${error.message}`);
+                  continue;
+                }
+              }
+            }
+          } else {
+            // Read existing target file from filesystem
+            const targetPath = path.join(projectRoot, targetRelativePath);
+            if (fs.existsSync(targetPath) && fs.statSync(targetPath).isFile()) {
+              try {
+                const existingContent = fs.readFileSync(targetPath, "utf-8");
+                const parsed = parseContent(existingContent, targetExt);
+                baseData = parsed ?? undefined;
+              } catch (err) {
+                // Расширение 2.9b
+                const error = err instanceof Error ? err : new Error(String(err));
+                errors.push(`Target parse failed for ${targetRelativePath}: ${error.message}`);
+                continue;
+              }
+            }
+          }
+
+          // Apply patch
+          try {
+            const patchResult = applyPatchWithWarnings(baseData, patchData);
+            // Add warnings to errors (non-fatal, e.g. missing target fields)
+            errors.push(...patchResult.warnings);
+            mergeState.set(targetRelativePath, {
+              type: "merged",
+              data: patchResult.result,
+              ext: targetExt || patchFileExt,
+            });
+          } catch (err) {
+            // Расширение 2.9c
+            const error = err instanceof Error ? err : new Error(String(err));
+            errors.push(error.message);
+            continue;
+          }
         } else {
-          // Binary file — store source path for bytewise copy
-          mergeState.set(targetRelativePath, {
-            type: "override",
-            content: null,
-            sourcePath: filePath,
-          });
+          // Шаг 2.8: override — сохранить содержимое или путь к файлу
+          if (content !== null) {
+            mergeState.set(targetRelativePath, {
+              type: "override",
+              content,
+              sourcePath: null,
+            });
+          } else {
+            // Binary file — store source path for bytewise copy
+            mergeState.set(targetRelativePath, {
+              type: "override",
+              content: null,
+              sourcePath: filePath,
+            });
+          }
         }
       }
     }
+  } catch (err) {
+    if (err instanceof LayerMergeError) {
+      errors.push(
+        `Failed to parse ${err.format} file at ${err.filePath}:`,
+        err.parserMessage,
+        "Please fix or remove the file and retry transpilation.",
+      );
+      return { name: "Overlay", writtenCount, errors };
+    }
+    throw err;
   }
 
   // Шаг 3: записать результаты
-  let writtenCount = 0;
-
   for (const [targetRelativePath, state] of mergeState) {
     const targetPath = path.join(projectRoot, targetRelativePath);
 

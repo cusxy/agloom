@@ -719,14 +719,14 @@ describe("Модель слоёв", () => {
       });
     });
 
-    // --- hotfix-регрессия: невалидный JSONC base → rewrite целиком ---
-    // § Парсинг файлов для merge: "Если существующий базовый .jsonc-файл содержит
-    // JSONC-специфичные конструкции ... и не распарсивается стандартным JSON-парсером --
-    // base ТРЕБУЕТСЯ игнорировать и полностью перезаписать файл результатом merge".
-    it("перезаписывает .jsonc целиком, если существующий base содержит // комментарии", () => {
+    // --- JSONC proactive strip: .jsonc base с // комментариями парсится и мержится ---
+    // Cycle 1, Изменение 3: парсинг .jsonc теперь всегда strip-then-parse (нет fallback).
+    // Base с комментариями успешно парсится, deep merge выполняется, обе записи сохраняются.
+    it("парсит .jsonc base с // комментариями через strip-pipeline и выполняет deep merge", () => {
       const entry = createTestEntry({ id: "kilocode" });
 
-      // Существующий файл с JSONC-комментариями — невалидный JSON
+      // Существующий файл с JSONC-комментариями: теперь должен корректно парситься
+      // после strip-этапа (Cycle 1, Изменение 3).
       fs.writeFileSync(
         path.join(tmpDir, "kilo.jsonc"),
         '// user comment\n{\n  "mcpServers": { "old": { "command": "old" } }\n}\n',
@@ -748,10 +748,13 @@ describe("Модель слоёв", () => {
       expect(outcome.errors).toEqual([]);
 
       const written = JSON.parse(fs.readFileSync(path.join(tmpDir, "kilo.jsonc"), "utf-8"));
-      // base полностью отброшен: нет сервера "old", только "fresh"
+      // base успешно распарсен после strip → deep merge: обе записи сохраняются.
       expect(written).toEqual({
         $schema: "https://app.kilo.ai/config.json",
-        mcpServers: { fresh: { command: "npx" } },
+        mcpServers: {
+          old: { command: "old" },
+          fresh: { command: "npx" },
+        },
       });
     });
 
@@ -840,15 +843,18 @@ describe("Модель слоёв", () => {
       expect(outcome.errors[0]).toContain("bad.md");
     });
 
-    // --- Расширение 2.7a: ошибка парсинга → добавить в errors, пропустить файл ---
-    // § Новые расширения, 2.7a
-    it("добавляет ошибку парсинга в errors с идентификатором слоя при невалидном JSON", () => {
+    // --- Расширение 2.7a: невалидный JSON в incoming слое → non-throw, 3-line errors ---
+    // Cycle 1 follow-up: runOverlayStep ловит LayerMergeError внутри merge loop
+    // и возвращает TranspilerStepOutcome с трёхстрочным errors. Не throws.
+    // Spec: docs/specs/layer-model.md § Рефакторинг операции overlay, расширение 2.7a
+    // Spec: docs/specs/provider-overlay.md § Результат
+    it("возвращает outcome с 3-строчным errors при невалидном JSON в incoming слое (non-throw)", () => {
       const entry = createTestEntry({ id: "claude" });
 
       const layerDir = createLayer("plugin-a", {
         "bad.json": "{ invalid json ]]]",
-        "good.json": JSON.stringify({ key: "value" }),
       });
+      const incomingPath = path.join(layerDir, "bad.json");
 
       const outcome = runOverlayStep({
         entry,
@@ -856,22 +862,21 @@ describe("Модель слоёв", () => {
         layers: [{ id: "plugin-a", overlayDir: layerDir }],
       });
 
-      // good.json записан, bad.json пропущен
-      expect(outcome.writtenCount).toBe(1);
-      expect(outcome.errors).toHaveLength(1);
-      // Формат: "Parse failed for {layer.id}:{relativePath}: {причина}"
-      expect(outcome.errors[0]).toContain("Parse failed for");
-      expect(outcome.errors[0]).toContain("plugin-a");
-      expect(outcome.errors[0]).toContain("bad.json");
+      expect(outcome.name).toBe("Overlay");
+      expect(outcome.errors).toHaveLength(3);
+      expect(outcome.errors[0]).toBe(`Failed to parse .json file at ${incomingPath}:`);
+      expect(outcome.errors[1].length).toBeGreaterThan(0);
+      expect(outcome.errors[2]).toBe("Please fix or remove the file and retry transpilation.");
     });
 
-    // --- Расширение 2.7a: ошибка парсинга YAML ---
-    it("добавляет ошибку парсинга в errors при невалидном YAML", () => {
+    // --- Расширение 2.7a: невалидный YAML в incoming слое → non-throw, 3-line errors ---
+    it("возвращает outcome с 3-строчным errors при невалидном YAML в incoming слое (non-throw)", () => {
       const entry = createTestEntry({ id: "claude" });
 
       const layerDir = createLayer("local", {
         "bad.yaml": ":\n  - :\n    :\n  invalid: [yaml: [",
       });
+      const incomingPath = path.join(layerDir, "bad.yaml");
 
       const outcome = runOverlayStep({
         entry,
@@ -879,9 +884,11 @@ describe("Модель слоёв", () => {
         layers: [{ id: "local", overlayDir: layerDir }],
       });
 
-      expect(outcome.errors).toHaveLength(1);
-      expect(outcome.errors[0]).toContain("Parse failed for");
-      expect(outcome.errors[0]).toContain("local");
+      expect(outcome.name).toBe("Overlay");
+      expect(outcome.errors).toHaveLength(3);
+      expect(outcome.errors[0]).toBe(`Failed to parse .yaml file at ${incomingPath}:`);
+      expect(outcome.errors[1].length).toBeGreaterThan(0);
+      expect(outcome.errors[2]).toBe("Please fix or remove the file and retry transpilation.");
     });
 
     // --- Расширение 3.3a: ошибка записи → добавить в errors, продолжить ---

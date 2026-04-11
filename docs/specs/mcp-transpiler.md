@@ -3,12 +3,13 @@ summary: MCP Transpiler — библиотека транспиляции MCP-к
 description: >
   Библиотека для транспиляции канонической MCP-конфигурации (.agloom/mcp.yml
   или .agloom/mcp.json) в agent-specific MCP-файлы. Поддерживает stdio,
-  HTTP и SSE транспорты. Генерирует .mcp.json и .claude/settings.json
-  для Claude Code, opencode.json для OpenCode, .codex/config.toml для Codex,
+  HTTP и SSE транспорты. Генерирует .mcp.json для Claude Code,
+  opencode.json для OpenCode, .codex/config.toml для Codex,
   .gemini/settings.json для Gemini, kilo.jsonc для Kilocode.
-  Поддерживает tool filtering в каноническом формате с native-маппингом
-  для адаптеров, поддерживающих фильтрацию, и транспиляцией в permission-
-  entries для Claude и OpenCode. Расширяется через адаптеры.
+  Канонические includeTools/excludeTools транспилируются только
+  адаптерами с нативной discovery-level фильтрацией (Codex, Gemini);
+  для остальных адаптеров игнорируются с предупреждением. Расширяется
+  через адаптеры.
 type: spec
 status: implemented
 relates:
@@ -88,6 +89,37 @@ MCP-файлы. Канонический файл (`.agloom/mcp.yml` или `.ag
 - `url` (string, обязательно) -- URL удалённого MCP-сервера.
 - `headers` (Record\<string, string>, опционально, default: `{}`) --
   HTTP-заголовки, передаваемые при подключении.
+
+### Семантика `includeTools` / `excludeTools`
+
+Поля `includeTools` / `excludeTools` описывают **discovery-level tool
+filtering** -- whitelist или blacklist инструментов, которые MCP-клиент
+ТРЕБУЕТСЯ advertise модели (или скрыть от неё) на стадии инициализации
+connection. Отфильтрованные инструменты не попадают в контекст модели
+и не могут быть вызваны.
+
+Discovery-level filtering ЗАПРЕЩАЕТСЯ путать с **postfactum permission
+gating** -- runtime-решением `allow` / `ask` / `deny` на каждый
+вызов инструмента, описанным в `docs/specs/permissions-transpiler.md`.
+Это два разных механизма: первый действует до того, как модель увидит
+инструмент; второй -- при попытке вызова уже видимого инструмента.
+
+Поскольку не все MCP-клиенты поддерживают нативную discovery-level
+фильтрацию, канонические `includeTools` / `excludeTools` применяются
+только теми адаптерами, чей целевой формат имеет соответствующие поля:
+
+- **Codex** -- через `enabled_tools` / `disabled_tools`
+  в `.codex/config.toml` (см. § Codex MCP-адаптер).
+- **Gemini** -- через нативные `includeTools` / `excludeTools`
+  в `.gemini/settings.json` (см. § Gemini MCP-адаптер).
+
+Для остальных адаптеров (**Claude**, **OpenCode**, **Kilocode**)
+каноническое указание `includeTools` / `excludeTools` ТРЕБУЕТСЯ
+игнорировать с предупреждением в `stderr` (см. соответствующие
+секции адаптеров). Канонический формат ЗАПРЕЩАЕТСЯ валидировать
+как ошибку: пользователь МОЖЕТ рассматривать `.agloom/mcp.yml`
+как кросс-адаптерный файл и ожидать, что каждый адаптер применит
+поле по возможности.
 
 ### Правила взаимной исключительности полей
 
@@ -502,57 +534,48 @@ mcpServers:
 
 Адаптер для Claude Code. `agentId`: `"claude"`.
 
-Claude Code MCP-адаптер генерирует **два** выходных файла:
+Claude Code MCP-адаптер генерирует **единственный** выходной файл
+`.mcp.json` в корне проекта -- объект с полем `mcpServers`,
+описывающий MCP-серверы.
 
-1. `.mcp.json` в корне проекта -- объект с полем `mcpServers`,
-   описывающий серверы.
-2. `.claude/settings.json` в корне проекта -- файл настроек,
-   в котором секция `permissions.allow` / `permissions.deny`
-   содержит entries, выведенные из полей `includeTools` /
-   `excludeTools` канонического файла.
+Для `.mcp.json` публичная JSON-схема отсутствует -- поле `$schema`
+в этот файл НЕ добавляется.
 
-Для `.mcp.json` публичная JSON-схема отсутствует -- поле
-`$schema` в этот файл НЕ добавляется. Для `.claude/settings.json`
-публичная схема есть -- поле `$schema` со значением
-`"https://json.schemastore.org/claude-code-settings.json"`
-ТРЕБУЕТСЯ добавлять на верхний уровень итогового объекта.
+Claude Code не имеет нативной discovery-level фильтрации инструментов,
+поэтому канонические поля `includeTools` / `excludeTools`
+данным адаптером не обрабатываются (см. ниже § Обработка
+includeTools/excludeTools).
 
 ### Маппинг транспортов
 
 Поле `type` канонического файла отображается в поле `type`
-`.mcp.json` без изменения значения:
+`.mcp.json` без изменения значения. Поле `type` ТРЕБУЕТСЯ записывать
+**явно** для всех транспортов, включая `"stdio"`:
 
-| canonical `type` | `.mcp.json` entry                                                     |
-| ---------------- | --------------------------------------------------------------------- |
-| `"stdio"`        | `{ "command": "...", "args": [...], "env": {...} }` (без поля `type`) |
-| `"http"`         | `{ "type": "http", "url": "...", "headers": {...} }`                  |
-| `"sse"`          | `{ "type": "sse", "url": "...", "headers": {...} }`                   |
+| canonical `type` | `.mcp.json` entry                                                    |
+| ---------------- | -------------------------------------------------------------------- |
+| `"stdio"`        | `{ "type": "stdio", "command": "...", "args": [...], "env": {...} }` |
+| `"http"`         | `{ "type": "http", "url": "...", "headers": {...} }`                 |
+| `"sse"`          | `{ "type": "sse", "url": "...", "headers": {...} }`                  |
 
-Для транспорта `"stdio"` поле `type` в `.mcp.json` НЕ записывается
-(значение по умолчанию на стороне Claude Code).
+### Обработка `includeTools` / `excludeTools`
 
-### Трансформация includeTools/excludeTools в permissions
+Claude Code не поддерживает discovery-level tool filtering: эмитировать
+канонические `includeTools` / `excludeTools` в какое-либо нативное поле
+`.mcp.json` невозможно. ЗАПРЕЩАЕТСЯ транспилировать эти поля
+в permission-записи (permissions являются postfactum gating, что
+семантически не эквивалентно discovery filtering).
 
-Поля `includeTools` / `excludeTools` NOT являются нативными полями
-`.mcp.json`. Для Claude Code они ТРЕБУЕТСЯ транспилировать в
-permission-entries в файле `.claude/settings.json`:
+При обнаружении непустого `includeTools` или `excludeTools` у сервера
+в каноническом файле адаптер ТРЕБУЕТСЯ эмитировать предупреждение
+в `stderr` вида:
 
-- Каждый элемент `includeTools` сервера `<server>` ТРЕБУЕТСЯ
-  преобразовать в entry `mcp__<server>__<tool>` и добавить в массив
-  `permissions.allow`.
-- Каждый элемент `excludeTools` сервера `<server>` ТРЕБУЕТСЯ
-  преобразовать в entry `mcp__<server>__<tool>` и добавить в массив
-  `permissions.deny`.
+```text
+Warning: Claude Code does not support discovery-level tool filtering. Server '{serverId}': 'includeTools'/'excludeTools' ignored. Use .agloom/permissions.yml for postfactum permission gating.
+```
 
-Разделитель `:` в именах MCP не используется -- элементы `includeTools`
-и `excludeTools` -- имена инструментов, соединяемые с идентификатором
-сервера через двойное подчёркивание `__`.
-
-Инвариант сохранения этих entries при последующих merge-операциях
-обеспечивается union-merge для путей `permissions.allow` и
-`permissions.deny` в layer-model (см. `docs/specs/layer-model.md`
-§ Union-merge для permission-ключей и § Инвариант приоритета MCP
-над Permissions в данной спецификации).
+После эмиссии предупреждения поля ТРЕБУЕТСЯ игнорировать; entry
+сервера в `.mcp.json` формируется без них.
 
 ### transpile
 
@@ -565,67 +588,40 @@ permission-entries в файле `.claude/settings.json`:
 **Поведение:**
 
 1. Создать пустой объект `mcpServers` -- будущее содержимое `.mcp.json`.
-2. Создать пустые массивы `allow` и `deny` -- будущие
-   `permissions.allow` и `permissions.deny`.
-3. Для каждого сервера `<server>` в `file.content.mcpServers`:
-   3.1. Если `serverConfig.type` равен `"stdio"` (или опущено) --
+2. Для каждого сервера `<server>` в `file.content.mcpServers`:
+   2.1. Если `serverConfig.type` равен `"stdio"` (или опущено) --
    выполнить процедуру Build Stdio Server Config с
-   `supportsToolFiltering = false`; сохранить результат как entry
-   `mcpServers[<server>]`.
-   3.2. Если `serverConfig.type` равен `"http"` -- выполнить процедуру
+   `supportsToolFiltering = false`; добавить поле `type: "stdio"`
+   в результат; сохранить как entry `mcpServers[<server>]`.
+   2.2. Если `serverConfig.type` равен `"http"` -- выполнить процедуру
    Build Remote Server Config; добавить поле `type: "http"` в результат;
    сохранить как entry `mcpServers[<server>]`.
-   3.3. Если `serverConfig.type` равен `"sse"` -- выполнить процедуру
+   2.3. Если `serverConfig.type` равен `"sse"` -- выполнить процедуру
    Build Remote Server Config; добавить поле `type: "sse"` в результат;
    сохранить как entry `mcpServers[<server>]`.
-   3.4. Если `serverConfig.includeTools` присутствует -- для каждого
-   элемента `<tool>` добавить строку `"mcp__<server>__<tool>"` в массив
-   `allow`.
-   3.5. Если `serverConfig.excludeTools` присутствует -- для каждого
-   элемента `<tool>` добавить строку `"mcp__<server>__<tool>"` в массив
-   `deny`.
-4. Сформировать объект `mcpOutput` с ключом `"mcpServers"`, содержащим
+   2.4. Если `serverConfig.includeTools` или `serverConfig.excludeTools`
+   присутствует и непусто -- эмитировать предупреждение в `stderr`
+   (см. § Обработка includeTools/excludeTools) и игнорировать поля.
+3. Сформировать объект `mcpOutput` с ключом `"mcpServers"`, содержащим
    `mcpServers`. Сериализовать `mcpOutput` в JSON с отступом 2 пробела
-   и завершающим переводом строки. Сформировать `McpOutputFile`
-   с `relativePath: ".mcp.json"`.
-5. Сформировать объект `settingsOutput`:
-   5.1. Добавить ключ `"$schema"` со значением
-   `"https://json.schemastore.org/claude-code-settings.json"` на верхний
-   уровень.
-   5.2. Если массив `allow` непуст или массив `deny` непуст -- добавить
-   ключ `"permissions"` со значением `{ "allow": allow, "deny": deny }`,
-   опуская пустые подмассивы (если `allow` пуст -- не добавлять ключ
-   `allow`; если `deny` пуст -- не добавлять ключ `deny`).
-   5.3. Если оба массива `allow` и `deny` пусты -- ключ `"permissions"`
-   НЕ добавлять.
-6. Сериализовать `settingsOutput` в JSON с отступом 2 пробела
-   и завершающим переводом строки. Сформировать `McpOutputFile`
-   с `relativePath: ".claude/settings.json"`.
-7. Вернуть массив из двух элементов: entry для `.mcp.json` и entry
-   для `.claude/settings.json`.
+   и завершающим переводом строки.
+4. Сформировать `McpOutputFile` с `relativePath: ".mcp.json"`.
 
 **Расширения:**
 
-5.3a. Оба массива `allow` и `deny` пусты -- итоговый объект
-`settingsOutput` содержит только ключ `"$schema"`. Файл
-`.claude/settings.json` всё равно ТРЕБУЕТСЯ эмитировать, чтобы
-последующий merge сохранял `$schema`.
+2.4a. См. основной шаг (warn+ignore для `includeTools` /
+`excludeTools`).
 
 **Результат:**
 
-`McpOutputFile[]` -- массив из двух элементов: `.mcp.json` и
-`.claude/settings.json`.
+`McpOutputFile[]` (массив из одного элемента).
 
-### Deep merge с существующими файлами
+### Deep merge с существующим `.mcp.json`
 
-Файлы `.mcp.json` и `.claude/settings.json` являются merge-eligible
-(`.json`). При наличии существующего файла по целевому пути
-(от overlay, плагина или предыдущего шага) ТРЕБУЕТСЯ применить
-deep merge в соответствии с `docs/specs/layer-model.md`
-§ Алгоритм deep merge. Для массивов `permissions.allow` и
-`permissions.deny` в `.claude/settings.json` ТРЕБУЕТСЯ применять
-union-merge (см. `docs/specs/layer-model.md` § Union-merge
-для permission-ключей).
+Файл `.mcp.json` является merge-eligible (`.json`). При наличии
+существующего файла по целевому пути (от overlay, плагина
+или предыдущего шага) ТРЕБУЕТСЯ применить deep merge в соответствии
+с `docs/specs/layer-model.md` § Алгоритм deep merge.
 
 ### Пример выходного файла `.mcp.json`
 
@@ -633,10 +629,12 @@ union-merge (см. `docs/specs/layer-model.md` § Union-merge
 {
   "mcpServers": {
     "context7": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp@latest"]
     },
     "filesystem": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem"],
       "env": {
@@ -657,65 +655,66 @@ union-merge (см. `docs/specs/layer-model.md` § Union-merge
 }
 ```
 
-### Пример выходного файла `.claude/settings.json`
-
-```json
-{
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "permissions": {
-    "allow": ["mcp__filesystem__read_file", "mcp__filesystem__list_directory"],
-    "deny": ["mcp__figma__delete"]
-  }
-}
-```
-
 ## OpenCode MCP-адаптер
 
 Адаптер для OpenCode. `agentId`: `"opencode"`.
 
 Генерирует единственный файл `opencode.json` в корне проекта. Файл
-содержит ключ `"$schema"` со значением `"https://opencode.ai/config.json"`,
-ключ `"mcp"` (описание серверов) и, при наличии `includeTools` /
-`excludeTools` в каноническом файле, ключ `"permission"` (плоский
-объект permission-записей).
+содержит ключ `"$schema"` со значением `"https://opencode.ai/config.json"`
+и ключ `"mcp"` (описание серверов).
+
+OpenCode не имеет нативной discovery-level фильтрации инструментов,
+поэтому канонические поля `includeTools` / `excludeTools` данным
+адаптером не обрабатываются (см. ниже § Обработка
+includeTools/excludeTools). OpenCode также не поддерживает транспорт
+SSE: серверы с `type: "sse"` пропускаются с предупреждением
+(см. § Маппинг транспортов).
 
 ### Маппинг транспортов
 
-OpenCode различает только два типа: `"stdio"` и `"remote"`. Оба
-канонических транспорта `"http"` и `"sse"` отображаются в
-`"remote"`. Поле `headers` в формате OpenCode не документировано
-и НЕ передаётся.
+OpenCode различает только два типа: `"stdio"` и `"remote"`.
+Канонический `"http"` отображается в `"remote"` со streamable HTTP
+семантикой. Канонический `"sse"` OpenCode не поддерживает --
+соответствующий сервер пропускается (warn+skip).
 
-| canonical `type` | opencode.json entry                                                  |
-| ---------------- | -------------------------------------------------------------------- |
-| `"stdio"`        | `{ "type": "stdio", "command": "...", "args": [...], "env": {...} }` |
-| `"http"`         | `{ "type": "remote", "url": "..." }`                                 |
-| `"sse"`          | `{ "type": "remote", "url": "..." }`                                 |
+| canonical `type` | opencode.json entry                                                             |
+| ---------------- | ------------------------------------------------------------------------------- |
+| `"stdio"`        | `{ "type": "stdio", "command": "...", "args": [...], "env": {...} }`            |
+| `"http"`         | `{ "type": "remote", "url": "...", "headers": {...} }` (headers, если непустой) |
+| `"sse"`          | (warn+skip, entry не эмитируется)                                               |
 
 Для транспорта `"stdio"` поле `type: "stdio"` ТРЕБУЕТСЯ записывать
 явно.
 
-Если канонический сервер с типом `"http"` или `"sse"` содержит
-непустое поле `headers` -- ТРЕБУЕТСЯ эмитировать предупреждение
-в `stderr`:
-`"Warning: OpenCode does not support MCP 'headers' field. Server '{serverId}': headers ignored."`
-(см. расширение 3.2a процедуры transpile).
+Для канонического `type: "sse"` ТРЕБУЕТСЯ эмитировать предупреждение
+в `stderr` и пропустить сервер:
 
-### Трансформация includeTools/excludeTools в permission
+```text
+Warning: OpenCode does not support SSE transport. Server '{serverId}' skipped.
+```
 
-Поля `includeTools` / `excludeTools` NOT являются нативными полями
-MCP-секции OpenCode. Для OpenCode они ТРЕБУЕТСЯ транспилировать в
-ключи объекта `permission` того же файла `opencode.json`:
+Поле `headers` для `type: "remote"` OpenCode поддерживает и ТРЕБУЕТСЯ
+передавать as-is (если непустое).
 
-- Каждый элемент `includeTools` сервера `<server>` ТРЕБУЕТСЯ
-  преобразовать в ключ `<server>_<tool>` со значением `"allow"`.
-- Каждый элемент `excludeTools` сервера `<server>` ТРЕБУЕТСЯ
-  преобразовать в ключ `<server>_<tool>` со значением `"deny"`.
+### Обработка `includeTools` / `excludeTools`
 
-Разделитель между именем сервера и именем инструмента -- одинарное
-подчёркивание `_` (в соответствии с форматом OpenCode; см.
-`docs/specs/permissions-transpiler.md` § Трансформация MCP-правил
-для OpenCode).
+OpenCode не поддерживает discovery-level tool filtering. Транспилировать
+канонические `includeTools` / `excludeTools` в объект `permission`
+файла `opencode.json` ЗАПРЕЩАЕТСЯ: OpenCode `permission` -- postfactum
+gating, семантически не эквивалентный discovery filtering.
+
+При обнаружении непустого `includeTools` или `excludeTools` у сервера
+в каноническом файле адаптер ТРЕБУЕТСЯ эмитировать предупреждение
+в `stderr` вида:
+
+```text
+Warning: OpenCode does not support discovery-level tool filtering. Server '{serverId}': 'includeTools'/'excludeTools' ignored. Use .agloom/permissions.yml for postfactum permission gating.
+```
+
+После эмиссии предупреждения поля ТРЕБУЕТСЯ игнорировать. Ключ
+`"permission"` данным адаптером в `opencode.json` ЗАПРЕЩАЕТСЯ
+эмитировать: секция permissions -- задача permissions-транспайлера
+(см. `docs/specs/permissions-transpiler.md`).
 
 ### transpile
 
@@ -728,40 +727,35 @@ MCP-секции OpenCode. Для OpenCode они ТРЕБУЕТСЯ транс�
 **Поведение:**
 
 1. Создать пустой объект `mcpSection`.
-2. Создать пустой объект `permissionSection`.
-3. Для каждого сервера `<server>` в `file.content.mcpServers`:
-   3.1. Если `serverConfig.type` равен `"stdio"` (или опущено) --
+2. Для каждого сервера `<server>` в `file.content.mcpServers`:
+   2.1. Если `serverConfig.type` равен `"sse"` -- эмитировать
+   предупреждение в `stderr` (см. § Маппинг транспортов) и перейти
+   к следующему серверу.
+   2.2. Если `serverConfig.type` равен `"stdio"` (или опущено) --
    выполнить процедуру Build Stdio Server Config с
    `supportsToolFiltering = false`; добавить поле `type: "stdio"`
    в результат; сохранить как entry `mcpSection[<server>]`.
-   3.2. Если `serverConfig.type` равен `"http"` -- создать объект
-   `{ "type": "remote", "url": serverConfig.url }`; сохранить как
-   entry `mcpSection[<server>]`.
-   3.3. Если `serverConfig.type` равен `"sse"` -- создать объект
-   `{ "type": "remote", "url": serverConfig.url }`; сохранить как
-   entry `mcpSection[<server>]`.
-   3.4. Если `serverConfig.includeTools` присутствует -- для каждого
-   элемента `<tool>` добавить в `permissionSection` ключ
-   `"<server>_<tool>"` со значением `"allow"`.
-   3.5. Если `serverConfig.excludeTools` присутствует -- для каждого
-   элемента `<tool>` добавить в `permissionSection` ключ
-   `"<server>_<tool>"` со значением `"deny"`.
-4. Сформировать объект `output`:
-   4.1. Добавить ключ `"$schema"` со значением
+   2.3. Если `serverConfig.type` равен `"http"` -- создать объект
+   `{ "type": "remote", "url": serverConfig.url }`. Если
+   `serverConfig.headers` непусто -- добавить поле `headers`
+   с тем же значением. Сохранить как entry `mcpSection[<server>]`.
+   2.4. Если `serverConfig.includeTools` или `serverConfig.excludeTools`
+   присутствует и непусто -- эмитировать предупреждение в `stderr`
+   (см. § Обработка includeTools/excludeTools) и игнорировать поля.
+3. Сформировать объект `output`:
+   3.1. Добавить ключ `"$schema"` со значением
    `"https://opencode.ai/config.json"`.
-   4.2. Добавить ключ `"mcp"` со значением `mcpSection`.
-   4.3. Если `permissionSection` содержит хотя бы один ключ --
-   добавить ключ `"permission"` со значением `permissionSection`.
-5. Сериализовать `output` в JSON с отступом 2 пробела
+   3.2. Добавить ключ `"mcp"` со значением `mcpSection`.
+4. Сериализовать `output` в JSON с отступом 2 пробела
    и завершающим переводом строки.
-6. Сформировать `McpOutputFile` с `relativePath: "opencode.json"`.
+5. Сформировать `McpOutputFile` с `relativePath: "opencode.json"`.
 
 **Расширения:**
 
-3.2a. Канонический сервер с `type = "http"` или `type = "sse"` содержит
-непустое поле `headers` -- эмитировать предупреждение в `stderr`
-(см. § Маппинг транспортов); продолжить с шагом 3.3 (поле `headers`
-не записывается в `opencode.json`).
+2.1a. См. основной шаг (warn+skip для `type: "sse"`).
+
+2.4a. См. основной шаг (warn+ignore для `includeTools` /
+`excludeTools`).
 
 **Результат:**
 
@@ -771,10 +765,10 @@ MCP-секции OpenCode. Для OpenCode они ТРЕБУЕТСЯ транс�
 
 Файл `opencode.json` является merge-eligible (`.json`). При конфликте
 по пути `opencode.json` ТРЕБУЕТСЯ применить deep merge в соответствии
-с `docs/specs/layer-model.md` § Алгоритм deep merge. Ключи
-`permission.*` являются плоскими строковыми значениями -- standard
-deep-merge объектов сохраняет ключи из всех слоёв (конфликт по ключу
-разрешается last-writer-wins).
+с `docs/specs/layer-model.md` § Алгоритм deep merge. Данный адаптер
+эмитирует только ключи `"$schema"` и `"mcp"`; остальные ключи файла
+(в частности, `"permission"`, записываемый permissions-транспилером)
+сохраняются существующим механизмом deep merge.
 
 ### Пример выходного файла `opencode.json`
 
@@ -795,13 +789,9 @@ deep-merge объектов сохраняет ключи из всех слоё
     },
     "figma": {
       "type": "remote",
-      "url": "https://mcp.figma.com/mcp"
+      "url": "https://mcp.figma.com/mcp",
+      "headers": { "X-Figma-Region": "us-east-1" }
     }
-  },
-  "permission": {
-    "filesystem_read_file": "allow",
-    "filesystem_list_directory": "allow",
-    "figma_delete": "deny"
   }
 }
 ```
@@ -813,6 +803,13 @@ deep-merge объектов сохраняет ключи из всех слоё
 Генерирует единственный файл `.codex/config.toml` в корне проекта.
 Формат -- TOML. Сериализация ТРЕБУЕТСЯ выполнять библиотекой
 `smol-toml` (см. § Процедура TOML-сериализации MCP-конфигурации).
+
+Codex -- один из двух MCP-адаптеров (вместе с Gemini), у которых
+канонические `includeTools` / `excludeTools` применяются напрямую
+через нативную discovery-level фильтрацию (`enabled_tools` /
+`disabled_tools` в `config.toml`). Для остальных адаптеров (Claude,
+OpenCode, Kilocode) эти поля игнорируются с предупреждением
+(см. соответствующие секции).
 
 Первой строкой файла ТРЕБУЕТСЯ добавить директиву схемы:
 
@@ -976,6 +973,13 @@ disabled_tools = ["delete"]
 `"https://raw.githubusercontent.com/google-gemini/gemini-cli/main/schemas/settings.schema.json"`
 и ключ `"mcpServers"`.
 
+Gemini -- один из двух MCP-адаптеров (вместе с Codex), у которых
+канонические `includeTools` / `excludeTools` применяются напрямую
+через нативную discovery-level фильтрацию (одноимённые поля
+`includeTools` / `excludeTools` в `settings.json`). Для остальных
+адаптеров (Claude, OpenCode, Kilocode) эти поля игнорируются
+с предупреждением (см. соответствующие секции).
+
 ### Маппинг транспортов и полей
 
 Gemini использует три разных имени полей URL для stdio / HTTP / SSE:
@@ -1105,20 +1109,29 @@ Canonical `type: "http"` отображается в значение `"streamab
 поля `type` Kilocode (не `"http"`). Canonical `type: "sse"`
 отображается в значение `"sse"`.
 
-### Трансформация includeTools/excludeTools
+### Обработка `includeTools` / `excludeTools`
 
-Kilocode имеет per-entry поле `alwaysAllow` (array of strings) --
-allow-list инструментов для автоматического одобрения. Native-поле
-denylist (аналог `disabledTools`) в формате Kilocode отсутствует.
+Kilocode имеет per-entry поле `alwaysAllow` (array of strings), однако
+это **не** discovery-level tool filtering, а postfactum permission
+gating: перечисленные инструменты автоматически одобряются без запроса
+пользователя, но остаются видимыми модели. Семантически это относится
+к permissions, а не к tool filtering, и ЗАПРЕЩАЕТСЯ выводить
+`alwaysAllow` из канонических `includeTools` / `excludeTools`.
 
-- `includeTools: [t1, t2, ...]` -> добавить элементы в `alwaysAllow`
-  той же entry сервера, сохраняя порядок и исключая дубликаты.
-- `excludeTools` для сервера -- ТРЕБУЕТСЯ эмитировать предупреждение
-  в `stderr` и пропустить поле:
+Поле `alwaysAllow` в `kilo.jsonc` эмитируется только
+permissions-транспайлером (см. `docs/specs/permissions-transpiler.md`);
+данный адаптер его ЗАПРЕЩАЕТСЯ записывать.
 
-  ```text
-  Warning: Kilocode does not support tool denylist. Server '{serverId}': 'excludeTools' ignored.
-  ```
+При обнаружении непустого `includeTools` или `excludeTools` у сервера
+в каноническом файле адаптер ТРЕБУЕТСЯ эмитировать предупреждение
+в `stderr` вида:
+
+```text
+Warning: Kilocode does not support discovery-level tool filtering. Server '{serverId}': 'includeTools'/'excludeTools' ignored. Use .agloom/permissions.yml for postfactum permission gating (Kilocode alwaysAllow will be emitted by the permissions transpiler).
+```
+
+После эмиссии предупреждения поля ТРЕБУЕТСЯ игнорировать; entry
+сервера в `kilo.jsonc` формируется без них.
 
 ### transpile
 
@@ -1144,15 +1157,9 @@ denylist (аналог `disabledTools`) в формате Kilocode отсутс�
    `{ "type": "sse", "url": serverConfig.url }`. Если
    `serverConfig.headers` непусто -- добавить поле `headers`.
    Сохранить как entry `mcpServers[<server>]`.
-   2.4. Если `serverConfig.includeTools` присутствует -- добавить
-   в entry поле `alwaysAllow` со значением `serverConfig.includeTools`
-   (копия массива; при наличии существующего `alwaysAllow`
-   в `base` от Build Stdio Server Config -- заменить; дубликатов
-   не может быть, поскольку Build Stdio Server Config не добавляет
-   `alwaysAllow`).
-   2.5. Если `serverConfig.excludeTools` присутствует -- эмитировать
-   предупреждение в `stderr` (см. § Трансформация
-   includeTools/excludeTools) и не добавлять поле в entry.
+   2.4. Если `serverConfig.includeTools` или `serverConfig.excludeTools`
+   присутствует и непусто -- эмитировать предупреждение в `stderr`
+   (см. § Обработка includeTools/excludeTools) и игнорировать поля.
 3. Сформировать объект `output`:
    3.1. Добавить ключ `"$schema"` со значением
    `"https://app.kilo.ai/config.json"`.
@@ -1166,7 +1173,8 @@ denylist (аналог `disabledTools`) в формате Kilocode отсутс�
 
 **Расширения:**
 
-2.5a. См. основной шаг (warn+skip для `excludeTools`).
+2.4a. См. основной шаг (warn+ignore для `includeTools` /
+`excludeTools`).
 
 **Результат:**
 
@@ -1200,8 +1208,7 @@ denylist (аналог `disabledTools`) в формате Kilocode отсутс�
     "filesystem": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem"],
-      "env": { "ROOT_DIR": "/home/user/project" },
-      "alwaysAllow": ["read_file", "list_directory"]
+      "env": { "ROOT_DIR": "/home/user/project" }
     },
     "figma": {
       "type": "streamable-http",
@@ -1216,38 +1223,6 @@ denylist (аналог `disabledTools`) в формате Kilocode отсутс�
   }
 }
 ```
-
-## Инвариант приоритета MCP над Permissions
-
-MCP-транспайлер запускается раньше Permissions-транспайлера в
-pipeline команды `transpile` (см. `docs/specs/cli.md` § Команда
-transpile, шаги 4.5 MCP и 4.6 Permissions). Permission-entries,
-выводимые MCP-транспайлером из `includeTools` / `excludeTools`
-(в `.claude/settings.json` и `opencode.json`), ДОЛЖНЫ сохраняться
-в итоговом файле после записи Permissions-транспайлером.
-
-Для Claude `.claude/settings.json` инвариант обеспечивается union-merge
-для путей `permissions.allow` и `permissions.deny`
-(см. `docs/specs/layer-model.md` § Union-merge для permission-ключей).
-Permissions-транспайлер ТРЕБУЕТСЯ применять deep merge через layer
-model при наличии существующего файла; union-merge для этих путей
-ДОЛЖЕН объединять массивы из обоих слоёв с удалением дубликатов
-без потери элементов.
-
-Для OpenCode `opencode.json` ключ `permission` является объектом
-с плоскими строковыми значениями. Standard deep-merge объектов
-сохраняет ключи из всех слоёв. При совпадении ключа (один и тот же
-`<server>_<tool>`) в MCP-выводе и Permissions-выводе побеждает
-Permissions-вывод (last-writer-wins) -- это намеренное поведение,
-поскольку правила в `.agloom/permissions.yml` представляют явный
-выбор пользователя, а `includeTools` / `excludeTools` в
-`.agloom/mcp.yml` -- декларацию возможностей сервера.
-
-Тестируемый критерий: при наличии канонических файлов `mcp.yml`
-(с `includeTools` / `excludeTools` для сервера `X` и инструмента
-`t`) и `permissions.yml` (с MCP-правилами для других серверов),
-после транспиляции итоговые файлы `.claude/settings.json`
-и `opencode.json` ДОЛЖНЫ содержать entries из обоих источников.
 
 ## Запись результатов
 
@@ -1424,15 +1399,17 @@ Agloom и ДОЛЖЕН передаваться as-is в output. Это позв
   только project-level.
 - Поля `trust`, `required`, `timeout`, `startup_timeout_sec`,
   `tool_timeout_sec`, `alwaysAllow` в каноническом формате --
-  остаются platform-specific и не имеют канонического представления
-  (Kilocode `alwaysAllow` заполняется только из canonical
-  `includeTools`).
+  остаются platform-specific и не имеют канонического представления.
+  Kilocode `alwaysAllow` эмитируется permissions-транспайлером
+  (см. `docs/specs/permissions-transpiler.md`), а не MCP-адаптером.
 - OAuth и сопутствующие поля: `oauth`, `headersHelper` (Claude);
   `bearer_token_env_var`, `env_http_headers` (Codex);
   `authProviderType`, `oauth` (Gemini); `timeout`, `disabled`
   (Kilocode). Интеграция с OAuth не транспилируется.
+- Discovery-level tool filtering через permissions-транспайлер
+  для Claude, OpenCode, Kilocode. Архитектурное разграничение:
+  MCP-адаптеры отвечают за discovery-level advertising инструментов,
+  permissions-транспайлер -- за postfactum gating на каждом вызове
+  (см. § Семантика `includeTools` / `excludeTools`).
 - MCP-server discovery (автоматическое обнаружение серверов).
 - Валидация доступности MCP-серверов при транспиляции.
-- Permissions-адаптеры для Codex, Gemini, Kilocode
-  (canonical `.agloom/permissions.yml` для этих агентов -- отдельный
-  цикл).

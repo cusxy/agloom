@@ -2,7 +2,7 @@
 // Спецификация: docs/specs/mcp-transpiler.md § Claude Code MCP-адаптер, § OpenCode MCP-адаптер,
 //               § Процедура Build Base Server Config
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { ClaudeMcpAdapter } from "../adapters/claude-adapter.js";
 import { OpenCodeMcpAdapter } from "../adapters/opencode-adapter.js";
 import type { McpCanonicalFile } from "../types.js";
@@ -24,6 +24,10 @@ function makeCanonicalFile(mcpServers: Record<string, any>): McpCanonicalFile {
 // =============================================================================
 
 describe("ClaudeMcpAdapter", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   // --- Свойство: agentId адаптера ---
   it('имеет agentId равный "claude"', () => {
     const adapter = new ClaudeMcpAdapter();
@@ -44,11 +48,11 @@ describe("ClaudeMcpAdapter", () => {
         }),
       );
 
-      expect(files).toHaveLength(2);
+      expect(files).toHaveLength(1);
       const mcpFile = files.find((f) => f.relativePath === ".mcp.json");
       expect(mcpFile).toBeDefined();
-      const settingsFile = files.find((f) => f.relativePath === ".claude/settings.json");
-      expect(settingsFile).toBeDefined();
+      // § Claude Code MCP-адаптер: генерирует единственный выходной файл .mcp.json
+      expect(files.find((f) => f.relativePath === ".claude/settings.json")).toBeUndefined();
 
       const parsed = JSON.parse(mcpFile!.content);
       expect(parsed.mcpServers.context7.command).toBe("npx");
@@ -70,8 +74,9 @@ describe("ClaudeMcpAdapter", () => {
       expect(files[0].content).toMatch(/\n$/);
     });
 
-    // --- Процедура Build Base Server Config: шаг 4 -- отбрасывание includeTools/excludeTools ---
+    // --- Warn+ignore для includeTools/excludeTools (§ Обработка includeTools/excludeTools) ---
     it("отбрасывает includeTools из выходного файла", () => {
+      vi.spyOn(process.stderr, "write").mockImplementation(() => true);
       const adapter = new ClaudeMcpAdapter();
 
       const files = adapter.transpile(
@@ -91,6 +96,7 @@ describe("ClaudeMcpAdapter", () => {
     });
 
     it("отбрасывает excludeTools из выходного файла", () => {
+      vi.spyOn(process.stderr, "write").mockImplementation(() => true);
       const adapter = new ClaudeMcpAdapter();
 
       const files = adapter.transpile(
@@ -117,7 +123,7 @@ describe("ClaudeMcpAdapter", () => {
       );
 
       const parsed = JSON.parse(files[0].content);
-      expect(parsed.mcpServers.simple).toEqual({ command: "node" });
+      expect(parsed.mcpServers.simple).toEqual({ type: "stdio", command: "node" });
       expect("args" in parsed.mcpServers.simple).toBe(false);
     });
 
@@ -202,7 +208,7 @@ describe("ClaudeMcpAdapter", () => {
         }),
       );
 
-      expect(files).toHaveLength(2);
+      expect(files).toHaveLength(1);
       const mcpFile = files.find((f) => f.relativePath === ".mcp.json");
       expect(mcpFile).toBeDefined();
       const parsed = JSON.parse(mcpFile!.content);
@@ -217,20 +223,13 @@ describe("ClaudeMcpAdapter", () => {
 
       const files = adapter.transpile(makeCanonicalFile({}));
 
-      // Claude always emits both .mcp.json and .claude/settings.json (§ 5.3a)
-      expect(files).toHaveLength(2);
+      // § Claude Code MCP-адаптер: единственный выходной файл .mcp.json
+      expect(files).toHaveLength(1);
       const mcpFile = files.find((f) => f.relativePath === ".mcp.json");
       expect(mcpFile).toBeDefined();
       const parsed = JSON.parse(mcpFile!.content);
       expect(parsed.mcpServers).toEqual({});
-
-      // Settings file contains only $schema when permissions are empty (§ 5.3a)
-      const settingsFile = files.find((f) => f.relativePath === ".claude/settings.json");
-      expect(settingsFile).toBeDefined();
-      const settings = JSON.parse(settingsFile!.content);
-      expect(settings).toEqual({
-        $schema: "https://json.schemastore.org/claude-code-settings.json",
-      });
+      expect(files.find((f) => f.relativePath === ".claude/settings.json")).toBeUndefined();
     });
 
     // --- Проверка формата: соответствие примеру из спецификации ---
@@ -252,13 +251,16 @@ describe("ClaudeMcpAdapter", () => {
       );
 
       const parsed = JSON.parse(files[0].content);
+      // § Маппинг транспортов: type: "stdio" эмитируется явно
       expect(parsed).toEqual({
         mcpServers: {
           context7: {
+            type: "stdio",
             command: "npx",
             args: ["-y", "@upstash/context7-mcp@latest"],
           },
           filesystem: {
+            type: "stdio",
             command: "npx",
             args: ["-y", "@modelcontextprotocol/server-filesystem"],
             env: { ROOT_DIR: "/home/user/project" },

@@ -12,6 +12,7 @@ import type {
   PermissionsOutputFile,
   ShellPermissionRule,
 } from "../types.js";
+import { dropShadowedRules, flattenWhitelistConflicts } from "../preprocessing.js";
 
 /**
  * Маппинг действий канонического формата в значения decision Codex rules.
@@ -93,9 +94,13 @@ export class CodexPermissionsAdapter implements PermissionsAdapter {
       process.stderr.write("Warning: Codex does not support file permissions. 'file' section ignored.\n");
     }
 
-    // Шаг 4: shell-правила
+    // Шаг 4: shell-правила (после препроцессинга)
     if (file.content.shell) {
-      for (const rule of file.content.shell as ShellPermissionRule[]) {
+      const preprocessed = flattenWhitelistConflicts(
+        dropShadowedRules(file.content.shell as ShellPermissionRule[], "shell"),
+        "shell",
+      );
+      for (const rule of preprocessed) {
         const [pattern, action] = extractRule(rule);
         const argv = patternToArgv(pattern);
         if (argv === null) {

@@ -1,12 +1,16 @@
 // layer-model-toml.spec.ts
 // Спецификация: docs/specs/layer-model.md § Алгоритм deep merge (TOML),
-//               § Union-merge для permission-ключей
+//               § Правила слияния (правило 2: массивы заменяются целиком)
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import * as TOML from "smol-toml";
+// LayerMergeError будет реализован в фазе Implement (Cycle 1).
+// Местоположение: предполагается src/cli/overlay-step.ts (рядом с остальным кодом
+// layer-model). Если implementer решит вынести в отдельный модуль (например,
+// src/cli/errors.ts) — путь импорта ТРЕБУЕТСЯ обновить.
 import { deepMerge, runOverlayStep } from "../overlay-step.js";
 import type { AdapterRegistryEntry } from "../types.js";
 
@@ -152,11 +156,16 @@ describe("Layer model — TOML deep merge", () => {
     expect(parsed.fs.args).toEqual(["c"]);
   });
 
-  // --- Невалидный TOML в существующем base-файле → перезаписывается целиком ---
-  it("невалидный существующий TOML-файл перезаписывается целиком", () => {
+  // --- Fail-fast: невалидный TOML в существующем base-файле → non-throw, 3-line errors ---
+  // Spec: docs/specs/layer-model.md § Парсинг файлов для merge (fail-fast для невалидного base).
+  // Spec: docs/specs/layer-model.md § Рефакторинг операции overlay, расширение 2.7a.
+  // Cycle 1 follow-up: runOverlayStep ловит LayerMergeError и возвращает outcome
+  // с трёхстрочным errors. Silent overwrite остаётся запрещён.
+  it("возвращает outcome с 3-строчным errors при невалидном существующем TOML base (non-throw)", () => {
     const entry = createTestEntry({ id: "codex" });
-    // Заранее положим невалидный TOML в target
-    fs.writeFileSync(path.join(tmpDir, "config.toml"), "this is :: not valid ===\n");
+    const invalidPath = path.join(tmpDir, "config.toml");
+    const invalidContent = "this is :: not valid ===\n";
+    fs.writeFileSync(invalidPath, invalidContent);
 
     const layer1 = createLayer("local", {
       "config.toml": "[editor]\nfontSize = 16\n",
@@ -168,17 +177,25 @@ describe("Layer model — TOML deep merge", () => {
       layers: [{ id: "local", overlayDir: layer1 }],
     });
 
-    expect(outcome.errors).toEqual([]);
-    const parsed = TOML.parse(fs.readFileSync(path.join(tmpDir, "config.toml"), "utf-8")) as any;
-    expect(parsed.editor).toEqual({ fontSize: 16 });
+    expect(outcome.name).toBe("Overlay");
+    expect(outcome.errors).toHaveLength(3);
+    expect(outcome.errors[0]).toBe(`Failed to parse .toml file at ${invalidPath}:`);
+    expect(outcome.errors[1].length).toBeGreaterThan(0);
+    expect(outcome.errors[2]).toBe("Please fix or remove the file and retry transpilation.");
+
+    // Регрессия: файл на диске остался в исходном (невалидном) состоянии — silent overwrite запрещён.
+    expect(fs.readFileSync(invalidPath, "utf-8")).toBe(invalidContent);
   });
 });
 
 // =============================================================================
-// § Union-merge для permission-ключей в .claude/settings.json
+// § Правила слияния — permission-массивы в .claude/settings.json.
+// Cycle 1: секция "Union-merge для permission-ключей" удалена из спецификации.
+// Массивы permissions.allow / permissions.deny теперь подчиняются стандартному
+// правилу 2 (deep merge): incoming-массив полностью заменяет base-массив.
 // =============================================================================
 
-describe("Layer model — union-merge для permission arrays", () => {
+describe("Layer model — permission-массивы подчиняются правилу 2 (replace)", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -199,8 +216,10 @@ describe("Layer model — union-merge для permission arrays", () => {
     return layerDir;
   }
 
-  // --- permissions.allow: union двух слоёв ---
-  it("permissions.allow объединяется union-merge из двух слоёв", () => {
+  // --- permissions.allow: последний слой полностью заменяет массив ---
+  // Test 1.1: base permissions.allow: ["A","B"], incoming permissions.allow: ["C"]
+  //   → после merge permissions.allow: ["C"] (не ["A","B","C"]).
+  it("permissions.allow из позднейшего слоя полностью заменяет массив, без объединения", () => {
     const entry = createTestEntry({ id: "claude" });
     const layer1 = createLayer("plugin-a", {
       ".claude/settings.json": JSON.stringify({
@@ -209,7 +228,7 @@ describe("Layer model — union-merge для permission arrays", () => {
     });
     const layer2 = createLayer("local", {
       ".claude/settings.json": JSON.stringify({
-        permissions: { allow: ["Read(*)", "Bash(echo)"] },
+        permissions: { allow: ["Read(*)"] },
       }),
     });
 
@@ -224,20 +243,45 @@ describe("Layer model — union-merge для permission arrays", () => {
 
     expect(outcome.errors).toEqual([]);
     const written = JSON.parse(fs.readFileSync(path.join(tmpDir, ".claude/settings.json"), "utf-8"));
-    expect(written.permissions.allow).toEqual([
-      "mcp__fs__read_file",
-      "mcp__fs__list_directory",
-      "Read(*)",
-      "Bash(echo)",
-    ]);
+    expect(written.permissions.allow).toEqual(["Read(*)"]);
   });
 
-  // --- permissions.deny: union двух слоёв ---
-  it("permissions.deny объединяется union-merge из двух слоёв", () => {
+  // --- permissions.deny: последний слой полностью заменяет массив ---
+  // Test 1.2: base permissions.deny: ["X"], incoming permissions.deny: ["Y","Z"]
+  //   → после merge permissions.deny: ["Y","Z"].
+  it("permissions.deny из позднейшего слоя полностью заменяет массив", () => {
     const entry = createTestEntry({ id: "claude" });
     const layer1 = createLayer("plugin-a", {
       ".claude/settings.json": JSON.stringify({
         permissions: { deny: ["mcp__figma__delete"] },
+      }),
+    });
+    const layer2 = createLayer("local", {
+      ".claude/settings.json": JSON.stringify({
+        permissions: { deny: ["Write(/etc/**)", "Bash(rm *)"] },
+      }),
+    });
+
+    runOverlayStep({
+      entry,
+      projectRoot: tmpDir,
+      layers: [
+        { id: "plugin-a", overlayDir: layer1 },
+        { id: "local", overlayDir: layer2 },
+      ],
+    });
+
+    const written = JSON.parse(fs.readFileSync(path.join(tmpDir, ".claude/settings.json"), "utf-8"));
+    expect(written.permissions.deny).toEqual(["Write(/etc/**)", "Bash(rm *)"]);
+  });
+
+  // --- Test 1.3: incoming не содержит permissions.allow → ключ сохраняется из base ---
+  // Правило 1 deep merge для объектов: ключи из base сохраняются, если отсутствуют в incoming.
+  it("сохраняет permissions.allow из base, если incoming не содержит этот ключ", () => {
+    const entry = createTestEntry({ id: "claude" });
+    const layer1 = createLayer("plugin-a", {
+      ".claude/settings.json": JSON.stringify({
+        permissions: { allow: ["Read(*)", "Bash(echo)"] },
       }),
     });
     const layer2 = createLayer("local", {
@@ -256,39 +300,12 @@ describe("Layer model — union-merge для permission arrays", () => {
     });
 
     const written = JSON.parse(fs.readFileSync(path.join(tmpDir, ".claude/settings.json"), "utf-8"));
-    expect(written.permissions.deny).toEqual(["mcp__figma__delete", "Write(/etc/**)"]);
-  });
-
-  // --- Дедупликация: одинаковые записи из разных слоёв ---
-  it("одинаковые записи из разных слоёв дедуплицируются (first-occurrence)", () => {
-    const entry = createTestEntry({ id: "claude" });
-    const layer1 = createLayer("plugin-a", {
-      ".claude/settings.json": JSON.stringify({
-        permissions: { allow: ["Read(*)", "Bash(echo)"] },
-      }),
-    });
-    const layer2 = createLayer("local", {
-      ".claude/settings.json": JSON.stringify({
-        permissions: { allow: ["Bash(echo)", "Read(*)"] },
-      }),
-    });
-
-    runOverlayStep({
-      entry,
-      projectRoot: tmpDir,
-      layers: [
-        { id: "plugin-a", overlayDir: layer1 },
-        { id: "local", overlayDir: layer2 },
-      ],
-    });
-
-    const written = JSON.parse(fs.readFileSync(path.join(tmpDir, ".claude/settings.json"), "utf-8"));
-    // first-occurrence порядок
     expect(written.permissions.allow).toEqual(["Read(*)", "Bash(echo)"]);
+    expect(written.permissions.deny).toEqual(["Write(/etc/**)"]);
   });
 
-  // --- Union НЕ применяется к другим массивам в .claude/settings.json ---
-  it("union-merge НЕ применяется к другим массивам в .claude/settings.json", () => {
+  // --- Регрессия: все прочие массивы в .claude/settings.json тоже replace ---
+  it("прочие массивы в .claude/settings.json также подчиняются правилу 2 (replace)", () => {
     const entry = createTestEntry({ id: "claude" });
     const layer1 = createLayer("plugin-a", {
       ".claude/settings.json": JSON.stringify({
@@ -315,8 +332,8 @@ describe("Layer model — union-merge для permission arrays", () => {
     expect(written.someList).toEqual(["c"]);
   });
 
-  // --- Union НЕ применяется к permissions.allow в других файлах ---
-  it("union-merge НЕ применяется к permissions.allow в opencode.json", () => {
+  // --- permissions.allow в opencode.json тоже replace (стандартное правило 2) ---
+  it("permissions.allow в opencode.json подчиняется стандартному правилу 2 (replace)", () => {
     const entry = createTestEntry({ id: "opencode" });
     const layer1 = createLayer("plugin-a", {
       "opencode.json": JSON.stringify({
@@ -343,12 +360,14 @@ describe("Layer model — union-merge для permission arrays", () => {
     expect(written.permissions.allow).toEqual(["c"]);
   });
 
-  // --- End-to-end: MCP пишет entries, затем Permissions пишет в тот же файл ---
-  // § Инвариант приоритета MCP над Permissions
-  it("MCP-слой и Permissions-слой оба сохраняют свои entries в .claude/settings.json", () => {
+  // --- End-to-end: второй слой полностью заменяет permission-массивы первого ---
+  // Cycle 1: union-merge удалён; если оба слоя задают permissions.{allow,deny},
+  // позднейший слой полностью заменяет массивы. Объединение entries из MCP и
+  // Permissions транспайлеров теперь требует других механизмов (например,
+  // агрегации до overlay-шага) и явно вне scope layer-model.
+  it("позднейший слой полностью заменяет permissions.{allow,deny}; прочие ключи мержатся", () => {
     const entry = createTestEntry({ id: "claude" });
-    // Слой 1 = вывод MCP-транспайлера
-    const mcpLayer = createLayer("mcp-output", {
+    const layer1 = createLayer("mcp-output", {
       ".claude/settings.json": JSON.stringify({
         $schema: "https://json.schemastore.org/claude-code-settings.json",
         permissions: {
@@ -357,8 +376,7 @@ describe("Layer model — union-merge для permission arrays", () => {
         },
       }),
     });
-    // Слой 2 = вывод Permissions-транспайлера
-    const permLayer = createLayer("permissions-output", {
+    const layer2 = createLayer("permissions-output", {
       ".claude/settings.json": JSON.stringify({
         permissions: {
           allow: ["Read(*)"],
@@ -371,46 +389,41 @@ describe("Layer model — union-merge для permission arrays", () => {
       entry,
       projectRoot: tmpDir,
       layers: [
-        { id: "mcp", overlayDir: mcpLayer },
-        { id: "permissions", overlayDir: permLayer },
+        { id: "mcp", overlayDir: layer1 },
+        { id: "permissions", overlayDir: layer2 },
       ],
     });
 
     const written = JSON.parse(fs.readFileSync(path.join(tmpDir, ".claude/settings.json"), "utf-8"));
-    expect(written.permissions.allow).toEqual(["mcp__fs__read_file", "Read(*)"]);
-    expect(written.permissions.deny).toEqual(["mcp__figma__delete", "Write(/etc/**)"]);
-    // $schema сохранён
+    // Массивы полностью заменены последним слоем.
+    expect(written.permissions.allow).toEqual(["Read(*)"]);
+    expect(written.permissions.deny).toEqual(["Write(/etc/**)"]);
+    // $schema сохранён (правило 1 — deep merge объектов, ключа нет в incoming).
     expect(written.$schema).toBe("https://json.schemastore.org/claude-code-settings.json");
   });
 });
 
 // =============================================================================
-// Низкоуровневые unit-тесты deepMerge для union-merge (если API его поддерживает)
+// Низкоуровневые unit-тесты deepMerge: permission-массивы подчиняются правилу 2.
+// Cycle 1: секция § Union-merge для permission-ключей удалена из спецификации,
+// поэтому контекст пути больше НЕ должен активировать union-merge.
 // =============================================================================
 
-describe("deepMerge — union-merge API", () => {
-  // Эти тесты проверяют, что deepMerge поддерживает указание path-контекста
-  // для union-merge permission-массивов. Если сигнатура не поддерживает
-  // path-параметр, тесты упадут на этапе вызова.
-
-  it("объединяет permissions.allow через union-merge при указании контекста пути", () => {
+describe("deepMerge — permission-массивы подчиняются правилу 2 (replace)", () => {
+  it("permissions.allow заменяется целиком даже при filePath=.claude/settings.json", () => {
     const base = { permissions: { allow: ["a", "b"] } };
-    const incoming = { permissions: { allow: ["b", "c"] } };
-    // deepMerge должен принимать опциональный контекст вида
-    // { filePath: ".claude/settings.json" } для активации union-merge.
-    const result = (deepMerge as any)(base, incoming, {
-      filePath: ".claude/settings.json",
-    });
-    expect(result.permissions.allow).toEqual(["a", "b", "c"]);
+    const incoming = { permissions: { allow: ["c"] } };
+    // Даже если DeepMergeContext с filePath передан, массив должен
+    // быть заменён (старое union-merge поведение удалено).
+    const result = deepMerge(base, incoming, { filePath: ".claude/settings.json" });
+    expect(result.permissions).toEqual({ allow: ["c"] });
   });
 
-  it("объединяет permissions.deny через union-merge при указании контекста пути", () => {
+  it("permissions.deny заменяется целиком даже при filePath=.claude/settings.json", () => {
     const base = { permissions: { deny: ["x"] } };
-    const incoming = { permissions: { deny: ["x", "y"] } };
-    const result = (deepMerge as any)(base, incoming, {
-      filePath: ".claude/settings.json",
-    });
-    expect(result.permissions.deny).toEqual(["x", "y"]);
+    const incoming = { permissions: { deny: ["y", "z"] } };
+    const result = deepMerge(base, incoming, { filePath: ".claude/settings.json" });
+    expect(result.permissions).toEqual({ deny: ["y", "z"] });
   });
 
   it("без контекста пути permissions.allow сливается стандартным replace", () => {

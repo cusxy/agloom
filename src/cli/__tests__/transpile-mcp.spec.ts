@@ -455,8 +455,7 @@ describe("CLI", () => {
       });
 
       expect(outcome.name).toBe("MCP");
-      // Claude MCP adapter emits 2 files: .mcp.json + .claude/settings.json
-      expect(outcome.writtenCount).toBe(2);
+      expect(outcome.writtenCount).toBe(1);
       expect(outcome.errors).toEqual([]);
     });
   });

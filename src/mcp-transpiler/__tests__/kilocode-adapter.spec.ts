@@ -126,8 +126,10 @@ describe("KilocodeMcpAdapter", () => {
       });
     });
 
-    // --- includeTools → alwaysAllow в той же entry ---
-    it("includeTools добавляется в alwaysAllow той же entry", () => {
+    // --- Test W8: includeTools → warn+ignore, нет alwaysAllow ---
+    // § Обработка includeTools/excludeTools
+    it("includeTools: warn в stderr, alwaysAllow НЕ эмитируется", () => {
+      const warnSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
       const adapter = new KilocodeMcpAdapter();
       const files = adapter.transpile(
         makeCanonicalFile({
@@ -138,10 +140,15 @@ describe("KilocodeMcpAdapter", () => {
         }),
       );
       const out = JSON.parse(files[0].content);
-      expect(out.mcpServers.fs.alwaysAllow).toEqual(["read_file", "list_directory"]);
+      expect(out.mcpServers.fs).toBeDefined();
+      expect("alwaysAllow" in out.mcpServers.fs).toBe(false);
+      expect("includeTools" in out.mcpServers.fs).toBe(false);
+      const calls = warnSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(calls).toMatch(/Kilocode does not support discovery-level tool filtering/);
+      expect(calls).toMatch(/fs/);
     });
 
-    // --- excludeTools → warn в stderr, поле НЕ добавляется ---
+    // --- Test W9: excludeTools → warn+ignore ---
     it("excludeTools: warn в stderr, поле не попадает в output", () => {
       const warnSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
       const adapter = new KilocodeMcpAdapter();
@@ -155,11 +162,44 @@ describe("KilocodeMcpAdapter", () => {
         }),
       );
       const out = JSON.parse(files[0].content);
-      expect("disabledTools" in out.mcpServers.figma).toBe(false);
+      expect("alwaysAllow" in out.mcpServers.figma).toBe(false);
       expect("excludeTools" in out.mcpServers.figma).toBe(false);
       const calls = warnSpy.mock.calls.map((c) => String(c[0])).join("\n");
-      expect(calls).toMatch(/Kilocode does not support tool denylist/);
+      expect(calls).toMatch(/Kilocode does not support discovery-level tool filtering/);
       expect(calls).toMatch(/figma/);
+    });
+
+    // --- Test W10: output не содержит alwaysAllow ни для одного сервера ---
+    it("output не содержит alwaysAllow для MCP-серверов (это задача permissions-транспайлера)", () => {
+      vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+      const adapter = new KilocodeMcpAdapter();
+      const files = adapter.transpile(
+        makeCanonicalFile({
+          a: { command: "npx", includeTools: ["t1"] },
+          b: {
+            type: "http",
+            url: "https://b/mcp",
+            excludeTools: ["t2"],
+          },
+          c: { command: "node" },
+        }),
+      );
+      const out = JSON.parse(files[0].content);
+      for (const entry of Object.values(out.mcpServers) as any[]) {
+        expect("alwaysAllow" in entry).toBe(false);
+      }
+    });
+
+    // --- Regression: relativePath остаётся kilo.jsonc ---
+    it("relativePath равен 'kilo.jsonc' даже при наличии includeTools/excludeTools", () => {
+      vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+      const adapter = new KilocodeMcpAdapter();
+      const files = adapter.transpile(
+        makeCanonicalFile({
+          s: { command: "npx", includeTools: ["t"] },
+        }),
+      );
+      expect(files[0].relativePath).toBe("kilo.jsonc");
     });
 
     // --- http без headers: нет ключа headers ---

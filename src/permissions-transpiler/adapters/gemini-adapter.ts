@@ -8,6 +8,7 @@
 
 import * as TOML from "smol-toml";
 import { TransformError } from "../errors.js";
+import { dropShadowedRules } from "../preprocessing.js";
 import type {
   McpPermissionRule,
   PermissionsAdapter,
@@ -111,18 +112,20 @@ export class GeminiPermissionsAdapter implements PermissionsAdapter {
       );
     }
 
-    // Шаг 3: shell-правила
+    // Шаг 3: shell-правила (после препроцессинга)
     if (file.content.shell) {
-      for (const rule of file.content.shell as ShellPermissionRule[]) {
+      const preprocessed = dropShadowedRules(file.content.shell as ShellPermissionRule[], "shell");
+      for (const rule of preprocessed) {
         const [pattern, action] = extractRule(rule);
         const geminiRule = transformShellRule(pattern, mapDecision(action));
         rules.push(geminiRule);
       }
     }
 
-    // Шаг 4: mcp-правила
+    // Шаг 4: mcp-правила (после препроцессинга)
     if (file.content.mcp) {
-      for (const rule of file.content.mcp as McpPermissionRule[]) {
+      const preprocessed = dropShadowedRules(file.content.mcp as McpPermissionRule[], "mcp");
+      for (const rule of preprocessed) {
         const [pattern, action] = extractRule(rule);
         const colonIdx = pattern.indexOf(":");
         const server = pattern.slice(0, colonIdx);

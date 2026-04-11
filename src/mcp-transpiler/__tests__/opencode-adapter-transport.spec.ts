@@ -15,7 +15,7 @@ function makeCanonicalFile(mcpServers: Record<string, any>): McpCanonicalFile {
 
 const OPENCODE_SCHEMA = "https://opencode.ai/config.json";
 
-describe("OpenCodeMcpAdapter — транспорты, schema, permissions", () => {
+describe("OpenCodeMcpAdapter — транспорты, schema, tool filtering", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -36,7 +36,7 @@ describe("OpenCodeMcpAdapter — транспорты, schema, permissions", () 
       expect(out.mcp.s.env).toEqual({ K: "v" });
     });
 
-    // --- http → type: "remote" + url ---
+    // --- Test O2: http → type: "remote" + url ---
     it('http-сервер отображается в type: "remote" + url (не "http")', () => {
       const adapter = new OpenCodeMcpAdapter();
       const files = adapter.transpile(
@@ -51,8 +51,10 @@ describe("OpenCodeMcpAdapter — транспорты, schema, permissions", () 
       });
     });
 
-    // --- sse → type: "remote" + url ---
-    it('sse-сервер также отображается в type: "remote" (не "sse")', () => {
+    // --- Test O1: sse → warn + skip ---
+    // § Маппинг транспортов: "Канонический sse OpenCode не поддерживает — warn+skip"
+    it("sse-сервер пропускается и выдаёт предупреждение в stderr", () => {
+      const warnSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
       const adapter = new OpenCodeMcpAdapter();
       const files = adapter.transpile(
         makeCanonicalFile({
@@ -60,15 +62,29 @@ describe("OpenCodeMcpAdapter — транспорты, schema, permissions", () 
         }),
       );
       const out = JSON.parse(files[0].content);
-      expect(out.mcp.asana).toEqual({
-        type: "remote",
-        url: "https://mcp.asana.com/sse",
-      });
+      expect("asana" in out.mcp).toBe(false);
+      const calls = warnSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(calls).toMatch(/OpenCode does not support SSE/);
+      expect(calls).toMatch(/asana/);
     });
 
-    // --- http с headers → warn в stderr, headers НЕ попадают в output ---
-    it("http с headers: предупреждение в stderr, headers отбрасываются", () => {
-      const warnSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    // --- Test O1 (regression): sse+stdio → только stdio в output ---
+    it("смешанные транспорты: stdio остаётся, sse пропускается", () => {
+      vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+      const adapter = new OpenCodeMcpAdapter();
+      const files = adapter.transpile(
+        makeCanonicalFile({
+          a: { command: "npx" },
+          b: { type: "sse", url: "https://b/sse" },
+        }),
+      );
+      const out = JSON.parse(files[0].content);
+      expect(Object.keys(out.mcp).sort()).toEqual(["a"]);
+    });
+
+    // --- Test O4: http с headers → headers попадают в output ---
+    // § Маппинг транспортов: "Поле headers для type: 'remote' OpenCode поддерживает"
+    it("http с headers: headers передаются в output", () => {
       const adapter = new OpenCodeMcpAdapter();
       const files = adapter.transpile(
         makeCanonicalFile({
@@ -80,35 +96,48 @@ describe("OpenCodeMcpAdapter — транспорты, schema, permissions", () 
         }),
       );
       const out = JSON.parse(files[0].content);
-      expect("headers" in out.mcp.figma).toBe(false);
-      const calls = warnSpy.mock.calls.map((c) => String(c[0])).join("\n");
-      expect(calls).toMatch(/OpenCode does not support MCP 'headers'/);
-      expect(calls).toMatch(/figma/);
+      expect(out.mcp.figma).toEqual({
+        type: "remote",
+        url: "https://mcp.figma.com/mcp",
+        headers: { "X-Region": "us" },
+      });
     });
 
-    // --- sse с headers → warn аналогично ---
-    it("sse с headers: предупреждение в stderr, headers отбрасываются", () => {
-      const warnSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    // --- Test O5: http без headers → нет ключа headers ---
+    it("http-сервер без headers не содержит ключ headers", () => {
       const adapter = new OpenCodeMcpAdapter();
       const files = adapter.transpile(
         makeCanonicalFile({
-          asana: {
-            type: "sse",
-            url: "https://mcp.asana.com/sse",
-            headers: { Authorization: "Bearer x" },
-          },
+          r: { type: "http", url: "https://r/mcp" },
         }),
       );
       const out = JSON.parse(files[0].content);
-      expect("headers" in out.mcp.asana).toBe(false);
+      expect("headers" in out.mcp.r).toBe(false);
+    });
+
+    // --- Test O6: warning "headers not supported" больше не эмитируется ---
+    it("не эмитирует warning про 'headers' для http-сервера", () => {
+      const warnSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+      const adapter = new OpenCodeMcpAdapter();
+      adapter.transpile(
+        makeCanonicalFile({
+          figma: {
+            type: "http",
+            url: "https://figma/mcp",
+            headers: { "X-Region": "us" },
+          },
+        }),
+      );
       const calls = warnSpy.mock.calls.map((c) => String(c[0])).join("\n");
-      expect(calls).toMatch(/asana/);
+      expect(calls).not.toMatch(/headers/i);
     });
   });
 
-  describe("Трансформация includeTools/excludeTools в permission", () => {
-    // --- includeTools → permission[<s>_<t>] = "allow" ---
-    it('includeTools добавляет ключи permission["<s>_<t>"] = "allow"', () => {
+  describe("Warn+ignore для includeTools / excludeTools", () => {
+    // --- Test W5: includeTools → warn + нет permission блока ---
+    // § Обработка includeTools/excludeTools
+    it("includeTools: эмитирует warning, сервер в output без permission-блока", () => {
+      const warnSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
       const adapter = new OpenCodeMcpAdapter();
       const files = adapter.transpile(
         makeCanonicalFile({
@@ -119,14 +148,17 @@ describe("OpenCodeMcpAdapter — транспорты, schema, permissions", () 
         }),
       );
       const out = JSON.parse(files[0].content);
-      expect(out.permission).toEqual({
-        fs_read_file: "allow",
-        fs_list_directory: "allow",
-      });
+      expect(out.mcp.fs).toBeDefined();
+      expect("includeTools" in out.mcp.fs).toBe(false);
+      expect("permission" in out).toBe(false);
+      const calls = warnSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(calls).toMatch(/OpenCode does not support discovery-level tool filtering/);
+      expect(calls).toMatch(/fs/);
     });
 
-    // --- excludeTools → permission[<s>_<t>] = "deny" ---
-    it('excludeTools добавляет ключи permission["<s>_<t>"] = "deny"', () => {
+    // --- Test W6: excludeTools → warn + нет permission блока ---
+    it("excludeTools: эмитирует warning, сервер в output без permission-блока", () => {
+      const warnSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
       const adapter = new OpenCodeMcpAdapter();
       const files = adapter.transpile(
         makeCanonicalFile({
@@ -138,11 +170,27 @@ describe("OpenCodeMcpAdapter — транспорты, schema, permissions", () 
         }),
       );
       const out = JSON.parse(files[0].content);
-      expect(out.permission.figma_delete).toBe("deny");
+      expect("excludeTools" in out.mcp.figma).toBe(false);
+      expect("permission" in out).toBe(false);
+      const calls = warnSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(calls).toMatch(/OpenCode does not support discovery-level tool filtering/);
+      expect(calls).toMatch(/figma/);
     });
 
-    // --- Нет includeTools/excludeTools → нет ключа permission ---
-    it("permission отсутствует, если нет includeTools/excludeTools", () => {
+    // --- Test W7 / O7: output содержит только $schema и mcp, никакого permission ---
+    it("output opencode.json содержит ровно ключи $schema и mcp (без permission)", () => {
+      const adapter = new OpenCodeMcpAdapter();
+      const files = adapter.transpile(
+        makeCanonicalFile({
+          s: { command: "npx" },
+        }),
+      );
+      const out = JSON.parse(files[0].content);
+      expect(Object.keys(out).sort()).toEqual(["$schema", "mcp"]);
+    });
+
+    // --- Test O7: permission блок не эмитируется даже пустой ---
+    it("не эмитирует ключ 'permission', если нет includeTools/excludeTools", () => {
       const adapter = new OpenCodeMcpAdapter();
       const files = adapter.transpile(makeCanonicalFile({ s: { command: "npx" } }));
       const out = JSON.parse(files[0].content);
@@ -150,7 +198,7 @@ describe("OpenCodeMcpAdapter — транспорты, schema, permissions", () 
     });
   });
 
-  describe("$schema и output", () => {
+  describe("$schema и output shape", () => {
     it("содержит top-level $schema = https://opencode.ai/config.json", () => {
       const adapter = new OpenCodeMcpAdapter();
       const files = adapter.transpile(makeCanonicalFile({ s: { command: "npx" } }));
@@ -160,7 +208,7 @@ describe("OpenCodeMcpAdapter — транспорты, schema, permissions", () 
 
     it("возвращает ровно один output-файл", () => {
       const adapter = new OpenCodeMcpAdapter();
-      const files = adapter.transpile(makeCanonicalFile({ s: { command: "npx", includeTools: ["t"] } }));
+      const files = adapter.transpile(makeCanonicalFile({ s: { command: "npx" } }));
       expect(files).toHaveLength(1);
       expect(files[0].relativePath).toBe("opencode.json");
     });

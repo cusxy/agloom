@@ -3,11 +3,12 @@ summary: Permissions Transpiler — библиотека транспиляци�
 description: >
   Библиотека для транспиляции канонической конфигурации разрешений
   (.agloom/permissions.yml или .agloom/permissions.json) в agent-specific
-  файлы. Генерирует секцию permissions в .claude/settings.json для Claude Code
-  и секцию permission в opencode.json для OpenCode. Каждая секция (shell, mcp,
-  file) -- упорядоченный массив пар pattern:action с семантикой first-match-wins
-  в каноническом формате и инверсией порядка для last-match-wins адаптеров.
-  Расширяется через адаптеры.
+  файлы. Является единственным источником postfactum permission gating
+  для Claude, OpenCode, Kilocode и поддерживает Codex, Gemini через
+  нативные rules/policy движки. Канонический формат использует
+  first-match-wins; препроцессинг (dropShadowedRules,
+  flattenWhitelistConflicts) нормализует семантику для target-движков
+  с last-match-wins или decision-severity-wins. Расширяется через адаптеры.
 type: spec
 status: implemented
 relates:
@@ -437,6 +438,296 @@ file:
 
 `PermissionsOutputFile[]`.
 
+## Общий препроцессинг правил
+
+Permissions-транспилер является **единственным** источником postfactum
+permission gating для адаптеров Claude, OpenCode и Kilocode: MCP-транспилер
+после разведения MCP и permissions (см. `docs/specs/mcp-transpiler.md`
+§ Семантика `includeTools` / `excludeTools`) НЕ эмитирует permission-блоки
+в общие output-файлы (`.claude/settings.json`, `opencode.json`,
+`kilo.jsonc`). Весь permission gating для этих адаптеров формируется
+исключительно из канонического `.agloom/permissions.yml` и проходит
+через препроцессинг, описанный в данной секции.
+
+Препроцессинг применяется к каноническим массивам правил
+(`shell`, `mcp`, `file`) **до** передачи конкретному адаптеру.
+Цель -- нормализовать canonical first-match-wins для target-движков
+с отличной от canonical семантикой.
+
+Препроцессинг состоит из двух процедур: `dropShadowedRules` (применяется
+всеми адаптерами) и `flattenWhitelistConflicts` (применяется только
+адаптерами с decision-severity-wins семантикой, см. § Препроцессинг
+для decision-severity-wins движков).
+
+### Argv-представление паттернов
+
+Обе процедуры препроцессинга оперируют паттернами в виде массива
+argv-токенов.
+
+- Для shell-правила -- argv получается по правилам трансформации
+  канонических shell-паттернов в argv (см. § Трансформация shell-паттернов
+  для Codex): трейлинг-wildcard удаляется, оставшаяся строка разбивается
+  по whitespace; паттерны, для которых argv не определён
+  (bare/leading/middle wildcard), НЕ участвуют в сравнении по префиксу
+  и считаются несравнимыми (ни одно правило не является префиксом такого
+  паттерна и наоборот).
+- Для mcp-правила -- argv -- это массив `[server, tool]`, где `tool`
+  равен `"*"` для wildcard. Правило `"<server>:*"` считается префиксом
+  правила `"<server>:<tool>"` для любого `<tool>`; правило `"*:*"`
+  считается префиксом любого mcp-правила.
+- Для file-правила -- argv получается разбиением glob-паттерна на части
+  по разделителю `/`; сегменты `**` и `*` учитываются литерально
+  (без glob-expansion). Более короткий общий префикс по сегментам
+  считается префиксом более длинного.
+
+**Определение "префикс":** argv `A` является префиксом argv `B`,
+если `A.length <= B.length` и `A[i] === B[i]` для всех
+`0 <= i < A.length`. Префикс ДОЛЖЕН быть строгим (`A.length < B.length`)
+для `flattenWhitelistConflicts` и нестрогим (включая равенство)
+для `dropShadowedRules`.
+
+### Процедура `dropShadowedRules`
+
+Удаляет правила, которые shadowed в canonical first-match-wins (более
+раннее правило является префиксом или равным текущему). Такие правила
+никогда не срабатывают в canonical семантике, поэтому удаление
+безопасно для любого target-движка.
+
+**Вход:**
+
+- `rules` (array\<PermissionRule>, обязательно) -- канонический массив
+  правил секции `shell`, `mcp` или `file`.
+- `section` (string: `"shell"` | `"mcp"` | `"file"`, обязательно) --
+  имя секции (для диагностического сообщения).
+
+**Поведение:**
+
+1. Создать пустой массив `result`.
+2. Для каждого правила `R[i]` входного массива в порядке следования:
+   2.1. Вычислить `argv(R[i])` в соответствии с § Argv-представление
+   паттернов.
+   2.2. Для каждого уже добавленного правила `R[j]` в `result`
+   (`j < i`):
+   - Если `argv(R[j])` определён, `argv(R[i])` определён
+     и `argv(R[j])` является нестрогим префиксом `argv(R[i])` --
+     правило `R[i]` помечается как shadowed.
+     2.3. Если `R[i]` помечено как shadowed -- эмитировать предупреждение
+     в `stderr`: `"Warning: {section} rule '{pattern_i}' is shadowed by earlier rule '{pattern_j}' and never matches under first-match-wins semantics. Rule skipped."`.
+     Пропустить `R[i]` (не добавлять в `result`).
+     2.4. Иначе -- добавить `R[i]` в `result`.
+3. Вернуть `result`.
+
+**Расширения:**
+
+Нет расширений.
+
+**Результат:**
+
+`array<PermissionRule>` -- массив правил без shadowed-дубликатов.
+
+### Применимость `dropShadowedRules`
+
+Процедура универсальна и ТРЕБУЕТСЯ к применению всеми Permissions-
+адаптерами (Claude, OpenCode, Codex, Gemini, Kilocode) как обязательный
+первый шаг препроцессинга перед специфичной для адаптера трансформацией.
+Удалённые правила никогда не сработали бы в canonical first-match-wins,
+поэтому их удаление не изменяет наблюдаемую семантику.
+
+## Препроцессинг для decision-severity-wins движков
+
+Некоторые permissions engines используют **most-restrictive-wins**
+семантику: при пересечении паттернов правило с более строгим decision
+выигрывает, независимо от специфичности или порядка. Это расходится
+с canonical first-match-wins в случае whitelist-паттернов
+(например, `"git status *": allow` → `"git *": deny`: в canonical
+выиграет первое правило, а в most-restrictive-wins -- второе).
+
+К таким движкам относятся:
+
+- **Codex** -- `forbidden > prompt > allow` (подтверждено
+  [Codex rules reference](https://developers.openai.com/codex/rules)).
+- **Claude Code** -- `deny > ask > allow`: правила оцениваются в порядке
+  deny → ask → allow, первое совпавшее правило побеждает (подтверждено
+  [Claude Code permissions reference](https://code.claude.com/docs/en/permissions)
+  § Manage permissions: "Rules are evaluated in order: deny -> ask -> allow.
+  The first matching rule wins, so deny rules always take precedence").
+
+Для таких адаптеров ТРЕБУЕТСЯ применять процедуру
+`flattenWhitelistConflicts` после `dropShadowedRules`.
+
+### Severity decision
+
+Для процедуры `flattenWhitelistConflicts` каноническому действию
+назначается целочисленная severity:
+
+Для секций `shell` и `mcp`:
+
+- `allow` → severity `0`.
+- `ask` → severity `1`.
+- `deny` → severity `2`.
+
+Для секции `file`:
+
+- `write` → severity `0`.
+- `read` → severity `1`.
+- `deny` → severity `2`.
+
+Правило `R[j]` считается **строже** `R[i]`, если
+`severity(R[j]) > severity(R[i])`.
+
+### Процедура `flattenWhitelistConflicts`
+
+Удаляет правила, которые перекрывали бы более узкие canonical-правила
+с менее строгим decision под most-restrictive-wins семантикой.
+
+**Вход:**
+
+- `rules` (array\<PermissionRule>, обязательно) -- массив правил,
+  уже прошедший через `dropShadowedRules`.
+- `section` (string: `"shell"` | `"mcp"` | `"file"`, обязательно) --
+  имя секции (для диагностического сообщения).
+
+**Поведение:**
+
+1. Создать пустое множество `dropIndexes`.
+2. Для каждой пары индексов `(i, j)` где `0 <= i < j < rules.length`,
+   и `i`, `j` не входят в `dropIndexes`:
+   2.1. Вычислить `argv(R[i])` и `argv(R[j])` в соответствии с § Argv-
+   представление паттернов.
+   2.2. Если хотя бы один из argv не определён -- пропустить пару.
+   2.3. Если `argv(R[j])` является **строгим** префиксом `argv(R[i])`
+   (`argv(R[j]).length < argv(R[i]).length`) И
+   `severity(R[j]) > severity(R[i])`:
+   - Эмитировать предупреждение в `stderr`:
+     `"Warning: {section} rule '{pattern_j}' → '{decision_j}' would override narrower '{pattern_i}' → '{decision_i}' under most-restrictive-wins semantics. Broader rule skipped to preserve canonical first-match intent."`.
+   - Добавить индекс `j` в `dropIndexes`.
+3. Вернуть массив `rules` без элементов с индексами из `dropIndexes`,
+   сохраняя относительный порядок.
+
+**Расширения:**
+
+Нет расширений.
+
+**Результат:**
+
+`array<PermissionRule>` -- массив правил без broader-override конфликтов.
+
+### Теорема эквивалентности
+
+После последовательного применения `dropShadowedRules` и
+`flattenWhitelistConflicts` к каноническому массиву правил, для любой
+команды `cmd` результаты canonical first-match-wins и decision-severity-
+wins на результирующем массиве совпадают.
+
+Доказательство (неформальное):
+
+1. После `dropShadowedRules`: для любой пары `(i, j)` с `i < j`,
+   `R[i]` НЕ является нестрогим префиксом `R[j]`. Значит либо паттерны
+   disjoint, либо `R[j]` является строгим префиксом `R[i]` (более поздние
+   правила строго специфичнее более ранних).
+2. После `flattenWhitelistConflicts`: для любой пары `(i, j)` с `i < j`,
+   если `R[j]` является строгим префиксом `R[i]`, то
+   `severity(R[j]) <= severity(R[i])`.
+3. Пусть `S` -- множество индексов правил, совпавших с командой.
+   - Canonical: выигрывает `R[min(S)]`.
+   - Decision-severity-wins: выигрывает правило с максимальной severity;
+     tie-break среди правил равного severity определяется движком
+     (Claude Code документирует file-order tie-break: "first matching
+     rule wins"; Codex формально tie-break не определяет).
+4. Если `|S| = 1` -- тривиально.
+5. Если `|S| > 1`: по пункту 1, более ранние правила (меньший индекс)
+   строго специфичнее более поздних. Значит `R[min(S)]` -- самое
+   специфичное. По пункту 2, более поздние правила имеют severity
+   не большую, чем `R[min(S)]`. Следовательно, `R[min(S)]` имеет
+   максимальную severity в `S` (или разделяет максимум с более поздними,
+   менее специфичными правилами). `R[min(S)]` по построению
+   одновременно является (а) самым специфичным в `S` и (б) первым
+   по file-order среди правил равного severity в `S`. Поэтому
+   `R[min(S)]` выигрывает независимо от tie-break стратегии конкретного
+   движка: и Claude Code (file-order), и Codex (most-restrictive без
+   формально определённого tie-break) выбирают одно и то же правило. ✓
+
+### Ограничения подхода
+
+Препроцессинг обеспечивает эквивалентность canonical first-match-wins
+и decision-severity-wins в большинстве реалистичных конфигураций,
+но имеет два известных ограничения.
+
+1. **Broader-deny-with-narrower-allow.** Препроцессинг корректен
+   для whitelist-паттерна (узкий allow + широкий deny), но НЕ позволяет
+   выразить противоположный паттерн: широкий deny с узкими allow-
+   исключениями. В canonical first-match-wins этот паттерн работает
+   (узкий allow стоит раньше), но после `flattenWhitelistConflicts`
+   широкое deny-правило будет удалено, поскольку оно перекрывало бы
+   более узкий allow под most-restrictive-wins.
+
+   Для такого сценария пользователь ДОЛЖЕН полагаться на глобальные
+   catch-all настройки соответствующего агента (например, Codex
+   `approval_policy` в `config.toml`) как механизм запрета команд,
+   не покрытых явными правилами. Соответствие canonical для
+   explicitly-listed команд обеспечивается препроцессингом;
+   автоматическое детектирование catch-all настроек агента вне scope
+   данной спецификации.
+
+2. **Wildcard-паттерны в не-трейлинг позиции.** Shell-правила с символом
+   `*` в bare, leading или middle позиции (например, `*`, `* --version`,
+   `git * --version`) имеют неопределённую argv-representation
+   (см. § Argv-представление паттернов) и ТРЕБУЕТСЯ исключать
+   из prefix-сравнений в обеих препроцессорных процедурах. Для
+   адаптеров с decision-severity-wins движком (Claude, Codex) это
+   означает, что теорема эквивалентности НЕ гарантирует совпадение
+   canonical first-match-wins с native engine семантикой, если среди
+   правил присутствуют такие паттерны одновременно с пересекающимися
+   trailing-wildcard или literal-prefix правилами.
+
+   Конкретный контрпример для canonical:
+
+   ```yaml
+   shell:
+     - "git status --version": allow
+     - "* --version": deny
+   ```
+
+   Canonical first-match: `git status --version` → allow. Claude
+   most-restrictive-wins (после передачи обоих правил as-is): оба
+   матчат, `deny > allow` → deny. Расхождение.
+
+   Codex-адаптер дополнительно пропускает non-trailing-wildcard правила
+   полностью на стадии transform (см. § Codex Permissions-адаптер,
+   § Трансформация shell-паттернов для Codex), поэтому для Codex gap
+   не проявляется в output -- правила с неопределённой argv просто
+   не попадают в `.codex/rules/agloom.rules`. Claude-адаптер
+   транспилирует их as-is в `Bash(<pattern>)` элементы
+   `permissions.allow` / `permissions.deny`, что может привести
+   к расхождению наблюдаемого поведения с canonical при наличии
+   конфликтующих правил.
+
+   Пользователю СЛЕДУЕТ избегать смешивания non-trailing wildcard
+   правил с overlapping trailing-wildcard или literal правилами
+   в пределах одной секции `shell`; при необходимости такого смешения
+   СЛЕДУЕТ вручную проверить совпадение семантик для конкретных
+   целевых команд.
+
+### Применимость `flattenWhitelistConflicts`
+
+Процедура ТРЕБУЕТСЯ к применению адаптерами с decision-severity-wins
+engine:
+
+- Claude Code Permissions-адаптер.
+- Codex Permissions-адаптер.
+
+Процедура НЕ ТРЕБУЕТСЯ (и НЕ ДОЛЖНА применяться) адаптерами:
+
+- OpenCode (last-match-wins; после инверсии массива эквивалентно canonical
+  first-match-wins).
+- Kilocode (last-match-wins; после инверсии массива эквивалентно canonical
+  first-match-wins).
+- Gemini (priority-based; priority назначается вручную `999 - i`,
+  что имитирует first-match-wins).
+
+Порядок вызова строго обязателен: сначала `dropShadowedRules`,
+затем `flattenWhitelistConflicts`.
+
 ## Claude Code Permissions-адаптер
 
 Адаптер для Claude Code. `agentId`: `"claude"`.
@@ -449,6 +740,18 @@ deep merge через layer model (см. `docs/specs/layer-model.md`).
 Claude Code поддерживает секции `shell` и `mcp`. Секция `file`
 НЕ поддерживается Claude Code. Действие `ask` НЕ поддерживается
 Claude Code -- правила с действием `ask` пропускаются с предупреждением.
+
+Claude Code использует **decision-severity-wins** семантику
+(`deny > ask > allow`, первое совпавшее правило побеждает в рамках
+каждого decision-бакета). Для сохранения соответствия canonical
+first-match-wins на массивах `shell` и `mcp` ТРЕБУЕТСЯ применять
+препроцессинг (см. § Общий препроцессинг правил и § Препроцессинг
+для decision-severity-wins движков):
+
+1. Сначала `dropShadowedRules`.
+2. Затем `flattenWhitelistConflicts`.
+
+Препроцессинг применяется к секциям `shell` и `mcp` независимо.
 
 ### Трансформация shell-правил для Claude
 
@@ -487,7 +790,10 @@ Claude Code -- правила с действием `ask` пропускаютс
 
 1. Создать пустой объект `permissions` с полями `allow` и `deny`
    (оба -- пустые массивы).
-2. Если `file.content.shell` присутствует -- итерировать массив правил:
+2. Если `file.content.shell` присутствует:
+   2.0. Применить `dropShadowedRules(file.content.shell, "shell")` →
+   `shellFiltered1`; затем `flattenWhitelistConflicts(shellFiltered1, "shell")` →
+   `shellFiltered2`. Далее итерировать `shellFiltered2`:
    2.1. Для каждого правила с действием `allow` -- трансформировать
    паттерн в формат Claude (см. "Трансформация shell-правил для Claude")
    и добавить в `permissions.allow`.
@@ -497,7 +803,10 @@ Claude Code -- правила с действием `ask` пропускаютс
    Если количество больше нуля -- эмитировать предупреждение
    в `stderr`: `"Warning: Claude Code does not support 'ask' action. {N} shell rule(s) skipped."`,
    где `{N}` -- количество правил с действием `ask`.
-3. Если `file.content.mcp` присутствует -- итерировать массив правил:
+3. Если `file.content.mcp` присутствует:
+   3.0. Применить `dropShadowedRules(file.content.mcp, "mcp")` →
+   `mcpFiltered1`; затем `flattenWhitelistConflicts(mcpFiltered1, "mcp")` →
+   `mcpFiltered2`. Далее итерировать `mcpFiltered2`:
    3.1. Для каждого правила с действием `allow` -- трансформировать
    паттерн в формат Claude (см. "Трансформация MCP-правил для Claude")
    и добавить в `permissions.allow`.
@@ -584,6 +893,18 @@ OpenCode использует семантику **last-match-wins**. При т�
 (first-match-wins), чтобы обеспечить эквивалентную семантику
 в целевом формате.
 
+Permissions-транспилер OpenCode является единственным источником
+блока `permission` в `opencode.json`: MCP-транспилер OpenCode после
+разведения MCP и permissions (см. `docs/specs/mcp-transpiler.md`
+§ Семантика `includeTools` / `excludeTools`) НЕ эмитирует
+permission-блок, поэтому конфликт по ключу `permission` между
+MCP- и Permissions-транспилерами отсутствует.
+
+Перед инверсией массивов ТРЕБУЕТСЯ применять `dropShadowedRules`
+(см. § Общий препроцессинг правил). Процедура
+`flattenWhitelistConflicts` НЕ применяется, поскольку OpenCode
+last-match-wins после инверсии эквивалентен canonical first-match-wins.
+
 ### Инверсия порядка правил
 
 Канонический формат: first-match-wins (первое совпавшее правило побеждает).
@@ -648,21 +969,27 @@ File-правила из канонического формата переда�
 
 1. Создать пустой объект `permission`.
 2. Если `file.content.mcp` присутствует:
-   2.1. Развернуть массив MCP-правил (`reverse`).
-   2.2. Для каждого правила -- трансформировать паттерн
+   2.1. Применить `dropShadowedRules(file.content.mcp, "mcp")` →
+   `mcpFiltered`.
+   2.2. Развернуть массив `mcpFiltered` (`reverse`).
+   2.3. Для каждого правила -- трансформировать паттерн
    (см. "Трансформация MCP-правил для OpenCode")
    и добавить в `permission` как ключ-значение.
 3. Если `file.content.shell` присутствует:
-   3.1. Развернуть массив shell-правил (`reverse`).
-   3.2. Создать объект `bash`.
-   3.3. Для каждого правила -- передать паттерн as-is
+   3.1. Применить `dropShadowedRules(file.content.shell, "shell")` →
+   `shellFiltered`.
+   3.2. Развернуть массив `shellFiltered` (`reverse`).
+   3.3. Создать объект `bash`.
+   3.4. Для каждого правила -- передать паттерн as-is
    и добавить в `bash` как ключ-значение.
-   3.4. Добавить `bash` в `permission`.
+   3.5. Добавить `bash` в `permission`.
 4. Если `file.content.file` присутствует:
-   4.1. Развернуть массив file-правил (`reverse`).
-   4.2. Создать объект `file`.
-   4.3. Для каждого правила -- добавить в `file` как ключ-значение.
-   4.4. Добавить `file` в `permission`.
+   4.1. Применить `dropShadowedRules(file.content.file, "file")` →
+   `fileFiltered`.
+   4.2. Развернуть массив `fileFiltered` (`reverse`).
+   4.3. Создать объект `file`.
+   4.4. Для каждого правила -- добавить в `file` как ключ-значение.
+   4.5. Добавить `file` в `permission`.
 5. Сформировать объект `output` с ключом `"permission"`,
    содержащим `permission`.
 6. Сериализовать `output` в JSON с отступом 2 пробела
@@ -719,19 +1046,6 @@ File-правила из канонического формата переда�
 поскольку `opencode.json` является merge-eligible файлом
 (расширение `.json`).
 
-### Инвариант "MCP > Permissions" для OpenCode
-
-Файл `opencode.json` является общим для MCP- и Permissions-транспилеров.
-MCP-транспилер выполняется в pipeline `transpile` до Permissions
-(см. `docs/specs/cli.md` § Команда transpile) и записывает блок `mcp`
-и flat-ключи `permission` (из `includeTools`/`excludeTools`).
-Permissions-транспилер ТРЕБУЕТСЯ писать только в блок `permission`,
-не перезаписывая ключи, эмитированные MCP-транспилером. Инвариант
-обеспечивается deep merge через layer model: ключи, записанные
-ранее, сохраняются; пересечение по конкретному ключу разрешается
-last-writer-wins, но для не-пересекающихся MCP- и Permissions-правил
-перезаписи не происходит.
-
 ## Codex Permissions-адаптер
 
 Адаптер для Codex CLI. `agentId`: `"codex"`.
@@ -748,11 +1062,27 @@ Codex поддерживает только правила для shell-кома
 и описан в `docs/specs/mcp-transpiler.md` § Codex MCP-адаптер.
 
 Codex применяет правила по принципу **most-restrictive-wins**
-(`forbidden > prompt > allow`) при пересечении паттернов. Канонический
-формат использует **first-match-wins**. Для не-пересекающихся правил
-семантика эквивалентна; для пересекающихся — возможно расхождение.
-Это расхождение ТРЕБУЕТСЯ задокументировать как известное ограничение
-адаптера; автоматическое разрешение конфликтов не выполняется.
+(`forbidden > prompt > allow`) при пересечении паттернов (подтверждено
+[Codex rules reference](https://developers.openai.com/codex/rules)).
+Канонический формат использует **first-match-wins**. Расхождение
+семантики разрешается алгоритмически через препроцессинг канонического
+массива `shell`:
+
+1. Сначала `dropShadowedRules` (см. § Общий препроцессинг правил).
+2. Затем `flattenWhitelistConflicts` (см. § Препроцессинг
+   для decision-severity-wins движков).
+
+После препроцессинга canonical first-match-wins и Codex
+most-restrictive-wins дают эквивалентный результат для всех
+explicitly-listed команд (см. § Теорема эквивалентности).
+
+Случай, когда пользователь хочет настоящий broader-deny с узкими
+allow-исключениями, НЕ поддерживается: Codex `prefix_rule` не позволяет
+exclude один префикс из другого. Для такого сценария пользователь
+ДОЛЖЕН полагаться на Codex `approval_policy` из `config.toml`
+как catch-all для команд, не покрытых явными правилами.
+Автоматическое детектирование `approval_policy` вне scope данной
+спецификации (см. § Вне scope).
 
 ### Маппинг действий для Codex
 
@@ -826,8 +1156,12 @@ prefix_rule(
    в `stderr`: `"Warning: Codex does not support per-tool MCP gating in rules file. 'mcp' section ignored. Use Codex config.toml (enabled_tools/disabled_tools) via MCP transpiler."`.
 3. Если `file.content.file` присутствует -- эмитировать предупреждение
    в `stderr`: `"Warning: Codex does not support file permissions. 'file' section ignored."`.
-4. Если `file.content.shell` присутствует -- итерировать массив правил
-   в порядке канонического формата:
+4. Если `file.content.shell` присутствует:
+   4.0. Применить `dropShadowedRules(file.content.shell, "shell")` →
+   `shellFiltered1`; затем
+   `flattenWhitelistConflicts(shellFiltered1, "shell")` →
+   `shellFiltered2`. Далее итерировать `shellFiltered2` в порядке
+   массива:
    4.1. Для каждого правила применить трансформацию shell-паттерна
    (см. "Трансформация shell-паттернов для Codex").
    4.2. Если паттерн пропускается (bare/leading/middle wildcard) --
@@ -900,7 +1234,9 @@ Warning: Codex does not support shell pattern '*'. Rule skipped.
 НЕ входит в список merge-eligible форматов
 (см. `docs/specs/layer-model.md` § Merge-eligible форматы). При
 конфликте по целевому пути ТРЕБУЕТСЯ применить стратегию override
-(полная замена файла). Deep merge НЕ выполняется.
+(полная замена файла). Deep merge НЕ выполняется. Custom AST-merge
+для Starlark-подобного синтаксиса Codex `.rules` -- возможная future-
+работа (см. § Вне scope).
 
 ### Инвариант "MCP > Permissions" для Codex
 
@@ -1015,15 +1351,17 @@ Gemini policy engine:
    `{ toolName?, commandPrefix?, commandRegex?, mcpName?, decision, priority }`.
 2. Если `file.content.file` присутствует -- эмитировать предупреждение
    в `stderr`: `"Warning: Gemini policy engine does not support file permissions. 'file' section ignored."`.
-3. Если `file.content.shell` присутствует -- итерировать массив правил
-   в порядке канонического формата:
+3. Если `file.content.shell` присутствует:
+   3.0. Применить `dropShadowedRules(file.content.shell, "shell")` →
+   `shellFiltered`. Далее итерировать `shellFiltered` в порядке массива:
    3.1. Для каждого правила применить трансформацию shell-паттерна
    (см. "Трансформация shell-правил для Gemini").
    3.2. Применить маппинг действия (см. "Маппинг действий
    для Gemini").
    3.3. Добавить элемент в `rules`.
-4. Если `file.content.mcp` присутствует -- итерировать массив правил
-   в порядке канонического формата:
+4. Если `file.content.mcp` присутствует:
+   4.0. Применить `dropShadowedRules(file.content.mcp, "mcp")` →
+   `mcpFiltered`. Далее итерировать `mcpFiltered` в порядке массива:
    4.1. Для каждого правила применить трансформацию MCP-паттерна
    (см. "Трансформация MCP-правил для Gemini").
    4.2. Если паттерн пропускается (`*:*`) -- эмитировать предупреждение
@@ -1154,6 +1492,18 @@ Kilocode использует семантику **last-match-wins** для path
 (аналогично OpenCode), чтобы сохранить эквивалентную семантику
 канонического first-match-wins.
 
+Перед инверсией массивов ТРЕБУЕТСЯ применять `dropShadowedRules`
+(см. § Общий препроцессинг правил). Процедура
+`flattenWhitelistConflicts` НЕ применяется, поскольку Kilocode
+last-match-wins после инверсии эквивалентен canonical first-match-wins.
+
+Permissions-транспилер Kilocode является единственным источником
+permission gating для Kilocode: MCP-транспилер Kilocode после
+разведения MCP и permissions (см. `docs/specs/mcp-transpiler.md`
+§ Kilocode MCP-адаптер) НЕ эмитирует `alwaysAllow` в per-entry
+конфигурации `mcpServers`. Обязанность по эмиссии `alwaysAllow`
+передана Permissions-транспилеру.
+
 ### Маппинг действий для Kilocode (shell, mcp)
 
 Маппинг действий канонического формата в значения Kilocode для
@@ -1172,16 +1522,46 @@ Shell-правила эмитируются как пары `<pattern>: <action>
 
 ### Трансформация MCP-правил для Kilocode
 
-MCP-правила эмитируются как flat-ключи в объекте `permission`,
-где ключ — `<server>_<tool>`, значение — действие. Разделитель `:`
-заменяется на `_`. Массив MCP-правил инвертируется (`reverse`)
-перед эмиссией.
+MCP-правила эмитируются в двух местах:
 
-Примеры:
+1. **Flat-ключи в объекте `permission`** -- `<server>_<tool>: "allow" | "ask" | "deny"`.
+   Разделитель `:` заменяется на `_`. Массив MCP-правил инвертируется
+   (`reverse`) перед эмиссией. Применяется ко всем правилам независимо
+   от действия.
+2. **Per-server `alwaysAllow`** в блоке `mcpServers.<server>` --
+   массив имён инструментов, автоматически одобряемых без запроса.
+   Эмитируется только для правил с действием `allow` и только
+   для паттернов вида `<server>:<tool>` с конкретным `tool`
+   (не wildcard). Эмиссия выполняется через deep merge с блоком
+   `mcpServers`, записанным MCP-транспилером (см. § Deep merge
+   с существующим kilo.jsonc).
+
+Flat-ключи ТРЕБУЕТСЯ эмитировать для всех правил; `alwaysAllow`
+ТРЕБУЕТСЯ эмитировать дополнительно только для `allow`-правил
+с конкретным инструментом.
+
+**Правила эмиссии `alwaysAllow`:**
+
+- Паттерн `<server>:<tool>` с действием `allow`, где `<tool>` НЕ равно
+  `"*"` -- добавить `<tool>` в массив `mcpServers[<server>].alwaysAllow`.
+- Паттерн `<server>:*` с действием `allow` (bulk allow) -- пропустить
+  с предупреждением: `"Warning: Kilocode 'alwaysAllow' requires concrete tool names; bulk allow pattern '<server>:*' cannot be expanded (tool set of the server is not known at transpile time). Flat permission key '<server>_*' emitted; per-tool alwaysAllow not populated."`.
+- Паттерн `*:*` с действием `allow` -- пропустить с предупреждением
+  (аналогично).
+- Правила с действиями `ask` / `deny` -- в `alwaysAllow` не попадают
+  (семантически соответствует отсутствию в списке авто-одобрения).
+
+Примеры flat-ключей:
 
 - `"bitbucket:get_pull_request"` → `"bitbucket_get_pull_request"`.
 - `"bitbucket:*"` → `"bitbucket_*"`.
 - `"*:*"` → `"*_*"`.
+
+Примеры `alwaysAllow`:
+
+- `"bitbucket:get_pull_request": allow` → `mcpServers.bitbucket.alwaysAllow += ["get_pull_request"]`.
+- `"bitbucket:*": allow` → skip (с предупреждением).
+- `"bitbucket:get_pull_request": deny` → `alwaysAllow` не меняется.
 
 ### Трансформация file-правил для Kilocode
 
@@ -1211,28 +1591,43 @@ glob-паттерн пути, значение — `"allow"` / `"ask"` / `"deny"
 
 **Поведение:**
 
-1. Создать пустой объект `permission`.
+1. Создать пустой объект `permission` и пустой объект `mcpServers`
+   (будет содержать только per-server `alwaysAllow`-записи).
 2. Если `file.content.mcp` присутствует:
-   2.1. Развернуть массив MCP-правил (`reverse`).
-   2.2. Для каждого правила трансформировать паттерн
-   (см. "Трансформация MCP-правил для Kilocode") и действие
-   (см. "Маппинг действий для Kilocode") и добавить в `permission`
-   как ключ-значение.
+   2.1. Применить `dropShadowedRules(file.content.mcp, "mcp")` →
+   `mcpFiltered`.
+   2.2. Для каждого правила в `mcpFiltered` (в каноническом порядке)
+   с действием `allow` и конкретным `<tool>` (не `*`) --
+   добавить `<tool>` в `mcpServers[<server>].alwaysAllow`
+   (создавая массив при первом добавлении, не допуская дубликатов).
+   Для `<server>:*` с `allow` или `*:*` с `allow` -- эмитировать
+   предупреждение (см. § Трансформация MCP-правил для Kilocode)
+   и не добавлять в `alwaysAllow`.
+   2.3. Развернуть массив `mcpFiltered` (`reverse`).
+   2.4. Для каждого правила в развёрнутом массиве -- трансформировать
+   паттерн в flat-ключ (см. "Трансформация MCP-правил для Kilocode")
+   и действие (см. "Маппинг действий для Kilocode") и добавить
+   в `permission` как ключ-значение.
 3. Если `file.content.shell` присутствует:
-   3.1. Развернуть массив shell-правил (`reverse`).
-   3.2. Создать объект `bash`.
-   3.3. Для каждого правила передать паттерн as-is, применить
+   3.1. Применить `dropShadowedRules(file.content.shell, "shell")` →
+   `shellFiltered`.
+   3.2. Развернуть массив `shellFiltered` (`reverse`).
+   3.3. Создать объект `bash`.
+   3.4. Для каждого правила передать паттерн as-is, применить
    маппинг действия и добавить в `bash` как ключ-значение.
-   3.4. Добавить `bash` в `permission`.
+   3.5. Добавить `bash` в `permission`.
 4. Если `file.content.file` присутствует:
-   4.1. Развернуть массив file-правил (`reverse`).
-   4.2. Создать объекты `read`, `edit`, `write` (все пустые).
-   4.3. Для каждого правила применить маппинг категорий
+   4.1. Применить `dropShadowedRules(file.content.file, "file")` →
+   `fileFiltered`.
+   4.2. Развернуть массив `fileFiltered` (`reverse`).
+   4.3. Создать объекты `read`, `edit`, `write` (все пустые).
+   4.4. Для каждого правила применить маппинг категорий
    (см. "Трансформация file-правил для Kilocode") и добавить
    соответствующие значения в `read`, `edit`, `write`.
-   4.4. Добавить `read`, `edit`, `write` в `permission`.
-5. Сформировать объект `output` с единственным ключом `"permission"`,
-   содержащим `permission`.
+   4.5. Добавить `read`, `edit`, `write` в `permission`.
+5. Сформировать объект `output`: корневой объект с ключом
+   `"permission"` (содержащим `permission`) и, если `mcpServers`
+   не пуст, с ключом `"mcpServers"` (содержащим `mcpServers`).
 6. Сериализовать `output` в JSON с отступом 2 пробела
    и завершающим переводом строки.
 7. Сформировать `PermissionsOutputFile`
@@ -1248,8 +1643,10 @@ glob-паттерн пути, значение — `"allow"` / `"ask"` / `"deny"
 
 ### Пример выходного файла `kilo.jsonc` (Permissions-слой)
 
-Permissions-адаптер эмитирует только блок `permission`. Блок
-`$schema` и `mcpServers` записывается MCP-транспилером
+Permissions-адаптер эмитирует блок `permission` и (опционально)
+фрагмент `mcpServers` с полями `alwaysAllow` для server entries.
+Остальная часть `mcpServers` (поля `type`, `command`, `args`, `env`,
+`url`, `headers`, `disabled` и т.п.) записывается MCP-транспилером
 (см. `docs/specs/mcp-transpiler.md` § Kilocode MCP-адаптер)
 и сохраняется при deep merge.
 
@@ -1287,13 +1684,26 @@ Permissions-адаптер эмитирует только блок `permission`
       "src/**/*.ts": "allow",
       "**/.env": "deny"
     }
+  },
+  "mcpServers": {
+    "bitbucket": {
+      "alwaysAllow": ["get_pull_request"]
+    },
+    "jenkins": {
+      "alwaysAllow": ["get_build"]
+    }
   }
 }
 ```
 
+Предупреждения в `stderr` для bulk-wildcard правил с действием `allow`
+(в данном примере правил `bitbucket:*` и `jenkins:*` действие `ask`,
+поэтому предупреждения не эмитируются; правило `*:*: deny` в
+`alwaysAllow` не попадает по определению).
+
 После deep merge с MCP-слоем (записанным раньше в том же файле)
-итоговый `kilo.jsonc` содержит все три top-level ключа: `$schema`,
-`mcpServers`, `permission`.
+итоговый `kilo.jsonc` содержит top-level ключи `$schema`, `mcpServers`
+(с полным составом полей сервера включая `alwaysAllow`), `permission`.
 
 ### Deep merge с существующим kilo.jsonc
 
@@ -1303,14 +1713,31 @@ merge-eligible форматов (см. `docs/specs/layer-model.md`
 применить deep merge в соответствии с `docs/specs/layer-model.md`
 § Алгоритм deep merge.
 
-### Инвариант "MCP > Permissions" для Kilocode
+### Координация с MCP-транспилером Kilocode
 
 Файл `kilo.jsonc` является общим для MCP- и Permissions-транспилеров
 Kilocode. MCP-транспилер записывает top-level ключи `$schema`
-и `mcpServers`. Permissions-транспилер записывает top-level ключ
-`permission`. Множества ключей не пересекаются. Deep merge при
-слиянии слоёв сохраняет все три ключа; перезаписи MCP-блока
-Permissions-блоком не происходит.
+и `mcpServers.<server>` с полями конфигурации серверов (см.
+`docs/specs/mcp-transpiler.md` § Kilocode MCP-адаптер) и НЕ
+эмитирует поле `alwaysAllow` ни в одном server entry.
+Permissions-транспилер записывает top-level ключ `permission`
+и, дополнительно, поле `mcpServers.<server>.alwaysAllow` в тех же
+server entries, которые ранее создал MCP-транспилер.
+
+Пересечение по ключу `mcpServers` разрешается через deep merge
+(см. `docs/specs/layer-model.md` § Алгоритм deep merge): MCP-транспилер
+эмитирует `mcpServers.<server>` без поля `alwaysAllow`, Permissions-
+транспилер эмитирует `mcpServers.<server>.alwaysAllow`, результатом
+deep merge является union ключей в каждом server entry. Конфликт
+перезаписи ключа `alwaysAllow` невозможен, поскольку MCP-транспилер
+это поле не эмитирует.
+
+Если Permissions-транспилер эмитирует `alwaysAllow` для server,
+которого нет в `mcpServers` (canonical `permissions.yml` ссылается
+на server, отсутствующий в canonical `mcp.yml`), server entry
+создаётся только с полем `alwaysAllow`. Валидация существования
+сервера в MCP-конфигурации вне scope данной спецификации
+(см. § Вне scope).
 
 ## Запись результатов
 
@@ -1466,12 +1893,28 @@ Permissions-конфигурация плагина участвует в мод
 
 Следующие аспекты НЕ ВХОДЯТ в scope данной спецификации:
 
-- Адаптеры для Cursor, Copilot, agentsmd.
+- Адаптеры для Cursor, Copilot.
 - `${values:*}` интерполяция в permissions.
 - Per-agent permissions (permissions, привязанные к конкретному агенту
   внутри проекта) -- только project-level.
-- Валидация существования MCP-серверов, указанных в MCP-правилах.
+- Валидация существования MCP-серверов, указанных в MCP-правилах
+  (включая случай, когда Kilocode `alwaysAllow` эмитируется для server,
+  отсутствующего в канонической MCP-конфигурации).
 - Wildcard-расширение паттернов (паттерны передаются адаптерам as-is,
-  без glob-expansion).
+  без glob-expansion). В частности, Kilocode `alwaysAllow` не
+  поддерживает bulk-allow для `<server>:*` -- правила с таким паттерном
+  пропускаются с предупреждением.
 - Автоматическая миграция со старого формата (группировка по действиям)
   на новый (ordered list).
+- Custom AST-merge для Codex `.rules`-файлов -- файл использует
+  override-стратегию. Парсинг Starlark-подобного синтаксиса и
+  структурное слияние правил -- возможная future-работа.
+- Автоматическое детектирование Codex `approval_policy` из `config.toml`
+  для проверки catch-all семантики. Пользователь самостоятельно
+  конфигурирует `approval_policy` как глобальный fallback для команд,
+  не покрытых явными `prefix_rule` правилами.
+- Разрешение конфликтов между canonical first-match-wins и
+  decision-severity-wins движков **за пределами** whitelist-паттерна
+  (узкий allow + широкий deny). Сценарий с широким deny и узкими
+  allow-исключениями НЕ поддерживается препроцессингом
+  `flattenWhitelistConflicts` -- см. § Ограничения подхода.

@@ -37,12 +37,11 @@ export class KilocodeMcpAdapter implements McpAdapter {
         }
       }
 
-      if (serverConfig.includeTools) {
-        entry.alwaysAllow = [...serverConfig.includeTools];
-      }
-      if (serverConfig.excludeTools) {
+      const hasInclude = serverConfig.includeTools && serverConfig.includeTools.length > 0;
+      const hasExclude = serverConfig.excludeTools && serverConfig.excludeTools.length > 0;
+      if (hasInclude || hasExclude) {
         process.stderr.write(
-          `Warning: Kilocode does not support tool denylist. Server '${serverId}': 'excludeTools' ignored.\n`,
+          `Warning: Kilocode does not support discovery-level tool filtering. Server '${serverId}': 'includeTools'/'excludeTools' ignored. Use .agloom/permissions.yml for postfactum permission gating (Kilocode alwaysAllow will be emitted by the permissions transpiler).\n`,
         );
       }
 

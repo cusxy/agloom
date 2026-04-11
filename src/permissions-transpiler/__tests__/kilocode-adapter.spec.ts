@@ -138,8 +138,12 @@ describe("KilocodePermissionsAdapter", () => {
       expect(readKeys).toEqual(["src/**", "src/**/*.ts", "**/.env"]);
     });
 
-    // --- Инвариант: output содержит ТОЛЬКО ключ "permission" ---
-    it("output содержит только top-level ключ 'permission' (без mcpServers/$schema)", () => {
+    // --- Инвариант: output содержит ключ "permission" и (для allow mcp)
+    // ключ "mcpServers" c alwaysAllow, но НЕ $schema
+    // (ownership переносится к Permissions после Cycle 3, см.
+    // docs/specs/permissions-transpiler.md § Kilocode Permissions-адаптер,
+    // § Координация с MCP-транспилером Kilocode). ---
+    it("output содержит top-level 'permission' и 'mcpServers.<s>.alwaysAllow', без $schema", () => {
       const adapter = new KilocodePermissionsAdapter();
       const files = adapter.transpile(
         makeCanonicalFile({
@@ -149,8 +153,13 @@ describe("KilocodePermissionsAdapter", () => {
         }),
       );
       const parsed = JSON.parse(files[0].content);
-      expect(Object.keys(parsed)).toEqual(["permission"]);
-      expect(parsed.mcpServers).toBeUndefined();
+      expect(parsed.permission).toBeDefined();
+      expect(parsed.permission.bash).toBeDefined();
+      // alwaysAllow ownership переехал в permissions-транспилер
+      expect(parsed.mcpServers).toBeDefined();
+      expect(parsed.mcpServers.bitbucket).toBeDefined();
+      expect(parsed.mcpServers.bitbucket.alwaysAllow).toEqual(["get_pull_request"]);
+      // $schema остаётся в compétance MCP-транспилера
       expect(parsed.$schema).toBeUndefined();
     });
 
@@ -209,6 +218,22 @@ describe("KilocodePermissionsAdapter", () => {
             "src/**": "deny",
             "src/**/*.ts": "allow",
             "**/.env": "deny",
+          },
+        },
+        // Permissions-адаптер теперь эмитирует alwaysAllow-фрагмент
+        // для server entries с concrete-tool allow-правилами. Bulk-allow
+        // паттерны (bitbucket:*, jenkins:*) в примере имеют действие
+        // ask, поэтому в alwaysAllow не попадают; *:* deny тоже не
+        // попадает. Остаются только concrete-tool allow-правила.
+        // См. docs/specs/permissions-transpiler.md § Kilocode
+        // Permissions-адаптер, § Пример выходного файла kilo.jsonc
+        // (Permissions-слой).
+        mcpServers: {
+          bitbucket: {
+            alwaysAllow: ["get_pull_request"],
+          },
+          jenkins: {
+            alwaysAllow: ["get_build"],
           },
         },
       });
