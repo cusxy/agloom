@@ -14,15 +14,22 @@ function isStringArray(value: unknown): value is string[] {
 }
 
 /**
+ * Проверяет, является ли значение plain object со string-значениями.
+ */
+function isStringRecord(value: unknown): value is Record<string, string> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  return Object.values(value as Record<string, unknown>).every((v) => typeof v === "string");
+}
+
+const VALID_TRANSPORTS = new Set(["stdio", "http", "sse"]);
+
+/**
  * Валидирует распарсенное содержимое канонического файла.
- *
- * Шаги:
- * 1. Проверить, что content является объектом.
- * 2. Проверить наличие поля mcpServers и что его значение является объектом.
- * 3. Для каждого MCP-сервера в mcpServers валидировать конфигурацию.
  */
 export function validateCanonicalContent(content: unknown): McpCanonicalContent {
-  // Шаг 1: content должен быть объектом
+  // Шаг 1
   // Расширение 1a
   if (typeof content !== "object" || content === null || Array.isArray(content)) {
     throw new TransformError("MCP config must be an object");
@@ -30,7 +37,7 @@ export function validateCanonicalContent(content: unknown): McpCanonicalContent 
 
   const obj = content as Record<string, unknown>;
 
-  // Шаг 2: поле mcpServers
+  // Шаг 2
   // Расширение 2a
   if (!("mcpServers" in obj)) {
     throw new TransformError("MCP config must contain 'mcpServers' field");
@@ -46,57 +53,92 @@ export function validateCanonicalContent(content: unknown): McpCanonicalContent 
   // Шаг 3: валидация каждого сервера
   for (const [serverId, serverConfig] of Object.entries(mcpServers)) {
     if (typeof serverConfig !== "object" || serverConfig === null || Array.isArray(serverConfig)) {
-      throw new TransformError(`Server '${serverId}': 'command' is required and must be a string`);
+      throw new TransformError(`Server '${serverId}': 'command' is required for stdio transport and must be a string`);
     }
 
     const server = serverConfig as Record<string, unknown>;
 
-    // 3.1: command обязательно и является строкой
-    // Расширение 3b
-    if (!("command" in server) || typeof server.command !== "string") {
-      throw new TransformError(`Server '${serverId}': 'command' is required and must be a string`);
+    // 3.1: определить транспорт
+    let transport: "stdio" | "http" | "sse";
+    if ("type" in server && server.type !== undefined) {
+      if (typeof server.type !== "string" || !VALID_TRANSPORTS.has(server.type)) {
+        // Расширение 3.1a
+        throw new TransformError(`Server '${serverId}': 'type' must be one of 'stdio', 'http', 'sse'`);
+      }
+      transport = server.type as "stdio" | "http" | "sse";
+    } else {
+      transport = "stdio";
     }
 
-    // 3.2: args — массив строк
-    // Расширение 3c
-    if ("args" in server && server.args !== undefined) {
-      if (!isStringArray(server.args)) {
-        throw new TransformError(`Server '${serverId}': 'args' must be an array of strings`);
+    if (transport === "stdio") {
+      // 3.2a: command обязательно
+      if (!("command" in server) || typeof server.command !== "string") {
+        throw new TransformError(
+          `Server '${serverId}': 'command' is required for stdio transport and must be a string`,
+        );
       }
-    }
 
-    // 3.3: env — объект с string-значениями
-    // Расширение 3d
-    if ("env" in server && server.env !== undefined) {
-      if (typeof server.env !== "object" || server.env === null || Array.isArray(server.env)) {
-        throw new TransformError(`Server '${serverId}': 'env' must be an object with string values`);
+      // 3.2b: args
+      if ("args" in server && server.args !== undefined) {
+        if (!isStringArray(server.args)) {
+          throw new TransformError(`Server '${serverId}': 'args' must be an array of strings`);
+        }
       }
-      const envObj = server.env as Record<string, unknown>;
-      for (const val of Object.values(envObj)) {
-        if (typeof val !== "string") {
+
+      // 3.2c: env
+      if ("env" in server && server.env !== undefined) {
+        if (!isStringRecord(server.env)) {
           throw new TransformError(`Server '${serverId}': 'env' must be an object with string values`);
         }
       }
+
+      // 3.2d: url / headers запрещены
+      if (("url" in server && server.url !== undefined) || ("headers" in server && server.headers !== undefined)) {
+        throw new TransformError(`Server '${serverId}': 'url' and 'headers' are not allowed for stdio transport`);
+      }
+    } else {
+      // http | sse
+      // 3.3a: url обязательно
+      if (!("url" in server) || typeof server.url !== "string") {
+        throw new TransformError(
+          `Server '${serverId}': 'url' is required for ${transport} transport and must be a string`,
+        );
+      }
+
+      // 3.3b: headers
+      if ("headers" in server && server.headers !== undefined) {
+        if (!isStringRecord(server.headers)) {
+          throw new TransformError(`Server '${serverId}': 'headers' must be an object with string values`);
+        }
+      }
+
+      // 3.3c: command / args / env запрещены
+      if (
+        ("command" in server && server.command !== undefined) ||
+        ("args" in server && server.args !== undefined) ||
+        ("env" in server && server.env !== undefined)
+      ) {
+        throw new TransformError(
+          `Server '${serverId}': 'command', 'args', 'env' are not allowed for ${transport} transport`,
+        );
+      }
     }
 
-    // 3.4: includeTools — массив строк
-    // Расширение 3e
+    // 3.4: includeTools
     if ("includeTools" in server && server.includeTools !== undefined) {
       if (!isStringArray(server.includeTools)) {
         throw new TransformError(`Server '${serverId}': 'includeTools' must be an array of strings`);
       }
     }
 
-    // 3.5: excludeTools — массив строк
-    // Расширение 3f
+    // 3.5: excludeTools
     if ("excludeTools" in server && server.excludeTools !== undefined) {
       if (!isStringArray(server.excludeTools)) {
         throw new TransformError(`Server '${serverId}': 'excludeTools' must be an array of strings`);
       }
     }
 
-    // 3.6: includeTools и excludeTools взаимоисключающие
-    // Расширение 3a
+    // 3.6: mutually exclusive
     if (
       "includeTools" in server &&
       server.includeTools !== undefined &&

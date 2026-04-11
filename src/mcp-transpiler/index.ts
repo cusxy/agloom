@@ -11,6 +11,9 @@ import type { McpAdapter, McpTranspilerConfig } from "./types.js";
 // Barrel exports
 export { ClaudeMcpAdapter } from "./adapters/claude-adapter.js";
 export { OpenCodeMcpAdapter } from "./adapters/opencode-adapter.js";
+export { CodexMcpAdapter } from "./adapters/codex-adapter.js";
+export { GeminiMcpAdapter } from "./adapters/gemini-adapter.js";
+export { KilocodeMcpAdapter } from "./adapters/kilocode-adapter.js";
 export { McpTranspiler } from "./transpiler.js";
 export { validateCanonicalContent } from "./validate.js";
 export { ConfigError, DiscoverError, TransformError, TranspileError, WriteError } from "./errors.js";

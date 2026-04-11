@@ -2,10 +2,13 @@
 summary: MCP Transpiler — библиотека транспиляции MCP-конфигурации из .agloom/ в agent-specific файлы
 description: >
   Библиотека для транспиляции канонической MCP-конфигурации (.agloom/mcp.yml
-  или .agloom/mcp.json) в agent-specific MCP-файлы. Генерирует .mcp.json
-  для Claude Code и секцию mcp в opencode.json для OpenCode. Поддерживает
-  tool filtering в каноническом формате с отбрасыванием при генерации
-  для адаптеров, не поддерживающих фильтрацию. Расширяется через адаптеры.
+  или .agloom/mcp.json) в agent-specific MCP-файлы. Поддерживает stdio,
+  HTTP и SSE транспорты. Генерирует .mcp.json и .claude/settings.json
+  для Claude Code, opencode.json для OpenCode, .codex/config.toml для Codex,
+  .gemini/settings.json для Gemini, .kilocode/mcp.json для Kilocode.
+  Поддерживает tool filtering в каноническом формате с native-маппингом
+  для адаптеров, поддерживающих фильтрацию, и транспиляцией в permission-
+  entries для Claude и OpenCode. Расширяется через адаптеры.
 type: spec
 status: implemented
 relates:
@@ -58,19 +61,47 @@ MCP-файлы. Канонический файл (`.agloom/mcp.yml` или `.ag
 
 ### Тип McpServerConfig
 
-- `command` (string, обязательно) -- команда запуска MCP-сервера.
-- `args` (array\<string>, опционально, default: `[]`) -- аргументы
-  команды.
-- `env` (Record\<string, string>, опционально, default: `{}`) --
-  переменные окружения для процесса MCP-сервера.
+Транспорт MCP-сервера определяется полем `type`. Поддерживаются три
+значения: `"stdio"` (по умолчанию) -- локальный процесс, `"http"` --
+удалённый сервер поверх HTTP streaming, `"sse"` -- удалённый сервер
+поверх Server-Sent Events.
+
+Общие поля:
+
+- `type` (string: "stdio" | "http" | "sse", опционально, default:
+  `"stdio"`) -- транспорт MCP-сервера.
 - `includeTools` (array\<string>, опционально) -- whitelist инструментов.
   При наличии -- только перечисленные инструменты доступны.
 - `excludeTools` (array\<string>, опционально) -- blacklist инструментов.
   При наличии -- перечисленные инструменты исключаются.
 
-Поля `includeTools` и `excludeTools` являются взаимоисключающими
-для одного MCP-сервера. При наличии обоих -- ошибка валидации
-(см. "Валидация канонического файла", расширение 3a).
+Поля для транспорта `stdio`:
+
+- `command` (string, обязательно) -- команда запуска MCP-сервера.
+- `args` (array\<string>, опционально, default: `[]`) -- аргументы
+  команды.
+- `env` (Record\<string, string>, опционально, default: `{}`) --
+  переменные окружения для процесса MCP-сервера.
+
+Поля для транспортов `http` и `sse`:
+
+- `url` (string, обязательно) -- URL удалённого MCP-сервера.
+- `headers` (Record\<string, string>, опционально, default: `{}`) --
+  HTTP-заголовки, передаваемые при подключении.
+
+### Правила взаимной исключительности полей
+
+Для одного MCP-сервера ТРЕБУЕТСЯ соблюдать следующие ограничения:
+
+1. При `type: "stdio"` (включая случай, когда поле `type` не указано)
+   поле `command` является обязательным; поля `url` и `headers`
+   ЗАПРЕЩЕНЫ.
+2. При `type: "http"` или `type: "sse"` поле `url` является
+   обязательным; поля `command`, `args`, `env` ЗАПРЕЩЕНЫ.
+3. Поля `includeTools` и `excludeTools` являются взаимоисключающими
+   для одного MCP-сервера. При наличии обоих -- ошибка валидации
+   (см. "Валидация канонического файла", расширение 3a). Оба поля
+   разрешены для любого значения `type`.
 
 ### Пример канонического файла (YAML)
 
@@ -87,6 +118,18 @@ mcpServers:
     includeTools:
       - read_file
       - list_directory
+  figma:
+    type: http
+    url: https://mcp.figma.com/mcp
+    headers:
+      X-Figma-Region: us-east-1
+    excludeTools:
+      - delete
+  asana:
+    type: sse
+    url: https://mcp.asana.com/sse
+    headers:
+      Authorization: "Bearer ${env:ASANA_TOKEN}"
 ```
 
 ### Пример канонического файла (JSON)
@@ -97,6 +140,11 @@ mcpServers:
     "context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp",
+      "headers": { "X-Figma-Region": "us-east-1" }
     }
   }
 }
@@ -179,10 +227,11 @@ mcpServers:
    (см. "Обнаружение канонического файла").
 2. Валидировать содержимое канонического файла
    (см. "Валидация канонического файла").
-3. Выполнить интерполяцию строковых значений в `canonicalFile.content`
-   (см. "Интерполяция переменных"). Для каждого сервера
-   в `mcpServers` интерполировать значения полей `command`,
-   каждого элемента `args` и каждого значения в `env`.
+3. Для всех string-значений полей `command`, `args`, `env`, `url`,
+   `headers` каждого сервера в `mcpServers` ТРЕБУЕТСЯ выполнить
+   интерполяцию переменных (см. § Интерполяция переменных) до момента
+   записи файла в файловую систему. Конкретный этап pipeline, на котором
+   выполняется интерполяция, является деталью реализации.
 4. Для каждого зарегистрированного адаптера вызвать
    `adapter.transpile(canonicalFile)`.
 5. Собрать результаты всех адаптеров в единый массив `TranspileResult`.
@@ -276,11 +325,19 @@ mcpServers:
 2. Проверить наличие поля `mcpServers` и что его значение
    является объектом.
 3. Для каждого MCP-сервера в `mcpServers` валидировать конфигурацию:
-   3.1. Проверить наличие обязательного поля `command` (string).
-   3.2. Если поле `args` присутствует -- проверить, что значение
-   является массивом строк.
-   3.3. Если поле `env` присутствует -- проверить, что значение
-   является объектом с string-значениями.
+   3.1. Определить значение поля `type`. Если поле отсутствует --
+   использовать значение по умолчанию `"stdio"`. Если поле присутствует,
+   но его значение не входит в множество `{"stdio", "http", "sse"}` --
+   ошибка.
+   3.2. Если `type = "stdio"`: проверить наличие обязательного поля
+   `command` (string). Если поле `args` присутствует -- проверить,
+   что значение является массивом строк. Если поле `env` присутствует --
+   проверить, что значение является объектом с string-значениями.
+   Проверить, что поля `url` и `headers` отсутствуют.
+   3.3. Если `type = "http"` или `type = "sse"`: проверить наличие
+   обязательного поля `url` (string). Если поле `headers` присутствует --
+   проверить, что значение является объектом с string-значениями.
+   Проверить, что поля `command`, `args`, `env` отсутствуют.
    3.4. Если поле `includeTools` присутствует -- проверить,
    что значение является массивом строк.
    3.5. Если поле `excludeTools` присутствует -- проверить,
@@ -299,25 +356,45 @@ mcpServers:
 2b. Значение `mcpServers` не является объектом --
 `TransformError("'mcpServers' must be an object")`.
 
-3a. Поля `includeTools` и `excludeTools` указаны одновременно
-для сервера --
-`TransformError("Server '{serverId}': 'includeTools' and 'excludeTools' are mutually exclusive")`.
+3.1a. Значение `type` не входит в множество `{"stdio", "http", "sse"}` --
+`TransformError("Server '{serverId}': 'type' must be one of 'stdio', 'http', 'sse'")`.
 
-3b. Поле `command` отсутствует или не является строкой --
-`TransformError("Server '{serverId}': 'command' is required and must be a string")`.
+3.2a. При `type = "stdio"` поле `command` отсутствует или не является
+строкой --
+`TransformError("Server '{serverId}': 'command' is required for stdio transport and must be a string")`.
 
-3c. Поле `args` присутствует, но не является массивом строк --
+3.2b. При `type = "stdio"` поле `args` присутствует, но не является
+массивом строк --
 `TransformError("Server '{serverId}': 'args' must be an array of strings")`.
 
-3d. Поле `env` присутствует, но не является объектом
-с string-значениями --
+3.2c. При `type = "stdio"` поле `env` присутствует, но не является
+объектом с string-значениями --
 `TransformError("Server '{serverId}': 'env' must be an object with string values")`.
 
-3e. Поле `includeTools` присутствует, но не является массивом строк --
+3.2d. При `type = "stdio"` присутствует поле `url` или `headers` --
+`TransformError("Server '{serverId}': 'url' and 'headers' are not allowed for stdio transport")`.
+
+3.3a. При `type = "http"` или `type = "sse"` поле `url` отсутствует
+или не является строкой --
+`TransformError("Server '{serverId}': 'url' is required for {type} transport and must be a string")`.
+
+3.3b. При `type = "http"` или `type = "sse"` поле `headers`
+присутствует, но не является объектом с string-значениями --
+`TransformError("Server '{serverId}': 'headers' must be an object with string values")`.
+
+3.3c. При `type = "http"` или `type = "sse"` присутствует поле
+`command`, `args` или `env` --
+`TransformError("Server '{serverId}': 'command', 'args', 'env' are not allowed for {type} transport")`.
+
+3.4a. Поле `includeTools` присутствует, но не является массивом строк --
 `TransformError("Server '{serverId}': 'includeTools' must be an array of strings")`.
 
-3f. Поле `excludeTools` присутствует, но не является массивом строк --
+3.5a. Поле `excludeTools` присутствует, но не является массивом строк --
 `TransformError("Server '{serverId}': 'excludeTools' must be an array of strings")`.
+
+3.6a. Поля `includeTools` и `excludeTools` указаны одновременно
+для сервера --
+`TransformError("Server '{serverId}': 'includeTools' and 'excludeTools' are mutually exclusive")`.
 
 **Результат:**
 
@@ -328,7 +405,7 @@ mcpServers:
 Каждый MCP-адаптер ДОЛЖЕН реализовать следующий интерфейс:
 
 - `agentId` (string, readonly) -- уникальный идентификатор агента
-  (например, `"claude"`, `"opencode"`).
+  (`"claude"`, `"opencode"`, `"codex"`, `"gemini"`, `"kilocode"`).
 - `transpile(file)` -- метод транспиляции (см. ниже).
 
 ### transpile
@@ -353,26 +430,35 @@ mcpServers:
 
 `McpOutputFile[]`.
 
-## Процедура Build Base Server Config
+## Процедура Build Stdio Server Config
 
-Общая процедура построения базовой конфигурации MCP-сервера
-из канонического формата. Переиспользуется адаптерами Claude
-и OpenCode для устранения дублирования шагов трансформации.
+Общая процедура построения stdio-конфигурации MCP-сервера из
+канонического формата. Переиспользуется всеми адаптерами,
+поддерживающими stdio-транспорт.
 
 **Вход:**
 
 - `serverConfig` (McpServerConfig, обязательно) -- конфигурация
-  сервера из канонического файла.
+  сервера из канонического файла. Предполагается, что
+  `serverConfig.type` равно `"stdio"` (или опущено).
+- `supportsToolFiltering` (boolean, обязательно) -- флаг, определяющий,
+  поддерживает ли целевой формат native-поля фильтрации инструментов.
 
 **Поведение:**
 
-1. Создать объект с полем `command` из `serverConfig.command`.
-2. Если поле `args` присутствует и непусто -- добавить
-   поле `args`.
-3. Если поле `env` присутствует и непусто -- добавить
-   поле `env`.
-4. Поля `includeTools` и `excludeTools` ТРЕБУЕТСЯ отбросить
-   (не поддерживаются целевыми адаптерами в MVP).
+1. Создать объект `base` с полем `command` из `serverConfig.command`.
+2. Если поле `args` присутствует и непусто -- добавить поле `args`
+   в `base`.
+3. Если поле `env` присутствует и непусто -- добавить поле `env`
+   в `base`.
+4. Если `supportsToolFiltering` равен `false` -- поля `includeTools`
+   и `excludeTools` ТРЕБУЕТСЯ отбросить (не добавлять в `base`).
+   Native-поля фильтрации записываются обёртывающим адаптером
+   отдельно (с его собственным именованием ключей).
+5. Если `supportsToolFiltering` равен `true` -- значения
+   `serverConfig.includeTools` и `serverConfig.excludeTools` ТРЕБУЕТСЯ
+   передать обёртывающему адаптеру как есть, чтобы тот обернул их
+   в нативные имена полей.
 
 **Расширения:**
 
@@ -380,16 +466,93 @@ mcpServers:
 
 **Результат:**
 
-- `baseConfig` (object) -- объект с полями `command`
-  и опциональными `args`, `env`.
+- `base` (object) -- объект с полями `command` и опциональными
+  `args`, `env`.
+
+## Процедура Build Remote Server Config
+
+Общая процедура построения remote-конфигурации MCP-сервера
+(HTTP или SSE) из канонического формата. Переиспользуется всеми
+адаптерами, поддерживающими удалённый транспорт.
+
+**Вход:**
+
+- `serverConfig` (McpServerConfig, обязательно) -- конфигурация
+  сервера из канонического файла. Предполагается, что
+  `serverConfig.type` равно `"http"` или `"sse"`.
+
+**Поведение:**
+
+1. Создать объект `base` с полем `url` из `serverConfig.url`.
+2. Если поле `headers` присутствует и непусто -- добавить поле
+   `headers` в `base`.
+3. Значения `serverConfig.includeTools` и `serverConfig.excludeTools`
+   ТРЕБУЕТСЯ передать обёртывающему адаптеру как есть. Оборачивание
+   в нативные имена полей выполняется адаптером.
+
+**Расширения:**
+
+Нет расширений.
+
+**Результат:**
+
+- `base` (object) -- объект с полем `url` и опциональным `headers`.
 
 ## Claude Code MCP-адаптер
 
 Адаптер для Claude Code. `agentId`: `"claude"`.
 
-Генерирует файл `.mcp.json` в корне проекта. Формат -- объект
-с полем `mcpServers`, где каждый сервер содержит поля `command`,
-`args`, `env`.
+Claude Code MCP-адаптер генерирует **два** выходных файла:
+
+1. `.mcp.json` в корне проекта -- объект с полем `mcpServers`,
+   описывающий серверы.
+2. `.claude/settings.json` в корне проекта -- файл настроек,
+   в котором секция `permissions.allow` / `permissions.deny`
+   содержит entries, выведенные из полей `includeTools` /
+   `excludeTools` канонического файла.
+
+Для `.mcp.json` публичная JSON-схема отсутствует -- поле
+`$schema` в этот файл НЕ добавляется. Для `.claude/settings.json`
+публичная схема есть -- поле `$schema` со значением
+`"https://json.schemastore.org/claude-code-settings.json"`
+ТРЕБУЕТСЯ добавлять на верхний уровень итогового объекта.
+
+### Маппинг транспортов
+
+Поле `type` канонического файла отображается в поле `type`
+`.mcp.json` без изменения значения:
+
+| canonical `type` | `.mcp.json` entry                                                     |
+| ---------------- | --------------------------------------------------------------------- |
+| `"stdio"`        | `{ "command": "...", "args": [...], "env": {...} }` (без поля `type`) |
+| `"http"`         | `{ "type": "http", "url": "...", "headers": {...} }`                  |
+| `"sse"`          | `{ "type": "sse", "url": "...", "headers": {...} }`                   |
+
+Для транспорта `"stdio"` поле `type` в `.mcp.json` НЕ записывается
+(значение по умолчанию на стороне Claude Code).
+
+### Трансформация includeTools/excludeTools в permissions
+
+Поля `includeTools` / `excludeTools` NOT являются нативными полями
+`.mcp.json`. Для Claude Code они ТРЕБУЕТСЯ транспилировать в
+permission-entries в файле `.claude/settings.json`:
+
+- Каждый элемент `includeTools` сервера `<server>` ТРЕБУЕТСЯ
+  преобразовать в entry `mcp__<server>__<tool>` и добавить в массив
+  `permissions.allow`.
+- Каждый элемент `excludeTools` сервера `<server>` ТРЕБУЕТСЯ
+  преобразовать в entry `mcp__<server>__<tool>` и добавить в массив
+  `permissions.deny`.
+
+Разделитель `:` в именах MCP не используется -- элементы `includeTools`
+и `excludeTools` -- имена инструментов, соединяемые с идентификатором
+сервера через двойное подчёркивание `__`.
+
+Инвариант сохранения этих entries при последующих merge-операциях
+обеспечивается union-merge для путей `permissions.allow` и
+`permissions.deny` в layer-model (см. `docs/specs/layer-model.md`
+§ Union-merge для permission-ключей и § Инвариант приоритета MCP
+над Permissions в данной спецификации).
 
 ### transpile
 
@@ -401,23 +564,70 @@ mcpServers:
 
 **Поведение:**
 
-1. Создать пустой объект `output` с полем `mcpServers`.
-2. Для каждого сервера в `file.content.mcpServers`:
-   2.1--2.4. Build Base Server Config
-   (см. § Процедура Build Base Server Config).
-3. Сериализовать `output` в JSON с отступом 2 пробела
-   и завершающим переводом строки.
-4. Сформировать `McpOutputFile` с `relativePath: ".mcp.json"`.
+1. Создать пустой объект `mcpServers` -- будущее содержимое `.mcp.json`.
+2. Создать пустые массивы `allow` и `deny` -- будущие
+   `permissions.allow` и `permissions.deny`.
+3. Для каждого сервера `<server>` в `file.content.mcpServers`:
+   3.1. Если `serverConfig.type` равен `"stdio"` (или опущено) --
+   выполнить процедуру Build Stdio Server Config с
+   `supportsToolFiltering = false`; сохранить результат как entry
+   `mcpServers[<server>]`.
+   3.2. Если `serverConfig.type` равен `"http"` -- выполнить процедуру
+   Build Remote Server Config; добавить поле `type: "http"` в результат;
+   сохранить как entry `mcpServers[<server>]`.
+   3.3. Если `serverConfig.type` равен `"sse"` -- выполнить процедуру
+   Build Remote Server Config; добавить поле `type: "sse"` в результат;
+   сохранить как entry `mcpServers[<server>]`.
+   3.4. Если `serverConfig.includeTools` присутствует -- для каждого
+   элемента `<tool>` добавить строку `"mcp__<server>__<tool>"` в массив
+   `allow`.
+   3.5. Если `serverConfig.excludeTools` присутствует -- для каждого
+   элемента `<tool>` добавить строку `"mcp__<server>__<tool>"` в массив
+   `deny`.
+4. Сформировать объект `mcpOutput` с ключом `"mcpServers"`, содержащим
+   `mcpServers`. Сериализовать `mcpOutput` в JSON с отступом 2 пробела
+   и завершающим переводом строки. Сформировать `McpOutputFile`
+   с `relativePath: ".mcp.json"`.
+5. Сформировать объект `settingsOutput`:
+   5.1. Добавить ключ `"$schema"` со значением
+   `"https://json.schemastore.org/claude-code-settings.json"` на верхний
+   уровень.
+   5.2. Если массив `allow` непуст или массив `deny` непуст -- добавить
+   ключ `"permissions"` со значением `{ "allow": allow, "deny": deny }`,
+   опуская пустые подмассивы (если `allow` пуст -- не добавлять ключ
+   `allow`; если `deny` пуст -- не добавлять ключ `deny`).
+   5.3. Если оба массива `allow` и `deny` пусты -- ключ `"permissions"`
+   НЕ добавлять.
+6. Сериализовать `settingsOutput` в JSON с отступом 2 пробела
+   и завершающим переводом строки. Сформировать `McpOutputFile`
+   с `relativePath: ".claude/settings.json"`.
+7. Вернуть массив из двух элементов: entry для `.mcp.json` и entry
+   для `.claude/settings.json`.
 
 **Расширения:**
 
-Нет расширений.
+5.3a. Оба массива `allow` и `deny` пусты -- итоговый объект
+`settingsOutput` содержит только ключ `"$schema"`. Файл
+`.claude/settings.json` всё равно ТРЕБУЕТСЯ эмитировать, чтобы
+последующий merge сохранял `$schema`.
 
 **Результат:**
 
-`McpOutputFile[]` (массив из одного элемента).
+`McpOutputFile[]` -- массив из двух элементов: `.mcp.json` и
+`.claude/settings.json`.
 
-### Пример выходного файла (.mcp.json)
+### Deep merge с существующими файлами
+
+Файлы `.mcp.json` и `.claude/settings.json` являются merge-eligible
+(`.json`). При наличии существующего файла по целевому пути
+(от overlay, плагина или предыдущего шага) ТРЕБУЕТСЯ применить
+deep merge в соответствии с `docs/specs/layer-model.md`
+§ Алгоритм deep merge. Для массивов `permissions.allow` и
+`permissions.deny` в `.claude/settings.json` ТРЕБУЕТСЯ применять
+union-merge (см. `docs/specs/layer-model.md` § Union-merge
+для permission-ключей).
+
+### Пример выходного файла `.mcp.json`
 
 ```json
 {
@@ -432,7 +642,29 @@ mcpServers:
       "env": {
         "ROOT_DIR": "/home/user/project"
       }
+    },
+    "figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp",
+      "headers": { "X-Figma-Region": "us-east-1" }
+    },
+    "asana": {
+      "type": "sse",
+      "url": "https://mcp.asana.com/sse",
+      "headers": { "Authorization": "Bearer ..." }
     }
+  }
+}
+```
+
+### Пример выходного файла `.claude/settings.json`
+
+```json
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": ["mcp__filesystem__read_file", "mcp__filesystem__list_directory"],
+    "deny": ["mcp__figma__delete"]
   }
 }
 ```
@@ -441,10 +673,49 @@ mcpServers:
 
 Адаптер для OpenCode. `agentId`: `"opencode"`.
 
-Генерирует файл `opencode.json` в корне проекта с ключом `"mcp"`.
-При наличии существующего `opencode.json` (от overlay или предыдущих
-шагов транспиляции) ТРЕБУЕТСЯ выполнить deep merge через layer model
-(см. `docs/specs/layer-model.md`).
+Генерирует единственный файл `opencode.json` в корне проекта. Файл
+содержит ключ `"$schema"` со значением `"https://opencode.ai/config.json"`,
+ключ `"mcp"` (описание серверов) и, при наличии `includeTools` /
+`excludeTools` в каноническом файле, ключ `"permission"` (плоский
+объект permission-записей).
+
+### Маппинг транспортов
+
+OpenCode различает только два типа: `"stdio"` и `"remote"`. Оба
+канонических транспорта `"http"` и `"sse"` отображаются в
+`"remote"`. Поле `headers` в формате OpenCode не документировано
+и НЕ передаётся.
+
+| canonical `type` | opencode.json entry                                                  |
+| ---------------- | -------------------------------------------------------------------- |
+| `"stdio"`        | `{ "type": "stdio", "command": "...", "args": [...], "env": {...} }` |
+| `"http"`         | `{ "type": "remote", "url": "..." }`                                 |
+| `"sse"`          | `{ "type": "remote", "url": "..." }`                                 |
+
+Для транспорта `"stdio"` поле `type: "stdio"` ТРЕБУЕТСЯ записывать
+явно.
+
+Если канонический сервер с типом `"http"` или `"sse"` содержит
+непустое поле `headers` -- ТРЕБУЕТСЯ эмитировать предупреждение
+в `stderr`:
+`"Warning: OpenCode does not support MCP 'headers' field. Server '{serverId}': headers ignored."`
+(см. расширение 3.2a процедуры transpile).
+
+### Трансформация includeTools/excludeTools в permission
+
+Поля `includeTools` / `excludeTools` NOT являются нативными полями
+MCP-секции OpenCode. Для OpenCode они ТРЕБУЕТСЯ транспилировать в
+ключи объекта `permission` того же файла `opencode.json`:
+
+- Каждый элемент `includeTools` сервера `<server>` ТРЕБУЕТСЯ
+  преобразовать в ключ `<server>_<tool>` со значением `"allow"`.
+- Каждый элемент `excludeTools` сервера `<server>` ТРЕБУЕТСЯ
+  преобразовать в ключ `<server>_<tool>` со значением `"deny"`.
+
+Разделитель между именем сервера и именем инструмента -- одинарное
+подчёркивание `_` (в соответствии с форматом OpenCode; см.
+`docs/specs/permissions-transpiler.md` § Трансформация MCP-правил
+для OpenCode).
 
 ### transpile
 
@@ -456,15 +727,308 @@ mcpServers:
 
 **Поведение:**
 
-1. Создать объект `mcpSection` с серверами.
-2. Для каждого сервера в `file.content.mcpServers`:
-   2.1--2.4. Build Base Server Config
-   (см. § Процедура Build Base Server Config).
-3. Сформировать объект `output` с ключом `"mcp"`,
-   содержащим `mcpSection`.
+1. Создать пустой объект `mcpSection`.
+2. Создать пустой объект `permissionSection`.
+3. Для каждого сервера `<server>` в `file.content.mcpServers`:
+   3.1. Если `serverConfig.type` равен `"stdio"` (или опущено) --
+   выполнить процедуру Build Stdio Server Config с
+   `supportsToolFiltering = false`; добавить поле `type: "stdio"`
+   в результат; сохранить как entry `mcpSection[<server>]`.
+   3.2. Если `serverConfig.type` равен `"http"` -- создать объект
+   `{ "type": "remote", "url": serverConfig.url }`; сохранить как
+   entry `mcpSection[<server>]`.
+   3.3. Если `serverConfig.type` равен `"sse"` -- создать объект
+   `{ "type": "remote", "url": serverConfig.url }`; сохранить как
+   entry `mcpSection[<server>]`.
+   3.4. Если `serverConfig.includeTools` присутствует -- для каждого
+   элемента `<tool>` добавить в `permissionSection` ключ
+   `"<server>_<tool>"` со значением `"allow"`.
+   3.5. Если `serverConfig.excludeTools` присутствует -- для каждого
+   элемента `<tool>` добавить в `permissionSection` ключ
+   `"<server>_<tool>"` со значением `"deny"`.
+4. Сформировать объект `output`:
+   4.1. Добавить ключ `"$schema"` со значением
+   `"https://opencode.ai/config.json"`.
+   4.2. Добавить ключ `"mcp"` со значением `mcpSection`.
+   4.3. Если `permissionSection` содержит хотя бы один ключ --
+   добавить ключ `"permission"` со значением `permissionSection`.
+5. Сериализовать `output` в JSON с отступом 2 пробела
+   и завершающим переводом строки.
+6. Сформировать `McpOutputFile` с `relativePath: "opencode.json"`.
+
+**Расширения:**
+
+3.2a. Канонический сервер с `type = "http"` или `type = "sse"` содержит
+непустое поле `headers` -- эмитировать предупреждение в `stderr`
+(см. § Маппинг транспортов); продолжить с шагом 3.3 (поле `headers`
+не записывается в `opencode.json`).
+
+**Результат:**
+
+`McpOutputFile[]` (массив из одного элемента).
+
+### Deep merge с существующим opencode.json
+
+Файл `opencode.json` является merge-eligible (`.json`). При конфликте
+по пути `opencode.json` ТРЕБУЕТСЯ применить deep merge в соответствии
+с `docs/specs/layer-model.md` § Алгоритм deep merge. Ключи
+`permission.*` являются плоскими строковыми значениями -- standard
+deep-merge объектов сохраняет ключи из всех слоёв (конфликт по ключу
+разрешается last-writer-wins).
+
+### Пример выходного файла `opencode.json`
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "env": { "ROOT_DIR": "/home/user/project" }
+    },
+    "figma": {
+      "type": "remote",
+      "url": "https://mcp.figma.com/mcp"
+    }
+  },
+  "permission": {
+    "filesystem_read_file": "allow",
+    "filesystem_list_directory": "allow",
+    "figma_delete": "deny"
+  }
+}
+```
+
+## Codex MCP-адаптер
+
+Адаптер для Codex CLI. `agentId`: `"codex"`.
+
+Генерирует единственный файл `.codex/config.toml` в корне проекта.
+Формат -- TOML. Сериализация ТРЕБУЕТСЯ выполнять библиотекой
+`smol-toml` (см. § Процедура TOML-сериализации MCP-конфигурации).
+
+Первой строкой файла ТРЕБУЕТСЯ добавить директиву схемы:
+
+```text
+#:schema https://developers.openai.com/codex/config-schema.json
+```
+
+Codex поддерживает только транспорты `"stdio"` и `"http"`. Транспорт
+`"sse"` Codex не поддерживает -- для каждого такого сервера ТРЕБУЕТСЯ
+эмитировать предупреждение в `stderr` и пропустить сервер:
+
+```text
+Warning: Codex does not support SSE transport. Server '{serverId}' skipped.
+```
+
+### Маппинг транспортов и полей
+
+| canonical       | TOML table `[mcp_servers.<name>]`                                                |
+| --------------- | -------------------------------------------------------------------------------- |
+| `type: "stdio"` | `command`, `args`, nested table `[mcp_servers.<name>.env]`                       |
+| `type: "http"`  | `url`, nested table `[mcp_servers.<name>.http_headers]` (если `headers` непусто) |
+| `type: "sse"`   | (warn+skip, entry не эмитируется)                                                |
+
+`includeTools` / `excludeTools` ТРЕБУЕТСЯ отображать в native-поля
+Codex без изменения порядка элементов:
+
+- `includeTools` -> `enabled_tools` (array of strings).
+- `excludeTools` -> `disabled_tools` (array of strings).
+
+### transpile
+
+`codexMcpAdapter.transpile(file)`.
+
+**Вход:**
+
+- `file` (McpCanonicalFile, обязательно) -- канонический файл.
+
+**Поведение:**
+
+1. Создать пустой объект `mcpServers`.
+2. Для каждого сервера `<server>` в `file.content.mcpServers`:
+   2.1. Если `serverConfig.type` равен `"sse"` -- эмитировать
+   предупреждение в `stderr` и перейти к следующему серверу.
+   2.2. Если `serverConfig.type` равен `"stdio"` (или опущено) --
+   выполнить процедуру Build Stdio Server Config с
+   `supportsToolFiltering = true`; сохранить результат как entry
+   `mcpServers[<server>]`.
+   2.3. Если `serverConfig.type` равен `"http"` -- создать объект
+   с полем `url` из `serverConfig.url`. Если `serverConfig.headers`
+   непусто -- добавить поле `http_headers` с тем же значением.
+   Сохранить как entry `mcpServers[<server>]`.
+   2.4. Если `serverConfig.includeTools` присутствует -- добавить
+   в entry поле `enabled_tools` со значением `serverConfig.includeTools`.
+   2.5. Если `serverConfig.excludeTools` присутствует -- добавить
+   в entry поле `disabled_tools` со значением `serverConfig.excludeTools`.
+3. Выполнить процедуру TOML-сериализации MCP-конфигурации
+   (см. § Процедура TOML-сериализации MCP-конфигурации) над
+   `mcpServers`, получив строку `tomlBody`.
+4. Сформировать итоговую строку `content` как конкатенацию:
+   `"#:schema https://developers.openai.com/codex/config-schema.json\n"`,
+   пустой строки, `tomlBody`.
+5. Сформировать `McpOutputFile` с
+   `relativePath: ".codex/config.toml"` и `content = content`.
+
+**Расширения:**
+
+2.1a. См. основной шаг (warn+skip).
+
+**Результат:**
+
+`McpOutputFile[]` (массив из одного элемента).
+
+### Deep merge с существующим .codex/config.toml
+
+Файл `.codex/config.toml` является merge-eligible (`.toml`,
+см. `docs/specs/layer-model.md` § Классификация файлов по стратегии
+слияния). При наличии существующего файла по целевому пути ТРЕБУЕТСЯ
+применить deep merge в соответствии с `docs/specs/layer-model.md`
+§ Алгоритм deep merge.
+
+### Пример выходного файла `.codex/config.toml`
+
+```toml
+#:schema https://developers.openai.com/codex/config-schema.json
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp@latest"]
+
+[mcp_servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem"]
+enabled_tools = ["read_file", "list_directory"]
+
+[mcp_servers.filesystem.env]
+ROOT_DIR = "/home/user/project"
+
+[mcp_servers.figma]
+url = "https://mcp.figma.com/mcp"
+disabled_tools = ["delete"]
+
+[mcp_servers.figma.http_headers]
+"X-Figma-Region" = "us-east-1"
+```
+
+## Процедура TOML-сериализации MCP-конфигурации
+
+Общая процедура преобразования объекта `mcpServers` (JavaScript-объект)
+в TOML-строку, пригодную для записи в `.codex/config.toml`.
+
+**Вход:**
+
+- `mcpServers` (Record\<string, object>, обязательно) -- карта серверов.
+  Ключ -- имя сервера, значение -- объект с подмножеством полей:
+  `command`, `args`, `env`, `url`, `http_headers`, `enabled_tools`,
+  `disabled_tools`.
+
+**Поведение:**
+
+1. Для каждого сервера `<server>` ТРЕБУЕТСЯ эмитировать заголовок
+   TOML-таблицы `[mcp_servers.<server>]` на отдельной строке.
+2. Scalar- и array-ключи верхнего уровня внутри таблицы сервера
+   ТРЕБУЕТСЯ записывать в следующем порядке:
+   1. `command` (если присутствует);
+   2. `args` (если присутствует);
+   3. `url` (если присутствует);
+   4. `enabled_tools` (если присутствует);
+   5. `disabled_tools` (если присутствует).
+3. Nested-таблицы (`http_headers`, `env`) ТРЕБУЕТСЯ эмитировать после
+   всех scalar- и array-ключей родительской таблицы сервера, поскольку
+   заголовок nested-таблицы в TOML открывает новый scope, в который
+   попадают все последующие ключи. Порядок nested-таблиц:
+   1. `http_headers` как `[mcp_servers.<server>.http_headers]`
+      (если присутствует и непусто);
+   2. `env` как `[mcp_servers.<server>.env]` (если присутствует
+      и непусто).
+4. Ключи внутри `env` и `http_headers` ТРЕБУЕТСЯ эмитировать в порядке
+   итерации по входному объекту (стабильный порядок вставки).
+5. Между таблицами разных серверов ТРЕБУЕТСЯ эмитировать пустую
+   строку для читаемости.
+6. Значения строк ТРЕБУЕТСЯ сериализовать как TOML basic strings
+   (в двойных кавычках). Escaping управляется библиотекой `smol-toml`.
+7. Значения массивов строк ТРЕБУЕТСЯ сериализовать как однострочные
+   TOML-массивы (в квадратных скобках).
+8. Итоговую строку ТРЕБУЕТСЯ завершать переводом строки (`\n`).
+
+**Расширения:**
+
+Нет расширений.
+
+**Результат:**
+
+- `tomlBody` (string) -- TOML-представление `mcpServers`.
+
+## Gemini MCP-адаптер
+
+Адаптер для Gemini CLI. `agentId`: `"gemini"`.
+
+Генерирует единственный файл `.gemini/settings.json` в корне проекта.
+Формат -- JSON. Верхний уровень содержит ключ `"$schema"` со значением
+`"https://raw.githubusercontent.com/google-gemini/gemini-cli/main/schemas/settings.schema.json"`
+и ключ `"mcpServers"`.
+
+### Маппинг транспортов и полей
+
+Gemini использует три разных имени полей URL для stdio / HTTP / SSE:
+
+| canonical       | Gemini entry                                        |
+| --------------- | --------------------------------------------------- |
+| `type: "stdio"` | `{ "command": "...", "args": [...], "env": {...} }` |
+| `type: "http"`  | `{ "httpUrl": "...", "headers": {...} }`            |
+| `type: "sse"`   | `{ "url": "...", "headers": {...} }`                |
+
+Асимметрия: canonical `type: "http"` отображается в ключ `httpUrl`,
+canonical `type: "sse"` -- в ключ `url`. Ключ `type` в Gemini entry
+НЕ записывается (тип различается по имени ключа URL).
+
+Поля `includeTools` / `excludeTools` являются native-полями Gemini
+и ТРЕБУЕТСЯ передавать как есть в entry сервера (без переименования).
+
+### transpile
+
+`geminiMcpAdapter.transpile(file)`.
+
+**Вход:**
+
+- `file` (McpCanonicalFile, обязательно) -- канонический файл.
+
+**Поведение:**
+
+1. Создать пустой объект `mcpServers`.
+2. Для каждого сервера `<server>` в `file.content.mcpServers`:
+   2.1. Если `serverConfig.type` равен `"stdio"` (или опущено) --
+   выполнить процедуру Build Stdio Server Config с
+   `supportsToolFiltering = true`; сохранить результат как entry
+   `mcpServers[<server>]`.
+   2.2. Если `serverConfig.type` равен `"http"` -- создать объект
+   с полем `httpUrl` из `serverConfig.url`. Если `serverConfig.headers`
+   непусто -- добавить поле `headers`. Сохранить как entry
+   `mcpServers[<server>]`.
+   2.3. Если `serverConfig.type` равен `"sse"` -- создать объект
+   с полем `url` из `serverConfig.url`. Если `serverConfig.headers`
+   непусто -- добавить поле `headers`. Сохранить как entry
+   `mcpServers[<server>]`.
+   2.4. Если `serverConfig.includeTools` присутствует -- добавить
+   в entry поле `includeTools` со значением `serverConfig.includeTools`.
+   2.5. Если `serverConfig.excludeTools` присутствует -- добавить
+   в entry поле `excludeTools` со значением `serverConfig.excludeTools`.
+3. Сформировать объект `output`:
+   3.1. Добавить ключ `"$schema"` со значением
+   `"https://raw.githubusercontent.com/google-gemini/gemini-cli/main/schemas/settings.schema.json"`.
+   3.2. Добавить ключ `"mcpServers"` со значением `mcpServers`.
 4. Сериализовать `output` в JSON с отступом 2 пробела
    и завершающим переводом строки.
-5. Сформировать `McpOutputFile` с `relativePath: "opencode.json"`.
+5. Сформировать `McpOutputFile`
+   с `relativePath: ".gemini/settings.json"`.
 
 **Расширения:**
 
@@ -474,27 +1038,195 @@ mcpServers:
 
 `McpOutputFile[]` (массив из одного элемента).
 
-### Deep merge с существующим opencode.json
+### Deep merge с существующим .gemini/settings.json
 
-Файл `opencode.json` МОЖЕТ содержать данные, записанные overlay-шагом
-или другими источниками. Дедупликация и merge по output path
-выполняется на уровне `writeResults` (см. "Запись результатов").
-При конфликте по пути `opencode.json` ТРЕБУЕТСЯ применить deep merge
-в соответствии с `docs/specs/layer-model.md` § Алгоритм deep merge,
-поскольку `opencode.json` является merge-eligible файлом (расширение `.json`).
+Файл `.gemini/settings.json` является merge-eligible (`.json`).
+При наличии существующего файла по целевому пути ТРЕБУЕТСЯ применить
+deep merge в соответствии с `docs/specs/layer-model.md`
+§ Алгоритм deep merge.
 
-### Пример выходного файла (opencode.json)
+### Пример выходного файла `.gemini/settings.json`
 
 ```json
 {
-  "mcp": {
+  "$schema": "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/schemas/settings.schema.json",
+  "mcpServers": {
     "context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "env": { "ROOT_DIR": "/home/user/project" },
+      "includeTools": ["read_file", "list_directory"]
+    },
+    "figma": {
+      "httpUrl": "https://mcp.figma.com/mcp",
+      "headers": { "X-Figma-Region": "us-east-1" },
+      "excludeTools": ["delete"]
+    },
+    "asana": {
+      "url": "https://mcp.asana.com/sse",
+      "headers": { "Authorization": "Bearer ..." }
     }
   }
 }
 ```
+
+## Kilocode MCP-адаптер
+
+Адаптер для Kilocode. `agentId`: `"kilocode"`.
+
+Генерирует единственный файл `.kilocode/mcp.json` в корне проекта.
+Формат -- JSON. Верхний уровень содержит ключ `"$schema"` со значением
+`"https://app.kilo.ai/config.json"` и ключ `"mcpServers"`.
+
+### Маппинг транспортов и полей
+
+| canonical       | Kilocode entry                                                        |
+| --------------- | --------------------------------------------------------------------- |
+| `type: "stdio"` | `{ "command": "...", "args": [...], "env": {...} }` (без поля `type`) |
+| `type: "http"`  | `{ "type": "streamable-http", "url": "...", "headers": {...} }`       |
+| `type: "sse"`   | `{ "type": "sse", "url": "...", "headers": {...} }`                   |
+
+Canonical `type: "http"` отображается в значение `"streamable-http"`
+поля `type` Kilocode (не `"http"`). Canonical `type: "sse"`
+отображается в значение `"sse"`.
+
+### Трансформация includeTools/excludeTools
+
+Kilocode имеет per-entry поле `alwaysAllow` (array of strings) --
+allow-list инструментов для автоматического одобрения. Native-поле
+denylist (аналог `disabledTools`) в формате Kilocode отсутствует.
+
+- `includeTools: [t1, t2, ...]` -> добавить элементы в `alwaysAllow`
+  той же entry сервера, сохраняя порядок и исключая дубликаты.
+- `excludeTools` для сервера -- ТРЕБУЕТСЯ эмитировать предупреждение
+  в `stderr` и пропустить поле:
+
+  ```text
+  Warning: Kilocode does not support tool denylist. Server '{serverId}': 'excludeTools' ignored.
+  ```
+
+### transpile
+
+`kilocodeMcpAdapter.transpile(file)`.
+
+**Вход:**
+
+- `file` (McpCanonicalFile, обязательно) -- канонический файл.
+
+**Поведение:**
+
+1. Создать пустой объект `mcpServers`.
+2. Для каждого сервера `<server>` в `file.content.mcpServers`:
+   2.1. Если `serverConfig.type` равен `"stdio"` (или опущено) --
+   выполнить процедуру Build Stdio Server Config с
+   `supportsToolFiltering = false`; сохранить результат как entry
+   `mcpServers[<server>]`.
+   2.2. Если `serverConfig.type` равен `"http"` -- создать объект
+   `{ "type": "streamable-http", "url": serverConfig.url }`. Если
+   `serverConfig.headers` непусто -- добавить поле `headers`.
+   Сохранить как entry `mcpServers[<server>]`.
+   2.3. Если `serverConfig.type` равен `"sse"` -- создать объект
+   `{ "type": "sse", "url": serverConfig.url }`. Если
+   `serverConfig.headers` непусто -- добавить поле `headers`.
+   Сохранить как entry `mcpServers[<server>]`.
+   2.4. Если `serverConfig.includeTools` присутствует -- добавить
+   в entry поле `alwaysAllow` со значением `serverConfig.includeTools`
+   (копия массива; при наличии существующего `alwaysAllow`
+   в `base` от Build Stdio Server Config -- заменить; дубликатов
+   не может быть, поскольку Build Stdio Server Config не добавляет
+   `alwaysAllow`).
+   2.5. Если `serverConfig.excludeTools` присутствует -- эмитировать
+   предупреждение в `stderr` (см. § Трансформация
+   includeTools/excludeTools) и не добавлять поле в entry.
+3. Сформировать объект `output`:
+   3.1. Добавить ключ `"$schema"` со значением
+   `"https://app.kilo.ai/config.json"`.
+   3.2. Добавить ключ `"mcpServers"` со значением `mcpServers`.
+4. Сериализовать `output` в JSON с отступом 2 пробела
+   и завершающим переводом строки.
+5. Сформировать `McpOutputFile`
+   с `relativePath: ".kilocode/mcp.json"`.
+
+**Расширения:**
+
+2.5a. См. основной шаг (warn+skip для `excludeTools`).
+
+**Результат:**
+
+`McpOutputFile[]` (массив из одного элемента).
+
+### Deep merge с существующим .kilocode/mcp.json
+
+Файл `.kilocode/mcp.json` является merge-eligible (`.json`). При
+наличии существующего файла по целевому пути ТРЕБУЕТСЯ применить
+deep merge в соответствии с `docs/specs/layer-model.md`
+§ Алгоритм deep merge.
+
+### Пример выходного файла `.kilocode/mcp.json`
+
+```json
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "env": { "ROOT_DIR": "/home/user/project" },
+      "alwaysAllow": ["read_file", "list_directory"]
+    },
+    "figma": {
+      "type": "streamable-http",
+      "url": "https://mcp.figma.com/mcp",
+      "headers": { "X-Figma-Region": "us-east-1" }
+    },
+    "asana": {
+      "type": "sse",
+      "url": "https://mcp.asana.com/sse",
+      "headers": { "Authorization": "Bearer ..." }
+    }
+  }
+}
+```
+
+## Инвариант приоритета MCP над Permissions
+
+MCP-транспайлер запускается раньше Permissions-транспайлера в
+pipeline команды `transpile` (см. `docs/specs/cli.md` § Команда
+transpile, шаги 4.5 MCP и 4.6 Permissions). Permission-entries,
+выводимые MCP-транспайлером из `includeTools` / `excludeTools`
+(в `.claude/settings.json` и `opencode.json`), ДОЛЖНЫ сохраняться
+в итоговом файле после записи Permissions-транспайлером.
+
+Для Claude `.claude/settings.json` инвариант обеспечивается union-merge
+для путей `permissions.allow` и `permissions.deny`
+(см. `docs/specs/layer-model.md` § Union-merge для permission-ключей).
+Permissions-транспайлер ТРЕБУЕТСЯ применять deep merge через layer
+model при наличии существующего файла; union-merge для этих путей
+ДОЛЖЕН объединять массивы из обоих слоёв с удалением дубликатов
+без потери элементов.
+
+Для OpenCode `opencode.json` ключ `permission` является объектом
+с плоскими строковыми значениями. Standard deep-merge объектов
+сохраняет ключи из всех слоёв. При совпадении ключа (один и тот же
+`<server>_<tool>`) в MCP-выводе и Permissions-выводе побеждает
+Permissions-вывод (last-writer-wins) -- это намеренное поведение,
+поскольку правила в `.agloom/permissions.yml` представляют явный
+выбор пользователя, а `includeTools` / `excludeTools` в
+`.agloom/mcp.yml` -- декларацию возможностей сервера.
+
+Тестируемый критерий: при наличии канонических файлов `mcp.yml`
+(с `includeTools` / `excludeTools` для сервера `X` и инструмента
+`t`) и `permissions.yml` (с MCP-правилами для других серверов),
+после транспиляции итоговые файлы `.claude/settings.json`
+и `opencode.json` ДОЛЖНЫ содержать entries из обоих источников.
 
 ## Запись результатов
 
@@ -528,7 +1260,8 @@ mcpServers:
 запись всех `files` данного адаптера; включить ошибки
 в `WriteResult.errors`.
 
-4a. Существующий файл по целевому пути содержит невалидный JSON --
+4a. Существующий файл по целевому пути содержит невалидное содержимое
+merge-eligible формата (невалидный JSON, невалидный TOML и т.п.) --
 перезаписать файл целиком (не выполнять merge).
 
 5a. Ошибка записи файла или создания каталога (нет прав, диск полон) --
@@ -566,6 +1299,9 @@ mcpServers:
 | `"claude"`   | `ClaudeMcpAdapter`   |
 | `"opencode"` | `OpenCodeMcpAdapter` |
 | `"agentsmd"` | `null`               |
+| `"codex"`    | `CodexMcpAdapter`    |
+| `"gemini"`   | `GeminiMcpAdapter`   |
+| `"kilocode"` | `KilocodeMcpAdapter` |
 
 Адаптер `"agentsmd"` НЕ имеет MCP-адаптера, поскольку формат
 AGENTS.md не определяет MCP-конфигурацию.
@@ -646,7 +1382,13 @@ MCP-конфигурация плагина участвует в модели �
 (см. `docs/specs/interpolation.md`) ДОЛЖНА выполняться
 при обработке канонического файла. Интерполяция ДОЛЖНА выполняться
 после парсинга и перед передачей в адаптеры -- на уровне
-строковых значений полей `command`, `args`, `env`.
+строковых значений следующих полей каждого сервера:
+
+- `command` (stdio),
+- каждого элемента `args` (stdio),
+- каждого значения в `env` (stdio),
+- `url` (http / sse),
+- каждого значения в `headers` (http / sse).
 
 Синтаксис `${VAR}` без namespace-prefix НЕ ДОЛЖЕН обрабатываться
 Agloom и ДОЛЖЕН передаваться as-is в output. Это позволяет
@@ -659,11 +1401,17 @@ Agloom и ДОЛЖЕН передаваться as-is в output. Это позв
 
 - Agent-scoped MCP (per-agent MCP-конфигурация) --
   только project-level.
-- HTTP/SSE транспорт -- только stdio в MVP.
-- Адаптеры для Codex CLI и Gemini CLI
-  (поля `includeTools`/`excludeTools` сохраняются
-  в каноническом формате для будущих адаптеров).
-- Поля `trust`, `required`, `timeout` -- специфичны
-  для будущих адаптеров.
+- Поля `trust`, `required`, `timeout`, `startup_timeout_sec`,
+  `tool_timeout_sec`, `alwaysAllow` в каноническом формате --
+  остаются platform-specific и не имеют канонического представления
+  (Kilocode `alwaysAllow` заполняется только из canonical
+  `includeTools`).
+- OAuth и сопутствующие поля: `oauth`, `headersHelper` (Claude);
+  `bearer_token_env_var`, `env_http_headers` (Codex);
+  `authProviderType`, `oauth` (Gemini); `timeout`, `disabled`
+  (Kilocode). Интеграция с OAuth не транспилируется.
 - MCP-server discovery (автоматическое обнаружение серверов).
 - Валидация доступности MCP-серверов при транспиляции.
+- Permissions-адаптеры для Codex, Gemini, Kilocode
+  (canonical `.agloom/permissions.yml` для этих агентов -- отдельный
+  цикл).

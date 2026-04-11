@@ -3,31 +3,59 @@
  * Spec: docs/specs/mcp-transpiler.md § OpenCode MCP-адаптер
  *
  * agentId: "opencode"
- * Генерирует файл opencode.json с ключом "mcp".
+ * Генерирует файл opencode.json с ключами $schema, mcp и (опц.) permission.
  */
 
-import { buildBaseServerConfig } from "./shared.js";
+import { buildStdioServerConfig } from "./shared.js";
 import type { McpAdapter, McpCanonicalFile, McpOutputFile } from "../types.js";
+
+const OPENCODE_SCHEMA = "https://opencode.ai/config.json";
 
 export class OpenCodeMcpAdapter implements McpAdapter {
   readonly agentId = "opencode";
 
   transpile(file: McpCanonicalFile): McpOutputFile[] {
-    // Шаг 1: создать объект mcpSection
     const mcpSection: Record<string, unknown> = {};
+    const permissionSection: Record<string, string> = {};
 
-    // Шаг 2: для каждого сервера — Build Base Server Config
     for (const [serverId, serverConfig] of Object.entries(file.content.mcpServers)) {
-      mcpSection[serverId] = buildBaseServerConfig(serverConfig);
+      const transport = serverConfig.type ?? "stdio";
+
+      if (transport === "stdio") {
+        const stdio = buildStdioServerConfig(serverConfig, false);
+        mcpSection[serverId] = { type: "stdio", ...stdio };
+      } else {
+        // http | sse → remote. Headers не поддерживаются OpenCode.
+        if (serverConfig.headers && Object.keys(serverConfig.headers).length > 0) {
+          process.stderr.write(
+            `Warning: OpenCode does not support MCP 'headers' field. Server '${serverId}': headers ignored.\n`,
+          );
+        }
+        mcpSection[serverId] = { type: "remote", url: serverConfig.url };
+      }
+
+      if (serverConfig.includeTools) {
+        for (const tool of serverConfig.includeTools) {
+          permissionSection[`${serverId}_${tool}`] = "allow";
+        }
+      }
+      if (serverConfig.excludeTools) {
+        for (const tool of serverConfig.excludeTools) {
+          permissionSection[`${serverId}_${tool}`] = "deny";
+        }
+      }
     }
 
-    // Шаг 3: сформировать объект output с ключом "mcp"
-    const output = { mcp: mcpSection };
+    const output: Record<string, unknown> = {
+      $schema: OPENCODE_SCHEMA,
+      mcp: mcpSection,
+    };
+    if (Object.keys(permissionSection).length > 0) {
+      output.permission = permissionSection;
+    }
 
-    // Шаг 4: сериализовать JSON с отступом 2 пробела и завершающим переводом строки
     const content = JSON.stringify(output, null, 2) + "\n";
 
-    // Шаг 5: сформировать McpOutputFile
     return [{ relativePath: "opencode.json", content }];
   }
 }

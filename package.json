@@ -1,7 +1,7 @@
 {
   "name": "agloom",
   "version": "0.6.0",
-  "description": "Transpile canonical agent configurations across AI coding assistants (Claude Code, OpenCode, Agents.md, and more)",
+  "description": "Transpile canonical agent configurations across AI coding assistants (Claude Code, Codex, Gemini, OpenCode, and more)",
   "type": "module",
   "packageManager": "pnpm@10.29.1",
   "license": "Apache-2.0",
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/cusxy/agloom.git"
   },
-  "homepage": "https://github.com/cusxy/agloom",
+  "homepage": "https://agloom.sh",
   "bugs": {
     "url": "https://github.com/cusxy/agloom/issues"
   },

@@ -218,7 +218,10 @@ describe("CLI", () => {
       // между "Transpiling for agentsmd" и следующим "Transpiling for" или "Done."
       const agentsmdIdx = output.indexOf("Transpiling for agentsmd");
       const afterAgentsmd = output.slice(agentsmdIdx);
-      const nextSectionIdx = afterAgentsmd.indexOf("Done.", "Transpiling for agentsmd".length);
+      const nextTranspileIdx = afterAgentsmd.indexOf("Transpiling for", "Transpiling for agentsmd".length);
+      const doneIdx = afterAgentsmd.indexOf("Done.", "Transpiling for agentsmd".length);
+      const candidates = [nextTranspileIdx, doneIdx].filter((i) => i > -1);
+      const nextSectionIdx = candidates.length > 0 ? Math.min(...candidates) : afterAgentsmd.length;
       const agentsmdSection = afterAgentsmd.slice(0, nextSectionIdx);
 
       // MCP не должен быть в секции agentsmd
@@ -474,7 +477,8 @@ describe("CLI", () => {
       });
 
       expect(outcome.name).toBe("MCP");
-      expect(outcome.writtenCount).toBe(1);
+      // Claude MCP adapter emits 2 files: .mcp.json + .claude/settings.json
+      expect(outcome.writtenCount).toBe(2);
       expect(outcome.errors).toEqual([]);
     });
   });

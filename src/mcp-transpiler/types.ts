@@ -3,14 +3,23 @@
  * Spec: docs/specs/mcp-transpiler.md
  */
 
+/** Транспорт MCP-сервера. */
+export type McpTransportType = "stdio" | "http" | "sse";
+
 /** Конфигурация MCP-сервера в каноническом файле. */
 export interface McpServerConfig {
-  /** Команда запуска MCP-сервера. */
-  command: string;
-  /** Аргументы команды. */
+  /** Транспорт (default: "stdio"). */
+  type?: McpTransportType;
+  /** Команда запуска MCP-сервера (для stdio). */
+  command?: string;
+  /** Аргументы команды (для stdio). */
   args?: string[];
-  /** Переменные окружения для процесса MCP-сервера. */
+  /** Переменные окружения для процесса MCP-сервера (для stdio). */
   env?: Record<string, string>;
+  /** URL удалённого MCP-сервера (для http / sse). */
+  url?: string;
+  /** HTTP-заголовки при подключении (для http / sse). */
+  headers?: Record<string, string>;
   /** Whitelist инструментов. */
   includeTools?: string[];
   /** Blacklist инструментов. */

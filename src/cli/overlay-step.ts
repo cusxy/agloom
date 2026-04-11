@@ -159,14 +159,68 @@ export function stripOverrideSuffix(filePath: string): string {
 }
 
 /**
+ * Контекст deep merge для активации специальных правил (например, union-merge
+ * для permission-массивов в .claude/settings.json).
+ *
+ * Spec: docs/specs/layer-model.md § Union-merge для permission-ключей
+ */
+export interface DeepMergeContext {
+  /** Относительный путь целевого файла (например, ".claude/settings.json"). */
+  filePath?: string;
+  /** Текущий JSON-path внутри документа, разделённый точками. Внутреннее поле. */
+  jsonPath?: string;
+}
+
+/** Пути, для которых применяется union-merge вместо стандартной замены массивов. */
+const UNION_MERGE_PATHS: Record<string, Set<string>> = {
+  ".claude/settings.json": new Set(["permissions.allow", "permissions.deny"]),
+};
+
+/**
+ * Проверяет, должен ли текущий (filePath, jsonPath) использовать union-merge.
+ */
+function shouldUnionMerge(context: DeepMergeContext | undefined): boolean {
+  if (!context || !context.filePath || !context.jsonPath) return false;
+  const pathsForFile = UNION_MERGE_PATHS[context.filePath];
+  if (!pathsForFile) return false;
+  return pathsForFile.has(context.jsonPath);
+}
+
+/**
+ * Union-merge двух массивов примитивов с сохранением first-occurrence порядка.
+ * Spec: docs/specs/layer-model.md § Алгоритм union-merge для массива
+ */
+function unionMergeArrays(base: unknown[], incoming: unknown[]): unknown[] {
+  const merged: unknown[] = [...base];
+  for (const item of incoming) {
+    if (!merged.some((existing) => existing === item)) {
+      merged.push(item);
+    }
+  }
+  return merged;
+}
+
+/**
  * Рекурсивный deep merge двух объектов.
  * Spec: docs/specs/layer-model.md § Алгоритм deep merge
+ *
+ * @param context Опциональный контекст для активации union-merge на определённых
+ *                JSON-путях конкретных файлов (например, permissions.allow
+ *                в .claude/settings.json).
  */
-export function deepMerge(base: Record<string, unknown>, incoming: Record<string, unknown>): Record<string, unknown> {
+export function deepMerge(
+  base: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+  context?: DeepMergeContext,
+): Record<string, unknown> {
   const result: Record<string, unknown> = { ...base };
 
   for (const key of Object.keys(incoming)) {
     const incomingVal = incoming[key];
+    const childJsonPath = context?.jsonPath ? `${context.jsonPath}.${key}` : key;
+    const childContext: DeepMergeContext | undefined = context
+      ? { filePath: context.filePath, jsonPath: childJsonPath }
+      : undefined;
 
     // Правило 3: null → удалить ключ
     if (incomingVal === null) {
@@ -174,9 +228,14 @@ export function deepMerge(base: Record<string, unknown>, incoming: Record<string
       continue;
     }
 
-    // Правило 2: incoming — массив → полная замена
+    // Правило 2 (+union-merge override): incoming — массив
     if (Array.isArray(incomingVal)) {
-      result[key] = incomingVal;
+      const baseVal = result[key];
+      if (Array.isArray(baseVal) && shouldUnionMerge(childContext)) {
+        result[key] = unionMergeArrays(baseVal, incomingVal);
+      } else {
+        result[key] = incomingVal;
+      }
       continue;
     }
 
@@ -184,8 +243,12 @@ export function deepMerge(base: Record<string, unknown>, incoming: Record<string
     if (isPlainObject(incomingVal)) {
       const baseVal = result[key];
       if (isPlainObject(baseVal)) {
-        // Правило 1: оба объекта → рекурсия
-        result[key] = deepMerge(baseVal as Record<string, unknown>, incomingVal as Record<string, unknown>);
+        // Правило 1: оба объекта → рекурсия с пробросом контекста
+        result[key] = deepMerge(
+          baseVal as Record<string, unknown>,
+          incomingVal as Record<string, unknown>,
+          childContext,
+        );
       } else {
         // Правило 5: base не объект → замена
         result[key] = incomingVal;
@@ -891,12 +954,17 @@ function runMultiLayerOverlay(
           continue;
         }
 
+        const mergeContext: DeepMergeContext = {
+          filePath: targetRelativePath,
+          jsonPath: "",
+        };
+
         const existing = mergeState.get(targetRelativePath);
         if (existing && existing.type === "merged") {
           // Merge with existing mergeState
           mergeState.set(targetRelativePath, {
             type: "merged",
-            data: deepMerge(existing.data, parsed),
+            data: deepMerge(existing.data, parsed, mergeContext),
             ext: fileExt,
           });
         } else {
@@ -916,7 +984,7 @@ function runMultiLayerOverlay(
           }
           mergeState.set(targetRelativePath, {
             type: "merged",
-            data: deepMerge(baseData, parsed),
+            data: deepMerge(baseData, parsed, mergeContext),
             ext: fileExt,
           });
         }

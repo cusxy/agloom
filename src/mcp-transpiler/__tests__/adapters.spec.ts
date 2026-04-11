@@ -44,10 +44,13 @@ describe("ClaudeMcpAdapter", () => {
         }),
       );
 
-      expect(files).toHaveLength(1);
-      expect(files[0].relativePath).toBe(".mcp.json");
+      expect(files).toHaveLength(2);
+      const mcpFile = files.find((f) => f.relativePath === ".mcp.json");
+      expect(mcpFile).toBeDefined();
+      const settingsFile = files.find((f) => f.relativePath === ".claude/settings.json");
+      expect(settingsFile).toBeDefined();
 
-      const parsed = JSON.parse(files[0].content);
+      const parsed = JSON.parse(mcpFile!.content);
       expect(parsed.mcpServers.context7.command).toBe("npx");
       expect(parsed.mcpServers.context7.args).toEqual(["-y", "@upstash/context7-mcp@latest"]);
     });
@@ -199,8 +202,10 @@ describe("ClaudeMcpAdapter", () => {
         }),
       );
 
-      expect(files).toHaveLength(1);
-      const parsed = JSON.parse(files[0].content);
+      expect(files).toHaveLength(2);
+      const mcpFile = files.find((f) => f.relativePath === ".mcp.json");
+      expect(mcpFile).toBeDefined();
+      const parsed = JSON.parse(mcpFile!.content);
       expect(Object.keys(parsed.mcpServers)).toHaveLength(2);
       expect(parsed.mcpServers.context7).toBeDefined();
       expect(parsed.mcpServers.filesystem).toBeDefined();
@@ -212,9 +217,20 @@ describe("ClaudeMcpAdapter", () => {
 
       const files = adapter.transpile(makeCanonicalFile({}));
 
-      expect(files).toHaveLength(1);
-      const parsed = JSON.parse(files[0].content);
+      // Claude always emits both .mcp.json and .claude/settings.json (§ 5.3a)
+      expect(files).toHaveLength(2);
+      const mcpFile = files.find((f) => f.relativePath === ".mcp.json");
+      expect(mcpFile).toBeDefined();
+      const parsed = JSON.parse(mcpFile!.content);
       expect(parsed.mcpServers).toEqual({});
+
+      // Settings file contains only $schema when permissions are empty (§ 5.3a)
+      const settingsFile = files.find((f) => f.relativePath === ".claude/settings.json");
+      expect(settingsFile).toBeDefined();
+      const settings = JSON.parse(settingsFile!.content);
+      expect(settings).toEqual({
+        $schema: "https://json.schemastore.org/claude-code-settings.json",
+      });
     });
 
     // --- Проверка формата: соответствие примеру из спецификации ---
@@ -427,8 +443,10 @@ describe("OpenCodeMcpAdapter", () => {
 
       const parsed = JSON.parse(files[0].content);
       expect(parsed).toEqual({
+        $schema: "https://opencode.ai/config.json",
         mcp: {
           context7: {
+            type: "stdio",
             command: "npx",
             args: ["-y", "@upstash/context7-mcp@latest"],
           },

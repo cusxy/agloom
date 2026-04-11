@@ -402,7 +402,7 @@ describe("McpTranspiler", () => {
         validateCanonicalContent({
           mcpServers: { myserver: { args: ["--port", "8080"] } },
         } as any),
-      ).toThrow("Server 'myserver': 'command' is required and must be a string");
+      ).toThrow("Server 'myserver': 'command' is required for stdio transport and must be a string");
     });
 
     // --- Расширение 3b: command не является строкой ---
@@ -416,7 +416,7 @@ describe("McpTranspiler", () => {
         validateCanonicalContent({
           mcpServers: { myserver: { command: 123 } },
         } as any),
-      ).toThrow("Server 'myserver': 'command' is required and must be a string");
+      ).toThrow("Server 'myserver': 'command' is required for stdio transport and must be a string");
     });
 
     // --- Расширение 3c: args не является массивом строк ---
