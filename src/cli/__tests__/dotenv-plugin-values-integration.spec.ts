@@ -6,9 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import React from "react";
-import { render } from "ink-testing-library";
-import { App } from "../app.js";
+import { runApp } from "./run-app-test-helper.js";
 
 describe("CLI Integration", () => {
   describe("dotenv загружается до разрешения plugin values", () => {
@@ -89,12 +87,10 @@ describe("CLI Integration", () => {
       fs.writeFileSync(path.join(tmpDir, ".env"), `${envKey}=${envValue}\n`);
 
       // --- Act ---
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -162,12 +158,10 @@ describe("CLI Integration", () => {
       // НЕ создаём .env файл
 
       // --- Act ---
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {

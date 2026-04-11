@@ -55,15 +55,17 @@ function isGlobPattern(p: string): boolean {
 }
 
 /**
- * Создаёт файл .agloom/config.yml с указанным списком адаптеров.
+ * Создаёт файл config.yml с указанным списком адаптеров.
  *
  * Spec: docs/specs/init-command.md § Создание конфигурационного файла
+ * Spec: docs/specs/cli-global-flags.md § Семантика команд (init)
  *
- * @param projectRoot — абсолютный путь к корню проекта.
+ * @param resourcesRoot — абсолютный путь к директории ресурсов agloom
+ *   (`<projectRoot>/.agloom` по умолчанию или кастомная от `--agloom-dir`).
  * @param adapterIds — список идентификаторов адаптеров для записи в конфиг.
  */
-export function createConfigFile(projectRoot: string, adapterIds: string[]): void {
-  const configDir = path.join(projectRoot, ".agloom");
+export function createConfigFile(resourcesRoot: string, adapterIds: string[]): void {
+  const configDir = resourcesRoot;
   const configPath = path.join(configDir, "config.yml");
 
   fs.mkdirSync(configDir, { recursive: true });
@@ -83,23 +85,49 @@ ${adapterLines}
  * Процедура Init Overlay Files — импортирует существующие agent-специфичные файлы в overlays/.
  *
  * Spec: docs/specs/init-command.md § Процедура Init Overlay Files
+ * Spec: docs/specs/cli-global-flags.md § Семантика команд (init)
  *
- * @param entry — запись адаптера из реестра.
- * @param projectRoot — абсолютный путь к корню проекта.
- * @param force — перезаписать существующие файлы.
- * @returns Результат выполнения импорта или строка с сообщением об ошибке (расш. 2a, 3a).
+ * Новая сигнатура: `initFiles(entry, projectRoot, resourcesRoot, force)` —
+ * читает agent-файлы из projectRoot, пишет overlays в
+ * `<resourcesRoot>/overlays/<entry.id>/`.
+ *
+ * Legacy-сигнатура: `initFiles(entry, projectRoot, force)` — для обратной
+ * совместимости с существующими тестами. Вычисляет resourcesRoot как
+ * `<projectRoot>/.agloom`.
  */
-export function initFiles(entry: AdapterRegistryEntry, projectRoot: string, force: boolean): InitOutcome | string {
+export function initFiles(
+  entry: AdapterRegistryEntry,
+  projectRoot: string,
+  resourcesRoot: string,
+  force: boolean,
+): InitOutcome | string;
+export function initFiles(entry: AdapterRegistryEntry, projectRoot: string, force: boolean): InitOutcome | string;
+export function initFiles(
+  entry: AdapterRegistryEntry,
+  projectRoot: string,
+  resourcesRootOrForce: string | boolean,
+  maybeForce?: boolean,
+): InitOutcome | string {
+  let resourcesRoot: string;
+  let force: boolean;
+  if (typeof resourcesRootOrForce === "boolean") {
+    resourcesRoot = path.join(projectRoot, ".agloom");
+    force = resourcesRootOrForce;
+  } else {
+    resourcesRoot = resourcesRootOrForce;
+    force = maybeForce ?? false;
+  }
+
   const errors: string[] = [];
   let copiedCount = 0;
 
   // Шаг 1: определить целевую директорию
-  const targetDir = path.join(projectRoot, ".agloom", "overlays", entry.id);
+  const targetDir = path.join(resourcesRoot, "overlays", entry.id);
 
   // Шаг 2: проверить, что целевая директория не содержит файлов
   // Расширение 2a: целевая директория содержит файлы, --force не указан
   if (!force && hasFiles(targetDir)) {
-    return `.agloom/overlays/${entry.id}/ already exists. Use --force to overwrite.`;
+    return `${resourcesRoot}/overlays/${entry.id}/ already exists. Use --force to overwrite.`;
   }
   // Расширение 2b: --force указан → пропустить проверку
 

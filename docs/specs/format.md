@@ -10,6 +10,7 @@ status: implemented
 relates:
   - docs/specs/cli.md
   - docs/specs/config.md
+  - docs/specs/cli-global-flags.md
 maps_to:
   - packages/markdown-tools/
   - src/cli/
@@ -360,8 +361,10 @@ POSIX-поведения («ноль или более директорий»). 
 
 1. Распарсить аргументы `--check`, `--all` и `<file|glob>...`
    из командной строки.
-2. Определить `projectRoot` как текущий рабочий каталог процесса
-   (`process.cwd()`).
+2. Получить `paths` (ResolvedPaths) и `rawConfig` от front-end
+   пайплайна (см. `docs/specs/cli-global-flags.md` § Процедура Run CLI).
+   Определить `projectRoot` как `paths.writeRoot`, `resourcesRoot`
+   как `paths.resourcesRoot`.
 3. Определить список glob-паттернов:
    - Если указан `--all` — массив `["**/*.{md,mdx,json,yaml,yml,toml}"]`.
    - Если указаны `<file|glob>...` — массив из всех позиционных
@@ -370,10 +373,21 @@ POSIX-поведения («ноль или более директорий»). 
      по умолчанию (см. § Целевые файлы по умолчанию).
 4. Нормализовать glob-паттерны (см. § Нормализация glob-паттернов).
    Раскрыть нормализованные паттерны относительно `projectRoot`,
-   получив список абсолютных путей к файлам.
-5. Прочитать конфигурационный файл `.agloom/config.yml`: распарсить
-   YAML, извлечь поля `prettier` и `markdownlint` (или `{}` если
-   поля отсутствуют или файл не существует).
+   получив список абсолютных путей к файлам. Дефолтный паттерн
+   `.agloom/**/*.{md,mdx,json,yaml,yml,toml}` раскрывается
+   относительно `resourcesRoot` (а не `<projectRoot>/.agloom`),
+   что позволяет форматировать ресурсы из кастомной директории,
+   переданной через `--agloom-dir`.
+5. Извлечь секции `prettier` и `markdownlint` из `rawConfig`,
+   полученного от front-end пайплайна. Если `rawConfig.kind === "missing"` —
+   использовать `prettierOverrides: {}` и `markdownlintOverrides: {}`.
+   Иначе — прочитать поля `prettier` и `markdownlint` из
+   `rawConfig.value` напрямую (при отсутствии каждого из полей
+   использовать `{}`). Повторный вызов Read Config Source ЗАПРЕЩЕН —
+   `rawConfig` уже содержит сырой парсированный YAML-объект,
+   полученный один раз в Run CLI. Секции `prettier` и `markdownlint`
+   целенаправленно извлекаются из сырого объекта без валидации
+   адаптеров (Load Config их игнорирует).
 6. Создать экземпляр `MarkdownTools` вызовом
    `createMarkdownTools({ projectRoot, prettierOverrides, markdownlintOverrides })`.
 7. Если `--check` указан: вызвать `tools.check(filePaths)`.
@@ -392,11 +406,16 @@ POSIX-поведения («ноль или более директорий»). 
 4a. Ни один файл не соответствует glob-паттернам → отобразить
 `"No files found."`, завершить с exit code 0.
 
-5a. Файл `.agloom/config.yml` не существует → использовать
-`prettierOverrides: {}`, `markdownlintOverrides: {}`.
+5a. `rawConfig.kind === "missing"` (дефолтный путь без явного
+`--config`, файл не существует) → использовать `prettierOverrides: {}`,
+`markdownlintOverrides: {}`. При явном `--config` несуществующий файл
+уже отсеян пайплайном валидации (см. `docs/specs/cli-global-flags.md`
+§ Процедура Resolve Global Flags, расширение 7a).
 
-5b. Файл `.agloom/config.yml` содержит невалидный YAML → отобразить
-сообщение об ошибке парсинга; exit code 1.
+Ошибки парсинга YAML (невалидный YAML или сырой результат не является
+объектом) поймались на этапе Run CLI (см. `docs/specs/cli-global-flags.md`
+§ Процедура Run CLI, расширение 2a через ошибки Read Config Source
+или Load Config) и завершили процесс до вызова команды `format`.
 
 ## TUI-отображение
 
@@ -499,6 +518,26 @@ Options:
 Список известных команд для проверки неизвестной команды
 (см. `docs/specs/cli.md` § Неизвестная команда) ДОЛЖЕН
 включать `format`.
+
+## Глобальные флаги
+
+Команда `format` поддерживает три глобальных флага
+(см. `docs/specs/cli-global-flags.md` § Флаги):
+
+- `--project-dir <path>` — база для разрешения относительных путей
+  в позиционных аргументах `<file|glob>...` и для glob discovery.
+  Также используется `.gitignore` из `<project-dir>/.gitignore`
+  (см. § Целевые файлы по умолчанию).
+- `--agloom-dir <path>` — база для дефолтного паттерна
+  `.agloom/**/*.{md,mdx,json,yaml,yml,toml}`. При кастомном
+  `--agloom-dir` команда форматирует файлы кастомной директории,
+  а не `<project-dir>/.agloom`.
+- `--config <path|->` — источник секций `prettier` и `markdownlint`
+  (см. § Расширение конфигурационного файла). Загрузка содержимого
+  выполняется из `configSource` через процедуру Load Config.
+  Значение используется семантически: при явном `--config` команда
+  применяет секции `prettier` и `markdownlint` из переданного файла
+  или stdin.
 
 ## Вне scope
 

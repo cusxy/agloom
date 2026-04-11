@@ -10,6 +10,7 @@ relates:
   - docs/specs/adapter-registry-ext.md
   - docs/specs/provider-overlay.md
   - docs/specs/config.md
+  - docs/specs/cli-global-flags.md
 maps_to:
   - src/cli/
 ---
@@ -53,13 +54,17 @@ maps_to:
 **Вход:**
 
 - `entry` (AdapterRegistryEntry, обязательно) — запись адаптера из реестра.
-- `projectRoot` (string, обязательно) — абсолютный путь к корню проекта.
+- `projectRoot` (string, обязательно) — абсолютный путь к корню проекта
+  (writeRoot); используется как база для относительных путей из
+  `entry.overlayImportPaths`.
+- `resourcesRoot` (string, обязательно) — абсолютный путь к директории
+  ресурсов agloom; используется как база для записи overlay-файлов.
 - `force` (boolean, обязательно) — перезаписать существующие файлы.
 
 **Поведение:**
 
 1. Определить целевую директорию как
-   `<projectRoot>/.agloom/overlays/<entry.id>/`.
+   `<resourcesRoot>/overlays/<entry.id>/`.
 2. Проверить, что целевая директория не содержит файлов.
 3. Создать целевую директорию и промежуточные каталоги
    при необходимости.
@@ -84,7 +89,7 @@ maps_to:
 
 2a. Целевая директория уже существует и содержит файлы,
 `force` равен `false` → вернуть строку-сообщение
-`".agloom/overlays/{entry.id}/ already exists. Use --force to overwrite."`.
+`"{resourcesRoot}/overlays/{entry.id}/ already exists. Use --force to overwrite."`.
 
 2b. `force` равен `true` → пропустить проверку,
 перезаписать существующие файлы при копировании.
@@ -140,19 +145,36 @@ maps_to:
 1. Распарсить аргументы из командной строки: значения всех вхождений
    `--adapter` накопить в массив `adapterIds` в порядке появления;
    распарсить булевы флаги `--all`, `--force` и `--verbose`.
-2. Определить `projectRoot` как текущий рабочий каталог процесса
-   (`process.cwd()`).
+2. Получить `paths` (ResolvedPaths) и `loadedConfig` (LoadConfigResult)
+   от front-end пайплайна (см. `docs/specs/cli-global-flags.md`
+   § Процедура Run CLI). Определить `projectRoot` как `paths.writeRoot`,
+   `resourcesRoot` как `paths.resourcesRoot`.
 3. Выполнить процедуру Resolve Adapters from CLI Args
    (см. `docs/specs/config.md`
    § Процедура Resolve Adapters from CLI Args)
-   с `adapterIds`, `all`, `projectRoot`, `"init"`.
-4. Проверить наличие директории `.agloom/` в `projectRoot`.
+   с `adapterIds`, `all`, `loadedConfig`, `"init"`. Содержимое
+   `loadedConfig` семантически init не использует (команда создаёт
+   новый конфиг), но передача нужна для унифицированного вызова
+   процедуры.
+4. Проверить, что `resourcesRoot` не является уже инициализированной
+   директорией agloom. Директория считается инициализированной, если
+   выполнено хотя бы одно из условий:
+   - существует обычный файл `<resourcesRoot>/config.yml`;
+   - существует директория `<resourcesRoot>/overlays/`, содержащая
+     хотя бы один элемент.
+     Сам `resourcesRoot` МОЖЕТ отсутствовать на файловой системе
+     или существовать, но быть пустым, или содержать произвольные
+     файлы, не связанные с agloom — это НЕ считается инициализацией.
 5. Если указан `--adapter` или `--all`: создать файл
-   `.agloom/config.yml` (см. § Создание конфигурационного файла).
+   `<resourcesRoot>/config.yml` (см. § Создание конфигурационного файла).
+   Если директория `resourcesRoot` не существует — создать её
+   вместе с промежуточными каталогами.
 6. Для каждой записи из списка, полученного на шаге 3,
    выполнить процедуру Init Overlay Files
-   (см. § Процедура Init Overlay Files) с `entry`, `projectRoot`
-   и `force`.
+   (см. § Процедура Init Overlay Files) с `entry`, `projectRoot`,
+   `resourcesRoot` и `force`. Процедура ТРЕБУЕТСЯ читать существующие
+   agent-файлы проекта из `projectRoot` (базы для `overlayImportPaths`),
+   а записывать overlay в `<resourcesRoot>/overlays/<entry.id>/`.
 7. Отобразить результат в TUI (см. § Вывод).
 8. Завершить процесс с exit code (см. § Exit codes).
 
@@ -163,14 +185,26 @@ maps_to:
 3a. Resolve Adapters from CLI Args вернул ошибку → отобразить
 сообщение ошибки; exit code 1.
 
-4a. Директория `.agloom/` существует и `--force` не указан →
-отобразить сообщение
-`".agloom/ already exists. Use --force to reinitialize."`;
+4a. `resourcesRoot` считается инициализированной (существует
+`<resourcesRoot>/config.yml` ИЛИ непустая `<resourcesRoot>/overlays/`),
+и `--force` не указан → отобразить сообщение
+`"{resourcesRoot} already initialized. Use --force to reinitialize."`;
 exit code 1. Последующие шаги не выполняются.
 
 4b. `--force` указан → пропустить проверку, продолжить с шага 5.
 
-5a. Ошибка записи `.agloom/config.yml` → отобразить сообщение
+4c. `resourcesRoot` существует, но не содержит признаков инициализации
+agloom (нет `config.yml`, нет непустой `overlays/`) → продолжить с шага 5.
+Сценарий типичен для workflow
+`mkdir -p /new/.agloom && agloom init --agloom-dir /new/.agloom`.
+
+4d. `resourcesRoot` не существует на файловой системе → продолжить
+с шага 5; директория будет создана на шаге 5. Данное расширение
+достижимо только при дефолтном `--agloom-dir` (из каскада), поскольку
+явный `--agloom-dir` уже отсеивается пайплайном Resolve Global Flags,
+если указанная директория не существует.
+
+5a. Ошибка записи `<resourcesRoot>/config.yml` → отобразить сообщение
 ошибки; exit code 1.
 
 6a. Процедура Init Overlay Files для одной из записей
@@ -298,6 +332,52 @@ Options:
   --force                Overwrite existing files
   --verbose              Show all steps including 0-file ones
 ```
+
+## Глобальные флаги
+
+Команда `init` поддерживает три глобальных флага
+(см. `docs/specs/cli-global-flags.md` § Флаги):
+
+- `--project-dir <path>` — база для чтения существующих agent-файлов
+  проекта (`overlayImportPaths` адаптеров) и корень, куда транспиляция
+  впоследствии будет писать выходные файлы.
+- `--agloom-dir <path>` — директория, в которой `init` создаёт новый
+  `<resourcesRoot>/config.yml` и `<resourcesRoot>/overlays/<agentId>/`.
+  При отсутствии флага значение каскадируется из `--project-dir`
+  и даёт `<project-dir>/.agloom`.
+- `--config <path|->` — принимается пайплайном и валидируется
+  на существование согласно правилам
+  `docs/specs/cli-global-flags.md` § Правила существования путей,
+  но семантически `init` **не использует** содержимое загруженного
+  конфига. Команда создаёт новый конфиг в `<resourcesRoot>/config.yml`
+  по собственной логике (см. § Создание конфигурационного файла),
+  а не копирует содержимое `--config`. Это сознательное no-op
+  поведение, документированное как часть модели пайплайна
+  (см. `docs/specs/cli-global-flags.md` § Семантика команд).
+
+### Известная регрессия eager-загрузки
+
+Front-end пайплайн эагерно загружает конфиг в Run CLI
+(см. `docs/specs/cli-global-flags.md` § Процедура Run CLI, шаг 2).
+Следствие: если дефолтный `<resourcesRoot>/config.yml` существует,
+но содержит невалидный YAML или невалидное содержимое (неизвестный
+адаптер, пустой массив `adapters` и т.п.), команда
+`agloom init --adapter claude` завершается с ошибкой Load Config
+на этапе Run CLI — до выполнения шагов самой команды init.
+Это происходит, несмотря на то что init с `--adapter` создаёт новый
+конфиг и семантически не нуждается в содержимом старого.
+
+Данное поведение — сознательная регрессия, следующая из правила
+единого пайплайна (см. `docs/specs/cli-global-flags.md`
+§ Известные регрессии eager-загрузки). Обход для типичного workflow
+«чинить сломанный проект» — использовать `--config -` с пустым stdin:
+
+```text
+echo -n | agloom init --adapter claude --config -
+```
+
+Это даёт Run CLI валидный пустой `loadedConfig`, не затрагивая
+сломанный файл на диске.
 
 ## Вне scope
 

@@ -5,15 +5,13 @@
  * Spec: docs/specs/config.md § Процедура Resolve Adapters from CLI Args
  */
 
-import * as fs from "node:fs";
-import * as path from "node:path";
-import yaml from "js-yaml";
 import { adapterRegistry } from "./adapter-registry.js";
 import { resolveAdapter } from "./resolve-adapter.js";
 import { resolveDeps } from "./resolve-deps.js";
 import { parsePluginEntry } from "./resolve-plugins.js";
 import type { ParsedPluginEntry } from "./resolve-plugins.js";
 import type { AdapterRegistryEntry } from "./types.js";
+import type { RawConfig } from "./read-config-source.js";
 
 /** Результат загрузки конфигурационного файла. */
 export interface LoadConfigResult {
@@ -33,55 +31,42 @@ export interface LoadConfigResult {
 }
 
 /**
- * Процедура Load Config — загрузка и валидация конфигурационного файла.
+ * Пустой результат Load Config (все поля null). Используется когда
+ * rawConfig.kind === "missing".
+ */
+const EMPTY_LOAD_CONFIG_RESULT: LoadConfigResult = {
+  adapterIds: null,
+  pluginPaths: null,
+  pluginEntries: null,
+  configVariables: null,
+};
+
+/**
+ * Процедура Load Config — валидация и извлечение структурированных полей
+ * из сырого YAML-объекта конфига. Собственный I/O не выполняет; принимает
+ * готовый результат Read Config Source.
  *
  * Spec: docs/specs/config.md § Процедура Load Config
  * Spec: docs/specs/plugin-loading.md § Расширение процедуры Load Config
- *
- * @param projectRoot — абсолютный путь к корню проекта.
- * @returns Объект с adapterIds и pluginPaths, или null если файл не существует.
- * @throws Error при невалидном YAML, отсутствующем/невалидном поле adapters,
- *   неизвестном или скрытом адаптере, невалидном поле plugins.
  */
-export function loadConfig(projectRoot: string): LoadConfigResult | null {
-  const configPath = path.join(projectRoot, ".agloom", "config.yml");
-
-  // Шаг 1: Попытаться прочитать файл
-  // Расширение 1a: Файл не существует → вернуть null
-  if (!fs.existsSync(configPath)) {
-    return null;
+export function loadConfig(rawConfig: RawConfig): LoadConfigResult {
+  if (rawConfig.kind === "missing") {
+    return { ...EMPTY_LOAD_CONFIG_RESULT };
   }
+  return validateRawConfig(rawConfig.value);
+}
 
-  const content = fs.readFileSync(configPath, "utf-8");
-
-  // Шаг 2: Распарсить содержимое файла как YAML
-  // Расширение 2a: Невалидный YAML
-  let parsed: unknown;
-  try {
-    parsed = yaml.load(content);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Invalid config file: ${message}`);
-  }
-
-  // Нормализовать парсинг: пустой файл/null → пустой объект
-  if (parsed === null || parsed === undefined) {
-    parsed = {};
-  }
-  if (typeof parsed !== "object") {
-    throw new Error("Invalid config: 'adapters' must be an array of strings.");
-  }
-
-  const config = parsed as Record<string, unknown>;
-
+/**
+ * Внутренняя функция: применяет Load Config валидацию к уже распарсенному
+ * YAML-объекту. Идентична поведению предыдущей версии loadConfig, шаги 2-9.
+ */
+function validateRawConfig(config: Record<string, unknown>): LoadConfigResult {
   // Шаг 3: Проверить наличие и формат поля adapters (опционально)
-  // Spec: docs/specs/config.md § Формат файла — поле adapters МОЖЕТ отсутствовать.
   let adapterIdsResult: string[] | null = null;
 
   if ("adapters" in config) {
     const adapters = config.adapters;
 
-    // Расширение 3a: adapters не является массивом или содержит нестроковые элементы
     if (!Array.isArray(adapters)) {
       throw new Error("Invalid config: 'adapters' must be an array of strings.");
     }
@@ -90,21 +75,17 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
       throw new Error("Invalid config: 'adapters' must be an array of strings.");
     }
 
-    // Расширение 3b: Массив adapters пуст
     if (adapters.length === 0) {
       throw new Error("Invalid config: 'adapters' must not be empty.");
     }
 
-    // Шаг 4: Для каждого элемента проверить наличие в реестре и скрытость
     for (const id of adapters) {
       const entry = adapterRegistry.find((e) => e.id === id);
 
-      // Расширение 4a: Неизвестный адаптер
       if (!entry) {
         throw new Error(`Invalid config: unknown adapter '${id}'.`);
       }
 
-      // Расширение 4b: Скрытый адаптер
       if (entry.hidden) {
         throw new Error(`Invalid config: adapter '${id}' cannot be specified in config.`);
       }
@@ -113,31 +94,25 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
     adapterIdsResult = adapters as string[];
   }
 
-  // Шаг 5: проверить наличие поля plugins
-  // Расширение 5a: поле plugins отсутствует → pluginPaths = null
+  // Шаг 5-6: обработка plugins
   let pluginPaths: string[] | null = null;
   let pluginEntries: ParsedPluginEntry[] | null = null;
 
   if ("plugins" in config) {
     const plugins = config.plugins;
 
-    // Шаг 6 (git-plugin-loading): проверить, что plugins является массивом
-    // Каждый элемент может быть строкой, объектом LocalPluginEntry или GitPluginEntry
     if (!Array.isArray(plugins)) {
       throw new Error("Invalid config: 'plugins' must be an array of strings.");
     }
 
-    // Шаг 6.1: Parse Plugin Entry для каждого элемента
     const entries: ParsedPluginEntry[] = [];
     const paths: string[] = [];
 
     for (const item of plugins) {
-      // Backward compatibility: non-string/non-object → old error message
       if (typeof item !== "string" && (typeof item !== "object" || item === null)) {
         throw new Error("Invalid config: 'plugins' must be an array of strings.");
       }
 
-      // Шаг 6.3: валидация values в объектных форматах
       if (typeof item === "object" && item !== null && !Array.isArray(item)) {
         const obj = item as Record<string, unknown>;
         if ("values" in obj) {
@@ -153,36 +128,31 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
         }
       }
 
-      // Расширение 6.1a: Parse Plugin Entry вернул ошибку → пробросить
-      const parsed = parsePluginEntry(item);
-      entries.push(parsed);
+      const parsedEntry = parsePluginEntry(item);
+      entries.push(parsedEntry);
 
-      if (parsed.type === "local") {
-        paths.push(parsed.path!);
+      if (parsedEntry.type === "local") {
+        paths.push(parsedEntry.path!);
       }
 
-      // Шаг 6.2: валидация git-специфичных полей
-      if (parsed.type === "git") {
-        // Шаг 6.2.1: проверить URL
-        const url = parsed.url ?? "";
+      if (parsedEntry.type === "git") {
+        const url = parsedEntry.url ?? "";
         const isHttps = url.startsWith("https://");
         const isSsh = url.startsWith("ssh://") || /^git@[^:]+:/.test(url);
         if (!isHttps && !isSsh) {
           throw new Error("Invalid config: plugin entry 'git' must be an HTTPS or SSH git URL.");
         }
 
-        // Шаг 6.2.2: проверить ref (опционально — null допустим)
-        if (parsed.ref != null && (typeof parsed.ref !== "string" || parsed.ref === "")) {
+        if (parsedEntry.ref != null && (typeof parsedEntry.ref !== "string" || parsedEntry.ref === "")) {
           throw new Error("Invalid config: plugin entry 'ref' must be a non-empty string or absent.");
         }
 
-        // Шаг 6.2.3: проверить path
-        if (parsed.path != null) {
+        if (parsedEntry.path != null) {
           if (
-            typeof parsed.path !== "string" ||
-            parsed.path === "" ||
-            parsed.path.startsWith("/") ||
-            parsed.path.includes("..")
+            typeof parsedEntry.path !== "string" ||
+            parsedEntry.path === "" ||
+            parsedEntry.path.startsWith("/") ||
+            parsedEntry.path.includes("..")
           ) {
             throw new Error("Invalid config: plugin entry 'path' must be a relative path without '..' components.");
           }
@@ -192,8 +162,6 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
 
     pluginEntries = entries;
 
-    // Backward compatibility: if all entries are local strings, also populate pluginPaths
-    // for old-style callers
     if (entries.every((e) => e.type === "local")) {
       pluginPaths = entries.map((e) => e.path!);
     } else {
@@ -201,13 +169,12 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
     }
   }
 
-  // Шаг 7-9: обработка variables
+  // Шаг 7-9: variables
   let configVariables: Record<string, import("./plugin-manifest.js").VariableDeclaration> | null = null;
 
   if ("variables" in config) {
     const rawVariables = config.variables;
 
-    // Шаг 8: проверить, что variables — объект
     if (typeof rawVariables !== "object" || rawVariables === null || Array.isArray(rawVariables)) {
       throw new Error("Invalid config: 'variables' must be an object.");
     }
@@ -215,7 +182,6 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
     configVariables = {};
 
     for (const [key, value] of Object.entries(rawVariables as Record<string, unknown>)) {
-      // Шаг 9.1: строка → нормализовать
       if (typeof value === "string") {
         configVariables[key] = {
           description: "",
@@ -226,14 +192,12 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
         continue;
       }
 
-      // Шаг 9.2: объект → валидировать поля
       if (typeof value !== "object" || value === null || Array.isArray(value)) {
         throw new Error(`Invalid config: variable '${key}' must be a string or an object.`);
       }
 
       const varObj = value as Record<string, unknown>;
 
-      // 9.2.1: description
       let description = "";
       if (varObj.description != null) {
         if (typeof varObj.description !== "string") {
@@ -242,7 +206,6 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
         description = varObj.description;
       }
 
-      // 9.2.2: required
       let required = false;
       if (varObj.required != null) {
         if (typeof varObj.required !== "boolean") {
@@ -251,7 +214,6 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
         required = varObj.required;
       }
 
-      // 9.2.3: default
       let defaultValue: string | null = null;
       if (varObj.default != null) {
         if (typeof varObj.default !== "string") {
@@ -260,7 +222,6 @@ export function loadConfig(projectRoot: string): LoadConfigResult | null {
         defaultValue = varObj.default;
       }
 
-      // 9.2.4: sensitive
       let sensitive = false;
       if (varObj.sensitive != null) {
         if (typeof varObj.sensitive !== "boolean") {
@@ -311,29 +272,32 @@ export function resolveAdaptersFromConfig(adapterIds: string[]): AdapterRegistry
 }
 
 /**
- * Процедура Resolve Adapters from CLI Args — общая процедура разрешения
- * списка адаптеров из аргументов командной строки.
+ * Опции для Resolve Adapters from CLI Args.
  *
- * @param options — аргументы CLI.
- * @returns Упорядоченный список записей адаптеров.
- * @throws Error при взаимоисключающих аргументах, неизвестном/скрытом адаптере,
- *   отсутствии конфига или невалидном конфиге.
+ * Spec: docs/specs/config.md § Процедура Resolve Adapters from CLI Args
  */
-export function resolveAdaptersFromCLIArgs(options: {
+export interface ResolveAdaptersFromCLIArgsOptions {
   adapterIds: string[];
   all: boolean;
-  projectRoot: string;
   command: string;
-}): AdapterRegistryEntry[] {
-  const { adapterIds, all, projectRoot, command } = options;
+  /** Готовый результат Load Config (produced by runCLI). */
+  loadedConfig: LoadConfigResult | null;
+}
 
-  // Расширение 1a: adapterIds и all указаны одновременно
+/**
+ * Процедура Resolve Adapters from CLI Args.
+ *
+ * Spec: docs/specs/config.md § Процедура Resolve Adapters from CLI Args
+ */
+export function resolveAdaptersFromCLIArgs(options: ResolveAdaptersFromCLIArgsOptions): AdapterRegistryEntry[] {
+  const { adapterIds, all, command, loadedConfig } = options;
+
+  // Расширение 1a
   if (adapterIds.length > 0 && all) {
     throw new Error("--adapter and --all are mutually exclusive.");
   }
 
-  // Шаг 2: adapterIds непустой → дедуплицировать с сохранением порядка,
-  // валидировать каждый id через Resolve Adapter, затем разрешить зависимости.
+  // Шаг 2: adapterIds непустой
   if (adapterIds.length > 0) {
     const seen = new Set<string>();
     const deduped: string[] = [];
@@ -344,7 +308,6 @@ export function resolveAdaptersFromCLIArgs(options: {
       }
     }
 
-    // Расширение 2a: Resolve Adapter вернул ошибку (пробрасывается)
     for (const id of deduped) {
       resolveAdapter(id);
     }
@@ -352,22 +315,18 @@ export function resolveAdaptersFromCLIArgs(options: {
     return resolveAdaptersFromConfig(deduped);
   }
 
-  // Шаг 3: all === true → все записи реестра в порядке определения
+  // Шаг 3: --all
   if (all) {
     return [...adapterRegistry];
   }
 
-  // Шаг 4: Load Config
-  const configResult = loadConfig(projectRoot);
-
-  // Расширение 5a: Load Config вернул null или результат с adapterIds === null
-  if (configResult === null || configResult.adapterIds === null) {
+  // Шаг 4-5: use the precomputed loadedConfig from runCLI.
+  if (loadedConfig === null || loadedConfig.adapterIds === null) {
     if (command === "init") {
       throw new Error("No adapters specified. Use --adapter <id> or --all to specify adapters.");
     }
     throw new Error("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.");
   }
 
-  // Шаг 5: Resolve Adapters from Config
-  return resolveAdaptersFromConfig(configResult.adapterIds);
+  return resolveAdaptersFromConfig(loadedConfig.adapterIds);
 }

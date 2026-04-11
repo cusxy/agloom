@@ -2,12 +2,10 @@
 // Спецификация: docs/specs/format.md § Команда format, § Расширение --help
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import React from "react";
-import { render } from "ink-testing-library";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { App } from "../app.js";
+import { runApp } from "./run-app-test-helper.js";
 
 describe("CLI", () => {
   describe("Команда format", () => {
@@ -31,8 +29,8 @@ describe("CLI", () => {
     // Spec: format.md § Расширение --help:
     // Usage: agloom format [--check] [--all] [<file|glob>...]
     // Options должны включать --all
-    it("format --help отображает usage с --all и <file|glob>...", () => {
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["format", "--help"] }));
+    it("format --help отображает usage с --all и <file|glob>...", async () => {
+      const { lastFrame, unmount } = await runApp({ args: ["format", "--help"] });
 
       const output = lastFrame()!;
 
@@ -53,12 +51,10 @@ describe("CLI", () => {
     // Spec: format.md § Расширения, 1a:
     // "Указаны одновременно --all и <file|glob>... -> отобразить
     // "Cannot use --all with file arguments."; exit code 1."
-    it("при указании --all и файловых аргументов одновременно отображает ошибку и exit code 1", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["format", "--all", "src/**/*.md"],
-        }),
-      );
+    it("при указании --all и файловых аргументов одновременно отображает ошибку и exit code 1", async () => {
+      const { lastFrame, unmount } = await runApp({
+        args: ["format", "--all", "src/**/*.md"],
+      });
 
       const output = lastFrame()!;
 
@@ -76,12 +72,10 @@ describe("CLI", () => {
     it("format --all без файлов отображает 'No files found.'", async () => {
       // projectRoot указывает на несуществующую директорию —
       // glob не найдёт файлы.
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["format", "--all"],
-          projectRoot: "/tmp/agloom-test-nonexistent-dir",
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["format", "--all"],
+        projectRoot: "/tmp/agloom-test-nonexistent-dir",
+      });
 
       // FormatView асинхронный — ждём завершения
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -100,12 +94,10 @@ describe("CLI", () => {
     // Этот тест проверяет, что ВСЕ позиционные аргументы корректно
     // обрабатываются: не вызывают ошибок "Unknown command" и не игнорируются.
     it("format с несколькими позиционными аргументами не отображает ошибку неизвестной команды", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["format", "*.md", "*.yaml", "*.json"],
-          projectRoot: "/tmp/agloom-test-nonexistent-dir",
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["format", "*.md", "*.yaml", "*.json"],
+        projectRoot: "/tmp/agloom-test-nonexistent-dir",
+      });
 
       // FormatView асинхронный — ждём завершения
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -150,12 +142,10 @@ describe("CLI", () => {
         const mdFile = path.join(agloomDir, "doc.md");
         fs.writeFileSync(mdFile, "# First Title\n\nContent here.\n\n# Second Title\n\nMore content here.\n");
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["format"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["format"],
+          projectRoot: tmpDir,
+        });
 
         // Ждём завершения асинхронного FormatView
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -180,12 +170,10 @@ describe("CLI", () => {
         const mdFile = path.join(agloomDir, "clean.md");
         fs.writeFileSync(mdFile, "# Only Title\n\nJust text.\n");
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["format"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["format"],
+          projectRoot: tmpDir,
+        });
 
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -220,12 +208,10 @@ describe("CLI", () => {
         const badJson = path.join(agloomDir, "bad.json");
         fs.writeFileSync(badJson, "{{{invalid json!!!}}}");
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["format"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["format"],
+          projectRoot: tmpDir,
+        });
 
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -253,12 +239,10 @@ describe("CLI", () => {
         const badJson = path.join(agloomDir, "bad.json");
         fs.writeFileSync(badJson, "{{{invalid json!!!}}}");
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["format"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["format"],
+          projectRoot: tmpDir,
+        });
 
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -276,12 +260,10 @@ describe("CLI", () => {
 
     // --- § Расширение 1a: --all и несколько файловых аргументов ---
     // Граничное условие: --all с несколькими позиционными аргументами
-    it("при указании --all и нескольких файловых аргументов отображает ошибку", () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["format", "--all", "file1.md", "file2.yaml"],
-        }),
-      );
+    it("при указании --all и нескольких файловых аргументов отображает ошибку", async () => {
+      const { lastFrame, unmount } = await runApp({
+        args: ["format", "--all", "file1.md", "file2.yaml"],
+      });
 
       const output = lastFrame()!;
 

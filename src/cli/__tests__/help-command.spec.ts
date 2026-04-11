@@ -6,9 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import React from "react";
-import { render } from "ink-testing-library";
-import { App } from "../app.js";
+import { runApp } from "./run-app-test-helper.js";
 
 /**
  * Вспомогательная функция: создаёт Markdown-файл с frontmatter.
@@ -73,7 +71,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Поведение шаги 1-8
     // =====================================================================
 
-    it("без аргумента topic отображает категоризированный список topics с секциями Guide и Reference", () => {
+    it("без аргумента topic отображает категоризированный список topics с секциями Guide и Reference", async () => {
       // Arrange: создать файлы в docs/guide/ и docs/reference/
       createDocFile(guideDir, "getting-started.md", {
         title: "Getting Started",
@@ -90,7 +88,7 @@ describe("CLI", () => {
         description: "Complete CLI reference",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -127,7 +125,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Поведение шаг 7
     // =====================================================================
 
-    it("отображает topics внутри категории в порядке doubly-linked list (prev/next)", () => {
+    it("отображает topics внутри категории в порядке doubly-linked list (prev/next)", async () => {
       createDocFile(guideDir, "advanced.md", {
         title: "Advanced",
         description: "Advanced usage",
@@ -145,7 +143,7 @@ describe("CLI", () => {
         next: "advanced",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -168,7 +166,7 @@ describe("CLI", () => {
     // § help-command.md § Вывод списка topics: категории в порядке DocCategory.order
     // =====================================================================
 
-    it("отображает категории в порядке Guide → Reference", () => {
+    it("отображает категории в порядке Guide → Reference", async () => {
       createDocFile(guideDir, "intro.md", {
         title: "Intro",
         description: "Introduction",
@@ -178,7 +176,7 @@ describe("CLI", () => {
         description: "API reference",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -197,7 +195,7 @@ describe("CLI", () => {
     // § help-command.md § Вывод списка topics: правила форматирования
     // =====================================================================
 
-    it("выравнивает колонку name по самому длинному name среди всех категорий", () => {
+    it("выравнивает колонку name по самому длинному name среди всех категорий", async () => {
       // guide/getting-started — длинное имя (24 символа)
       createDocFile(guideDir, "getting-started.md", {
         title: "Getting Started",
@@ -209,7 +207,7 @@ describe("CLI", () => {
         description: "Desc B",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
       const lines = output.split("\n");
@@ -237,7 +235,7 @@ describe("CLI", () => {
     //   НЕ ДОЛЖНА отображаться
     // =====================================================================
 
-    it("не отображает категорию, если она не содержит topics", () => {
+    it("не отображает категорию, если она не содержит topics", async () => {
       // Только guide, reference пустой (не создаём)
       createDocFile(guideDir, "intro.md", {
         title: "Intro",
@@ -245,7 +243,7 @@ describe("CLI", () => {
       });
       // reference директорию не создаём
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -261,18 +259,16 @@ describe("CLI", () => {
     // § help-command.md § Разрешение имени topic § Поведение шаг 1
     // =====================================================================
 
-    it("при указании topic с префиксом (guide/getting-started) рендерит содержимое без frontmatter", () => {
+    it("при указании topic с префиксом (guide/getting-started) рендерит содержимое без frontmatter", async () => {
       createDocFile(guideDir, "getting-started.md", {
         title: "Getting Started",
         description: "How to get started",
         body: "\n# Getting Started\n\nWelcome to Agloom guide.",
       });
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["help", "guide/getting-started"],
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["help", "guide/getting-started"],
+      });
 
       const output = lastFrame()!;
 
@@ -301,14 +297,14 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Поведение шаги 9-13
     // =====================================================================
 
-    it("при указании topic с префиксом reference/ рендерит содержимое", () => {
+    it("при указании topic с префиксом reference/ рендерит содержимое", async () => {
       createDocFile(referenceDir, "cli.md", {
         title: "CLI Reference",
         description: "Complete CLI reference",
         body: "\n# CLI Reference\n\nAll CLI commands documented here.",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help", "reference/cli"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help", "reference/cli"] });
 
       const output = lastFrame()!;
 
@@ -325,14 +321,14 @@ describe("CLI", () => {
     // § help-command.md § Разрешение имени topic § Поведение шаги 2-3
     // =====================================================================
 
-    it("при указании topic без префикса находит unique match и рендерит", () => {
+    it("при указании topic без префикса находит unique match и рендерит", async () => {
       createDocFile(guideDir, "getting-started.md", {
         title: "Getting Started",
         description: "How to get started",
         body: "\n# Getting Started\n\nThis is the getting started guide.",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help", "getting-started"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help", "getting-started"] });
 
       const output = lastFrame()!;
 
@@ -349,7 +345,7 @@ describe("CLI", () => {
     // § help-command.md § Разрешение имени topic § Расширения 2a
     // =====================================================================
 
-    it("при ambiguous topic (slug в двух категориях) отображает ошибку с перечнем", () => {
+    it("при ambiguous topic (slug в двух категориях) отображает ошибку с перечнем", async () => {
       // Одинаковый slug 'overview' в guide и reference
       createDocFile(guideDir, "overview.md", {
         title: "Guide Overview",
@@ -360,7 +356,7 @@ describe("CLI", () => {
         description: "Reference overview",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help", "overview"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help", "overview"] });
 
       const output = lastFrame()!;
 
@@ -382,17 +378,15 @@ describe("CLI", () => {
     // § help-command.md § Разрешение имени topic § Расширения 1a
     // =====================================================================
 
-    it("при несуществующем topic с префиксом и непустом списке отображает Unknown + список", () => {
+    it("при несуществующем topic с префиксом и непустом списке отображает Unknown + список", async () => {
       createDocFile(guideDir, "intro.md", {
         title: "Intro",
         description: "Introduction",
       });
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["help", "guide/nonexistent"],
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["help", "guide/nonexistent"],
+      });
 
       const output = lastFrame()!;
 
@@ -411,14 +405,12 @@ describe("CLI", () => {
     // § help-command.md § Разрешение имени topic § Расширения 1b
     // =====================================================================
 
-    it("при несуществующем topic с префиксом и пустом списке отображает Unknown без списка", () => {
+    it("при несуществующем topic с префиксом и пустом списке отображает Unknown без списка", async () => {
       // Не создаём никаких файлов → пустой список topics
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["help", "guide/nonexistent"],
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["help", "guide/nonexistent"],
+      });
 
       const output = lastFrame()!;
 
@@ -435,13 +427,13 @@ describe("CLI", () => {
     // § help-command.md § Разрешение имени topic § Расширения 2b
     // =====================================================================
 
-    it("при несуществующем topic без префикса и непустом списке отображает Unknown + список", () => {
+    it("при несуществующем topic без префикса и непустом списке отображает Unknown + список", async () => {
       createDocFile(guideDir, "intro.md", {
         title: "Intro",
         description: "Introduction",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help", "nonexistent"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help", "nonexistent"] });
 
       const output = lastFrame()!;
 
@@ -458,10 +450,10 @@ describe("CLI", () => {
     // § help-command.md § Разрешение имени topic § Расширения 2c
     // =====================================================================
 
-    it("при несуществующем topic без префикса и пустом списке отображает Unknown без списка", () => {
+    it("при несуществующем topic без префикса и пустом списке отображает Unknown без списка", async () => {
       // Не создаём файлов
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help", "nonexistent"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help", "nonexistent"] });
 
       const output = lastFrame()!;
 
@@ -478,10 +470,10 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Расширения 8a
     // =====================================================================
 
-    it("при пустом списке topics отображает 'No help topics available.' и exit code 1", () => {
+    it("при пустом списке topics отображает 'No help topics available.' и exit code 1", async () => {
       // Не создаём файлов → оба каталога пусты или не существуют
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -496,7 +488,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Расширения 3a
     // =====================================================================
 
-    it("при отсутствии директории категории считает её пустой", () => {
+    it("при отсутствии директории категории считает её пустой", async () => {
       // Создаём только guide, reference не существует
       createDocFile(guideDir, "intro.md", {
         title: "Intro",
@@ -504,7 +496,7 @@ describe("CLI", () => {
       });
       // referenceDir не создаём
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -524,7 +516,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Расширения 5a
     // =====================================================================
 
-    it("пропускает файл без валидного YAML frontmatter", () => {
+    it("пропускает файл без валидного YAML frontmatter", async () => {
       createDocFile(guideDir, "valid.md", {
         title: "Valid",
         description: "Valid topic",
@@ -532,7 +524,7 @@ describe("CLI", () => {
       // Создаём файл без frontmatter
       fs.writeFileSync(path.join(guideDir, "invalid.md"), "# No Frontmatter\n\nJust plain content.", "utf-8");
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -548,12 +540,12 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Расширения 5b
     // =====================================================================
 
-    it("при отсутствии description в frontmatter использует пустую строку", () => {
+    it("при отсутствии description в frontmatter использует пустую строку", async () => {
       // Файл с frontmatter без description
       fs.mkdirSync(guideDir, { recursive: true });
       fs.writeFileSync(path.join(guideDir, "no-desc.md"), "---\ntitle: No Desc\n---\n\n# No Desc\n\nContent.", "utf-8");
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -568,7 +560,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Расширения 5c
     // =====================================================================
 
-    it("при отсутствии prev и next в frontmatter topic становится orphan (показывается после цепочки)", () => {
+    it("при отсутствии prev и next в frontmatter topic становится orphan (показывается после цепочки)", async () => {
       // Цепочка: first (head, next: second) → second (prev: first, tail)
       createDocFile(guideDir, "first.md", {
         title: "First",
@@ -588,7 +580,7 @@ describe("CLI", () => {
         "utf-8",
       );
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -612,7 +604,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Расширения 10a
     // =====================================================================
 
-    it("при ошибке чтения файла отображает 'Failed to read help topic' и exit code 1", () => {
+    it("при ошибке чтения файла отображает 'Failed to read help topic' и exit code 1", async () => {
       createDocFile(guideDir, "unreadable.md", {
         title: "Unreadable",
         description: "Unreadable topic",
@@ -623,11 +615,9 @@ describe("CLI", () => {
       fs.chmodSync(filePath, 0o000);
 
       try {
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["help", "guide/unreadable"],
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["help", "guide/unreadable"],
+        });
 
         const output = lastFrame()!;
 
@@ -677,11 +667,9 @@ describe("CLI", () => {
       };
 
       try {
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["help", "guide/render-error"],
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["help", "guide/render-error"],
+        });
 
         const output = lastFrame()!;
 
@@ -700,18 +688,16 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Поведение шаг 11
     // =====================================================================
 
-    it("удаляет frontmatter при рендеринге topic (не показывается в output)", () => {
+    it("удаляет frontmatter при рендеринге topic (не показывается в output)", async () => {
       createDocFile(guideDir, "test-strip.md", {
         title: "Strip Test",
         description: "Testing frontmatter stripping",
         body: "\n# Strip Test\n\nBody content only.",
       });
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["help", "guide/test-strip"],
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["help", "guide/test-strip"],
+      });
 
       const output = lastFrame()!;
 
@@ -732,7 +718,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Поведение шаг 6
     // =====================================================================
 
-    it("формирует имя topic в формате {category}/{slug}", () => {
+    it("формирует имя topic в формате {category}/{slug}", async () => {
       createDocFile(guideDir, "getting-started.md", {
         title: "Getting Started",
         description: "Get started",
@@ -742,7 +728,7 @@ describe("CLI", () => {
         description: "CLI ref",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -764,18 +750,16 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Поведение шаг 12
     // =====================================================================
 
-    it("рендерит Markdown через marked + marked-terminal (ANSI-коды в выводе)", () => {
+    it("рендерит Markdown через marked + marked-terminal (ANSI-коды в выводе)", async () => {
       createDocFile(guideDir, "md-test.md", {
         title: "Markdown Test",
         description: "Test markdown rendering",
         body: "\n# Markdown Test\n\nSome **bold** and `code` content.",
       });
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["help", "guide/md-test"],
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["help", "guide/md-test"],
+      });
 
       const output = lastFrame()!;
 
@@ -794,7 +778,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Поведение шаг 2
     // =====================================================================
 
-    it("резолвит путь к docs/ через import.meta.dirname, а не process.cwd()", () => {
+    it("резолвит путь к docs/ через import.meta.dirname, а не process.cwd()", async () => {
       createDocFile(guideDir, "intro.md", {
         title: "Intro",
         description: "Introduction",
@@ -805,7 +789,7 @@ describe("CLI", () => {
       try {
         process.chdir(tmpDir);
 
-        const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+        const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
         const output = lastFrame()!;
 
@@ -824,8 +808,8 @@ describe("CLI", () => {
     // § help-command.md § Справка: agloom help --help
     // =====================================================================
 
-    it("help --help отображает справку с примерами guide/getting-started, reference/cli", () => {
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help", "--help"] }));
+    it("help --help отображает справку с примерами guide/getting-started, reference/cli", async () => {
+      const { lastFrame, unmount } = await runApp({ args: ["help", "--help"] });
 
       const output = lastFrame()!;
 
@@ -853,8 +837,8 @@ describe("CLI", () => {
     // § help-command.md § Изменения в cli.md § Добавление help в список команд
     // =====================================================================
 
-    it('содержит команду "help" с описанием в выводе agloom --help', () => {
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["--help"] }));
+    it('содержит команду "help" с описанием в выводе agloom --help', async () => {
+      const { lastFrame, unmount } = await runApp({ args: ["--help"] });
 
       const output = lastFrame()!;
 
@@ -868,19 +852,17 @@ describe("CLI", () => {
     // agloom help больше НЕ является алиасом --help
     // =====================================================================
 
-    it("agloom help отображает категоризированный список topics, а не общую справку", () => {
+    it("agloom help отображает категоризированный список topics, а не общую справку", async () => {
       createDocFile(guideDir, "intro.md", {
         title: "Intro",
         description: "Introduction",
       });
 
-      const { lastFrame: helpFrame, unmount: unmountHelp } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame: helpFrame, unmount: unmountHelp } = await runApp({ args: ["help"] });
       const helpOutput = helpFrame()!;
       unmountHelp();
 
-      const { lastFrame: globalHelpFrame, unmount: unmountGlobalHelp } = render(
-        React.createElement(App, { args: ["--help"] }),
-      );
+      const { lastFrame: globalHelpFrame, unmount: unmountGlobalHelp } = await runApp({ args: ["--help"] });
       const globalHelpOutput = globalHelpFrame()!;
       unmountGlobalHelp();
 
@@ -895,14 +877,14 @@ describe("CLI", () => {
     // § help-command.md § Изменения в cli.md § Изменение секции «Неизвестная команда»
     // =====================================================================
 
-    it("help распознаётся как команда, а не Unknown command", () => {
+    it("help распознаётся как команда, а не Unknown command", async () => {
       // Создаём минимальные данные
       createDocFile(guideDir, "intro.md", {
         title: "Intro",
         description: "Introduction",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -917,18 +899,16 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Поведение шаги 9-13
     // =====================================================================
 
-    it("при указании topic с именем команды (guide/transpile) рендерит topic, а не выполняет команду", () => {
+    it("при указании topic с именем команды (guide/transpile) рендерит topic, а не выполняет команду", async () => {
       createDocFile(guideDir, "transpile.md", {
         title: "Transpile",
         description: "How to transpile",
         body: "\n# Transpile Guide\n\nStep-by-step transpile instructions.",
       });
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["help", "guide/transpile"],
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["help", "guide/transpile"],
+      });
 
       const output = lastFrame()!;
 
@@ -946,14 +926,14 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Поведение шаг 6
     // =====================================================================
 
-    it("берёт description из frontmatter, а не из первой строки после H1", () => {
+    it("берёт description из frontmatter, а не из первой строки после H1", async () => {
       createDocFile(guideDir, "desc-test.md", {
         title: "Desc Test",
         description: "Frontmatter description value",
         body: "\n# Title\n\nBody text that is not description.",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -974,7 +954,7 @@ describe("CLI", () => {
     // § help-command.md § Вывод списка topics: между категориями — пустая строка
     // =====================================================================
 
-    it("между категориями в списке topics присутствует пустая строка", () => {
+    it("между категориями в списке topics присутствует пустая строка", async () => {
       createDocFile(guideDir, "intro.md", {
         title: "Intro",
         description: "Introduction",
@@ -984,7 +964,7 @@ describe("CLI", () => {
         description: "API reference",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -1001,7 +981,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Расширения 7a
     // =====================================================================
 
-    it("при отсутствии head (все topics имеют prev) все topics сортируются алфавитно как orphans", () => {
+    it("при отсутствии head (все topics имеют prev) все topics сортируются алфавитно как orphans", async () => {
       // Все три файла имеют prev → нет head
       createDocFile(guideDir, "charlie.md", {
         title: "Charlie",
@@ -1021,7 +1001,7 @@ describe("CLI", () => {
         prev: "charlie",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -1047,7 +1027,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Расширения 7b
     // =====================================================================
 
-    it("при нескольких heads выбирает алфавитно первый, остальные становятся orphans", () => {
+    it("при нескольких heads выбирает алфавитно первый, остальные становятся orphans", async () => {
       // "alpha" и "charlie" оба без prev → два head-кандидата
       // Алфавитно первый = alpha → alpha становится head
       createDocFile(guideDir, "charlie.md", {
@@ -1071,7 +1051,7 @@ describe("CLI", () => {
         prev: "charlie",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -1104,7 +1084,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Расширения 7c
     // =====================================================================
 
-    it("при broken next-ссылке цепочка обрывается, оставшиеся topics становятся orphans", () => {
+    it("при broken next-ссылке цепочка обрывается, оставшиеся topics становятся orphans", async () => {
       // alpha → bravo → (next: "nonexistent") — цепочка обрывается
       // charlie не в цепочке → orphan
       createDocFile(guideDir, "alpha.md", {
@@ -1124,7 +1104,7 @@ describe("CLI", () => {
         prev: "bravo",
       });
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 
@@ -1150,7 +1130,7 @@ describe("CLI", () => {
     // § help-command.md § Команда help § Поведение шаг 4
     // =====================================================================
 
-    it("включает только .md файлы, игнорируя другие расширения", () => {
+    it("включает только .md файлы, игнорируя другие расширения", async () => {
       createDocFile(guideDir, "valid.md", {
         title: "Valid",
         description: "Valid topic",
@@ -1162,7 +1142,7 @@ describe("CLI", () => {
         "utf-8",
       );
 
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["help"] }));
+      const { lastFrame, unmount } = await runApp({ args: ["help"] });
 
       const output = lastFrame()!;
 

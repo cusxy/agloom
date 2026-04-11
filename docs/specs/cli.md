@@ -21,6 +21,7 @@ relates:
   - docs/specs/format.md
   - docs/specs/mcp-transpiler.md
   - docs/specs/permissions-transpiler.md
+  - docs/specs/cli-global-flags.md
 maps_to:
   - src/cli/
 ---
@@ -134,21 +135,29 @@ CLI-модуль для запуска транспиляции канониче
 1. Распарсить аргументы из командной строки: значения всех вхождений
    `--adapter` накопить в массив `adapterIds` в порядке появления;
    распарсить булевы флаги `--all` и `--verbose`.
-2. Определить `projectRoot` как текущий рабочий каталог процесса
-   (`process.cwd()`).
+2. Получить `paths` (ResolvedPaths) и `loadedConfig` (LoadConfigResult)
+   от front-end пайплайна (см. `docs/specs/cli-global-flags.md`
+   § Процедура Run CLI). Определить `projectRoot` как `paths.writeRoot`,
+   `resourcesRoot` как `paths.resourcesRoot`.
 3. Выполнить процедуру Resolve Adapters from CLI Args
    (см. `docs/specs/config.md`
    § Процедура Resolve Adapters from CLI Args)
-   с `adapterIds`, `all`, `projectRoot`, `"transpile"`.
+   с `adapterIds`, `all`, `loadedConfig`, `"transpile"`.
 4. Для каждой записи из полученного списка:
    4.1. Отобразить заголовок с spinner
    (см. "TUI-отображение прогресса" § Заголовок).
    4.2. Выполнить шаг транспиляции "Instructions" (см. "Шаг транспиляции")
-   с адаптером `entry.instructions`.
+   с адаптером `entry.instructions` и `projectRoot`. Если
+   `resourcesRoot !== path.join(projectRoot, ".agloom")` — дополнительно
+   передать `sourceRoot = resourcesRoot` и `agloomDir = "."`
+   (см. `docs/specs/plugin-loading.md`
+   § Расширение процедуры «Шаг транспиляции»).
    4.3. Выполнить шаг транспиляции "Skills" (см. "Шаг транспиляции")
-   с адаптером `entry.skills`.
+   с адаптером `entry.skills` и `projectRoot`; правило передачи
+   `sourceRoot`/`agloomDir` идентично шагу 4.2.
    4.4. Выполнить шаг транспиляции "Agents" (см. "Шаг транспиляции")
-   с адаптером `entry.agents`.
+   с адаптером `entry.agents` и `projectRoot`; правило передачи
+   `sourceRoot`/`agloomDir` идентично шагу 4.2.
    4.5. Отобразить результаты шагов в TUI
    (см. "TUI-отображение прогресса" § Результат шага).
 5. Вычислить `totalWritten` как сумму `writtenCount` всех шагов.
@@ -221,8 +230,21 @@ CLI-уровень передаёт результаты в `writeResults` бе�
   (`createInstructionsTranspiler`, `createSkillsTranspiler`
   или `createAgentsTranspiler`).
 - `adapter` (object, обязательно) — экземпляр адаптера для данного транспилера.
-- `projectRoot` (string, обязательно) — абсолютный путь к корню проекта.
+- `projectRoot` (string, обязательно) — абсолютный путь к корню проекта
+  (writeRoot: база для записи результатов; см.
+  `docs/specs/cli-global-flags.md` § Модель развязки абстракций).
 - `name` (string: "Instructions" | "Skills" | "Agents", обязательно) — имя шага.
+
+Дополнительные параметры `sourceRoot` и `agloomDir` определены
+в `docs/specs/plugin-loading.md` § Расширение процедуры «Шаг транспиляции».
+Они используются как для плагинов, так и для локального проекта
+с кастомным `--agloom-dir`: вызывающий код команды `transpile`
+при `ResolvedPaths.resourcesRoot !== path.join(writeRoot, ".agloom")`
+передаёт в «Шаг транспиляции» `sourceRoot = resourcesRoot`
+и `agloomDir = "."` через то же расширение
+(см. `docs/specs/cli-global-flags.md` § Модель развязки абстракций).
+Концепт `resourcesRoot` существует на уровне CLI front-end
+(в `ResolvedPaths`) и НЕ является отдельным параметром «Шаг транспиляции».
 
 **Поведение:**
 
@@ -262,29 +284,33 @@ CLI-уровень передаёт результаты в `writeResults` бе�
 **Поведение:**
 
 1. Распарсить аргумент `--all` из командной строки.
-2. Определить `projectRoot` как текущий рабочий каталог процесса
-   (`process.cwd()`).
-3. Если `--all` не указан: выполнить процедуру Load Config
-   (см. `docs/specs/config.md` § Процедура Load Config)
-   с `projectRoot`.
+2. Получить `paths` (ResolvedPaths) и `loadedConfig` (LoadConfigResult)
+   от front-end пайплайна (см. `docs/specs/cli-global-flags.md`
+   § Процедура Run CLI). Собственный вызов Load Config ЗАПРЕЩЁН:
+   `adapters --all` ИЛИ команда без `--all` использует готовый
+   `loadedConfig`.
+3. Если `--all` не указан: использовать `loadedConfig.adapterIds`
+   как источник списка активных адаптеров (без повторного вызова
+   Load Config).
 4. Определить заголовок и список записей для отображения:
    - Если `--all` указан — заголовок `"Available adapters:"`,
      список: все записи реестра с `hidden !== true`.
-   - Если Load Config вернул результат с `adapterIds !== null` —
-     заголовок `"Active adapters:"`, список: записи реестра,
-     соответствующие `adapterIds` из конфига.
-   - Если Load Config вернул результат с `adapterIds === null`
-     (поле `adapters` отсутствует или сам файл не существует) —
-     заголовок `"Available adapters:"`, список: все записи реестра
-     с `hidden !== true`.
+   - Если `loadedConfig.adapterIds !== null` — заголовок
+     `"Active adapters:"`, список: записи реестра, соответствующие
+     `loadedConfig.adapterIds`.
+   - Если `loadedConfig.adapterIds === null` (поле `adapters`
+     отсутствовало в источнике, дефолтный файл не существует, или
+     stdin был пуст) — заголовок `"Available adapters:"`, список:
+     все записи реестра с `hidden !== true`.
 5. Отобразить заголовок.
 6. Для каждой записи из списка отобразить строку с `id`
    и `description`, разделёнными пробелами.
 
 **Расширения:**
 
-3a. Load Config вернул ошибку → отобразить сообщение ошибки;
-процесс завершается с exit code 1.
+Нет расширений. Ошибки Load Config поймались на этапе Run CLI
+(см. `docs/specs/cli-global-flags.md` § Процедура Run CLI,
+расширение 2a) и завершили процесс до запуска команды `adapters`.
 
 **Результат:**
 
@@ -310,6 +336,24 @@ Available adapters:
 
 ## Глобальные опции
 
+Помимо `--help` и `--version`, CLI поддерживает три глобальных флага
+для переопределения источников конфигурации:
+
+- `--project-dir <path>` — корень проекта для записи выходных файлов.
+- `--agloom-dir <path>` — директория с каноническими ресурсами agloom.
+- `--config <path|->` — файл конфигурации или stdin (`-`).
+
+Семантика флагов, chained defaults, правила существования путей,
+front-end пайплайн парсинга/валидации и применение per-command
+определены в `docs/specs/cli-global-flags.md`. Все команды CLI
+(`transpile`, `clean`, `init`, `adapters`, `format`, `help`,
+`version`, `--version`, `--help`, вызов без команды) проходят через
+единый пайплайн (см. `docs/specs/cli-global-flags.md` § Процедура Run CLI)
+до обработки командно-специфичной логики.
+
+Вывод команд `transpile --help` и иных `<command> --help` ДОЛЖЕН
+перечислять три глобальных флага в разделе Options.
+
 ### --help
 
 `agloom --help` — отображает общую справку.
@@ -320,17 +364,23 @@ Available adapters:
 
 **Поведение:**
 
-1. Отобразить описание программы.
-2. Отобразить список доступных команд (`transpile`, `clean`, `init`, `adapters`,
+1. Пройти front-end пайплайн (см. `docs/specs/cli-global-flags.md`
+   § Процедура Run CLI). При несуществующем явном пути в одном
+   из трёх глобальных флагов — завершиться с ошибкой валидации
+   до отображения справки.
+2. Отобразить описание программы.
+3. Отобразить список доступных команд (`transpile`, `clean`, `init`, `adapters`,
    `help`) с кратким описанием каждой. Описание команды `init`:
    `Import existing agent configs into .agloom/`.
    Описание команды `help`:
    `Show help topics or display a specific help topic`.
-3. Отобразить список глобальных опций (`--help`, `--version`).
+4. Отобразить список глобальных опций (`--help`, `--version`,
+   `--project-dir`, `--agloom-dir`, `--config`).
 
 **Расширения:**
 
-Нет расширений.
+1a. Front-end пайплайн вернул ошибку валидации глобальных флагов →
+отобразить сообщение ошибки; exit code 1. Справка НЕ отображается.
 
 **Результат:**
 
@@ -368,12 +418,17 @@ Options:
 
 **Поведение:**
 
-1. Прочитать значение поля `version` из `package.json`.
-2. Отобразить прочитанное значение.
+1. Пройти front-end пайплайн (см. `docs/specs/cli-global-flags.md`
+   § Процедура Run CLI). При несуществующем явном пути в одном
+   из трёх глобальных флагов — завершиться с ошибкой валидации
+   до печати версии.
+2. Прочитать значение поля `version` из `package.json`.
+3. Отобразить прочитанное значение.
 
 **Расширения:**
 
-Нет расширений.
+1a. Front-end пайплайн вернул ошибку валидации глобальных флагов →
+отобразить сообщение ошибки; exit code 1. Версия НЕ отображается.
 
 **Результат:**
 

@@ -12,7 +12,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { loadConfig } from "../config.js";
+import { loadConfigFromFile } from "./load-config-test-helper.js";
+import { runApp } from "./run-app-test-helper.js";
 
 /**
  * Записывает plugin.yml из YAML-строки.
@@ -57,7 +58,7 @@ describe("CLI", () => {
         "adapters:\n  - claude\nplugins:\n  - ../shared-config\n  - ../team-standards\n",
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       // Расширенный Load Config должен возвращать объект с pluginPaths
       expect(result).toHaveProperty("pluginPaths");
       expect((result as unknown as { pluginPaths: string[] }).pluginPaths).toEqual([
@@ -74,7 +75,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       expect(result).toHaveProperty("pluginPaths");
       expect((result as unknown as { pluginPaths: null }).pluginPaths).toBeNull();
     });
@@ -87,7 +88,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\nplugins: ../shared-config\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'plugins' must be an array of strings.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow("Invalid config: 'plugins' must be an array of strings.");
     });
 
     // --- Расширение 6a: plugins содержит нестроковые элементы ---
@@ -97,7 +98,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\nplugins:\n  - 123\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'plugins' must be an array of strings.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow("Invalid config: 'plugins' must be an array of strings.");
     });
 
     // --- Граничное условие: пустой массив plugins ---
@@ -108,7 +109,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\nplugins: []\n");
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       expect(result).toHaveProperty("pluginPaths");
       expect((result as unknown as { pluginPaths: string[] }).pluginPaths).toEqual([]);
     });
@@ -120,7 +121,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\nplugins:\n  - ../single-plugin\n");
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       expect((result as unknown as { pluginPaths: string[] }).pluginPaths).toEqual(["../single-plugin"]);
     });
   });
@@ -647,7 +648,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
 
       // loadConfig должен вернуть структуру с pluginPaths = null
       expect(result).toHaveProperty("pluginPaths");
@@ -685,16 +686,10 @@ describe("CLI", () => {
         "adapters:\n  - claude\nplugins:\n  - /nonexistent/plugin/path\n",
       );
 
-      const React = await import("react");
-      const { render } = await import("ink-testing-library");
-      const { App } = await import("../app.js");
-
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {

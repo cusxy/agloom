@@ -8,9 +8,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import React from "react";
-import { render } from "ink-testing-library";
-import { App } from "../app.js";
+import { runApp } from "./run-app-test-helper.js";
 import { adapterRegistry } from "../adapter-registry.js";
 import { runTranspileStep } from "../transpile-step.js";
 import { ClaudeMcpAdapter, OpenCodeMcpAdapter, createMcpTranspiler } from "../../mcp-transpiler/index.js";
@@ -92,12 +90,10 @@ describe("CLI", () => {
     // с адаптером entry.mcp.
     // § Изменения в выводе: Шаг MCP отображается после шага Agents.
     it("при транспиляции для claude отображает шаг MCP с количеством файлов после Agents", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -132,12 +128,10 @@ describe("CLI", () => {
     // --- Happy path: шаг MCP генерирует .mcp.json для claude ---
     // § Claude Code MCP-адаптер: Генерирует файл .mcp.json в корне проекта.
     it("при транспиляции для claude генерирует файл .mcp.json в корне проекта", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -162,12 +156,10 @@ describe("CLI", () => {
     // --- Happy path: шаг MCP генерирует opencode.json для opencode ---
     // § OpenCode MCP-адаптер: Генерирует файл opencode.json с ключом "mcp".
     it("при транспиляции для opencode генерирует файл opencode.json с ключом mcp", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "opencode"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "opencode"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -193,12 +185,10 @@ describe("CLI", () => {
     // Если entry.mcp равен null — шаг MCP не выполняется и не отображается.
     it("при транспиляции для agentsmd (mcp === null) шаг MCP не отображается даже с --verbose", async () => {
       // agentsmd не скрытый для транспиляции напрямую, но используем --all для его включения
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--all", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--all", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -237,12 +227,10 @@ describe("CLI", () => {
       // Удаляем mcp.yml чтобы шаг MCP дал 0 файлов
       fs.unlinkSync(path.join(tmpDir, ".agloom", "mcp.yml"));
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -268,12 +256,10 @@ describe("CLI", () => {
       // Удаляем mcp.yml
       fs.unlinkSync(path.join(tmpDir, ".agloom", "mcp.yml"));
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -297,12 +283,10 @@ describe("CLI", () => {
     // § cli.md § Команда transpile § Поведение шаг 5:
     // totalWritten = сумма writtenCount всех шагов.
     it("totalWritten включает файлы, записанные шагом MCP", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -333,12 +317,10 @@ describe("CLI", () => {
       // чтобы вызвать TransformError при валидации
       fs.writeFileSync(path.join(tmpDir, ".agloom", "mcp.yml"), "not_valid_mcp: true");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       // Ожидаем завершения транспиляции (Done. или Failed.)
       await vi.waitFor(
@@ -371,12 +353,10 @@ describe("CLI", () => {
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "extra.txt"), "overlay data");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -408,12 +388,10 @@ describe("CLI", () => {
     // § Обновление реестра адаптеров:
     // claude → ClaudeMcpAdapter, opencode → OpenCodeMcpAdapter, agentsmd → null
     it("при --all шаг MCP выполняется для claude и opencode, но не для agentsmd", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--all", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--all", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {

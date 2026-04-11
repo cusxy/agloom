@@ -7,9 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import React from "react";
-import { render } from "ink-testing-library";
-import { App } from "../app.js";
+import { runApp } from "./run-app-test-helper.js";
 
 /**
  * Рекурсивно восстанавливает права для корректной очистки tmpDir в afterEach.
@@ -78,12 +76,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(claudeDir, "settings.json"), '{"key": "value"}');
       fs.writeFileSync(path.join(claudeDir, "config.txt"), "config content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -158,12 +154,10 @@ describe("CLI", () => {
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "settings.json"), "{}");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -226,12 +220,10 @@ describe("CLI", () => {
       fs.mkdirSync(agentsDir, { recursive: true });
       fs.writeFileSync(path.join(agentsDir, "config.json"), "{}");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -311,12 +303,10 @@ describe("CLI", () => {
     // =====================================================================
 
     it('отображает "--adapter and --all are mutually exclusive." и exit code 1, если оба указаны одновременно', async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -341,12 +331,10 @@ describe("CLI", () => {
     // =====================================================================
 
     it('при неизвестном --adapter отображает "Unknown agent" и завершается с exit code 1', async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "nonexistent"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "nonexistent"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -372,7 +360,7 @@ describe("CLI", () => {
     // § init-command.md § Расширения 4a
     // =====================================================================
 
-    it('отображает ".agloom/ already exists" и exit code 1, если .agloom/ существует без --force', async () => {
+    it("отображает already initialized и exit code 1, если .agloom/ существует без --force", async () => {
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "existing.txt"), "existing");
@@ -381,12 +369,10 @@ describe("CLI", () => {
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "new-file.txt"), "new content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -399,7 +385,9 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain(".agloom/ already exists");
+      // Spec: docs/specs/init-command.md § Поведение шаг 4 (C5 smart check).
+      // Message format: `<resourcesRoot> already initialized. Use --force to reinitialize.`
+      expect(output).toMatch(/already initialized/);
       expect(output).toContain("--force");
       expect(process.exitCode).toBe(1);
 
@@ -425,12 +413,10 @@ describe("CLI", () => {
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "settings.json"), '{"new": true}');
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude", "--force"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude", "--force"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -478,12 +464,10 @@ describe("CLI", () => {
         fs.mkdirSync(overlaysDir, { recursive: true });
         fs.chmodSync(overlaysDir, 0o555);
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["init", "--adapter", "claude"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["init", "--adapter", "claude"],
+          projectRoot: tmpDir,
+        });
 
         await vi.waitFor(
           () => {
@@ -508,12 +492,10 @@ describe("CLI", () => {
     it("при несуществующих overlayImportPaths и пустых glob-результатах отображает Nothing to import и exit code 0", async () => {
       // Не создаём ни .claude/, ни CLAUDE.md — все overlayImportPaths пустые
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -537,12 +519,10 @@ describe("CLI", () => {
 
     // --- Пустые overlay-директории не создаются при отсутствии файлов ---
     it("не создаёт пустую overlay-директорию если overlayImportPaths не содержат файлов", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -561,12 +541,10 @@ describe("CLI", () => {
 
     // --- При --all пустые overlay-директории не создаются ---
     it("при --all не создаёт пустые overlay-директории для адаптеров без файлов", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -597,12 +575,10 @@ describe("CLI", () => {
         // Делаем файл нечитаемым — копирование провалится
         fs.chmodSync(path.join(claudeDir, "fail-file.txt"), 0o000);
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["init", "--adapter", "claude"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["init", "--adapter", "claude"],
+          projectRoot: tmpDir,
+        });
 
         await vi.waitFor(
           () => {
@@ -638,12 +614,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(claudeDir, "commands", "cmd.md"), "cmd");
       fs.writeFileSync(path.join(subDir, "deep.md"), "deep");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -669,20 +643,22 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- .agloom/ существует (даже пустая) → блокирует init без --force ---
-    it("при существующей пустой .agloom/ блокирует init без --force", async () => {
+    // --- .agloom/ с config.yml (C5 marker) → блокирует init без --force ---
+    // Spec: docs/specs/init-command.md § Поведение шаг 4 (C5 smart check):
+    // init блокирует, только если присутствует config.yml ИЛИ непустая overlays/;
+    // пустая .agloom/ директория больше не блокирует init.
+    it("при инициализированной .agloom/ (config.yml marker) блокирует init без --force", async () => {
       fs.mkdirSync(path.join(tmpDir, ".agloom"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "config.yml"), "adapters: [claude]\n");
 
       const claudeDir = path.join(tmpDir, ".claude");
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -695,7 +671,7 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain(".agloom/ already exists");
+      expect(output).toMatch(/already initialized/);
       expect(process.exitCode).toBe(1);
 
       unmount();
@@ -715,12 +691,10 @@ describe("CLI", () => {
       fs.mkdirSync(opencodeDir, { recursive: true });
       fs.writeFileSync(path.join(opencodeDir, "opencode-file.txt"), "opencode");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -754,12 +728,10 @@ describe("CLI", () => {
 
     // --- § Вывод: при --all адаптеры с 0 файлов не отображаются ---
     it("при --all не отображает строки для адаптеров с 0 скопированных файлов", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -781,8 +753,9 @@ describe("CLI", () => {
       unmount();
     });
 
-    // --- При --all, .agloom/ существует → ошибка ---
-    it("при --all, если .agloom/ существует без --force, отображает ошибку и exit code 1", async () => {
+    // --- При --all, .agloom/ инициализирована → ошибка ---
+    // Spec: docs/specs/init-command.md § Поведение шаг 4 (C5 smart check).
+    it("при --all, если .agloom/ инициализирована без --force, отображает ошибку и exit code 1", async () => {
       const claudeOverlay = path.join(tmpDir, ".agloom", "overlays", "claude");
       fs.mkdirSync(claudeOverlay, { recursive: true });
       fs.writeFileSync(path.join(claudeOverlay, "existing.txt"), "existing");
@@ -791,12 +764,10 @@ describe("CLI", () => {
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -809,7 +780,7 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain(".agloom/ already exists");
+      expect(output).toMatch(/already initialized/);
       expect(process.exitCode).toBe(1);
 
       unmount();
@@ -826,12 +797,10 @@ describe("CLI", () => {
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "settings.json"), "{}");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -857,19 +826,18 @@ describe("CLI", () => {
     // .agloom/ уже существует → ни overlay не выполняется
     // =====================================================================
 
-    it("при наличии .agloom/ без --force не выполняет Init Overlay Files", async () => {
+    it("при инициализированной .agloom/ без --force не выполняет Init Overlay Files", async () => {
       fs.mkdirSync(path.join(tmpDir, ".agloom"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "config.yml"), "adapters: [claude]\n");
 
       const claudeDir = path.join(tmpDir, ".claude");
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -882,7 +850,7 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain(".agloom/ already exists");
+      expect(output).toMatch(/already initialized/);
 
       // Побочный эффект: overlay-файлы НЕ скопированы
       const overlayDir = path.join(tmpDir, ".agloom", "overlays", "claude");
@@ -907,12 +875,10 @@ describe("CLI", () => {
         fs.writeFileSync(path.join(claudeDir, "fail-file.txt"), "fail");
         fs.chmodSync(path.join(claudeDir, "fail-file.txt"), 0o000);
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["init", "--adapter", "claude"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["init", "--adapter", "claude"],
+          projectRoot: tmpDir,
+        });
 
         await vi.waitFor(
           () => {
@@ -940,12 +906,10 @@ describe("CLI", () => {
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -972,12 +936,10 @@ describe("CLI", () => {
     //   Usage: agloom init [--adapter <adapterId>]... [--all] [--force] [--verbose]
     //   --adapter <adapterId>  Adapter identifier (may be repeated)
     it("отображает справку с корректным usage и суффиксом '(may be repeated)' при init --help", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--help"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--help"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1007,12 +969,10 @@ describe("CLI", () => {
     });
 
     it('содержит "init" с описанием "Import existing agent configs into .agloom/" в выводе --help', async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["--help"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["--help"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1036,12 +996,10 @@ describe("CLI", () => {
     // =====================================================================
 
     it("при --all с --verbose отображает все адаптеры, включая строки с 0 скопированных файлов", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--all", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--all", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1069,12 +1027,10 @@ describe("CLI", () => {
     });
 
     it("при --adapter с --verbose отображает результат даже при 0 скопированных файлов", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1100,15 +1056,14 @@ describe("CLI", () => {
     });
 
     // --- Точное сообщение об ошибке ---
-    it('при наличии .agloom/ без --force отображает точное сообщение ".agloom/ already exists. Use --force to reinitialize."', async () => {
+    it("при инициализированной .agloom/ без --force отображает точное сообщение 'already initialized. Use --force to reinitialize.'", async () => {
       fs.mkdirSync(path.join(tmpDir, ".agloom"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "config.yml"), "adapters: [claude]\n");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1121,7 +1076,9 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      expect(output).toContain(".agloom/ already exists. Use --force to reinitialize.");
+      // Spec: docs/specs/init-command.md § Поведение шаг 4:
+      // `<resourcesRoot> already initialized. Use --force to reinitialize.`
+      expect(output).toMatch(/already initialized\. Use --force to reinitialize\./);
       expect(process.exitCode).toBe(1);
 
       unmount();
@@ -1133,12 +1090,10 @@ describe("CLI", () => {
     // =====================================================================
 
     it("при --adapter claude создаёт .agloom/config.yml с adapters: [claude]", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1162,12 +1117,10 @@ describe("CLI", () => {
     });
 
     it("при --all создаёт .agloom/config.yml с adapters содержащими все нескрытые адаптеры", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1195,12 +1148,10 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - opencode\n");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude", "--force"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude", "--force"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1220,12 +1171,10 @@ describe("CLI", () => {
     });
 
     it("созданный config.yml содержит комментарии для onboarding", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1258,12 +1207,10 @@ describe("CLI", () => {
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--force"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--force"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1287,12 +1234,10 @@ describe("CLI", () => {
     });
 
     it('при отсутствии --adapter, --all и конфига отображает "No adapters specified" без упоминания config.yml', async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1325,12 +1270,10 @@ describe("CLI", () => {
       fs.mkdirSync(claudeDir, { recursive: true });
       // Не создаём файлов ни в .claude/, ни CLAUDE.md в корне
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1360,12 +1303,10 @@ describe("CLI", () => {
     it("при несуществующем литеральном пути в overlayImportPaths пропускает без ошибки", async () => {
       // overlayImportPaths для opencode: [".opencode"]
       // .opencode/ не существует — должен быть пропущен без ошибки
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "opencode"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "opencode"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {

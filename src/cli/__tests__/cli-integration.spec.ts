@@ -6,9 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import React from "react";
-import { render } from "ink-testing-library";
-import { App } from "../app.js";
+import { runApp } from "./run-app-test-helper.js";
 
 describe("CLI Integration", () => {
   let tmpDir: string;
@@ -42,12 +40,10 @@ describe("CLI Integration", () => {
       fs.mkdirSync(agentDir, { recursive: true });
       fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -91,12 +87,10 @@ describe("CLI Integration", () => {
       fs.mkdirSync(agentDir, { recursive: true });
       fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -138,12 +132,10 @@ describe("CLI Integration", () => {
       fs.mkdirSync(agentDir, { recursive: true });
       fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -184,12 +176,10 @@ describe("CLI Integration", () => {
       fs.mkdirSync(agentDir, { recursive: true });
       fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--clean"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--clean"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -213,12 +203,10 @@ describe("CLI Integration", () => {
     it("IT-CLI-05: transpile --verbose отображает все шаги включая 0 файлов", async () => {
       // Пустая директория — без канонических файлов
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -256,12 +244,10 @@ describe("CLI Integration", () => {
       fs.mkdirSync(claudeSkillDir, { recursive: true });
       fs.writeFileSync(path.join(claudeSkillDir, "SKILL.md"), "Generated skill.");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -293,12 +279,10 @@ describe("CLI Integration", () => {
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Generated.");
       fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), "Generated.");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -331,12 +315,10 @@ describe("CLI Integration", () => {
       // Создаём CLAUDE.md для импорта
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Existing instructions.");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -365,15 +347,15 @@ describe("CLI Integration", () => {
 
     // IT-CLI-09: init без --force при существующем .agloom/
     it("IT-CLI-09: init без --force при существующем .agloom/ завершается ошибкой", async () => {
-      // Создаём .agloom/
+      // Создаём инициализированную .agloom/ (C5 marker = config.yml)
+      // Spec: docs/specs/init-command.md § Поведение шаг 4 (C5 smart check).
       fs.mkdirSync(path.join(tmpDir, ".agloom"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".agloom", "config.yml"), "adapters: [claude]\n");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["init", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["init", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -387,7 +369,7 @@ describe("CLI Integration", () => {
       const output = lastFrame()!;
 
       // Шаг 3: сообщение об ошибке
-      expect(output).toContain(".agloom/ already exists");
+      expect(output).toMatch(/already initialized/);
 
       // Шаг 4: подсказка о --force
       expect(output).toContain("--force");
@@ -406,12 +388,10 @@ describe("CLI Integration", () => {
   describe("Adapters Command", () => {
     // IT-CLI-10: adapters
     it("IT-CLI-10: adapters отображает список адаптеров", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["adapters"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["adapters"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -433,12 +413,10 @@ describe("CLI Integration", () => {
 
     // IT-CLI-11: adapters --all
     it("IT-CLI-11: adapters --all отображает все адаптеры включая нескрытые", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["adapters", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["adapters", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -466,12 +444,10 @@ describe("CLI Integration", () => {
   describe("Help Command", () => {
     // IT-CLI-12: help
     it("IT-CLI-12: help отображает список help topics", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["help"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["help"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -492,12 +468,10 @@ describe("CLI Integration", () => {
 
     // IT-CLI-13: --version
     it("IT-CLI-13: --version отображает версию в формате semver", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["--version"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["--version"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -524,12 +498,10 @@ describe("CLI Integration", () => {
   describe("Error Flows", () => {
     // IT-CLI-14: неизвестная команда
     it("IT-CLI-14: неизвестная команда завершается с exit code 1", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["foobar"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["foobar"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -554,12 +526,10 @@ describe("CLI Integration", () => {
 
     // IT-CLI-15: неизвестный --flag
     it("IT-CLI-15: неизвестный флаг завершается с exit code 1", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["--unknown-flag"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["--unknown-flag"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -584,12 +554,10 @@ describe("CLI Integration", () => {
 
     // IT-CLI-16: transpile без config
     it("IT-CLI-16: transpile без config завершается с ошибкой", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {

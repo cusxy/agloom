@@ -5,9 +5,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import React from "react";
-import { render } from "ink-testing-library";
-import { App } from "../app.js";
+import { runApp } from "./run-app-test-helper.js";
 
 /**
  * Рекурсивно восстанавливает права записи для корректной очистки tmpDir в afterEach.
@@ -72,12 +70,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(oldSkillsDir, "SKILL.md"), "old content");
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Old CLAUDE.md");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--clean"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--clean"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -113,12 +109,10 @@ describe("CLI", () => {
       fs.mkdirSync(claudeDir, { recursive: true });
       fs.writeFileSync(path.join(claudeDir, "old.txt"), "old");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--clean"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--clean"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -150,12 +144,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(protectedDir, "file.txt"), "locked");
       fs.chmodSync(protectedDir, 0o555);
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--clean"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--clean"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -187,12 +179,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(protectedDir, "file.txt"), "locked");
       fs.chmodSync(protectedDir, 0o555);
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--clean"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--clean"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {

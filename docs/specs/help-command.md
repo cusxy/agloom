@@ -11,6 +11,7 @@ relates:
   - docs/specs/ci-deploy.md
   - docs/researches/cli-documentation-delivery/RESEARCH.md
   - docs/specs/docusaurus-setup.md
+  - docs/specs/cli-global-flags.md
 maps_to:
   - src/cli/
 ---
@@ -113,6 +114,14 @@ GitHub CLI (`gh help <topic>`), но с обратной flow: документ�
   Формат: `{category}/{slug}` (например, `guide/getting-started`,
   `reference/cli`). Допускается сокращённый формат без категории
   (`{slug}`), в этом случае выполняется поиск по всем категориям.
+
+Команда `help` проходит через front-end пайплайн глобальных флагов
+(см. `docs/specs/cli-global-flags.md` § Процедура Run CLI) до выполнения
+шагов, описанных ниже. Значения `ResolvedPaths` команда `help`
+семантически не использует, однако невалидные явные значения
+`--project-dir`, `--agloom-dir` или `--config` ПРИВОДЯТ к ошибке
+валидации пайплайна и завершению с exit code 1 до отображения списка
+topics или рендеринга конкретного topic.
 
 **Поведение:**
 

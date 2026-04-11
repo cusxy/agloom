@@ -5,9 +5,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import React from "react";
-import { render } from "ink-testing-library";
-import { App } from "../app.js";
+import { runApp } from "./run-app-test-helper.js";
 
 /**
  * Рекурсивно восстанавливает права записи для корректной очистки tmpDir в afterEach.
@@ -63,12 +61,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(agentsDir, "agent.md"), "agent content");
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Generated content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -103,12 +99,10 @@ describe("CLI", () => {
     // Отобразить сообщение об обязательности аргумента --adapter;
     // процесс завершается с exit code 1.
     it("завершается с exit code 1 и сообщением об обязательности --adapter, если аргумент не указан", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -134,12 +128,10 @@ describe("CLI", () => {
     // Расширение 1a: "Unknown agent: {value}. Run 'agloom adapters' to see available adapters."
     // Exit code 1.
     it('отображает "Unknown agent" и завершается с exit code 1 при неизвестном adapterId', async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--adapter", "nonexistent"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--adapter", "nonexistent"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -170,12 +162,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(skillsDir, "file.txt"), "content");
       fs.chmodSync(skillsDir, 0o555);
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -207,12 +197,10 @@ describe("CLI", () => {
     //   Remove generated agent-specific files for the specified adapter(s).
     //   --adapter <adapterId>  Adapter ID from the registry (may be repeated)
     it("отображает справку с корректным usage, описанием и суффиксом '(may be repeated)' при clean --help", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--help"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--help"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -253,12 +241,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(skillsDir, "SKILL.md"), "skill content");
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -283,12 +269,10 @@ describe("CLI", () => {
     });
 
     it("при --all без файлов отображает 'Nothing to clean.'", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -308,12 +292,10 @@ describe("CLI", () => {
     });
 
     it("при одновременном --adapter и --all отображает сообщение о взаимоисключающих аргументах и exit code 1", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--adapter", "claude", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--adapter", "claude", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -353,12 +335,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(skillsDir, "skill.md"), "content");
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Generated content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -390,12 +370,10 @@ describe("CLI", () => {
     // Error("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.")
     // § clean-command.md § Команда clean § Расширения 3a.
     it('при отсутствии --adapter, --all и конфига отображает "No adapters specified" и exit code 1', async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -419,12 +397,10 @@ describe("CLI", () => {
     // Команда clean ДОЛЖНА быть добавлена в вывод agloom --help:
     // "  clean        Remove generated agent-specific files"
     it('содержит "clean" с описанием "Remove generated agent-specific files" в выводе --help', async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["--help"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["--help"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -458,12 +434,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(claudeDir, "file.txt"), "content");
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "Generated content");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -491,12 +465,10 @@ describe("CLI", () => {
     // "С --verbose: все строки отображаются, включая 0 удалённых файлов."
     it("при --all с --verbose отображает все адаптеры, включая адаптеры с 0 удалённых файлов", async () => {
       // tmpDir пустой — все адаптеры покажут 0 удалённых файлов
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--all", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--all", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -523,12 +495,10 @@ describe("CLI", () => {
     // "С --verbose: все строки отображаются, включая 0 удалённых файлов."
     it("при --adapter с --verbose отображает результат даже при 0 удалённых файлов", async () => {
       // tmpDir пустой — claude покажет 0 удалённых файлов
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["clean", "--adapter", "claude", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["clean", "--adapter", "claude", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {

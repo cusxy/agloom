@@ -7,9 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import React from "react";
-import { render } from "ink-testing-library";
-import { App } from "../app.js";
+import { runApp } from "./run-app-test-helper.js";
 
 describe("CLI", () => {
   let tmpDir: string;
@@ -30,8 +28,8 @@ describe("CLI", () => {
     // Шаг 1: прочитать все записи из реестра адаптеров
     // Шаг 2: отобразить заголовок "Available adapters:"
     // Шаг 3: для каждой записи отобразить id и description
-    it('выводит "Available adapters:" и список адаптеров с id и description', () => {
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["adapters"], projectRoot: tmpDir }));
+    it('выводит "Available adapters:" и список адаптеров с id и description', async () => {
+      const { lastFrame, unmount } = await runApp({ args: ["adapters"], projectRoot: tmpDir });
 
       const output = lastFrame()!;
 
@@ -49,8 +47,8 @@ describe("CLI", () => {
 
     // --- Happy path: формат вывода ---
     // Результат: exit code 0
-    it("завершается с exit code 0", () => {
-      const { unmount } = render(React.createElement(App, { args: ["adapters"], projectRoot: tmpDir }));
+    it("завершается с exit code 0", async () => {
+      const { unmount } = await runApp({ args: ["adapters"], projectRoot: tmpDir });
 
       // exit code 0 — process.exitCode не установлен
       expect(process.exitCode).toBeUndefined();
@@ -66,8 +64,8 @@ describe("CLI", () => {
     // --- § adapter-registry-ext.md § hidden: скрытые адаптеры не отображаются ---
     // § cli.md § Команда adapters:
     // "Скрытые адаптеры (hidden === true) не отображаются."
-    it("не отображает скрытый адаптер agentsmd", () => {
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["adapters"], projectRoot: tmpDir }));
+    it("не отображает скрытый адаптер agentsmd", async () => {
+      const { lastFrame, unmount } = await runApp({ args: ["adapters"], projectRoot: tmpDir });
 
       const output = lastFrame()!;
 
@@ -85,17 +83,15 @@ describe("CLI", () => {
       // --- § cli.md § Команда adapters § Поведение шаги 3-4 ---
       // Без --all: Load Config → если config вернул adapterIds →
       // заголовок "Active adapters:", список: записи из конфига.
-      it('с конфигом adapters: [claude] показывает "Active adapters:" и только claude', () => {
+      it('с конфигом adapters: [claude] показывает "Active adapters:" и только claude', async () => {
         const configDir = path.join(tmpDir, ".agloom");
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["adapters"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["adapters"],
+          projectRoot: tmpDir,
+        });
 
         const output = lastFrame()!;
 
@@ -114,13 +110,11 @@ describe("CLI", () => {
       // --- § cli.md § Команда adapters --all ---
       // С --all: заголовок "Available adapters:",
       // список: все записи реестра с hidden !== true.
-      it('при --all показывает "Available adapters:" и все нескрытые адаптеры', () => {
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["adapters", "--all"],
-            projectRoot: tmpDir,
-          }),
-        );
+      it('при --all показывает "Available adapters:" и все нескрытые адаптеры', async () => {
+        const { lastFrame, unmount } = await runApp({
+          args: ["adapters", "--all"],
+          projectRoot: tmpDir,
+        });
 
         const output = lastFrame()!;
 
@@ -136,15 +130,13 @@ describe("CLI", () => {
       // --- § cli.md § Команда adapters: без конфига и без --all ---
       // Load Config вернул null → заголовок "Available adapters:",
       // список: все записи реестра с hidden !== true.
-      it('без конфига и без --all показывает "Available adapters:" и все нескрытые адаптеры', () => {
+      it('без конфига и без --all показывает "Available adapters:" и все нескрытые адаптеры', async () => {
         // tmpDir без .agloom/config.yml
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["adapters"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["adapters"],
+          projectRoot: tmpDir,
+        });
 
         const output = lastFrame()!;
 
@@ -160,18 +152,16 @@ describe("CLI", () => {
       // --- § cli.md § Команда adapters § Поведение шаг 4: adapterIds === null ---
       // Load Config вернул adapterIds=null потому что файл существует,
       // но не содержит поля adapters → "Available adapters:".
-      it('при файле без поля adapters показывает "Available adapters:" (поле adapters опционально)', () => {
+      it('при файле без поля adapters показывает "Available adapters:" (поле adapters опционально)', async () => {
         const configDir = path.join(tmpDir, ".agloom");
         fs.mkdirSync(configDir, { recursive: true });
         // Файл есть, но без adapters — например, только variables
         fs.writeFileSync(path.join(configDir, "config.yml"), "variables:\n  FOO: bar\n");
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["adapters"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["adapters"],
+          projectRoot: tmpDir,
+        });
 
         const output = lastFrame()!;
 
@@ -184,17 +174,15 @@ describe("CLI", () => {
 
       // --- § cli.md § Команда adapters § Расширения 3a ---
       // Load Config вернул ошибку → отобразить сообщение ошибки; exit code 1.
-      it("при невалидном config.yml отображает ошибку и завершается с exit code 1", () => {
+      it("при невалидном config.yml отображает ошибку и завершается с exit code 1", async () => {
         const configDir = path.join(tmpDir, ".agloom");
         fs.mkdirSync(configDir, { recursive: true });
         fs.writeFileSync(path.join(configDir, "config.yml"), "adapters: [invalid yaml\n  : : :\n");
 
-        const { lastFrame, unmount } = render(
-          React.createElement(App, {
-            args: ["adapters"],
-            projectRoot: tmpDir,
-          }),
-        );
+        const { lastFrame, unmount } = await runApp({
+          args: ["adapters"],
+          projectRoot: tmpDir,
+        });
 
         const output = lastFrame()!;
 
@@ -213,8 +201,8 @@ describe("CLI", () => {
     // Вывод agloom adapters --help:
     // "Usage: agloom adapters [--all]"
     // "Show active adapters from config, or all available adapters."
-    it("adapters --help содержит [--all] и описание конфиг-зависимого поведения", () => {
-      const { lastFrame, unmount } = render(React.createElement(App, { args: ["adapters", "--help"] }));
+    it("adapters --help содержит [--all] и описание конфиг-зависимого поведения", async () => {
+      const { lastFrame, unmount } = await runApp({ args: ["adapters", "--help"] });
 
       const output = lastFrame()!;
 

@@ -12,7 +12,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import * as crypto from "node:crypto";
-import { loadConfig } from "../config.js";
+import { loadConfigFromFile } from "./load-config-test-helper.js";
+import { runApp } from "./run-app-test-helper.js";
 
 // =====================================================================
 // Вспомогательные функции
@@ -464,7 +465,7 @@ describe("CLI", () => {
         ].join("\n") + "\n",
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       expect(result).not.toBeNull();
       // Должен возвращать pluginEntries (массив ParsedPluginEntry)
       expect(result).toHaveProperty("pluginEntries");
@@ -485,7 +486,9 @@ describe("CLI", () => {
         ) + "\n",
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: plugin entry 'git' must be an HTTPS or SSH git URL.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
+        "Invalid config: plugin entry 'git' must be an HTTPS or SSH git URL.",
+      );
     });
 
     // --- Happy path: объект git без ref → ref: null (опциональный) ---
@@ -499,7 +502,7 @@ describe("CLI", () => {
         ["adapters:", "  - claude", "plugins:", "  - git: https://github.com/org/repo"].join("\n") + "\n",
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       expect(result).not.toBeNull();
       const entries = (result as unknown as { pluginEntries: unknown[] }).pluginEntries;
       expect(entries).toHaveLength(1);
@@ -523,7 +526,7 @@ describe("CLI", () => {
         ].join("\n") + "\n",
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow(
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
         "Invalid config: plugin entry 'path' must be a relative path without '..' components.",
       );
     });
@@ -545,7 +548,7 @@ describe("CLI", () => {
         ].join("\n") + "\n",
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow(
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
         "Invalid config: plugin entry 'path' must be a relative path without '..' components.",
       );
     });
@@ -560,7 +563,7 @@ describe("CLI", () => {
         ["adapters:", "  - claude", "plugins:", "  - https://github.com/org/repo#"].join("\n") + "\n",
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow(/Invalid config: git plugin ref must not be empty/);
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(/Invalid config: git plugin ref must not be empty/);
     });
   });
 
@@ -1801,16 +1804,10 @@ describe("CLI", () => {
         recursive: true,
       });
 
-      const React = await import("react");
-      const { render } = await import("ink-testing-library");
-      const { App } = await import("../app.js");
-
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["cache", "clean"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["cache", "clean"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1833,16 +1830,10 @@ describe("CLI", () => {
     it("при несуществующем кеше выводит сообщение и завершается с exit code 0", async () => {
       // Не создаём директорию кеша
 
-      const React = await import("react");
-      const { render } = await import("ink-testing-library");
-      const { App } = await import("../app.js");
-
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["cache", "clean"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["cache", "clean"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1883,16 +1874,10 @@ describe("CLI", () => {
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "Content.");
 
-      const React = await import("react");
-      const { render } = await import("ink-testing-library");
-      const { App } = await import("../app.js");
-
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--refresh"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--refresh"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {

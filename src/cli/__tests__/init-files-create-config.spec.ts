@@ -23,7 +23,7 @@ describe("createConfigFile", () => {
   // § init-command.md § Создание конфигурационного файла:
   // "При одном --adapter: adapters: [<id>]".
   it('при adapterIds=["claude"] создаёт config.yml с adapters: [claude]', () => {
-    createConfigFile(tmpDir, ["claude"]);
+    createConfigFile(path.join(tmpDir, ".agloom"), ["claude"]);
 
     const configPath = path.join(tmpDir, ".agloom", "config.yml");
     expect(fs.existsSync(configPath)).toBe(true);
@@ -36,7 +36,7 @@ describe("createConfigFile", () => {
   // § init-command.md § Создание конфигурационного файла:
   // "--adapter claude --adapter opencode → adapters: [claude, opencode]".
   it('при adapterIds=["claude", "opencode"] создаёт config.yml с adapters: [claude, opencode]', () => {
-    createConfigFile(tmpDir, ["claude", "opencode"]);
+    createConfigFile(path.join(tmpDir, ".agloom"), ["claude", "opencode"]);
 
     const configPath = path.join(tmpDir, ".agloom", "config.yml");
     const parsed = yaml.load(fs.readFileSync(configPath, "utf-8")) as { adapters: string[] };
@@ -47,7 +47,7 @@ describe("createConfigFile", () => {
   // § init-command.md § Создание конфигурационного файла:
   // "с сохранением порядка первого появления каждого id".
   it('при adapterIds=["opencode", "claude"] сохраняет порядок', () => {
-    createConfigFile(tmpDir, ["opencode", "claude"]);
+    createConfigFile(path.join(tmpDir, ".agloom"), ["opencode", "claude"]);
 
     const configPath = path.join(tmpDir, ".agloom", "config.yml");
     const parsed = yaml.load(fs.readFileSync(configPath, "utf-8")) as { adapters: string[] };
@@ -58,7 +58,7 @@ describe("createConfigFile", () => {
   // § init-command.md § Создание конфигурационного файла:
   // "Файл ДОЛЖЕН содержать комментарии для onboarding".
   it("файл содержит onboarding-комментарии", () => {
-    createConfigFile(tmpDir, ["claude"]);
+    createConfigFile(path.join(tmpDir, ".agloom"), ["claude"]);
 
     const content = fs.readFileSync(path.join(tmpDir, ".agloom", "config.yml"), "utf-8");
     expect(content).toContain("# Agloom configuration");
@@ -68,7 +68,7 @@ describe("createConfigFile", () => {
 
   // --- Директория .agloom создаётся при отсутствии ---
   it("создаёт директорию .agloom если её нет", () => {
-    createConfigFile(tmpDir, ["claude"]);
+    createConfigFile(path.join(tmpDir, ".agloom"), ["claude"]);
 
     expect(fs.existsSync(path.join(tmpDir, ".agloom"))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".agloom", "config.yml"))).toBe(true);

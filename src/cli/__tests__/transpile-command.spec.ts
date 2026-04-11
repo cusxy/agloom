@@ -6,9 +6,9 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import React from "react";
-import { render } from "ink-testing-library";
-import { App, resolveDeps } from "../app.js";
+import { resolveDeps } from "../app.js";
+import { runApp } from "./run-app-test-helper.js";
+import { runApp } from "./run-app-test-helper.js";
 import type { AdapterRegistryEntry } from "../types.js";
 
 describe("CLI", () => {
@@ -56,12 +56,10 @@ describe("CLI", () => {
     // Шаг 10: отобразить итоговую строку
     // Шаг 11: exit code 0
     it("при успешной транспиляции всех трёх шагов отображает заголовок, результаты для каждого шага, итоговую строку и завершается с exit code 0", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       // Ждём завершения всех шагов транспиляции
       await vi.waitFor(
@@ -98,12 +96,10 @@ describe("CLI", () => {
     // =====================================================================
 
     it("при одновременном --adapter и --all отображает сообщение о взаимоисключающих аргументах и exit code 1", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -130,12 +126,10 @@ describe("CLI", () => {
     // =====================================================================
 
     it('при неизвестном --adapter отображает "Unknown agent" и завершается с exit code 1', async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "nonexistent"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "nonexistent"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -174,12 +168,10 @@ describe("CLI", () => {
       // Создаём файл вместо каталога — agents transpiler discover() выбросит ошибку
       fs.writeFileSync(path.join(tmpDir, ".agloom", "agents"), "not a dir");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -223,12 +215,10 @@ describe("CLI", () => {
       });
       fs.writeFileSync(path.join(tmpDir, ".agloom", "agents"), "not a dir");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -262,12 +252,10 @@ describe("CLI", () => {
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "overlay-file.txt"), "overlay data");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -293,12 +281,10 @@ describe("CLI", () => {
     // Без --verbose: шаги с 0 файлов скрываются
     it("без --verbose скрывает шаги с 0 файлов", async () => {
       // Не создаём overlays/claude/
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -319,12 +305,10 @@ describe("CLI", () => {
     // С --verbose: шаги с 0 файлов отображаются
     it('с --verbose отображает "Overlay 0 files" если директория overlays/<adapterId>/ не существует', async () => {
       // Не создаём overlays/claude/
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -349,12 +333,10 @@ describe("CLI", () => {
       // Пустой проект: нет AGLOOM.md, skills, agents, overlays
       const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-empty-"));
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "opencode"],
-          projectRoot: emptyDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "opencode"],
+        projectRoot: emptyDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -382,12 +364,10 @@ describe("CLI", () => {
       fs.mkdirSync(overlayDir, { recursive: true });
       fs.writeFileSync(path.join(overlayDir, "extra.txt"), "overlay data");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -423,12 +403,10 @@ describe("CLI", () => {
         recursive: true,
       });
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -472,12 +450,10 @@ describe("CLI", () => {
       fs.mkdirSync(overlaySkillDir, { recursive: true });
       fs.writeFileSync(path.join(overlaySkillDir, "SKILL.md"), "Overlay skill content overrides canonical.");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -498,12 +474,10 @@ describe("CLI", () => {
     // --- TUI § Заголовок: отображается с adapterId ---
     // § cli.md § TUI-отображение прогресса § Заголовок
     it('отображает заголовок "Transpiling for {adapterId}..."', async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "opencode"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "opencode"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -530,12 +504,10 @@ describe("CLI", () => {
     // § cli.md § Режим --all § Поведение шаг 3: Для каждой записи реестра
     // выполнить шаги транспиляции.
     it("при --all выполняет транспиляцию для всех адаптеров из реестра", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -560,12 +532,10 @@ describe("CLI", () => {
     // § cli.md § Режим --all § Поведение шаг 4: Вычислить totalWritten как
     // суммарный writtenCount всех шагов всех записей.
     it("при --all вычисляет totalWritten как суммарный writtenCount всех адаптеров", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -597,12 +567,10 @@ describe("CLI", () => {
     // § cli.md: OpenCodeAdapter является no-op для instructions: метод transpile()
     // возвращает пустой массив OutputFile[].
     it("при транспиляции opencode с --verbose шаг Instructions показывает 0 files (no-op)", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "opencode", "--verbose"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "opencode", "--verbose"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -629,12 +597,10 @@ describe("CLI", () => {
       // Создаём канонический файл
       fs.writeFileSync(path.join(tmpDir, "AGLOOM.md"), "OpenCode project instructions");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "opencode"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "opencode"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -699,12 +665,10 @@ describe("CLI", () => {
     // =====================================================================
 
     it("при --adapter заменяет spinner на ✓ в заголовке после завершения транспиляции", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -723,12 +687,10 @@ describe("CLI", () => {
     });
 
     it("при --all заменяет spinner на ✓ в заголовках после завершения транспиляции", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--all"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--all"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -756,12 +718,10 @@ describe("CLI", () => {
     // § cli.md § --help: Вывод agloom transpile --help ДОЛЖЕН содержать
     // Usage: agloom transpile (--adapter <agentId> | --all) [--clean]
     it("справка transpile --help содержит --adapter и --all", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--help"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--help"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -803,12 +763,10 @@ describe("CLI", () => {
       fs.mkdirSync(agentDir, { recursive: true });
       fs.writeFileSync(path.join(agentDir, "reviewer.md"), "---\nname: reviewer\n---\nReviewer body.");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: sparseDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: sparseDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -838,12 +796,10 @@ describe("CLI", () => {
     it("без --verbose скрывает заголовок адаптера, если все шаги имеют 0 файлов", async () => {
       const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-no-hdr-"));
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude"],
-          projectRoot: emptyDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude"],
+        projectRoot: emptyDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -878,12 +834,10 @@ describe("CLI", () => {
       // добавим config.yml
       fs.writeFileSync(path.join(tmpDir, ".agloom", "config.yml"), "adapters:\n  - claude\n");
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -914,12 +868,10 @@ describe("CLI", () => {
       const configPath = path.join(tmpDir, ".agloom", "config.yml");
       if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -945,12 +897,10 @@ describe("CLI", () => {
     // "Usage: agloom transpile [--adapter <adapterId>]... [--all] [--clean] [--verbose]"
     // --adapter может повторяться (суффикс `]...`), --all — отдельный необязательный флаг.
     it("справка transpile --help содержит usage с повторяемым [--adapter <adapterId>]... и отдельным [--all]", async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--help"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--help"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -977,12 +927,10 @@ describe("CLI", () => {
     // § cli.md § Команда transpile § Расширения 3a:
     // Resolve Adapters from CLI Args вернул ошибку → exit code 1.
     it('при --adapter agentsmd отображает ошибку "cannot be used directly" и exit code 1', async () => {
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "agentsmd"],
-          projectRoot: tmpDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "agentsmd"],
+        projectRoot: tmpDir,
+      });
 
       await vi.waitFor(
         () => {
@@ -1008,12 +956,10 @@ describe("CLI", () => {
     it("с --verbose при всех шагах 0 отображает заголовок адаптера и все шаги", async () => {
       const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "agl-verb-all-"));
 
-      const { lastFrame, unmount } = render(
-        React.createElement(App, {
-          args: ["transpile", "--adapter", "claude", "--verbose"],
-          projectRoot: emptyDir,
-        }),
-      );
+      const { lastFrame, unmount } = await runApp({
+        args: ["transpile", "--adapter", "claude", "--verbose"],
+        projectRoot: emptyDir,
+      });
 
       await vi.waitFor(
         () => {

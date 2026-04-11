@@ -7,7 +7,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { loadConfig, resolveAdaptersFromConfig, resolveAdaptersFromCLIArgs } from "../config.js";
+import { resolveAdaptersFromConfig, resolveAdaptersFromCLIArgs } from "../config.js";
+import { loadConfigFromFile } from "./load-config-test-helper.js";
 
 describe("CLI", () => {
   // =====================================================================
@@ -32,7 +33,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n");
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       expect(result).not.toBeNull();
       expect(result!.adapterIds).toEqual(["claude"]);
     });
@@ -43,7 +44,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - claude\n  - opencode\n");
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       expect(result).not.toBeNull();
       expect(result!.adapterIds).toEqual(["claude", "opencode"]);
     });
@@ -51,7 +52,7 @@ describe("CLI", () => {
     // --- Расширение 1a: файл не существует → null ---
     // § config.md § Процедура Load Config § Расширения 1a
     it("при отсутствии config.yml возвращает null", () => {
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       expect(result).toBeNull();
     });
 
@@ -64,7 +65,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "plugins: []\n");
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       expect(result).not.toBeNull();
       expect(result!.adapterIds).toBeNull();
     });
@@ -77,7 +78,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "variables:\n  FOO: bar\n");
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
       expect(result).not.toBeNull();
       expect(result!.adapterIds).toBeNull();
     });
@@ -89,7 +90,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters: [invalid yaml\n  : : :\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow(/Invalid config file:/);
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(/Invalid config file:/);
     });
 
     // --- Расширение 3a: adapters не является массивом ---
@@ -99,7 +100,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters: claude\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'adapters' must be an array of strings.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow("Invalid config: 'adapters' must be an array of strings.");
     });
 
     // --- Расширение 3a: массив содержит нестроковые элементы ---
@@ -108,7 +109,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - 123\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'adapters' must be an array of strings.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow("Invalid config: 'adapters' must be an array of strings.");
     });
 
     // --- Расширение 3b: массив adapters пуст ---
@@ -119,7 +120,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters: []\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'adapters' must not be empty.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow("Invalid config: 'adapters' must not be empty.");
     });
 
     // --- Расширение 4a: неизвестный адаптер ---
@@ -129,7 +130,7 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - foo\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: unknown adapter 'foo'.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow("Invalid config: unknown adapter 'foo'.");
     });
 
     // --- Расширение 4b: скрытый адаптер ---
@@ -139,7 +140,9 @@ describe("CLI", () => {
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "config.yml"), "adapters:\n  - agentsmd\n");
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: adapter 'agentsmd' cannot be specified in config.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
+        "Invalid config: adapter 'agentsmd' cannot be specified in config.",
+      );
     });
   });
 
@@ -191,7 +194,7 @@ describe("CLI", () => {
       const result = resolveAdaptersFromCLIArgs({
         adapterIds: ["claude"],
         all: false,
-        projectRoot: tmpDir,
+        loadedConfig: loadConfigFromFile(tmpDir),
         command: "transpile",
       });
       expect(result).toHaveLength(1);
@@ -206,7 +209,7 @@ describe("CLI", () => {
       const result = resolveAdaptersFromCLIArgs({
         adapterIds: ["claude", "opencode"],
         all: false,
-        projectRoot: tmpDir,
+        loadedConfig: loadConfigFromFile(tmpDir),
         command: "transpile",
       });
       const ids = result.map((e) => e.id);
@@ -221,7 +224,7 @@ describe("CLI", () => {
       const result = resolveAdaptersFromCLIArgs({
         adapterIds: ["claude", "claude"],
         all: false,
-        projectRoot: tmpDir,
+        loadedConfig: loadConfigFromFile(tmpDir),
         command: "transpile",
       });
       expect(result).toHaveLength(1);
@@ -235,7 +238,7 @@ describe("CLI", () => {
       const result = resolveAdaptersFromCLIArgs({
         adapterIds: ["claude", "opencode", "claude"],
         all: false,
-        projectRoot: tmpDir,
+        loadedConfig: loadConfigFromFile(tmpDir),
         command: "transpile",
       });
       const ids = result.map((e) => e.id);
@@ -249,7 +252,7 @@ describe("CLI", () => {
       const result = resolveAdaptersFromCLIArgs({
         adapterIds: [],
         all: true,
-        projectRoot: tmpDir,
+        loadedConfig: loadConfigFromFile(tmpDir),
         command: "transpile",
       });
       expect(result.length).toBeGreaterThanOrEqual(2);
@@ -264,7 +267,7 @@ describe("CLI", () => {
         resolveAdaptersFromCLIArgs({
           adapterIds: ["claude"],
           all: true,
-          projectRoot: tmpDir,
+          loadedConfig: loadConfigFromFile(tmpDir),
           command: "transpile",
         }),
       ).toThrow("--adapter and --all are mutually exclusive.");
@@ -276,7 +279,7 @@ describe("CLI", () => {
         resolveAdaptersFromCLIArgs({
           adapterIds: ["claude", "opencode"],
           all: true,
-          projectRoot: tmpDir,
+          loadedConfig: loadConfigFromFile(tmpDir),
           command: "transpile",
         }),
       ).toThrow("--adapter and --all are mutually exclusive.");
@@ -292,7 +295,7 @@ describe("CLI", () => {
       const result = resolveAdaptersFromCLIArgs({
         adapterIds: [],
         all: false,
-        projectRoot: tmpDir,
+        loadedConfig: loadConfigFromFile(tmpDir),
         command: "transpile",
       });
       expect(result).toHaveLength(1);
@@ -310,7 +313,7 @@ describe("CLI", () => {
         resolveAdaptersFromCLIArgs({
           adapterIds: [],
           all: false,
-          projectRoot: tmpDir,
+          loadedConfig: loadConfigFromFile(tmpDir),
           command: "transpile",
         }),
       ).toThrow("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.");
@@ -324,7 +327,7 @@ describe("CLI", () => {
         resolveAdaptersFromCLIArgs({
           adapterIds: [],
           all: false,
-          projectRoot: tmpDir,
+          loadedConfig: loadConfigFromFile(tmpDir),
           command: "transpile",
         }),
       ).toThrow("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.");
@@ -336,7 +339,7 @@ describe("CLI", () => {
         resolveAdaptersFromCLIArgs({
           adapterIds: [],
           all: false,
-          projectRoot: tmpDir,
+          loadedConfig: loadConfigFromFile(tmpDir),
           command: "clean",
         }),
       ).toThrow("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.");
@@ -350,7 +353,7 @@ describe("CLI", () => {
         resolveAdaptersFromCLIArgs({
           adapterIds: [],
           all: false,
-          projectRoot: tmpDir,
+          loadedConfig: loadConfigFromFile(tmpDir),
           command: "init",
         }),
       ).toThrow("No adapters specified. Use --adapter <id> or --all to specify adapters.");
@@ -366,7 +369,7 @@ describe("CLI", () => {
         resolveAdaptersFromCLIArgs({
           adapterIds: [],
           all: false,
-          projectRoot: tmpDir,
+          loadedConfig: loadConfigFromFile(tmpDir),
           command: "init",
         }),
       ).toThrow("No adapters specified. Use --adapter <id> or --all to specify adapters.");
@@ -379,7 +382,7 @@ describe("CLI", () => {
         resolveAdaptersFromCLIArgs({
           adapterIds: ["nonexistent"],
           all: false,
-          projectRoot: tmpDir,
+          loadedConfig: loadConfigFromFile(tmpDir),
           command: "transpile",
         }),
       ).toThrow(/Unknown agent/);
@@ -391,7 +394,7 @@ describe("CLI", () => {
         resolveAdaptersFromCLIArgs({
           adapterIds: ["agentsmd"],
           all: false,
-          projectRoot: tmpDir,
+          loadedConfig: loadConfigFromFile(tmpDir),
           command: "transpile",
         }),
       ).toThrow(/cannot be used directly/);
@@ -408,7 +411,7 @@ describe("CLI", () => {
         resolveAdaptersFromCLIArgs({
           adapterIds: [],
           all: false,
-          projectRoot: tmpDir,
+          loadedConfig: loadConfigFromFile(tmpDir),
           command: "transpile",
         }),
       ).toThrow(/Invalid config file:/);

@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { loadConfig } from "../config.js";
+import { loadConfigFromFile } from "./load-config-test-helper.js";
 
 function writeConfig(projectRoot: string, content: string): void {
   const configDir = path.join(projectRoot, ".agloom");
@@ -51,7 +51,7 @@ variables:
 `,
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
 
       expect(result).not.toBeNull();
       expect(result!.configVariables).toEqual({
@@ -89,7 +89,7 @@ variables:
 `,
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
 
       expect(result).not.toBeNull();
       expect(result!.configVariables).toBeNull();
@@ -110,7 +110,7 @@ variables:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'variables' must be an object.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow("Invalid config: 'variables' must be an object.");
     });
 
     // § Расширения 8a: variables как число → Error
@@ -123,7 +123,7 @@ variables: 42
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: 'variables' must be an object.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow("Invalid config: 'variables' must be an object.");
     });
 
     // =================================================================
@@ -141,7 +141,7 @@ variables:
 `,
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
 
       expect(result!.configVariables!["project_name"]).toEqual({
         description: "",
@@ -166,7 +166,9 @@ variables:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: variable 'count' must be a string or an object.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
+        "Invalid config: variable 'count' must be a string or an object.",
+      );
     });
 
     // § Расширения 9.2a: массив → Error
@@ -182,7 +184,9 @@ variables:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: variable 'tags' must be a string or an object.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
+        "Invalid config: variable 'tags' must be a string or an object.",
+      );
     });
 
     // =================================================================
@@ -202,7 +206,9 @@ variables:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: variable 'team' field 'description' must be a string.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
+        "Invalid config: variable 'team' field 'description' must be a string.",
+      );
     });
 
     // =================================================================
@@ -222,7 +228,9 @@ variables:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: variable 'team' field 'required' must be a boolean.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
+        "Invalid config: variable 'team' field 'required' must be a boolean.",
+      );
     });
 
     // =================================================================
@@ -242,7 +250,9 @@ variables:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: variable 'port' field 'default' must be a string.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
+        "Invalid config: variable 'port' field 'default' must be a string.",
+      );
     });
 
     // =================================================================
@@ -262,7 +272,7 @@ variables:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow(
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
         "Invalid config: variable 'api_key' field 'sensitive' must be a boolean.",
       );
     });
@@ -283,7 +293,7 @@ variables:
 `,
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
 
       expect(result!.configVariables!["team"].description).toBe("");
     });
@@ -302,7 +312,7 @@ variables: {}
 `,
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
 
       expect(result!.configVariables).toEqual({});
     });
@@ -338,7 +348,7 @@ plugins:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: plugin 'values' must be an object.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow("Invalid config: plugin 'values' must be an object.");
     });
 
     // § Расширения 6.3a: values как массив → Error
@@ -355,7 +365,7 @@ plugins:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: plugin 'values' must be an object.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow("Invalid config: plugin 'values' must be an object.");
     });
 
     // =================================================================
@@ -375,7 +385,9 @@ plugins:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: plugin 'values' entry 'port' must be a string.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
+        "Invalid config: plugin 'values' entry 'port' must be a string.",
+      );
     });
 
     // § Расширения 6.3b: boolean значение → Error
@@ -391,7 +403,9 @@ plugins:
 `,
       );
 
-      expect(() => loadConfig(tmpDir)).toThrow("Invalid config: plugin 'values' entry 'enabled' must be a string.");
+      expect(() => loadConfigFromFile(tmpDir)).toThrow(
+        "Invalid config: plugin 'values' entry 'enabled' must be a string.",
+      );
     });
 
     // =================================================================
@@ -412,7 +426,7 @@ plugins:
 `,
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
 
       expect(result).not.toBeNull();
       expect(result!.pluginEntries).not.toBeNull();
@@ -433,7 +447,7 @@ plugins:
 `,
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
 
       expect(result).not.toBeNull();
       expect(result!.pluginEntries).not.toBeNull();
@@ -451,7 +465,7 @@ plugins:
 `,
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
 
       expect(result).not.toBeNull();
       expect(result!.pluginEntries).not.toBeNull();
@@ -471,7 +485,7 @@ plugins:
 `,
       );
 
-      const result = loadConfig(tmpDir);
+      const result = loadConfigFromFile(tmpDir);
 
       expect(result).not.toBeNull();
       expect(result!.pluginEntries).not.toBeNull();

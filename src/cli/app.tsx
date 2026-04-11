@@ -24,7 +24,11 @@ import { runTranspileStep } from "./transpile-step.js";
 import { runOverlayStep } from "./overlay-step.js";
 import { cleanFiles } from "./clean-files.js";
 import { initFiles, createConfigFile } from "./init-files.js";
-import { resolveAdaptersFromCLIArgs, loadConfig } from "./config.js";
+import { resolveAdaptersFromCLIArgs } from "./config.js";
+import type { LoadConfigResult } from "./config.js";
+import { stripGlobalFlags } from "./resolve-global-flags.js";
+import type { ResolvedPaths } from "./resolve-global-flags.js";
+import type { RawConfig } from "./read-config-source.js";
 import type { AdapterRegistryEntry, TranspilerStepOutcome, CleanOutcome, InitOutcome } from "./types.js";
 import { createInstructionsTranspiler } from "../instructions-transpiler/index.js";
 import { createSkillsTranspiler } from "../skills-transpiler/index.js";
@@ -50,7 +54,27 @@ export { resolveDeps } from "./resolve-deps.js";
 
 interface AppProps {
   args: string[];
-  projectRoot?: string;
+  /**
+   * Front-end pipeline result computed by `runCLI`. Always injected —
+   * `App` is a pure rendering component and does not resolve paths by
+   * itself.
+   *
+   * Spec: docs/specs/cli-global-flags.md § Процедура Run CLI
+   */
+  paths: ResolvedPaths;
+  /**
+   * Raw config captured by `runCLI` via Read Config Source. Passed down
+   * to command handlers (e.g. `format`) that need direct access to
+   * fields outside of Load Config's surface area, while respecting the
+   * single-I/O invariant (no re-reads of `configSource`).
+   */
+  rawConfig: RawConfig;
+  /**
+   * Loaded config result produced by `runCLI`. `null` indicates Load
+   * Config was skipped (e.g. when `rawConfig.kind === "missing"` is
+   * normalized to an empty result).
+   */
+  loadedConfig: LoadConfigResult | null;
 }
 
 /**
@@ -91,14 +115,21 @@ export function parseArgs(args: string[]): {
   let refresh = false;
   let check = false;
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+  // Глобальные флаги (--project-dir/--agloom-dir/--config) резолвятся
+  // front-end пайплайном (resolveGlobalFlags). Вырезаем их единой точкой
+  // логики из resolve-global-flags.ts, чтобы не дублировать синтаксис
+  // глобальных флагов в parseArgs.
+  // Spec: docs/specs/cli-global-flags.md § Процедура Resolve Global Flags
+  const localArgs = stripGlobalFlags(args);
+
+  for (let i = 0; i < localArgs.length; i++) {
+    const arg = localArgs[i];
     if (arg === "--help") {
       help = true;
     } else if (arg === "--version" || arg === "version") {
       version = true;
-    } else if ((arg === "--agent" || arg === "--adapter") && i + 1 < args.length) {
-      adapterIds.push(args[i + 1]);
+    } else if ((arg === "--agent" || arg === "--adapter") && i + 1 < localArgs.length) {
+      adapterIds.push(localArgs[i + 1]);
       i++;
     } else if (arg === "--all") {
       all = true;
@@ -162,7 +193,36 @@ function getVersion(): string {
   return packageJson.version;
 }
 
+/**
+ * Хук, детерминистично завершающий Ink render после первого commit.
+ * Используется всеми static views (HelpView, AdaptersView, InitView,
+ * CacheCleanView, error-views), чтобы `runCLI.waitUntilExit()` резолвился
+ * без race против таймаута. Async views (TranspileView, FormatView) имеют
+ * собственный `exit()` в useEffect после завершения асинхронной работы —
+ * этот хук им не нужен.
+ *
+ * Spec: docs/specs/cli-global-flags.md § Процедура Run CLI
+ */
+function useExitOnMount(): void {
+  const { exit } = useApp();
+  useEffect(() => {
+    exit();
+  }, [exit]);
+}
+
+/**
+ * Wrapper-компонент, вызывающий `useExitOnMount` перед рендером children.
+ * Позволяет применять детерминистичный выход к static JSX inline в App-
+ * level диспатче без оборачивания каждого listed return в отдельный
+ * компонент.
+ */
+function StaticExit({ children }: { children: React.ReactNode }): React.ReactElement {
+  useExitOnMount();
+  return <>{children}</>;
+}
+
 function HelpView(): React.ReactElement {
+  useExitOnMount();
   return (
     <Box flexDirection="column">
       <Text>agloom — CLI for transpiling canonical Agloom configurations into agent-specific files.</Text>
@@ -199,6 +259,7 @@ function HelpView(): React.ReactElement {
 }
 
 function TranspileHelpView(): React.ReactElement {
+  useExitOnMount();
   return (
     <Box flexDirection="column">
       <Text>Usage: agloom transpile [--adapter &lt;adapterId&gt;]... [--all] [--clean] [--verbose]</Text>
@@ -223,6 +284,7 @@ function TranspileHelpView(): React.ReactElement {
 }
 
 function AdaptersHelpView(): React.ReactElement {
+  useExitOnMount();
   return (
     <Box flexDirection="column">
       <Text>Usage: agloom adapters [--all]</Text>
@@ -238,6 +300,7 @@ function AdaptersHelpView(): React.ReactElement {
 }
 
 function HelpCommandHelpView(): React.ReactElement {
+  useExitOnMount();
   return (
     <Box flexDirection="column">
       <Text>Usage: agloom help [&lt;topic&gt;]</Text>
@@ -504,6 +567,7 @@ function resolveTopic(topicArg: string, topics: TopicEntry[]): { entry: TopicEnt
 }
 
 function HelpCommandView({ topic }: { topic: string | null }): React.ReactElement {
+  useExitOnMount();
   const [output] = useState(() => {
     const baseDocsDir = getBaseDocsDir();
     const topics = loadTopics(baseDocsDir);
@@ -573,7 +637,14 @@ function HelpCommandView({ topic }: { topic: string | null }): React.ReactElemen
   return <Text>{output}</Text>;
 }
 
-function AdaptersView({ projectRoot, all }: { projectRoot: string; all: boolean }): React.ReactElement {
+function AdaptersView({
+  loadedConfig,
+  all,
+}: {
+  loadedConfig: LoadConfigResult | null;
+  all: boolean;
+}): React.ReactElement {
+  useExitOnMount();
   const [state] = useState(() => {
     let heading = "Available adapters:";
     let entries: AdapterRegistryEntry[];
@@ -581,28 +652,13 @@ function AdaptersView({ projectRoot, all }: { projectRoot: string; all: boolean 
     if (all) {
       // --all: все нескрытые адаптеры
       entries = adapterRegistry.filter((e) => !e.hidden);
+    } else if (loadedConfig !== null && loadedConfig.adapterIds !== null) {
+      // Конфиг найден и содержит поле adapters — показать активные
+      heading = "Active adapters:";
+      entries = loadedConfig.adapterIds.map((id) => adapterRegistry.find((e) => e.id === id)!).filter(Boolean);
     } else {
-      // Без --all: Load Config
-      try {
-        const configResult = loadConfig(projectRoot);
-        if (configResult !== null && configResult.adapterIds !== null) {
-          // Конфиг найден и содержит поле adapters — показать активные
-          heading = "Active adapters:";
-          entries = configResult.adapterIds.map((id) => adapterRegistry.find((e) => e.id === id)!).filter(Boolean);
-        } else {
-          // Конфиг отсутствует или поле adapters отсутствует — показать все нескрытые
-          entries = adapterRegistry.filter((e) => !e.hidden);
-        }
-      } catch (err) {
-        // Load Config вернул ошибку → расширение 3a
-        const message = err instanceof Error ? err.message : String(err);
-        process.exitCode = 1;
-        return {
-          heading: "",
-          entries: [] as AdapterRegistryEntry[],
-          error: message,
-        };
-      }
+      // Конфиг отсутствует или поле adapters отсутствует — показать все нескрытые
+      entries = adapterRegistry.filter((e) => !e.hidden);
     }
 
     return { heading, entries, error: null as string | null };
@@ -628,6 +684,7 @@ function AdaptersView({ projectRoot, all }: { projectRoot: string; all: boolean 
 }
 
 function CleanHelpView(): React.ReactElement {
+  useExitOnMount();
   return (
     <Box flexDirection="column">
       <Text>Usage: agloom clean [--adapter &lt;adapterId&gt;]... [--all] [--verbose]</Text>
@@ -678,6 +735,7 @@ function CleanEntriesView({
   projectRoot: string;
   verbose?: boolean;
 }): React.ReactElement {
+  useExitOnMount();
   const [results] = useState(() => {
     const outcomes: { adapterId: string; outcome: CleanOutcome }[] = [];
     let hasErrors = false;
@@ -737,6 +795,7 @@ function CleanEntriesView({
  * Spec: docs/specs/format.md § Расширение --help
  */
 function FormatHelpView(): React.ReactElement {
+  useExitOnMount();
   return (
     <Box flexDirection="column">
       <Text>Usage: agloom format [--check] [--all] [&lt;file|glob&gt;...]</Text>
@@ -759,11 +818,15 @@ function FormatHelpView(): React.ReactElement {
  */
 function FormatView({
   projectRoot,
+  resourcesRoot,
+  rawConfig,
   check,
   globs,
   all,
 }: {
   projectRoot: string;
+  resourcesRoot: string;
+  rawConfig: RawConfig;
   check: boolean;
   globs: string[];
   all: boolean;
@@ -794,8 +857,13 @@ function FormatView({
 
     (async () => {
       try {
-        // § Команда format шаг 3-4: определить glob-паттерны и раскрыть
-        const defaultPatterns = [".agloom/**/*.{md,mdx,json,yaml,yml,toml}", "**/AGLOOM.md"];
+        // § Команда format шаг 3-4: определить glob-паттерны и раскрыть.
+        // Дефолтный паттерн `.agloom/**/*` раскрывается относительно
+        // resourcesRoot (а не projectRoot + '.agloom'), чтобы кастомная
+        // директория от --agloom-dir обрабатывалась тем же паттерном.
+        // Spec: docs/specs/format.md § Команда format шаг 4.
+        const resourcesAgloomPattern = path.relative(projectRoot, resourcesRoot) || ".";
+        const defaultPatterns = [`${resourcesAgloomPattern}/**/*.{md,mdx,json,yaml,yml,toml}`, "**/AGLOOM.md"];
         let patterns: string[];
         if (all) {
           patterns = ["**/*.{md,mdx,json,yaml,yml,toml}"];
@@ -831,31 +899,18 @@ function FormatView({
           return;
         }
 
-        // § Команда format шаг 5: прочитать config.yml
+        // § Команда format шаг 5: прочитать секции prettier/markdownlint
+        // ИЗ rawConfig, полученного от run-cli (single-I/O инвариант).
+        // Spec: docs/specs/format.md § Команда format шаг 5.
         let prettierOverrides: Record<string, unknown> = {};
         let markdownlintOverrides: Record<string, unknown> = {};
-        const configPath = path.join(projectRoot, ".agloom", "config.yml");
-        if (fs.existsSync(configPath)) {
-          try {
-            const yaml = await import("js-yaml");
-            const raw = fs.readFileSync(configPath, "utf-8");
-            const parsed = yaml.load(raw) as Record<string, unknown> | null;
-            if (parsed && typeof parsed === "object") {
-              if (parsed.prettier && typeof parsed.prettier === "object") {
-                prettierOverrides = parsed.prettier as Record<string, unknown>;
-              }
-              if (parsed.markdownlint && typeof parsed.markdownlint === "object") {
-                markdownlintOverrides = parsed.markdownlint as Record<string, unknown>;
-              }
-            }
-          } catch {
-            // § Расширение 5b: невалидный YAML
-            process.exitCode = 1;
-            setStatus({
-              phase: "error",
-              message: "Error parsing .agloom/config.yml",
-            });
-            return;
+        if (rawConfig.kind === "parsed") {
+          const parsed = rawConfig.value;
+          if (parsed.prettier && typeof parsed.prettier === "object") {
+            prettierOverrides = parsed.prettier as Record<string, unknown>;
+          }
+          if (parsed.markdownlint && typeof parsed.markdownlint === "object") {
+            markdownlintOverrides = parsed.markdownlint as Record<string, unknown>;
           }
         }
 
@@ -888,7 +943,7 @@ function FormatView({
         });
       }
     })();
-  }, [projectRoot, check, globs, all, conflictError]);
+  }, [projectRoot, resourcesRoot, rawConfig, check, globs, all, conflictError]);
 
   if (status.phase === "running") {
     return (
@@ -1018,6 +1073,7 @@ function FormatView({
 }
 
 function InitHelpView(): React.ReactElement {
+  useExitOnMount();
   return (
     <Box flexDirection="column">
       <Text>Usage: agloom init [--adapter &lt;adapterId&gt;]... [--all] [--force] [--verbose]</Text>
@@ -1044,6 +1100,7 @@ function InitHelpView(): React.ReactElement {
 function InitView({
   entries,
   projectRoot,
+  resourcesRoot,
   force,
   createConfig,
   configAdapterIds,
@@ -1051,20 +1108,38 @@ function InitView({
 }: {
   entries: AdapterRegistryEntry[];
   projectRoot: string;
+  resourcesRoot: string;
   force: boolean;
   createConfig: boolean;
   configAdapterIds: string[];
   verbose?: boolean;
 }): React.ReactElement {
+  useExitOnMount();
   // Все операции синхронные — вычисляем при инициализации состояния
   const [state] = useState(() => {
-    // Pre-check: .agloom/ уже существует → fail без --force
+    // Шаг 4 (C5 smart check): resourcesRoot считается инициализированным,
+    // если существует config.yml ИЛИ непустая overlays/.
+    // Spec: docs/specs/init-command.md § Поведение шаг 4, расширения 4a-4d.
     if (!force) {
-      const agloomDir = path.join(projectRoot, ".agloom");
-      if (fs.existsSync(agloomDir)) {
+      const configFile = path.join(resourcesRoot, "config.yml");
+      const overlaysDir = path.join(resourcesRoot, "overlays");
+
+      let alreadyInitialized = false;
+      if (fs.existsSync(configFile) && fs.statSync(configFile).isFile()) {
+        alreadyInitialized = true;
+      } else if (fs.existsSync(overlaysDir)) {
+        try {
+          const entries = fs.readdirSync(overlaysDir);
+          if (entries.length > 0) alreadyInitialized = true;
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (alreadyInitialized) {
         process.exitCode = 1;
         return {
-          error: ".agloom/ already exists. Use --force to reinitialize.",
+          error: `${resourcesRoot} already initialized. Use --force to reinitialize.`,
           overlayResults: [] as {
             entryId: string;
             outcome: InitOutcome | string;
@@ -1076,7 +1151,7 @@ function InitView({
     // Шаг 5: создать config.yml при --adapter или --all
     if (createConfig) {
       try {
-        createConfigFile(projectRoot, configAdapterIds);
+        createConfigFile(resourcesRoot, configAdapterIds);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         process.exitCode = 1;
@@ -1094,7 +1169,7 @@ function InitView({
     let hasError = false;
 
     for (const entry of entries) {
-      const result = initFiles(entry, projectRoot, force);
+      const result = initFiles(entry, projectRoot, resourcesRoot, force);
       results.push({ entryId: entry.id, outcome: result });
 
       if (typeof result === "string") {
@@ -1655,6 +1730,7 @@ export function TranspileView({
  * Spec: docs/specs/git-plugin-loading.md § Команда agloom cache clean
  */
 function CacheCleanView(): React.ReactElement {
+  useExitOnMount();
   const [output] = useState(() => {
     const cacheDir = path.join(os.homedir(), ".agloom", "cache", "plugins");
 
@@ -1680,19 +1756,35 @@ function CacheCleanView(): React.ReactElement {
   return <Text>{output}</Text>;
 }
 
-export function App({ args, projectRoot }: AppProps): React.ReactElement {
+export function App({ args, paths, rawConfig, loadedConfig }: AppProps): React.ReactElement {
   const parsed = parseArgs(args);
-  const root = projectRoot ?? process.cwd();
+
+  // `runCLI` is the single entry-point: it runs Resolve Global Flags →
+  // Read Config Source → Load Config and injects the results via
+  // `paths`/`rawConfig`/`loadedConfig`. App never resolves anything by
+  // itself.
+  //
+  // Spec: docs/specs/cli-global-flags.md § Процедура Run CLI
+  const root = paths.writeRoot;
+  const resourcesRoot = paths.resourcesRoot;
 
   // § --version
   if (parsed.version) {
-    return <Text>{getVersion()}</Text>;
+    return (
+      <StaticExit>
+        <Text>{getVersion()}</Text>
+      </StaticExit>
+    );
   }
 
   // § Неизвестный флаг
   if (parsed.unknownFlag && !parsed.help) {
     process.exitCode = 1;
-    return <Text>Unknown option: {parsed.unknownFlag}. Run &apos;agloom --help&apos; to see available options.</Text>;
+    return (
+      <StaticExit>
+        <Text>Unknown option: {parsed.unknownFlag}. Run &apos;agloom --help&apos; to see available options.</Text>
+      </StaticExit>
+    );
   }
 
   // § transpile --help
@@ -1734,7 +1826,9 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
   if (parsed.unknownCommand) {
     process.exitCode = 1;
     return (
-      <Text>Unknown command: {parsed.unknownCommand}. Run &apos;agloom --help&apos; to see available commands.</Text>
+      <StaticExit>
+        <Text>Unknown command: {parsed.unknownCommand}. Run &apos;agloom --help&apos; to see available commands.</Text>
+      </StaticExit>
     );
   }
 
@@ -1745,7 +1839,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
 
   // § Команда adapters
   if (parsed.command === "adapters") {
-    return <AdaptersView projectRoot={root} all={parsed.all} />;
+    return <AdaptersView loadedConfig={loadedConfig} all={parsed.all} />;
   }
 
   // § Команда init
@@ -1756,13 +1850,17 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       entries = resolveAdaptersFromCLIArgs({
         adapterIds: parsed.adapterIds,
         all: parsed.all,
-        projectRoot: root,
+        loadedConfig,
         command: "init",
       });
     } catch (err) {
       process.exitCode = 1;
       const message = err instanceof Error ? err.message : String(err);
-      return <Text>{message}</Text>;
+      return (
+        <StaticExit>
+          <Text>{message}</Text>
+        </StaticExit>
+      );
     }
 
     // Determine config adapter ids for config creation
@@ -1787,6 +1885,7 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       <InitView
         entries={entries}
         projectRoot={root}
+        resourcesRoot={resourcesRoot}
         force={parsed.force}
         createConfig={createConfig}
         configAdapterIds={configAdapterIds}
@@ -1797,7 +1896,16 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
 
   // § Команда format (Spec: docs/specs/format.md § Команда format)
   if (parsed.command === "format") {
-    return <FormatView projectRoot={root} check={parsed.check} globs={parsed.globs} all={parsed.all} />;
+    return (
+      <FormatView
+        projectRoot={root}
+        resourcesRoot={resourcesRoot}
+        rawConfig={rawConfig}
+        check={parsed.check}
+        globs={parsed.globs}
+        all={parsed.all}
+      />
+    );
   }
 
   // § Команда clean
@@ -1808,13 +1916,17 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       entries = resolveAdaptersFromCLIArgs({
         adapterIds: parsed.adapterIds,
         all: parsed.all,
-        projectRoot: root,
+        loadedConfig,
         command: "clean",
       });
     } catch (err) {
       process.exitCode = 1;
       const message = err instanceof Error ? err.message : String(err);
-      return <Text>{message}</Text>;
+      return (
+        <StaticExit>
+          <Text>{message}</Text>
+        </StaticExit>
+      );
     }
 
     return <CleanEntriesView entries={entries} projectRoot={root} verbose={parsed.verbose} />;
@@ -1829,7 +1941,11 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
   // § Команда cache (без subcommand) → трактовать как неизвестную
   if (parsed.command === "cache") {
     process.exitCode = 1;
-    return <Text>Unknown command: cache. Run &apos;agloom --help&apos; to see available commands.</Text>;
+    return (
+      <StaticExit>
+        <Text>Unknown command: cache. Run &apos;agloom --help&apos; to see available commands.</Text>
+      </StaticExit>
+    );
   }
 
   // § Команда transpile
@@ -1840,46 +1956,64 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
       entries = resolveAdaptersFromCLIArgs({
         adapterIds: parsed.adapterIds,
         all: parsed.all,
-        projectRoot: root,
+        loadedConfig,
         command: "transpile",
       });
     } catch (err) {
       process.exitCode = 1;
       const message = err instanceof Error ? err.message : String(err);
-      return <Text>{message}</Text>;
+      return (
+        <StaticExit>
+          <Text>{message}</Text>
+        </StaticExit>
+      );
     }
 
     // § plugin-loading.md § Расширение команды transpile шаги 3.1-3.3
     // § git-plugin-loading.md § Расширение команды transpile
-    // Извлечь pluginEntries из результата Load Config
+    // Извлечь pluginEntries из уже загруженного loadedConfig (single-I/O
+    // инвариант Run CLI — повторные чтения configSource запрещены).
     let plugins: ResolvedPlugin[] = [];
-    const configResult = loadConfig(root);
+    const configResult = loadedConfig;
     const pluginEntries = configResult?.pluginEntries ?? null;
+
+    // Относительные пути в конфиге резолвятся относительно
+    // configSource.baseDir (см. docs/specs/cli-global-flags.md § Разрешение
+    // относительных путей внутри YAML-конфига), а не относительно writeRoot.
+    const configBaseDir = paths.configSource.baseDir;
 
     if (pluginEntries !== null && pluginEntries.length > 0) {
       // Шаг 3.2: Resolve Plugins с pluginEntries и forceRefresh
       try {
         plugins = resolvePlugins({
           pluginEntries,
-          projectRoot: root,
+          projectRoot: configBaseDir,
           forceRefresh: parsed.refresh,
         });
       } catch (err) {
         // Расширение 3.2a: ошибка → exit code 1
         process.exitCode = 1;
         const message = err instanceof Error ? err.message : String(err);
-        return <Text>{message}</Text>;
+        return (
+          <StaticExit>
+            <Text>{message}</Text>
+          </StaticExit>
+        );
       }
     } else {
       // Backward compatibility: try pluginPaths
       const pluginPaths = configResult?.pluginPaths ?? null;
       if (pluginPaths !== null && pluginPaths.length > 0) {
         try {
-          plugins = resolvePlugins({ pluginPaths, projectRoot: root });
+          plugins = resolvePlugins({ pluginPaths, projectRoot: configBaseDir });
         } catch (err) {
           process.exitCode = 1;
           const message = err instanceof Error ? err.message : String(err);
-          return <Text>{message}</Text>;
+          return (
+            <StaticExit>
+              <Text>{message}</Text>
+            </StaticExit>
+          );
         }
       }
     }
@@ -1897,7 +2031,11 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     } catch (err) {
       process.exitCode = 1;
       const message = err instanceof Error ? err.message : String(err);
-      return <Text>{message}</Text>;
+      return (
+        <StaticExit>
+          <Text>{message}</Text>
+        </StaticExit>
+      );
     }
 
     // Resolve plugin values
@@ -1916,7 +2054,11 @@ export function App({ args, projectRoot }: AppProps): React.ReactElement {
     } catch (err) {
       process.exitCode = 1;
       const message = err instanceof Error ? err.message : String(err);
-      return <Text>{message}</Text>;
+      return (
+        <StaticExit>
+          <Text>{message}</Text>
+        </StaticExit>
+      );
     }
 
     return (

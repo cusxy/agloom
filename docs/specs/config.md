@@ -16,6 +16,7 @@ relates:
   - docs/specs/git-plugin-loading.md
   - docs/specs/plugin-values.md
   - docs/specs/format.md
+  - docs/specs/cli-global-flags.md
 maps_to:
   - src/cli/
 ---
@@ -34,7 +35,14 @@ maps_to:
 
 ## Формат файла
 
-Файл `.agloom/config.yml` расположен в `<projectRoot>/.agloom/config.yml`.
+По умолчанию файл `.agloom/config.yml` расположен в
+`<resourcesRoot>/config.yml`, где `resourcesRoot` — директория ресурсов
+agloom (см. `docs/specs/cli-global-flags.md` § Термины). При вызове CLI
+без глобальных флагов `resourcesRoot` равен `<projectRoot>/.agloom`,
+что соответствует пути `<projectRoot>/.agloom/config.yml`. Источник
+конфига МОЖЕТ быть переопределён флагом `--config`
+(см. `docs/specs/cli-global-flags.md` § --config).
+
 Формат — YAML с полями верхнего уровня:
 
 - `adapters` (array\<string>, опционально) — список идентификаторов адаптеров
@@ -59,46 +67,122 @@ adapters:
 § Расширение AdapterRegistryEntry, поле `hidden`) ЗАПРЕЩАЕТСЯ
 указывать в конфигурационном файле.
 
-## Процедура Load Config
+## Процедура Read Config Source
 
-Загрузка и валидация конфигурационного файла. Переиспользуется командами
-`transpile`, `clean`, `init` и `adapters`.
+Вспомогательная процедура чтения и парсинга содержимого конфига
+из `ConfigSource`. Переиспользуется процедурой Load Config
+(для валидации и извлечения `adapters`/`plugins`/`variables`)
+и командой `format` (для извлечения секций `prettier`/`markdownlint`).
+Цель — единая точка выполнения I/O над `configSource` и однократный
+парсинг YAML.
 
 **Вход:**
 
-- `projectRoot` (string, обязательно) — абсолютный путь к корню проекта.
+- `configSource` (ConfigSource, обязательно) — дескриптор источника
+  конфига (см. `docs/specs/cli-global-flags.md` § Тип ConfigSource).
 
 **Поведение:**
 
-1. Попытаться прочитать файл `<projectRoot>/.agloom/config.yml`.
-2. Распарсить содержимое файла как YAML.
-3. Если результат парсинга содержит поле `adapters`, проверить, что
-   значение `adapters` является непустым массивом строк.
-4. Если поле `adapters` присутствует — для каждого элемента массива
-   проверить, что запись с таким `id` существует в реестре адаптеров
-   и НЕ является скрытой (`hidden !== true`).
-5. Сформировать результат: `adapterIds` равен массиву из поля `adapters`,
-   если поле присутствует; иначе `adapterIds` равен `null`.
+1. Получить содержимое конфига согласно `configSource.kind`:
+   - Если `configSource.kind === "file"` — попытаться прочитать файл
+     по пути `configSource.path`.
+   - Если `configSource.kind === "stdin"` — прочитать стандартный
+     входной поток процесса в виде UTF-8 строки.
+2. Распарсить содержимое как YAML.
+3. Нормализовать результат: если парсинг вернул `null` или `undefined`
+   (пустой файл, пустой stdin) — вернуть `{ kind: "parsed", value: {} }`.
+4. Если результат парсинга — объект — вернуть
+   `{ kind: "parsed", value: <объект> }`.
 
 **Расширения:**
 
-1a. Файл не существует → вернуть результат `{ adapterIds: null }`
-(конфиг отсутствует).
+1a. `configSource.kind === "file"` и файл не существует → вернуть
+`{ kind: "missing" }`. Данный случай достижим только при неявном
+(дефолтном) `configSource`: если флаг `--config` указан явно,
+front-end пайплайн проверяет существование файла до вызова
+Read Config Source (см. `docs/specs/cli-global-flags.md`
+§ Процедура Resolve Global Flags, расширение 7a).
 
-2a. Содержимое файла не является валидным YAML →
+2a. Содержимое не является валидным YAML →
 `Error("Invalid config file: {parseErrorMessage}")`.
 
-3a. Значение `adapters` не является массивом или содержит
+4a. Результат парсинга — не объект (например, YAML-скаляр или массив
+на верхнем уровне) → `Error("Invalid config: 'adapters' must be an array of strings.")`.
+
+**Результат:**
+
+- `result` (object) — один из двух вариантов:
+  - `{ kind: "missing" }` — источник отсутствует (только для дефолтного
+    file-configSource, файл не существует).
+  - `{ kind: "parsed", value: object }` — сырой YAML-объект
+    (после нормализации пустого источника до `{}`). Валидация
+    конкретных полей выполняется вызывающими процедурами.
+
+## Процедура Load Config
+
+Валидация и извлечение структурированных полей из сырого
+YAML-объекта конфига. Переиспользуется процедурой Run CLI
+(см. `docs/specs/cli-global-flags.md` § Процедура Run CLI) один раз
+за жизненный цикл CLI. Процедура извлекает поля `adapters`, `plugins`,
+`variables`; поля `prettier` и `markdownlint` ИГНОРИРУЮТСЯ
+и читаются командой `format` напрямую из `rawConfig`
+(см. `docs/specs/format.md` § Команда format).
+
+Load Config НЕ выполняет собственный I/O: чтение и парсинг уже
+сделаны процедурой Read Config Source, и результат передаётся
+в Load Config как готовый объект.
+
+**Вход:**
+
+- `rawConfig` (object, обязательно) — результат процедуры
+  Read Config Source: либо `{ kind: "missing" }`, либо
+  `{ kind: "parsed", value: object }`.
+
+**Поведение:**
+
+1. Если `rawConfig.kind === "missing"` — вернуть результат
+   `{ adapterIds: null, pluginPaths: null, pluginEntries: null, configVariables: null }`.
+   Иначе — использовать `rawConfig.value` как парсированный
+   YAML-объект для последующих шагов.
+2. Если `rawConfig.value` содержит поле `adapters`, проверить, что
+   значение `adapters` является непустым массивом строк.
+3. Если поле `adapters` присутствует — для каждого элемента массива
+   проверить, что запись с таким `id` существует в реестре адаптеров
+   и НЕ является скрытой (`hidden !== true`).
+4. Сформировать результат: `adapterIds` равен массиву из поля `adapters`,
+   если поле присутствует; иначе `adapterIds` равен `null`.
+
+Относительные пути, записанные внутри YAML-содержимого конфига
+(например, `plugins: path: ./foo`, пути в `overlay:`), ТРЕБУЕТСЯ
+резолвить относительно `configSource.baseDir`
+(см. `docs/specs/cli-global-flags.md` § Разрешение относительных путей
+внутри YAML-конфига), независимо от `--project-dir` и `--agloom-dir`.
+Для `configSource.kind === "file"` это `path.dirname(configSource.path)`;
+для `configSource.kind === "stdin"` — `process.cwd()`.
+
+При вызове со стандартным конфигом
+(`configSource.kind === "file"`,
+`configSource.path === <resourcesRoot>/config.yml`) поведение
+эквивалентно текущему: пути внутри конфига резолвятся относительно
+`resourcesRoot`, что совпадает с `.agloom/` в обратной совместимости.
+
+**Расширения:**
+
+1a. `rawConfig.kind === "missing"` → вернуть результат
+`{ adapterIds: null, pluginPaths: null, pluginEntries: null, configVariables: null }`.
+Не является ошибкой.
+
+2a. Значение `adapters` не является массивом или содержит
 нестроковые элементы →
 `Error("Invalid config: 'adapters' must be an array of strings.")`.
 
-3b. Массив `adapters` пуст →
+2b. Массив `adapters` пуст →
 `Error("Invalid config: 'adapters' must not be empty.")`.
 
-4a. Элемент массива не соответствует ни одной записи реестра →
+3a. Элемент массива не соответствует ни одной записи реестра →
 `Error("Invalid config: unknown adapter '{id}'.")`.
 
-4b. Элемент массива соответствует скрытому адаптеру →
+3b. Элемент массива соответствует скрытому адаптеру →
 `Error("Invalid config: adapter '{id}' cannot be specified in config.")`.
 
 **Результат:**
@@ -167,7 +251,12 @@ adapters:
   `--adapter`, накопленные в массив в порядке появления на командной
   строке. Пустой массив, если флаг не был указан ни разу.
 - `all` (boolean, обязательно) — значение аргумента `--all`.
-- `projectRoot` (string, обязательно) — абсолютный путь к корню проекта.
+- `loadedConfig` (LoadConfigResult, обязательно) — готовый результат
+  процедуры Load Config, полученный Run CLI до вызова команды
+  (см. `docs/specs/cli-global-flags.md` § Процедура Run CLI).
+  Процедура `Resolve Adapters from CLI Args` ЗАПРЕЩАЕТСЯ выполнять
+  собственный вызов Load Config или читать `configSource` — парсинг
+  конфига уже выполнен эагерно в Run CLI.
 - `command` (string, обязательно) — имя вызывающей команды
   (`"transpile"`, `"clean"` или `"init"`).
 
@@ -185,9 +274,10 @@ adapters:
    списка записей в топологическом порядке. Вернуть полученный список.
 3. Если `all` указан (`all === true`): вернуть все записи реестра
    адаптеров в порядке определения.
-4. Выполнить процедуру Load Config
-   (см. § Процедура Load Config) с `projectRoot`.
-5. Если `Load Config` вернул непустой `adapterIds` (массив строк):
+4. Использовать поле `loadedConfig.adapterIds` (уже загруженный результат
+   Load Config из Run CLI; см. `docs/specs/cli-global-flags.md`
+   § Процедура Run CLI). Собственный вызов Load Config ЗАПРЕЩЁН.
+5. Если `loadedConfig.adapterIds` является непустым массивом строк:
    выполнить процедуру Resolve Adapters from Config
    (см. § Процедура Resolve Adapters from Config) с этим списком.
    Вернуть полученный список записей.
@@ -203,15 +293,18 @@ adapters:
 2b. В `adapterIds` есть повторяющиеся идентификаторы → дедуплицировать
 молча, повторы не являются ошибкой.
 
-5a. Load Config вернул результат с `adapterIds: null` (поле `adapters`
-отсутствует или сам файл не существует):
+5a. `loadedConfig.adapterIds === null` (поле `adapters` в конфиге
+отсутствовало, дефолтный файл не существует, или stdin был пуст):
 
 - Если `command === "init"` →
   `Error("No adapters specified. Use --adapter <id> or --all to specify adapters.")`.
 - Если `command !== "init"` →
   `Error("No adapters specified. Use --adapter <id>, --all, or add 'adapters' to .agloom/config.yml.")`.
 
-5b. Load Config вернул ошибку → пробросить ошибку вызывающей команде.
+Ошибки самой процедуры Load Config в Resolve Adapters from CLI Args
+НЕ обрабатываются: они уже пойманы процедурой Run CLI
+(см. `docs/specs/cli-global-flags.md` § Процедура Run CLI, расширение 2a)
+и вызвали завершение процесса до вызова данной процедуры.
 
 **Результат:**
 

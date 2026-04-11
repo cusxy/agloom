@@ -9,6 +9,7 @@ relates:
   - docs/specs/cli.md
   - docs/specs/adapter-registry-ext.md
   - docs/specs/config.md
+  - docs/specs/cli-global-flags.md
 maps_to:
   - src/cli/
 ---
@@ -105,12 +106,13 @@ maps_to:
 1. Распарсить аргументы из командной строки: значения всех вхождений
    `--adapter` накопить в массив `adapterIds` в порядке появления;
    распарсить булевы флаги `--all` и `--verbose`.
-2. Определить `projectRoot` как текущий рабочий каталог процесса
-   (`process.cwd()`).
+2. Получить `paths` (ResolvedPaths) и `loadedConfig` (LoadConfigResult)
+   от front-end пайплайна (см. `docs/specs/cli-global-flags.md`
+   § Процедура Run CLI). Определить `projectRoot` как `paths.writeRoot`.
 3. Выполнить процедуру Resolve Adapters from CLI Args
    (см. `docs/specs/config.md`
    § Процедура Resolve Adapters from CLI Args)
-   с `adapterIds`, `all`, `projectRoot`, `"clean"`.
+   с `adapterIds`, `all`, `loadedConfig`, `"clean"`.
 4. Для каждой записи из полученного списка выполнить процедуру
    Clean Files (см. § Процедура Clean Files) с `entry`
    и `projectRoot`.
@@ -242,6 +244,27 @@ Options:
   --all                  Clean for all supported adapters
   --verbose              Show details even when 0 files removed
 ```
+
+## Глобальные флаги
+
+Команда `clean` поддерживает три глобальных флага
+(см. `docs/specs/cli-global-flags.md` § Флаги):
+
+- `--project-dir <path>` — корень проекта (writeRoot), внутри которого
+  удаляются сгенерированные файлы адаптеров (`entry.paths` и
+  `entry.targetFiles`).
+- `--agloom-dir <path>` — директория ресурсов; влияет на дефолт
+  `--config` через каскад. Непосредственно clean не читает ресурсы
+  из `resourcesRoot`.
+- `--config <path|->` — источник списка адаптеров для очистки.
+  Переданный конфиг заменяет дефолтный путь; `loadedConfig`
+  (результат Load Config, выполненного один раз в Run CLI)
+  содержит поле `adapterIds` из этого источника, которое clean
+  использует при отсутствии `--adapter` и `--all`.
+
+Процедура Clean Files (см. § Процедура Clean Files) вызывается
+с `projectRoot = paths.writeRoot` и удаляет файлы относительно
+`writeRoot`, независимо от значений `resourcesRoot` и `configSource`.
 
 ## Вне scope
 
