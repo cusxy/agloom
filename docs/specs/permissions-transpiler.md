@@ -719,6 +719,599 @@ File-правила из канонического формата переда�
 поскольку `opencode.json` является merge-eligible файлом
 (расширение `.json`).
 
+### Инвариант "MCP > Permissions" для OpenCode
+
+Файл `opencode.json` является общим для MCP- и Permissions-транспилеров.
+MCP-транспилер выполняется в pipeline `transpile` до Permissions
+(см. `docs/specs/cli.md` § Команда transpile) и записывает блок `mcp`
+и flat-ключи `permission` (из `includeTools`/`excludeTools`).
+Permissions-транспилер ТРЕБУЕТСЯ писать только в блок `permission`,
+не перезаписывая ключи, эмитированные MCP-транспилером. Инвариант
+обеспечивается deep merge через layer model: ключи, записанные
+ранее, сохраняются; пересечение по конкретному ключу разрешается
+last-writer-wins, но для не-пересекающихся MCP- и Permissions-правил
+перезаписи не происходит.
+
+## Codex Permissions-адаптер
+
+Адаптер для Codex CLI. `agentId`: `"codex"`.
+
+Генерирует файл `.codex/rules/agloom.rules` в корне проекта.
+Файл содержит правила в синтаксисе Codex rules (Starlark-like
+function-call syntax, см.
+[Codex rules reference](https://developers.openai.com/codex/rules)).
+
+Codex поддерживает только правила для shell-команд в rules-файле.
+Секции `mcp` и `file` канонического формата НЕ поддерживаются
+и пропускаются с предупреждением. Per-MCP-tool gating для Codex
+выполняется через `config.toml` (`enabled_tools`/`disabled_tools`)
+и описан в `docs/specs/mcp-transpiler.md` § Codex MCP-адаптер.
+
+Codex применяет правила по принципу **most-restrictive-wins**
+(`forbidden > prompt > allow`) при пересечении паттернов. Канонический
+формат использует **first-match-wins**. Для не-пересекающихся правил
+семантика эквивалентна; для пересекающихся — возможно расхождение.
+Это расхождение ТРЕБУЕТСЯ задокументировать как известное ограничение
+адаптера; автоматическое разрешение конфликтов не выполняется.
+
+### Маппинг действий для Codex
+
+Маппинг действий канонического формата в значения `decision`
+Codex rules:
+
+- `allow` → `"allow"`.
+- `ask` → `"prompt"`.
+- `deny` → `"forbidden"`.
+
+### Трансформация shell-паттернов для Codex
+
+Codex `prefix_rule(pattern=[...])` принимает массив argv-токенов
+и применяется как prefix match по первым токенам командной строки.
+Канонические shell-паттерны (glob) ТРЕБУЕТСЯ преобразовывать
+в argv-массив по следующим правилам:
+
+1. Если паттерн оканчивается на последовательность из одного
+   пробела и символа `*` (далее — "трейлинг-wildcard") — удалить
+   эти два символа, разбить оставшуюся строку по whitespace
+   на argv-токены.
+2. Если паттерн не содержит символа `*` — разбить всю строку
+   по whitespace на argv-токены (без удаления суффикса).
+3. Если паттерн равен одному символу `*` (bare wildcard) —
+   пропустить с предупреждением.
+4. Если первым символом паттерна является `*` (leading wildcard) —
+   пропустить с предупреждением.
+5. Если `*` встречается в любой другой позиции, кроме
+   трейлинг-wildcard (между токенами или внутри токена) —
+   пропустить с предупреждением.
+
+Примеры:
+
+- `"git push *"` → `["git", "push"]`.
+- `"./gradlew *"` → `["./gradlew"]`.
+- `"git status"` → `["git", "status"]`.
+- `"*"` → skip (bare wildcard).
+- `"* --version"` → skip (leading wildcard).
+- `"git * --version"` → skip (middle wildcard).
+
+### Формат output-файла Codex
+
+Output-файл `.codex/rules/agloom.rules` — текстовый файл, содержащий
+последовательность вызовов `prefix_rule(...)` в порядке следования
+правил канонического массива `shell`. Между соседними вызовами
+ТРЕБУЕТСЯ вставлять одну пустую строку для читаемости.
+
+Каждый вызов ДОЛЖЕН иметь форму:
+
+```text
+prefix_rule(
+    pattern = ["<token1>", "<token2>", ...],
+    decision = "<allow|prompt|forbidden>",
+)
+```
+
+Файл ДОЛЖЕН заканчиваться переводом строки.
+
+### transpile
+
+`codexPermissionsAdapter.transpile(file)`.
+
+**Вход:**
+
+- `file` (PermissionsCanonicalFile, обязательно) -- канонический файл.
+
+**Поведение:**
+
+1. Создать пустой массив строк `lines`.
+2. Если `file.content.mcp` присутствует -- эмитировать предупреждение
+   в `stderr`: `"Warning: Codex does not support per-tool MCP gating in rules file. 'mcp' section ignored. Use Codex config.toml (enabled_tools/disabled_tools) via MCP transpiler."`.
+3. Если `file.content.file` присутствует -- эмитировать предупреждение
+   в `stderr`: `"Warning: Codex does not support file permissions. 'file' section ignored."`.
+4. Если `file.content.shell` присутствует -- итерировать массив правил
+   в порядке канонического формата:
+   4.1. Для каждого правила применить трансформацию shell-паттерна
+   (см. "Трансформация shell-паттернов для Codex").
+   4.2. Если паттерн пропускается (bare/leading/middle wildcard) --
+   эмитировать предупреждение в `stderr`:
+   `"Warning: Codex does not support shell pattern '{pattern}'. Rule skipped."`.
+   4.3. Если паттерн преобразован в argv-массив -- применить
+   маппинг действия (см. "Маппинг действий для Codex") и сформировать
+   вызов `prefix_rule(pattern=[...], decision="...")`.
+   4.4. Добавить сформированный вызов в `lines`.
+5. Объединить `lines` с разделителем пустой строки.
+6. Добавить завершающий перевод строки.
+7. Сформировать `PermissionsOutputFile`
+   с `relativePath: ".codex/rules/agloom.rules"` и сериализованным
+   `content`.
+
+**Расширения:**
+
+4a. `file.content.shell` отсутствует или все правила пропущены --
+сформировать `PermissionsOutputFile` с пустой строкой в качестве
+`content` (одинокий `\n`). Пустой файл является валидным Codex
+rules-файлом.
+
+**Результат:**
+
+`PermissionsOutputFile[]` (массив из одного элемента).
+
+### Пример выходного файла `.codex/rules/agloom.rules`
+
+Для канонического файла из примера выше правило `"*": deny`
+пропускается (bare wildcard):
+
+```text
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "forbidden",
+)
+
+prefix_rule(
+    pattern = ["./gradlew"],
+    decision = "allow",
+)
+
+prefix_rule(
+    pattern = ["ls"],
+    decision = "allow",
+)
+
+prefix_rule(
+    pattern = ["git", "status"],
+    decision = "allow",
+)
+
+prefix_rule(
+    pattern = ["npm"],
+    decision = "prompt",
+)
+```
+
+Предупреждения в `stderr`:
+
+```text
+Warning: Codex does not support per-tool MCP gating in rules file. 'mcp' section ignored. Use Codex config.toml (enabled_tools/disabled_tools) via MCP transpiler.
+Warning: Codex does not support file permissions. 'file' section ignored.
+Warning: Codex does not support shell pattern '*'. Rule skipped.
+```
+
+### Deep merge с существующим .codex/rules/agloom.rules
+
+Файл `.codex/rules/agloom.rules` имеет расширение `.rules`, которое
+НЕ входит в список merge-eligible форматов
+(см. `docs/specs/layer-model.md` § Merge-eligible форматы). При
+конфликте по целевому пути ТРЕБУЕТСЯ применить стратегию override
+(полная замена файла). Deep merge НЕ выполняется.
+
+### Инвариант "MCP > Permissions" для Codex
+
+MCP-транспилер Codex пишет в `.codex/config.toml`
+(см. `docs/specs/mcp-transpiler.md` § Codex MCP-адаптер).
+Permissions-транспилер Codex пишет в `.codex/rules/agloom.rules`.
+Файлы не пересекаются; конфликт перезаписи невозможен.
+
+## Gemini Permissions-адаптер
+
+Адаптер для Gemini CLI. `agentId`: `"gemini"`.
+
+Генерирует файл `.gemini/policies/agloom.toml` в корне проекта.
+Файл содержит правила в формате Gemini policy engine
+(TOML с массивом `[[rule]]`, см.
+[Gemini policy engine reference](https://geminicli.com/docs/reference/policy-engine)).
+
+Gemini policy engine поддерживает секции `shell` (через tool
+`run_shell_command`) и `mcp` (через поля `toolName`+`mcpName`).
+Секция `file` канонического формата НЕ поддерживается Gemini
+policy engine и пропускается с предупреждением.
+
+### Маппинг действий для Gemini
+
+Маппинг действий канонического формата в значения `decision`
+Gemini policy engine:
+
+- `allow` → `"allow"`.
+- `ask` → `"ask_user"`.
+- `deny` → `"deny"`.
+
+### Маппинг приоритета для Gemini
+
+Канонический формат использует **first-match-wins** (первое
+совпавшее правило побеждает). Gemini policy engine использует
+числовой `priority` (диапазон `0..999`, выигрывает правило с большим
+значением). Для массива `rules` длины `N` (где `i` — 0-based индекс
+правила в массиве) ТРЕБУЕТСЯ присваивать `priority = 999 - i`.
+Таким образом, первое правило получает `priority = 999`, а последнее —
+`priority = 999 - N + 1`.
+
+Если суммарное количество эмитируемых правил (shell + mcp, после
+пропуска `file` и пропуска wildcard `*:*`) превышает 1000 —
+`TransformError("Gemini policy engine supports at most 1000 rules per file (priority overflow). Got {N} rules.")`.
+
+Нумерация `i` ведётся по порядку эмиссии правил в итоговом файле
+(сначала shell-правила в каноническом порядке, затем mcp-правила
+в каноническом порядке).
+
+### Трансформация shell-правил для Gemini
+
+Каждое shell-правило канонического формата ТРЕБУЕТСЯ преобразовывать
+в элемент `[[rule]]` с `toolName = "run_shell_command"` по следующим
+правилам:
+
+1. Если паттерн оканчивается на последовательность из одного
+   пробела и символа `*` (трейлинг-wildcard) — удалить эти два
+   символа и использовать оставшуюся строку как `commandPrefix`.
+2. Если паттерн не содержит символа `*` — использовать всю строку
+   как `commandPrefix` (prefix match).
+3. Если паттерн равен одному символу `*` (bare wildcard) —
+   не устанавливать `commandPrefix` и не устанавливать
+   `commandRegex` (правило применяется ко всем вызовам
+   `run_shell_command`).
+4. Если `*` встречается в любой другой позиции, кроме
+   трейлинг-wildcard, — преобразовать glob-паттерн в regex
+   (каждое вхождение `*` → `.+`, прочие regex-метасимволы
+   экранируются как литералы) и использовать результат
+   как `commandRegex` с якорями `^` и `$`.
+
+Примеры:
+
+- `"git push *"` → `toolName = "run_shell_command"`, `commandPrefix = "git push"`.
+- `"./gradlew *"` → `toolName = "run_shell_command"`, `commandPrefix = "./gradlew"`.
+- `"git status"` → `toolName = "run_shell_command"`, `commandPrefix = "git status"`.
+- `"*"` → `toolName = "run_shell_command"` (без `commandPrefix`/`commandRegex`).
+- `"* --version"` → `toolName = "run_shell_command"`, `commandRegex = "^.+ --version$"`.
+- `"git * --version"` → `toolName = "run_shell_command"`, `commandRegex = "^git .+ --version$"`.
+
+### Трансформация MCP-правил для Gemini
+
+Каждое MCP-правило канонического формата `<server>:<tool>`
+ТРЕБУЕТСЯ преобразовывать в элемент `[[rule]]` по правилам:
+
+1. Если `tool` не равен `"*"` — установить `toolName = "<tool>"`
+   и `mcpName = "<server>"`.
+2. Если `tool` равен `"*"` и `server` не равен `"*"` — установить
+   только `mcpName = "<server>"` (без `toolName`, правило применяется
+   ко всем инструментам сервера).
+3. Если `server` равен `"*"` и `tool` равен `"*"` (паттерн `*:*`) —
+   пропустить с предупреждением (Gemini policy engine не имеет
+   универсального catch-all для MCP; fall-through default-поведение
+   обычно покрывает этот случай).
+
+Примеры:
+
+- `"bitbucket:get_pull_request"` → `toolName = "get_pull_request"`, `mcpName = "bitbucket"`.
+- `"bitbucket:*"` → `mcpName = "bitbucket"` (без `toolName`).
+- `"*:*"` → skip.
+
+### transpile
+
+`geminiPermissionsAdapter.transpile(file)`.
+
+**Вход:**
+
+- `file` (PermissionsCanonicalFile, обязательно) -- канонический файл.
+
+**Поведение:**
+
+1. Создать пустой массив `rules` элементов формата
+   `{ toolName?, commandPrefix?, commandRegex?, mcpName?, decision, priority }`.
+2. Если `file.content.file` присутствует -- эмитировать предупреждение
+   в `stderr`: `"Warning: Gemini policy engine does not support file permissions. 'file' section ignored."`.
+3. Если `file.content.shell` присутствует -- итерировать массив правил
+   в порядке канонического формата:
+   3.1. Для каждого правила применить трансформацию shell-паттерна
+   (см. "Трансформация shell-правил для Gemini").
+   3.2. Применить маппинг действия (см. "Маппинг действий
+   для Gemini").
+   3.3. Добавить элемент в `rules`.
+4. Если `file.content.mcp` присутствует -- итерировать массив правил
+   в порядке канонического формата:
+   4.1. Для каждого правила применить трансформацию MCP-паттерна
+   (см. "Трансформация MCP-правил для Gemini").
+   4.2. Если паттерн пропускается (`*:*`) -- эмитировать предупреждение
+   в `stderr`: `"Warning: Gemini does not support catch-all MCP pattern '*:*'. Rule skipped."`.
+   4.3. Применить маппинг действия.
+   4.4. Добавить элемент в `rules`.
+5. Проверить, что `rules.length <= 1000`. Если длина больше --
+   `TransformError`.
+6. Присвоить каждому элементу `rules` поле `priority = 999 - i`
+   (где `i` — 0-based индекс в массиве `rules` после всех добавлений).
+7. Сериализовать `rules` в TOML-документ с секциями `[[rule]]`,
+   по одной на каждый элемент массива.
+8. Добавить завершающий перевод строки.
+9. Сформировать `PermissionsOutputFile`
+   с `relativePath: ".gemini/policies/agloom.toml"`
+   и сериализованным `content`.
+
+**Расширения:**
+
+5a. `rules.length > 1000` --
+`TransformError("Gemini policy engine supports at most 1000 rules per file (priority overflow). Got {N} rules.")`.
+
+**Результат:**
+
+`PermissionsOutputFile[]` (массив из одного элемента).
+
+### Пример выходного файла `.gemini/policies/agloom.toml`
+
+Для канонического файла из примера выше (`*:*` пропущено):
+
+```toml
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git push"
+decision = "deny"
+priority = 999
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "./gradlew"
+decision = "allow"
+priority = 998
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "ls"
+decision = "allow"
+priority = 997
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git status"
+decision = "allow"
+priority = 996
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "npm"
+decision = "ask_user"
+priority = 995
+
+[[rule]]
+toolName = "run_shell_command"
+decision = "deny"
+priority = 994
+
+[[rule]]
+toolName = "get_pull_request"
+mcpName = "bitbucket"
+decision = "allow"
+priority = 993
+
+[[rule]]
+toolName = "get_build"
+mcpName = "jenkins"
+decision = "allow"
+priority = 992
+
+[[rule]]
+mcpName = "bitbucket"
+decision = "ask_user"
+priority = 991
+
+[[rule]]
+mcpName = "jenkins"
+decision = "ask_user"
+priority = 990
+```
+
+### Deep merge с существующим .gemini/policies/agloom.toml
+
+Файл `.gemini/policies/agloom.toml` имеет расширение `.toml`,
+которое входит в список merge-eligible форматов
+(см. `docs/specs/layer-model.md` § Merge-eligible форматы). Deep
+merge TOML-массивов `[[rule]]` выполняется как полная замена массива
+(а не объединение элементов). Для сценария данного цикла это
+приемлемо: массив `rule` в output-файле полностью формируется
+Permissions-транспилером, overlay-слои с дополнительными
+`[[rule]]`-элементами в данном цикле не гарантируются.
+
+### Инвариант "MCP > Permissions" для Gemini
+
+MCP-транспилер Gemini пишет в `.gemini/settings.json`
+(см. `docs/specs/mcp-transpiler.md` § Gemini MCP-адаптер).
+Permissions-транспилер Gemini пишет в `.gemini/policies/agloom.toml`.
+Файлы не пересекаются; конфликт перезаписи невозможен.
+
+## Kilocode Permissions-адаптер
+
+Адаптер для Kilocode. `agentId`: `"kilocode"`.
+
+Генерирует файл `kilo.jsonc` в корне проекта. Файл является единым
+конфигурационным файлом Kilocode и содержит одновременно MCP-блок
+(`mcpServers`), записываемый MCP-транспилером, и блок `permission`,
+записываемый Permissions-транспилером. Слияние выполняется через
+deep merge layer model.
+
+Содержимое, эмитируемое Permissions-адаптером, ТРЕБУЕТСЯ записывать
+как чистый JSON (без JSONC-комментариев), симметрично MCP-адаптеру
+(см. `docs/specs/mcp-transpiler.md` § Kilocode MCP-адаптер).
+
+Kilocode поддерживает все три секции канонического формата:
+`shell` (ключ `bash`), `mcp` (flat-ключи `<server>_<tool>`),
+`file` (три категории: `read`, `edit`, `write`).
+
+Kilocode использует семантику **last-match-wins** для path-паттернов.
+При транспиляции ТРЕБУЕТСЯ инвертировать порядок массивов правил
+(аналогично OpenCode), чтобы сохранить эквивалентную семантику
+канонического first-match-wins.
+
+### Маппинг действий для Kilocode (shell, mcp)
+
+Маппинг действий канонического формата в значения Kilocode для
+секций `shell` и `mcp`:
+
+- `allow` → `"allow"`.
+- `ask` → `"ask"`.
+- `deny` → `"deny"`.
+
+### Трансформация shell-правил для Kilocode
+
+Shell-правила эмитируются как пары `<pattern>: <action>` в объекте
+`permission.bash`. Паттерны передаются as-is (Kilocode поддерживает
+нативные glob-символы `*` и `?`). Массив shell-правил инвертируется
+(`reverse`) перед эмиссией в объект.
+
+### Трансформация MCP-правил для Kilocode
+
+MCP-правила эмитируются как flat-ключи в объекте `permission`,
+где ключ — `<server>_<tool>`, значение — действие. Разделитель `:`
+заменяется на `_`. Массив MCP-правил инвертируется (`reverse`)
+перед эмиссией.
+
+Примеры:
+
+- `"bitbucket:get_pull_request"` → `"bitbucket_get_pull_request"`.
+- `"bitbucket:*"` → `"bitbucket_*"`.
+- `"*:*"` → `"*_*"`.
+
+### Трансформация file-правил для Kilocode
+
+Kilocode разделяет file-permissions на три независимые категории:
+`read`, `edit`, `write`. Каждая категория — объект, где ключ —
+glob-паттерн пути, значение — `"allow"` / `"ask"` / `"deny"`.
+
+Канонические file-действия раскрываются в три категории Kilocode
+по следующей таблице:
+
+| canonical | `permission.read[pattern]` | `permission.edit[pattern]` | `permission.write[pattern]` |
+| --------- | -------------------------- | -------------------------- | --------------------------- |
+| `deny`    | `"deny"`                   | `"deny"`                   | `"deny"`                    |
+| `read`    | `"allow"`                  | `"deny"`                   | `"deny"`                    |
+| `write`   | `"allow"`                  | `"allow"`                  | `"allow"`                   |
+
+Массив file-правил инвертируется (`reverse`) перед эмиссией
+в каждую из трёх категорий.
+
+### transpile
+
+`kilocodePermissionsAdapter.transpile(file)`.
+
+**Вход:**
+
+- `file` (PermissionsCanonicalFile, обязательно) -- канонический файл.
+
+**Поведение:**
+
+1. Создать пустой объект `permission`.
+2. Если `file.content.mcp` присутствует:
+   2.1. Развернуть массив MCP-правил (`reverse`).
+   2.2. Для каждого правила трансформировать паттерн
+   (см. "Трансформация MCP-правил для Kilocode") и действие
+   (см. "Маппинг действий для Kilocode") и добавить в `permission`
+   как ключ-значение.
+3. Если `file.content.shell` присутствует:
+   3.1. Развернуть массив shell-правил (`reverse`).
+   3.2. Создать объект `bash`.
+   3.3. Для каждого правила передать паттерн as-is, применить
+   маппинг действия и добавить в `bash` как ключ-значение.
+   3.4. Добавить `bash` в `permission`.
+4. Если `file.content.file` присутствует:
+   4.1. Развернуть массив file-правил (`reverse`).
+   4.2. Создать объекты `read`, `edit`, `write` (все пустые).
+   4.3. Для каждого правила применить маппинг категорий
+   (см. "Трансформация file-правил для Kilocode") и добавить
+   соответствующие значения в `read`, `edit`, `write`.
+   4.4. Добавить `read`, `edit`, `write` в `permission`.
+5. Сформировать объект `output` с единственным ключом `"permission"`,
+   содержащим `permission`.
+6. Сериализовать `output` в JSON с отступом 2 пробела
+   и завершающим переводом строки.
+7. Сформировать `PermissionsOutputFile`
+   с `relativePath: "kilo.jsonc"`.
+
+**Расширения:**
+
+Нет расширений.
+
+**Результат:**
+
+`PermissionsOutputFile[]` (массив из одного элемента).
+
+### Пример выходного файла `kilo.jsonc` (Permissions-слой)
+
+Permissions-адаптер эмитирует только блок `permission`. Блок
+`$schema` и `mcpServers` записывается MCP-транспилером
+(см. `docs/specs/mcp-transpiler.md` § Kilocode MCP-адаптер)
+и сохраняется при deep merge.
+
+Для канонического файла из примера выше Permissions-адаптер эмитирует:
+
+```json
+{
+  "permission": {
+    "*_*": "deny",
+    "jenkins_*": "ask",
+    "bitbucket_*": "ask",
+    "jenkins_get_build": "allow",
+    "bitbucket_get_pull_request": "allow",
+    "untrusted-server_*": "deny",
+    "bash": {
+      "*": "deny",
+      "npm *": "ask",
+      "git status *": "allow",
+      "ls *": "allow",
+      "./gradlew *": "allow",
+      "git push *": "deny"
+    },
+    "read": {
+      "src/**": "allow",
+      "src/**/*.ts": "allow",
+      "**/.env": "deny"
+    },
+    "edit": {
+      "src/**": "deny",
+      "src/**/*.ts": "allow",
+      "**/.env": "deny"
+    },
+    "write": {
+      "src/**": "deny",
+      "src/**/*.ts": "allow",
+      "**/.env": "deny"
+    }
+  }
+}
+```
+
+После deep merge с MCP-слоем (записанным раньше в том же файле)
+итоговый `kilo.jsonc` содержит все три top-level ключа: `$schema`,
+`mcpServers`, `permission`.
+
+### Deep merge с существующим kilo.jsonc
+
+Файл `kilo.jsonc` имеет расширение `.jsonc`, которое входит в список
+merge-eligible форматов (см. `docs/specs/layer-model.md`
+§ Merge-eligible форматы). При конфликте по целевому пути ТРЕБУЕТСЯ
+применить deep merge в соответствии с `docs/specs/layer-model.md`
+§ Алгоритм deep merge.
+
+### Инвариант "MCP > Permissions" для Kilocode
+
+Файл `kilo.jsonc` является общим для MCP- и Permissions-транспилеров
+Kilocode. MCP-транспилер записывает top-level ключи `$schema`
+и `mcpServers`. Permissions-транспилер записывает top-level ключ
+`permission`. Множества ключей не пересекаются. Deep merge при
+слиянии слоёв сохраняет все три ключа; перезаписи MCP-блока
+Permissions-блоком не происходит.
+
 ## Запись результатов
 
 `transpiler.writeResults(results)` -- записывает результаты транспиляции
@@ -789,6 +1382,9 @@ File-правила из канонического формата переда�
 | ------------ | ---------------------------- |
 | `"claude"`   | `ClaudePermissionsAdapter`   |
 | `"opencode"` | `OpenCodePermissionsAdapter` |
+| `"codex"`    | `CodexPermissionsAdapter`    |
+| `"gemini"`   | `GeminiPermissionsAdapter`   |
+| `"kilocode"` | `KilocodePermissionsAdapter` |
 | `"agentsmd"` | `null`                       |
 
 Адаптер `"agentsmd"` НЕ имеет Permissions-адаптера, поскольку формат
@@ -870,7 +1466,7 @@ Permissions-конфигурация плагина участвует в мод
 
 Следующие аспекты НЕ ВХОДЯТ в scope данной спецификации:
 
-- Адаптеры для Codex, Gemini CLI, Cursor, Copilot, KiloCode, agentsmd.
+- Адаптеры для Cursor, Copilot, agentsmd.
 - `${values:*}` интерполяция в permissions.
 - Per-agent permissions (permissions, привязанные к конкретному агенту
   внутри проекта) -- только project-level.

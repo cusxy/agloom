@@ -40,7 +40,13 @@ import {
   GeminiMcpAdapter,
   KilocodeMcpAdapter,
 } from "../mcp-transpiler/index.js";
-import { ClaudePermissionsAdapter, OpenCodePermissionsAdapter } from "../permissions-transpiler/index.js";
+import {
+  ClaudePermissionsAdapter,
+  OpenCodePermissionsAdapter,
+  CodexPermissionsAdapter,
+  GeminiPermissionsAdapter,
+  KilocodePermissionsAdapter,
+} from "../permissions-transpiler/index.js";
 import type { AdapterRegistryEntry } from "./types.js";
 
 /**
@@ -126,7 +132,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     agents: new KiloCodeAgentAdapter(),
     commands: new KiloCodeCommandAdapter(),
     mcp: new KilocodeMcpAdapter(),
-    permissions: null,
+    permissions: new KilocodePermissionsAdapter(),
     targetFiles: ["kilo.jsonc"],
     projectFiles: [],
     instructionsFile: null,
@@ -149,7 +155,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     agents: new CodexAgentAdapter(),
     commands: new CodexCommandAdapter(),
     mcp: new CodexMcpAdapter(),
-    permissions: null,
+    permissions: new CodexPermissionsAdapter(),
     targetFiles: [],
     projectFiles: [],
     instructionsFile: null,
@@ -171,7 +177,7 @@ export const adapterRegistry: AdapterRegistryEntry[] = [
     agents: new GeminiAgentAdapter(),
     commands: new GeminiCommandAdapter(),
     mcp: new GeminiMcpAdapter(),
-    permissions: null,
+    permissions: new GeminiPermissionsAdapter(),
     targetFiles: ["GEMINI.md"],
     projectFiles: ["GEMINI.md"],
     instructionsFile: "GEMINI.md",

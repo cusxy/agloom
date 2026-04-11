@@ -11,6 +11,9 @@ import type { PermissionsAdapter, PermissionsTranspilerConfig } from "./types.js
 // Barrel exports
 export { ClaudePermissionsAdapter } from "./adapters/claude-adapter.js";
 export { OpenCodePermissionsAdapter } from "./adapters/opencode-adapter.js";
+export { CodexPermissionsAdapter } from "./adapters/codex-adapter.js";
+export { GeminiPermissionsAdapter } from "./adapters/gemini-adapter.js";
+export { KilocodePermissionsAdapter } from "./adapters/kilocode-adapter.js";
 export { PermissionsTranspiler } from "./transpiler.js";
 export { validatePermissionsContent } from "./validate.js";
 export { ConfigError, DiscoverError, TransformError, TranspileError, WriteError } from "./errors.js";
