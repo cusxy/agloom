@@ -86,6 +86,10 @@ const githubHref = "https://github.com/cusxy/agloom";
         // <br> and whitespace text nodes are dropped: each line is block.
       });
       headline.replaceChildren(frag);
+      // Lift the .js-reveal gate off the h1 itself — the child lines keep
+      // their own opacity:0 (inline) until GSAP animates them in, so there's
+      // no flash, but the headline box must be visible for children to show.
+      headline.style.opacity = "1";
     }
 
     const lines = hero.querySelectorAll<HTMLElement>(".hero__headline-line");
@@ -201,6 +205,7 @@ const githubHref = "https://github.com/cusxy/agloom";
   /* Pre-intro gating — matches <html class="js-reveal"> added in BaseLayout.
      Hides hero pieces before GSAP takes over so there's no flash.
      Headline lines hide themselves via inline style at creation time. */
+  :global(.js-reveal) .hero__headline,
   :global(.js-reveal) .hero__lede,
   :global(.js-reveal) .hero__actions > *,
   :global(.js-reveal) .install-window {
