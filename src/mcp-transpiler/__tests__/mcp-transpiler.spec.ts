@@ -1014,6 +1014,94 @@ describe("McpTranspiler", () => {
       expect(writtenContent.mcp.s1.command).toBe("npx");
     });
 
+    // --- Трансформация: deep merge для .jsonc файлов из разных адаптеров ---
+    // Спецификация: docs/specs/mcp-transpiler.md § "Deep merge с существующим kilo.jsonc"
+    // BUG: .endsWith(".json") не покрывает .jsonc — файлы перезаписываются вместо merge
+    it("выполняет deep merge при одинаковом relativePath для JSONC-файлов из разных адаптеров", () => {
+      const transpiler = createMcpTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("adapter1"), createStubAdapter("adapter2")],
+      });
+
+      const writeResult = transpiler.writeResults([
+        {
+          agentId: "adapter1",
+          files: [
+            {
+              relativePath: "kilo.jsonc",
+              content: JSON.stringify({ mcpServers: { context7: { command: "npx" } } }, null, 2) + "\n",
+            },
+          ],
+          errors: [],
+        },
+        {
+          agentId: "adapter2",
+          files: [
+            {
+              relativePath: "kilo.jsonc",
+              content: JSON.stringify({ permission: { bash: { "*": "ask" } } }, null, 2) + "\n",
+            },
+          ],
+          errors: [],
+        },
+      ]);
+
+      expect(writeResult.written).toContain("kilo.jsonc");
+
+      const writtenContent = JSON.parse(fs.readFileSync(path.join(tmpDir, "kilo.jsonc"), "utf-8"));
+      // deep merge: оба ключа должны присутствовать
+      expect(writtenContent.mcpServers).toBeDefined();
+      expect(writtenContent.mcpServers.context7.command).toBe("npx");
+      expect(writtenContent.permission).toBeDefined();
+      expect(writtenContent.permission.bash["*"]).toBe("ask");
+    });
+
+    // --- Трансформация: deep merge .jsonc с существующим файлом на диске ---
+    // Спецификация: docs/specs/mcp-transpiler.md § "Deep merge с существующим kilo.jsonc"
+    // BUG: .endsWith(".json") не покрывает .jsonc — существующий файл перезаписывается
+    it("выполняет deep merge .jsonc с существующим файлом на диске", () => {
+      // Предварительно записываем файл (например, от permissions transpiler)
+      const existingContent = {
+        permission: { bash: { "*": "ask" } },
+      };
+      fs.writeFileSync(path.join(tmpDir, "kilo.jsonc"), JSON.stringify(existingContent, null, 2));
+
+      const transpiler = createMcpTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("kilocode")],
+      });
+
+      const writeResult = transpiler.writeResults([
+        {
+          agentId: "kilocode",
+          files: [
+            {
+              relativePath: "kilo.jsonc",
+              content:
+                JSON.stringify(
+                  {
+                    mcpServers: { context7: { command: "npx", args: ["-y", "@upstash/context7-mcp@latest"] } },
+                  },
+                  null,
+                  2,
+                ) + "\n",
+            },
+          ],
+          errors: [],
+        },
+      ]);
+
+      expect(writeResult.written).toContain("kilo.jsonc");
+
+      const writtenContent = JSON.parse(fs.readFileSync(path.join(tmpDir, "kilo.jsonc"), "utf-8"));
+      // Существующий контент должен быть сохранён (deep merge)
+      expect(writtenContent.permission).toBeDefined();
+      expect(writtenContent.permission.bash["*"]).toBe("ask");
+      // Новый контент должен быть добавлен
+      expect(writtenContent.mcpServers).toBeDefined();
+      expect(writtenContent.mcpServers.context7.command).toBe("npx");
+    });
+
     // --- Расширение 5a: ошибка записи файла ---
     it("возвращает WriteError при ошибке записи файла", () => {
       // Создаём файл вместо каталога -- запись в подпапку невозможна

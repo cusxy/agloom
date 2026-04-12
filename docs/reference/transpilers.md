@@ -399,6 +399,8 @@ The strategy for each file is determined by its extension and naming:
 | Merge-eligible extension (`.json`, `.jsonc`, `.yaml`, `.yml`, `.toml`) | **Overlay** — deep merge.           |
 | All other extensions                                                   | **Override** — full replacement.    |
 
+The overlay step runs after the MCP and Permissions transpilers. When an overlay uses the `.override` suffix on a file that those transpilers also produce (e.g., `opencode.json`, `.claude/settings.json`, `kilo.jsonc`), the overlay replaces the entire accumulated file content, including all MCP and Permissions output for that file.
+
 ### Interpolation in Overlays
 
 Text files with supported extensions (`.md`, `.txt`, `.json`, `.jsonc`, `.jsonl`, `.xml`, `.html`, `.svg`, `.toml`, `.yml`, `.yaml`) undergo variable interpolation before merging or copying.

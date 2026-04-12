@@ -183,7 +183,7 @@ export class PermissionsTranspiler {
       for (const file of result.files) {
         if (mergedFiles.has(file.relativePath)) {
           // Deep merge для JSON
-          if (file.relativePath.endsWith(".json")) {
+          if (file.relativePath.endsWith(".json") || file.relativePath.endsWith(".jsonc")) {
             try {
               const existing = JSON.parse(mergedFiles.get(file.relativePath)!);
               const incoming = JSON.parse(file.content);
@@ -210,7 +210,7 @@ export class PermissionsTranspiler {
       try {
         // Шаг 4: deep merge с существующим файлом на диске
         let finalContent = content;
-        if (relativePath.endsWith(".json") && fs.existsSync(absolutePath)) {
+        if ((relativePath.endsWith(".json") || relativePath.endsWith(".jsonc")) && fs.existsSync(absolutePath)) {
           try {
             const existingRaw = fs.readFileSync(absolutePath, "utf-8");
             const existingParsed = JSON.parse(existingRaw);
