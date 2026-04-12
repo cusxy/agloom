@@ -26,7 +26,7 @@ echo "# My Project\n\nInstructions for AI assistants." > .agloom/instructions/AG
 agloom transpile
 ```
 
-This generates `CLAUDE.md` and `.claude/` from your canonical config. See the [Getting Started](https://docs.agloom.sh/guide/getting-started) guide for a full walkthrough.
+This generates `CLAUDE.md` and `.claude/` from your canonical config. See the [Getting Started](https://docs.agloom.sh/guide/getting-started) guide for a full walkthrough, or browse the [sample project](https://github.com/cusxy/agloom-sample) for a complete working example with all adapters, MCP servers, permissions, overlays, and a plugin.
 
 ## Supported adapters
 

@@ -78,6 +78,10 @@ Agloom may not be worth the overhead when:
 
 In that case, editing the tool's native config files directly is simpler.
 
+## Sample Project
+
+The [agloom-sample](https://github.com/cusxy/agloom-sample) repository is a complete working example that demonstrates all Agloom features: five adapters, MCP servers with three transport types, permissions, overlays (merge and override), variable interpolation, and a git plugin.
+
 ## What's Next
 
 - **[Getting Started](./getting-started.md)** — Install Agloom and run your first transpile in five minutes.

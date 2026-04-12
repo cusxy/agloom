@@ -349,6 +349,10 @@ agloom format --all
 
 Use `--check` to verify formatting without modifying files. See [reference/cli](../reference/cli.md) for full details.
 
+## Sample Project
+
+For a complete example with all adapters, MCP servers, permissions, overlays, and a plugin, see the [agloom-sample](https://github.com/cusxy/agloom-sample) repository.
+
 ## What's Next
 
 - Learn about the [project structure](project-structure.md) to understand what goes where in `.agloom/`.
