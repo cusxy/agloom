@@ -12,36 +12,39 @@ This guide explains the layout of the `.agloom/` directory and how it maps to ge
 
 ## Canonical Directory
 
-The `.agloom/` directory is the single source of truth for your project's AI agent configuration. Here is the full structure:
+The `.agloom/` directory and the root `AGLOOM.md` file are the single source of truth for your project's AI agent configuration. Here is the full structure:
 
 ```text
-.agloom/
-├── agents/                 # Sub-agent definitions
-│   └── reviewer.md
-├── commands/               # Slash-command definitions
-│   ├── deploy.md
-│   └── git/
-│       └── commit.md
-├── docs/                   # Documentation files for agents
-├── schemas/                # JSON/OpenAPI schemas for other files
-├── skills/                 # Reusable skill definitions
-│   └── my-skill/
-│       ├── SKILL.md
-│       └── helpers.ts
-├── config.yml              # Project configuration (adapters, plugins, variables)
-├── mcp.yml                 # MCP server configuration
-├── permissions.yml         # Agent permissions
-├── overlays/               # Per-adapter overrides
-│   ├── claude/
-│   └── opencode/
-└── AGLOOM.md               # Instructions for AI agents
+<project root>/
+└── .agloom/
+│   ├── agents/             # Sub-agent definitions
+│   │   └── reviewer.md
+│   ├── commands/           # Slash-command definitions
+│   │   ├── deploy.md
+│   │   └── git/
+│   │       └── commit.md
+│   ├── docs/               # Documentation files for agents
+│   └── overlays/           # Per-adapter overrides
+│       ├── claude/
+│       └── opencode/
+│   ├── schemas/            # JSON/OpenAPI schemas for other files
+│   ├── skills/             # Reusable skill definitions
+│   │   └── my-skill/
+│   │       ├── SKILL.md
+│   │       └── helpers.ts
+│   ├── config.yml          # Project configuration (adapters, plugins, variables)
+│   ├── mcp.yml             # MCP server configuration
+│   ├── permissions.yml     # Agent permissions
+├── src/
+│   └── AGLOOM.md           # Subdirectory instructions (optional)
+└── AGLOOM.md               # Instructions for AI agents (project root)
 ```
 
 ### What Each Part Does
 
-**`config.yml`** — project configuration. Lists which adapters to use, which plugins to load, and project-level variables.
+**`AGLOOM.md`** — the canonical instructions file, placed in the **project root**. This is where you write project conventions, stack descriptions, and coding guidelines that AI agents should follow. You can also place `AGLOOM.md` files in subdirectories for directory-level instructions (e.g., `src/AGLOOM.md`).
 
-**`AGLOOM.md`** — top-level `AGLOOM.md` file, the canonical instructions file. This is where you write project conventions, stack descriptions, and coding guidelines that AI agents should follow.
+**`config.yml`** — project configuration. Lists which adapters to use, which plugins to load, and project-level variables.
 
 **`skills/`** — reusable action definitions. Each skill is a directory containing a `SKILL.md` file and any supporting files. Skills are copied to each agent's skill directory during transpilation.
 
