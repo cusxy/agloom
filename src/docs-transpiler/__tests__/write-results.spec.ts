@@ -165,8 +165,8 @@ describe("ResourceTranspiler", () => {
       expect(writtenContent).toBe("Path: .claude/docs");
     });
 
-    // --- Трансформация: шаг 3 — побайтовое копирование не-.md файлов при variablesByAgentId ---
-    it("побайтово копирует не-.md файлы, даже если variablesByAgentId передан", () => {
+    // --- Трансформация: шаг 4 — интерполяция .json файлов (INTERPOLATABLE_EXTENSIONS) при variablesByAgentId ---
+    it("интерполирует .json файлы при наличии variablesByAgentId", () => {
       const sourceDir = path.join(tmpDir, ".agloom", "docs");
       fs.mkdirSync(sourceDir, { recursive: true });
       const jsonContent = '{"path": "${agloom:ROOT_DIR}"}';
@@ -199,8 +199,210 @@ describe("ResourceTranspiler", () => {
       );
 
       expect(writeResult.written).toContain(".claude/docs/config.json");
+      expect(writeResult.errors).toHaveLength(0);
       const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "config.json"), "utf-8");
-      expect(writtenContent).toBe(jsonContent);
+      expect(writtenContent).toBe('{"path": ".claude"}');
+    });
+
+    // --- Трансформация: шаг 4 — интерполяция .json файлов с valuesByAgentId ---
+    it("интерполирует .json файлы при наличии valuesByAgentId (namespace ${values:*})", () => {
+      const sourceDir = path.join(tmpDir, ".agloom", "docs");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      fs.writeFileSync(path.join(sourceDir, "manifest.json"), '{"name": "${values:project_name}"}');
+
+      const transpiler = createResourceTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude", ".claude/docs")],
+        resourceType: "docs",
+      });
+
+      const valuesByAgentId: Record<string, Record<string, string>> = {
+        claude: { project_name: "agloom" },
+      };
+
+      const writeResult = transpiler.writeResults(
+        [
+          {
+            agentId: "claude",
+            files: [
+              {
+                relativePath: ".claude/docs/manifest.json",
+                sourcePath: ".agloom/docs/manifest.json",
+              },
+            ],
+            errors: [],
+          },
+        ],
+        { valuesByAgentId },
+      );
+
+      expect(writeResult.written).toContain(".claude/docs/manifest.json");
+      expect(writeResult.errors).toHaveLength(0);
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "manifest.json"), "utf-8");
+      expect(writtenContent).toBe('{"name": "agloom"}');
+    });
+
+    // --- Трансформация: шаг 4 — интерполяция .yaml файлов (INTERPOLATABLE_EXTENSIONS) ---
+    it("интерполирует .yaml файлы при наличии variablesByAgentId", () => {
+      const sourceDir = path.join(tmpDir, ".agloom", "docs");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      fs.writeFileSync(path.join(sourceDir, "config.yaml"), "docs_dir: ${agloom:DOCS_DIR}");
+
+      const transpiler = createResourceTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude", ".claude/docs")],
+        resourceType: "docs",
+      });
+
+      const variablesByAgentId: Record<string, Record<string, string>> = {
+        claude: { DOCS_DIR: ".claude/docs" },
+      };
+
+      const writeResult = transpiler.writeResults(
+        [
+          {
+            agentId: "claude",
+            files: [
+              {
+                relativePath: ".claude/docs/config.yaml",
+                sourcePath: ".agloom/docs/config.yaml",
+              },
+            ],
+            errors: [],
+          },
+        ],
+        { variablesByAgentId },
+      );
+
+      expect(writeResult.written).toContain(".claude/docs/config.yaml");
+      expect(writeResult.errors).toHaveLength(0);
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "config.yaml"), "utf-8");
+      expect(writtenContent).toBe("docs_dir: .claude/docs");
+    });
+
+    // --- Трансформация: шаг 4 — интерполяция .toml файлов с ${env:*} ---
+    it("интерполирует .toml файлы при наличии variablesByAgentId (namespace ${env:*})", () => {
+      const sourceDir = path.join(tmpDir, ".agloom", "docs");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      fs.writeFileSync(path.join(sourceDir, "settings.toml"), 'var = "${env:AGLOOM_TEST_VAR}"');
+
+      const transpiler = createResourceTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude", ".claude/docs")],
+        resourceType: "docs",
+      });
+
+      const variablesByAgentId: Record<string, Record<string, string>> = {
+        claude: {},
+      };
+
+      const originalEnv = process.env["AGLOOM_TEST_VAR"];
+      process.env["AGLOOM_TEST_VAR"] = "hello_from_env";
+
+      try {
+        const writeResult = transpiler.writeResults(
+          [
+            {
+              agentId: "claude",
+              files: [
+                {
+                  relativePath: ".claude/docs/settings.toml",
+                  sourcePath: ".agloom/docs/settings.toml",
+                },
+              ],
+              errors: [],
+            },
+          ],
+          { variablesByAgentId },
+        );
+
+        expect(writeResult.written).toContain(".claude/docs/settings.toml");
+        expect(writeResult.errors).toHaveLength(0);
+        const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "settings.toml"), "utf-8");
+        expect(writtenContent).toBe('var = "hello_from_env"');
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env["AGLOOM_TEST_VAR"];
+        } else {
+          process.env["AGLOOM_TEST_VAR"] = originalEnv;
+        }
+      }
+    });
+
+    // --- Трансформация: шаг 4 — бинарный файл (.png) побайтово копируется даже при variablesByAgentId ---
+    it("побайтово копирует бинарные файлы (.png), даже если variablesByAgentId передан", () => {
+      const sourceDir = path.join(tmpDir, ".agloom", "docs");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      const binaryContent = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff]);
+      fs.writeFileSync(path.join(sourceDir, "diagram.png"), binaryContent);
+
+      const transpiler = createResourceTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude", ".claude/docs")],
+        resourceType: "docs",
+      });
+
+      const variablesByAgentId: Record<string, Record<string, string>> = {
+        claude: { ROOT_DIR: ".claude" },
+      };
+
+      const writeResult = transpiler.writeResults(
+        [
+          {
+            agentId: "claude",
+            files: [
+              {
+                relativePath: ".claude/docs/diagram.png",
+                sourcePath: ".agloom/docs/diagram.png",
+              },
+            ],
+            errors: [],
+          },
+        ],
+        { variablesByAgentId },
+      );
+
+      expect(writeResult.written).toContain(".claude/docs/diagram.png");
+      expect(writeResult.errors).toHaveLength(0);
+      const writtenContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "diagram.png"));
+      expect(Buffer.compare(writtenContent, binaryContent)).toBe(0);
+    });
+
+    // --- Расширение 4c: InterpolationError в .json файле → ResourceWriteError ---
+    it("возвращает ResourceWriteError при ошибке интерполяции .json файла", () => {
+      const sourceDir = path.join(tmpDir, ".agloom", "docs");
+      fs.mkdirSync(sourceDir, { recursive: true });
+      fs.writeFileSync(path.join(sourceDir, "config.json"), '{"val": "${agloom:NONEXISTENT}"}');
+
+      const transpiler = createResourceTranspiler({
+        projectRoot: tmpDir,
+        adapters: [createStubAdapter("claude", ".claude/docs")],
+        resourceType: "docs",
+      });
+
+      const variablesByAgentId: Record<string, Record<string, string>> = {
+        claude: { ROOT_DIR: ".claude" },
+      };
+
+      const writeResult = transpiler.writeResults(
+        [
+          {
+            agentId: "claude",
+            files: [
+              {
+                relativePath: ".claude/docs/config.json",
+                sourcePath: ".agloom/docs/config.json",
+              },
+            ],
+            errors: [],
+          },
+        ],
+        { variablesByAgentId },
+      );
+
+      expect(writeResult.errors.length).toBeGreaterThan(0);
+      expect(writeResult.errors[0]).toBeInstanceOf(ResourceWriteError);
+      expect(writeResult.errors[0].message).toMatch(/Interpolation failed for \.agloom\/docs\/config\.json/);
     });
 
     // --- Обратная совместимость: побайтовое копирование всех файлов без variablesByAgentId ---

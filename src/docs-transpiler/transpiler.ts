@@ -16,6 +16,20 @@ import type {
   ResourceWriteResult,
 } from "./types.js";
 
+export const INTERPOLATABLE_EXTENSIONS = new Set([
+  ".md",
+  ".txt",
+  ".json",
+  ".jsonc",
+  ".jsonl",
+  ".xml",
+  ".html",
+  ".svg",
+  ".toml",
+  ".yml",
+  ".yaml",
+]);
+
 export class ResourceTranspiler {
   private readonly projectRoot: string;
   private readonly adapters: ResourceAdapter[];
@@ -114,8 +128,10 @@ export class ResourceTranspiler {
         const destAbsolute = path.join(writeRoot, file.relativePath);
 
         // Определить, нужна ли интерполяция для данного файла
-        const isMd = path.extname(file.sourcePath).toLowerCase() === ".md";
-        const shouldInterpolate = (variablesByAgentId !== undefined || valuesByAgentId !== undefined) && isMd;
+        const ext = path.extname(file.sourcePath).toLowerCase();
+        const isInterpolatable = INTERPOLATABLE_EXTENSIONS.has(ext);
+        const shouldInterpolate =
+          (variablesByAgentId !== undefined || valuesByAgentId !== undefined) && isInterpolatable;
 
         if (shouldInterpolate) {
           // Интерполяция .md файлов

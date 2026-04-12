@@ -201,9 +201,9 @@ describe("ResourceTranspiler", () => {
       const mdContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "guide.md"), "utf-8");
       expect(mdContent).toBe("Skills: .claude/skills");
 
-      // .json файл скопирован побайтово (без интерполяции)
+      // .json файл интерполирован (расширение входит в INTERPOLATABLE_EXTENSIONS)
       const jsonContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "data.json"), "utf-8");
-      expect(jsonContent).toBe('{"path": "${agloom:SKILLS_DIR}"}');
+      expect(jsonContent).toBe('{"path": ".claude/skills"}');
     });
 
     // --- IT-DOCS-01: Pipeline с Claude адаптером (docs) ---
@@ -300,7 +300,7 @@ describe("ResourceTranspiler", () => {
     });
 
     // --- IT-DOCS-04: Pipeline с интерполяцией .md файлов ---
-    it("IT-DOCS-04: .md файлы интерполируются, файлы с другими расширениями копируются побайтово", () => {
+    it("IT-DOCS-04: файлы с расширениями из INTERPOLATABLE_EXTENSIONS интерполируются при наличии variablesByAgentId", () => {
       // Вход: создать каноническую структуру
       const docsDir = path.join(tmpDir, ".agloom", "docs");
       fs.mkdirSync(docsDir, { recursive: true });
@@ -330,10 +330,9 @@ describe("ResourceTranspiler", () => {
       const mdContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "guide.md"), "utf-8");
       expect(mdContent).toBe("Skills dir: .claude/skills");
 
-      // Шаги 7–8: data.yml скопирован побайтово (без интерполяции)
-      const sourceYml = fs.readFileSync(path.join(docsDir, "data.yml"));
-      const targetYml = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "data.yml"));
-      expect(targetYml.equals(sourceYml)).toBe(true);
+      // Шаги 7–8: data.yml интерполирован (расширение входит в INTERPOLATABLE_EXTENSIONS)
+      const ymlContent = fs.readFileSync(path.join(tmpDir, ".claude", "docs", "data.yml"), "utf-8");
+      expect(ymlContent).toBe("raw: .claude/skills");
 
       // Результат: writeResult.written содержит оба файла
       expect(writeResult.written).toContain(".claude/docs/guide.md");
