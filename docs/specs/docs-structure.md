@@ -138,8 +138,9 @@ docs/
 2. **Installation** — `npm install -g agloom`.
 3. **Step 1: Initialize** — создание `.agloom/config.yml` вручную
    или через `agloom init --adapter claude`.
-4. **Step 2: Write instructions** — создание `.agloom/instructions/AGLOOM.md`
-   с минимальным содержимым.
+4. **Step 2: Write instructions** — создание `AGLOOM.md` в корне проекта
+   с минимальным содержимым. Рекомендуется использовать `agloom init --adapter claude`
+   для автоматического создания базового файла.
 5. **Step 3: Transpile** — `agloom transpile` и объяснение что произошло.
 6. **Step 4: Verify** — проверка сгенерированных файлов.
 7. **Formatting** — краткое упоминание `agloom format` для
@@ -184,7 +185,7 @@ docs/
 
 **Содержание ТРЕБУЕТСЯ включать:**
 
-1. **What are instructions** — файл `AGLOOM.md` в `.agloom/instructions/`,
+1. **What are instructions** — файл `AGLOOM.md` в корне проекта,
    содержит инструкции для AI coding assistants.
 2. **Basic instructions** — создание AGLOOM.md с общими инструкциями,
    которые попадут во все адаптеры.

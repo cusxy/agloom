@@ -75,7 +75,10 @@ class StringWritable {
   }
   // Ink checks isTTY to decide rendering mode.
   isTTY = false;
-  columns = 80;
+  // Wide enough to prevent Ink's Yoga layout from word-wrapping output.
+  // StringWritable is a capture buffer, not a real terminal — wrapping
+  // injects newlines that break test assertions on long lines (e.g. paths).
+  columns = 10_000;
   rows = 24;
 }
 

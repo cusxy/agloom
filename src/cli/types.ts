@@ -30,7 +30,7 @@ export interface AdapterRegistryEntry {
   permissions: PermissionsAdapter | null;
   /** Список относительных путей к файлам, генерируемых транспилерами. */
   targetFiles: string[];
-  /** Имена файлов для рекурсивного поиска в project tree при создании .agloom/instructions/ бэкапа. */
+  /** Имена файлов агента для рекурсивного поиска в project tree (например, CLAUDE.md, AGENTS.md, CODEX.md). */
   projectFiles: string[];
   /** Имя собственного файла инструкций агента, или null если агент не имеет собственного формата. */
   instructionsFile: string | null;

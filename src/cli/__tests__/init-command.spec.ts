@@ -94,9 +94,6 @@ describe("CLI", () => {
 
       // § Вывод: "Initializing..."
       expect(output).toContain("Initializing...");
-      // § Вывод: НЕТ строки бэкапа project-файлов (процедура Backup Project Files удалена)
-      expect(output).not.toContain("project files backed up");
-      expect(output).not.toContain(".agloom/instructions/");
       // § Вывод (успех): результат overlay (2 files from .claude/ + 1 CLAUDE.md via glob = 3)
       expect(output).toContain("\u2713");
       expect(output).toMatch(/3\s+files copied to \.agloom\/overlays\/claude\//);
@@ -104,10 +101,6 @@ describe("CLI", () => {
       expect(output).toContain("Done.");
       // § Exit codes: 0 — успех
       expect(process.exitCode).toBeUndefined();
-
-      // Побочный эффект: .agloom/instructions/ НЕ создана (процедура удалена)
-      const backedUp = path.join(tmpDir, ".agloom", "instructions");
-      expect(fs.existsSync(backedUp)).toBe(false);
 
       // Побочный эффект: файлы скопированы в .agloom/overlays/claude/
       // с сохранением позиции относительно project root
@@ -709,9 +702,6 @@ describe("CLI", () => {
 
       expect(output).toContain(".agloom/overlays/claude/");
       expect(output).toContain(".agloom/overlays/opencode/");
-      // § Вывод: НЕТ строки бэкапа project-файлов
-      expect(output).not.toContain("project files backed up");
-      expect(output).not.toContain(".agloom/instructions/");
       expect(output).toContain("Done.");
       expect(process.exitCode).toBeUndefined();
 
@@ -813,9 +803,6 @@ describe("CLI", () => {
 
       const output = lastFrame()!;
 
-      // Строка backup отсутствует в TUI
-      expect(output).not.toContain("project files backed up");
-      expect(output).not.toContain(".agloom/instructions/");
       // Только строки overlay
       expect(output).toContain("files copied to .agloom/overlays/claude/");
 
@@ -1014,9 +1001,6 @@ describe("CLI", () => {
 
       // С --verbose заголовок "Initializing..." отображается
       expect(output).toContain("Initializing...");
-      // НЕТ строки бэкапа project-файлов (процедура удалена)
-      expect(output).not.toContain("project files backed up");
-      expect(output).not.toContain(".agloom/instructions/");
       // Все overlay-строки отображаются с 0 файлов
       expect(output).toContain(".agloom/overlays/claude/");
       expect(output).toContain(".agloom/overlays/opencode/");
@@ -1047,9 +1031,6 @@ describe("CLI", () => {
       expect(output).toContain("Initializing...");
       // Строка overlay с 0 файлов отображается
       expect(output).toContain(".agloom/overlays/claude/");
-      // НЕТ строки бэкапа project-файлов
-      expect(output).not.toContain("project files backed up");
-      expect(output).not.toContain(".agloom/instructions/");
       expect(output).toMatch(/Done\.\s+0\s+files copied\./);
 
       unmount();
