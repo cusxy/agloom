@@ -67,6 +67,10 @@ For these formats, Agloom performs a deep merge — objects are merged recursive
 
 **Full replacement** applies to everything else (`.md`, `.txt`, images, etc.). The overlay file completely replaces the existing file.
 
+If a base file targeted by deep merge cannot be parsed (invalid JSON, broken YAML, etc.), the overlay step fails with an error instead of silently overwriting the file. Fix or remove the invalid base file and re-run transpilation.
+
+JSONC files (`.jsonc`) have their comments stripped before merging. Comments in base files are **not** preserved after merge — the output is always clean JSON.
+
 ## Suffix Modifiers
 
 Two special suffixes let you control the merge behavior:

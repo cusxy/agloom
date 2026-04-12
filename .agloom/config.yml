@@ -5,6 +5,9 @@ adapters:
   - claude
   - opencode
 
+plugins:
+  - "git@github.com:cusxy/skill-cycling#v0.1.0"
+
 # Markdownlint overrides — see docs/guide/formatting.md
 markdownlint:
   # MD033 (inline HTML) allows Docusaurus JSX components. Strictly

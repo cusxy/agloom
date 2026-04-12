@@ -37,7 +37,7 @@ AGENTS.override.md
 CLAUDE.md
 !.agloom/**/.claude
 !.agloom/**/.mcp.json
-!.agloom/**/CALUDE.md
+!.agloom/**/CLAUDE.md
 
 # Codex generated
 .agents/

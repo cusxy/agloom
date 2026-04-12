@@ -53,7 +53,7 @@ The `.agloom/` directory is the single source of truth for your project's AI age
 
 **`schemas/`** — JSON or OpenAPI schema files. Copied to each agent's schemas directory.
 
-**`mcp.yml`** — MCP (Model Context Protocol) server configuration. Transpiled into agent-specific formats (`.mcp.json` for Claude, `opencode.json` for OpenCode). See [reference/transpilers](../reference/transpilers.md) for details.
+**`mcp.yml`** — MCP (Model Context Protocol) server configuration. Transpiled into agent-specific formats for all adapters with MCP support (`.mcp.json` for Claude, `opencode.json` for OpenCode, etc.). See [reference/transpilers](../reference/transpilers.md) for details.
 
 **`permissions.yml`** — agent permissions configuration. Transpiled into agent-specific formats. See [reference/transpilers](../reference/transpilers.md) for details.
 
@@ -63,14 +63,14 @@ The `.agloom/` directory is the single source of truth for your project's AI age
 
 Each adapter generates different output files. Here is what you get:
 
-| Adapter    | Generated files                                                                                                                                   |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `claude`   | `CLAUDE.md`, `.claude/agents/`, `.claude/commands/`, `.claude/docs/`, `.claude/schemas/`, `.claude/skills/`, `.claude/settings.json`, `.mcp.json` |
-| `codex`    | `AGENTS.md`, `.agents/skills/`, `.codex/agents/`, `.codex/docs/`, `.codex/schemas/`,                                                              |
-| `gemini`   | `GEMINI.md`, `.gemini/agents/`, `.gemini/commands/`, `.gemini/docs/`, `.gemini/schemas/`, `.gemini/skills/`                                       |
-| `opencode` | `AGENTS.md`, `.opencode/agents/`, `.opencode/commands/`, `.opencode/docs/`, `.opencode/schemas/`, `.opencode/skills/`, `opencode.json`            |
-| `kilocode` | `AGENTS.md`, `.kilo/agents/`, `.kilo/commands/`, `.kilo/docs/`, `.kilo/schemas/`, `.kilo/skills/`, `kilo.json`                                    |
-| `agentsmd` | `AGENTS.md` (generated automatically as a dependency)                                                                                             |
+| Adapter    | Generated files                                                                                                                                                      |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `claude`   | `CLAUDE.md`, `.claude/agents/`, `.claude/commands/`, `.claude/docs/`, `.claude/schemas/`, `.claude/skills/`, `.claude/settings.json`, `.mcp.json`                    |
+| `codex`    | `AGENTS.md`, `.agents/skills/`, `.codex/agents/`, `.codex/docs/`, `.codex/rules/agloom.rules`, `.codex/schemas/`, `.codex/config.toml`                               |
+| `gemini`   | `GEMINI.md`, `.gemini/agents/`, `.gemini/commands/`, `.gemini/docs/`, `.gemini/policies/agloom.toml`, `.gemini/schemas/`, `.gemini/skills/`, `.gemini/settings.json` |
+| `opencode` | `AGENTS.md`, `.opencode/agents/`, `.opencode/commands/`, `.opencode/docs/`, `.opencode/schemas/`, `.opencode/skills/`, `opencode.json`                               |
+| `kilocode` | `AGENTS.md`, `.kilo/agents/`, `.kilo/commands/`, `.kilo/docs/`, `.kilo/schemas/`, `.kilo/skills/`, `kilo.jsonc`                                                      |
+| `agentsmd` | `AGENTS.md` (generated automatically as a dependency)                                                                                                                |
 
 Note that `agentsmd` is a hidden adapter — you do not configure it directly. It is included automatically when you use `opencode`, `kilocode`, or `codex` (which depend on it for `AGENTS.md` generation).
 
@@ -97,7 +97,7 @@ AGENTS.override.md
 CLAUDE.md
 !.agloom/**/.claude
 !.agloom/**/.mcp.json
-!.agloom/**/CALUDE.md
+!.agloom/**/CLAUDE.md
 
 # Codex generated
 .agents/
@@ -114,10 +114,10 @@ GEMINI.md
 # OpenCode generated
 .opencode/
 opencode.json
-opencode.jsonс
+opencode.jsonc
 !.agloom/**/.opencode
 !.agloom/**/opencode.json
-!.agloom/**/opencode.jsonс
+!.agloom/**/opencode.jsonc
 
 # KiloCode generated
 .kilo/

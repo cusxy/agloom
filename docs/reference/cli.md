@@ -45,6 +45,33 @@ Exit code: `1`.
 
 The `--help` flag does **not** suppress this error. Unknown command detection takes priority over global `--help`.
 
+## Global Flags
+
+Three flags are available on **every** command. They override where Agloom reads resources, writes output, and loads configuration.
+
+| Flag                   | Type   | Default                   | Description                                         |
+| ---------------------- | ------ | ------------------------- | --------------------------------------------------- |
+| `--project-dir <path>` | string | Current working directory | Root directory for writing generated files.         |
+| `--agloom-dir <path>`  | string | `<project-dir>/.agloom`   | Directory containing canonical Agloom resources.    |
+| `--config <path\|->`   | string | `<agloom-dir>/config.yml` | Path to the config file, or `-` to read from stdin. |
+
+Overriding a higher flag cascades into the defaults of lower flags. For example, `--project-dir /x` sets the default `--agloom-dir` to `/x/.agloom` and default `--config` to `/x/.agloom/config.yml`. Explicitly set flags are not affected by the cascade.
+
+When a flag is set explicitly, the path **must** exist (error otherwise). Default paths may be absent without error.
+
+### Examples
+
+```sh
+# Transpile with resources and output in a different project
+agloom transpile --project-dir /other/project
+
+# Use external resources, write output locally
+agloom transpile --agloom-dir /shared/.agloom
+
+# Try a one-off config without modifying files
+agloom transpile --config /tmp/try.yml
+```
+
 ## Commands
 
 ### transpile
@@ -193,9 +220,9 @@ agloom init [--adapter <adapterId> | --all] [--force] [--verbose]
 #### Behavior
 
 1. Resolves adapters (same rules as `transpile`).
-2. Checks if `.agloom/` directory exists (error without `--force`).
-3. Creates `.agloom/config.yml` when `--adapter` or `--all` is specified.
-4. For each adapter, copies files from `entry.overlayImportPaths` into `.agloom/overlays/<adapterId>/`.
+2. Checks if the resources directory is already initialized. Initialization is detected by the presence of `config.yml` or a non-empty `overlays/` directory inside the resources root — not merely by the existence of the `.agloom/` directory itself. Error without `--force`.
+3. Creates `config.yml` inside the resources root when `--adapter` or `--all` is specified.
+4. For each adapter, copies files from `entry.overlayImportPaths` into `overlays/<adapterId>/` inside the resources root.
 
 The generated `config.yml` includes onboarding comments:
 
@@ -217,10 +244,10 @@ agloom init --adapter opencode --force
 
 #### Exit Codes
 
-| Code | Condition                                                                                                                                                                                            |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `0`  | All steps completed without errors (including 0 files).                                                                                                                                              |
-| `1`  | Both `--adapter` and `--all` specified, config not found (without flags), `.agloom/` already exists without `--force`, overlay directory exists without `--force`, copy or directory creation error. |
+| Code | Condition                                                                                                                                                                                              |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `0`  | All steps completed without errors (including 0 files).                                                                                                                                                |
+| `1`  | Both `--adapter` and `--all` specified, config not found (without flags), project already initialized without `--force`, overlay directory exists without `--force`, copy or directory creation error. |
 
 ---
 

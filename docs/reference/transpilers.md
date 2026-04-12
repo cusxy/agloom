@@ -226,6 +226,7 @@ Agents are copied to the adapter's `paths.agents` directory:
 | `claude`   | `.claude/docs/`   |
 | `opencode` | `.opencode/docs/` |
 | `kilocode` | `.kilo/docs/`     |
+| `codex`    | `.codex/docs/`    |
 | `gemini`   | `.gemini/docs/`   |
 | `agentsmd` | _(no output)_     |
 
@@ -244,6 +245,7 @@ Agents are copied to the adapter's `paths.agents` directory:
 | `claude`   | `.claude/schemas/`   |
 | `opencode` | `.opencode/schemas/` |
 | `kilocode` | `.kilo/schemas/`     |
+| `codex`    | `.codex/schemas/`    |
 | `gemini`   | `.gemini/schemas/`   |
 | `agentsmd` | _(no output)_        |
 
@@ -253,7 +255,7 @@ Agents are copied to the adapter's `paths.agents` directory:
 
 **Source:** `.agloom/mcp.yml` or `.agloom/mcp.json`
 
-**Operation:** Transforms the canonical MCP server configuration into adapter-specific formats.
+**Operation:** Transforms the canonical MCP server configuration into adapter-specific formats. Supports three transport types: stdio (local process), HTTP (streamable HTTP), and SSE (Server-Sent Events).
 
 ### Canonical Format
 
@@ -270,24 +272,68 @@ mcpServers:
     includeTools:
       - read_file
       - list_directory
+  figma:
+    type: http
+    url: https://mcp.figma.com/mcp
+    headers:
+      X-Figma-Region: us-east-1
+  asana:
+    type: sse
+    url: https://mcp.asana.com/sse
+    headers:
+      Authorization: "Bearer ${env:ASANA_TOKEN}"
 ```
 
-Each server entry supports:
+#### Common Fields
 
-| Field          | Type           | Description                                                  |
-| -------------- | -------------- | ------------------------------------------------------------ |
-| `command`      | string         | Command to start the MCP server.                             |
-| `args`         | array\<string> | Command arguments.                                           |
-| `env`          | object         | Environment variables for the server process.                |
-| `includeTools` | array\<string> | Whitelist of tools (mutually exclusive with `excludeTools`). |
-| `excludeTools` | array\<string> | Blacklist of tools (mutually exclusive with `includeTools`). |
+| Field          | Type                             | Default   | Description                                                  |
+| -------------- | -------------------------------- | --------- | ------------------------------------------------------------ |
+| `type`         | `"stdio"` \| `"http"` \| `"sse"` | `"stdio"` | Transport type.                                              |
+| `includeTools` | array\<string>                   | -         | Whitelist of tools (mutually exclusive with `excludeTools`). |
+| `excludeTools` | array\<string>                   | -         | Blacklist of tools (mutually exclusive with `includeTools`). |
+
+#### Stdio Fields (when `type` is `"stdio"` or omitted)
+
+| Field     | Type           | Description                                |
+| --------- | -------------- | ------------------------------------------ |
+| `command` | string         | **Required.** Command to start the server. |
+| `args`    | array\<string> | Command arguments.                         |
+| `env`     | object         | Environment variables for the process.     |
+
+Fields `url` and `headers` are forbidden for stdio.
+
+#### HTTP/SSE Fields (when `type` is `"http"` or `"sse"`)
+
+| Field     | Type   | Description                                 |
+| --------- | ------ | ------------------------------------------- |
+| `url`     | string | **Required.** URL of the remote MCP server. |
+| `headers` | object | HTTP headers sent when connecting.          |
+
+Fields `command`, `args`, and `env` are forbidden for http/sse.
+
+### Discovery-Level Tool Filtering
+
+The `includeTools`/`excludeTools` fields control which tools an MCP client advertises to the model. This is **not** the same as runtime permission gating (which is handled by `.agloom/permissions.yml`).
+
+Only adapters whose target format has native filtering fields apply these canonically:
+
+| Adapter    | Native support | Mechanism                                                  |
+| ---------- | -------------- | ---------------------------------------------------------- |
+| `codex`    | Yes            | `enabled_tools` / `disabled_tools` in `.codex/config.toml` |
+| `gemini`   | Yes            | `includeTools` / `excludeTools` in `.gemini/settings.json` |
+| `claude`   | No             | Ignored with warning. Use `permissions.yml` instead.       |
+| `opencode` | No             | Ignored with warning. Use `permissions.yml` instead.       |
+| `kilocode` | No             | Ignored with warning. Use `permissions.yml` instead.       |
 
 ### Output Per Adapter
 
-| Adapter    | Output File     | Format                                                                                |
-| ---------- | --------------- | ------------------------------------------------------------------------------------- |
-| `claude`   | `.mcp.json`     | `{ mcpServers: { ... } }` with tool filtering via `autoApprove`/`disabled` fields.    |
-| `opencode` | `opencode.json` | MCP servers in the `mcp` section. Tool filtering fields are stripped (not supported). |
+| Adapter    | Output File             | Transport Support | Notes                                                                         |
+| ---------- | ----------------------- | ----------------- | ----------------------------------------------------------------------------- |
+| `claude`   | `.mcp.json`             | stdio, http, sse  | All transports passed through with explicit `type` field.                     |
+| `opencode` | `opencode.json`         | stdio, http       | SSE servers skipped with warning. HTTP mapped to `type: "remote"`.            |
+| `codex`    | `.codex/config.toml`    | stdio, http       | SSE servers skipped with warning. Headers in `http_headers` sub-table.        |
+| `gemini`   | `.gemini/settings.json` | stdio, http, sse  | HTTP mapped to `httpUrl` key, SSE to `url` key. No `type` field in output.    |
+| `kilocode` | `kilo.jsonc`            | stdio, http, sse  | HTTP mapped to `type: "streamable-http"`. Stdio entries have no `type` field. |
 
 Only `.agloom/mcp.yml` or `.agloom/mcp.json` may exist — not both simultaneously.
 
@@ -326,10 +372,13 @@ All sections are optional.
 
 ### Output Per Adapter
 
-| Adapter    | Output                                        | Notes                                                    |
-| ---------- | --------------------------------------------- | -------------------------------------------------------- |
-| `claude`   | `.claude/settings.json` (permissions section) | First-match-wins semantics preserved.                    |
-| `opencode` | `opencode.json` (permission section)          | Rule order **inverted** (OpenCode uses last-match-wins). |
+| Adapter    | Output File                    | Supported Sections | Notes                                                                                     |
+| ---------- | ------------------------------ | ------------------ | ----------------------------------------------------------------------------------------- |
+| `claude`   | `.claude/settings.json`        | shell, mcp         | First-match-wins preserved via preprocessing. `file` and `ask` action not supported.      |
+| `opencode` | `opencode.json`                | shell, mcp, file   | Rule order **inverted** (OpenCode uses last-match-wins).                                  |
+| `codex`    | `.codex/rules/agloom.rules`    | shell              | Starlark-like `prefix_rule` format. `mcp` and `file` sections skipped with warning.       |
+| `gemini`   | `.gemini/policies/agloom.toml` | shell, mcp         | TOML `[[rule]]` format with priority-based ordering. `file` section skipped with warning. |
+| `kilocode` | `kilo.jsonc`                   | shell, mcp, file   | Rule order **inverted** (last-match-wins). Deep-merged with MCP output in the same file.  |
 
 Only `.agloom/permissions.yml` or `.agloom/permissions.json` may exist — not both simultaneously.
 
@@ -370,3 +419,10 @@ For merge-eligible files:
 - Object keys are merged recursively.
 - Arrays are replaced entirely (use patch operations for fine-grained array control).
 - Scalar values are replaced by the later layer.
+- A `null` value in the incoming layer removes the key from the result.
+
+### Error Handling
+
+If an existing base file (targeted by deep merge) cannot be parsed, the overlay step fails with a `LayerMergeError` instead of silently overwriting the file. The error includes the file path, format, and the parser's error message with position details. You must fix or remove the invalid file before retrying transpilation.
+
+JSONC files (`.jsonc`) are parsed by stripping comments first, then running `JSON.parse`. Comments in base files are **not** preserved on round-trip — the merged output is always clean JSON. TOML files are parsed and serialized with `smol-toml`, which maintains stable key order.

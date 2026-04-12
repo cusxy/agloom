@@ -16,7 +16,14 @@ The file `.agloom/config.yml` is the project-level configuration for Agloom. It 
 <projectRoot>/.agloom/config.yml
 ```
 
-The file is loaded by the commands `transpile`, `clean`, `init`, and `adapters` when neither `--adapter` nor `--all` is specified.
+By default, the config file lives at `<resourcesRoot>/config.yml` (which is `.agloom/config.yml` when no global flags are used). You can override the config source with the `--config` global flag:
+
+- `--config <path>` — load config from the specified file instead of the default location.
+- `--config -` — read config YAML from stdin. An empty stdin is treated as a valid empty config.
+
+The config is loaded **once** during the CLI startup pipeline and cached for all commands. Commands never re-read the config source.
+
+The file is used by the commands `transpile`, `clean`, `init`, and `adapters` when neither `--adapter` nor `--all` is specified.
 
 ## Schema
 

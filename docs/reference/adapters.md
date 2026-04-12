@@ -12,14 +12,14 @@ Adapters define how Agloom transpiles canonical configurations into agent-specif
 
 ## Adapter Table
 
-| ID         | Description                                | Output Files                      | Hidden |
-| ---------- | ------------------------------------------ | --------------------------------- | ------ |
-| `claude`   | Claude Code                                | `CLAUDE.md`, `.mcp.json`          | No     |
-| `opencode` | OpenCode                                   | `opencode.json`                   | No     |
-| `agentsmd` | AGENTS.md (Codex, OpenCode, KiloCode, ...) | `AGENTS.md`, `AGENTS.override.md` | Yes    |
-| `kilocode` | KiloCode                                   | _(none)_                          | No     |
-| `codex`    | Codex (OpenAI)                             | _(none)_                          | No     |
-| `gemini`   | Gemini (Google)                            | `GEMINI.md`                       | No     |
+| ID         | Description | Hidden |
+| ---------- | ----------- | ------ |
+| `claude`   | Claude Code | No     |
+| `codex`    | Codex       | No     |
+| `gemini`   | Gemini      | No     |
+| `opencode` | OpenCode    | No     |
+| `kilocode` | KiloCode    | No     |
+| `agentsmd` | AGENTS.md   | Yes    |
 
 ## Per-Adapter Details
 
@@ -84,8 +84,10 @@ The `agentsmd` adapter produces the `AGENTS.md` format used by multiple AI codin
 | Docs     | `.kilo/docs`     |
 | Schemas  | `.kilo/schemas`  |
 
-- **Target files:** _(none)_
-- **Overlay import paths:** `.kilo`
+- **Target files:** `kilo.jsonc`
+- **Overlay import paths:** `.kilo`, `kilo.jsonc`
+- **MCP output:** `kilo.jsonc` (stdio + http + sse transports)
+- **Permissions output:** `kilo.jsonc` (shell, mcp, file sections; deep-merged with MCP output)
 
 ### codex
 
@@ -93,15 +95,19 @@ The `agentsmd` adapter produces the `AGENTS.md` format used by multiple AI codin
 - **Dependencies:** `agentsmd`
 - **Output paths:**
 
-| Type   | Path             |
-| ------ | ---------------- |
-| Skills | `.agents/skills` |
-| Agents | `.codex/agents`  |
+| Type    | Path             |
+| ------- | ---------------- |
+| Skills  | `.agents/skills` |
+| Agents  | `.codex/agents`  |
+| Docs    | `.codex/docs`    |
+| Schemas | `.codex/schemas` |
 
 Note: Codex places skills in `.agents/skills/` (not `.codex/skills/`).
 
 - **Target files:** _(none)_
 - **Overlay import paths:** `.codex`, `.agents`
+- **MCP output:** `.codex/config.toml` (stdio + http; sse skipped with warning). Supports native `enabled_tools`/`disabled_tools` for discovery-level tool filtering.
+- **Permissions output:** `.codex/rules/agloom.rules` (shell section only; mcp and file sections skipped with warning)
 
 ### gemini
 
@@ -119,20 +125,22 @@ Note: Codex places skills in `.agents/skills/` (not `.codex/skills/`).
 
 - **Target files:** `GEMINI.md`
 - **Overlay import paths:** `.gemini`, `**/GEMINI.md`
+- **MCP output:** `.gemini/settings.json` (stdio + http + sse transports). Supports native `includeTools`/`excludeTools` for discovery-level tool filtering.
+- **Permissions output:** `.gemini/policies/agloom.toml` (shell and mcp sections; file section skipped with warning)
 
 ## Capability Matrix
 
-| Feature      | claude | opencode | agentsmd | kilocode | codex           | gemini     |
-| ------------ | ------ | -------- | -------- | -------- | --------------- | ---------- |
-| Instructions | Yes    | No-op    | Yes      | No-op    | No-op           | Yes        |
-| Commands     | Yes    | Yes      | No       | Yes      | Yes (as skills) | Yes (TOML) |
-| Skills       | Yes    | Yes      | No       | Yes      | Yes             | Yes        |
-| Agents       | Yes    | Yes      | No       | Yes      | Yes             | Yes        |
-| Docs         | Yes    | Yes      | No       | Yes      | Yes             | Yes        |
-| Schemas      | Yes    | Yes      | No       | Yes      | Yes             | Yes        |
-| MCP          | Yes    | Yes      | No       | No       | No              | No         |
-| Permissions  | Yes    | Yes      | No       | No       | No              | No         |
-| Overlays     | Yes    | Yes      | Yes      | Yes      | Yes             | Yes        |
+| Feature      | claude | opencode | agentsmd | kilocode | codex           | gemini |
+| ------------ | ------ | -------- | -------- | -------- | --------------- | ------ |
+| Instructions | Yes    | No-op    | Yes      | No-op    | No-op           | Yes    |
+| Commands     | Yes    | Yes      | No       | Yes      | Yes (as skills) | Yes    |
+| Skills       | Yes    | Yes      | No       | Yes      | Yes             | Yes    |
+| Agents       | Yes    | Yes      | No       | Yes      | Yes             | Yes    |
+| Docs         | Yes    | Yes      | No       | Yes      | Yes             | Yes    |
+| Schemas      | Yes    | Yes      | No       | Yes      | Yes             | Yes    |
+| MCP          | Yes    | Yes      | No       | Yes      | Yes             | Yes    |
+| Permissions  | Yes    | Yes      | No       | Yes      | Yes             | Yes    |
+| Overlays     | Yes    | Yes      | Yes      | Yes      | Yes             | Yes    |
 
 Adapters marked "No-op" for Instructions return an empty array — their instruction files are generated by a dependency adapter (typically `agentsmd`).
 
